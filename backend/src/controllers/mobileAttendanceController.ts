@@ -4,6 +4,7 @@ import {
   getMobileTodaySummary,
   recordMobileClock,
   getMobileAttendanceHistory,
+  getFaceProfile,
   updateFaceEnrollment,
   listPendingVerifications,
   verifyAttendanceRecord,
@@ -32,6 +33,7 @@ const verifyPayloadSchema = z.object({
 
 const enrollFacePayloadSchema = z.object({
   isEnrolled: z.boolean().optional(),
+  faceDescriptor: z.any().optional(),
   faceDescriptorHash: z.string().optional(),
   samplePhotoBase64: z.string().optional(),
 });
@@ -152,5 +154,24 @@ export async function verifyAttendanceController(req: AuthenticatedRequest, res:
       success: false,
       error: err.message || "Gagal memverifikasi presensi",
     });
+  }
+}
+
+
+export async function getFaceProfileController(req: AuthenticatedRequest, res: Response) {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+
+    const result = await getFaceProfile(userId);
+    return res.status(200).json(result);
+  } catch (err: any) {
+    const message = err.message || "Gagal mengambil data profil wajah";
+    if (message.includes("Akun Anda belum dikaitkan")) {
+      return res.status(403).json({ success: false, error: message });
+    }
+    return res.status(500).json({ success: false, error: message });
   }
 }

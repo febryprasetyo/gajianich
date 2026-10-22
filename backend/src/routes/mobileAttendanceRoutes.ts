@@ -5,6 +5,7 @@ import {
   clockAttendanceController,
   getAttendanceHistoryController,
   enrollFaceController,
+  getFaceProfileController,
   getVerificationsController,
   verifyAttendanceController,
 } from "../controllers/mobileAttendanceController";
@@ -15,6 +16,7 @@ const router = Router();
 router.get("/summary", authenticateToken, getTodaySummaryController);
 router.post("/clock", authenticateToken, clockAttendanceController);
 router.get("/history", authenticateToken, getAttendanceHistoryController);
+router.get("/face-profile", authenticateToken, getFaceProfileController);
 router.post("/enroll-face", authenticateToken, enrollFaceController);
 
 // HRD Review & Verification Endpoints

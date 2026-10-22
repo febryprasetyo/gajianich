@@ -26,6 +26,10 @@ test("mobileAttendanceRoutes registers all required employee self-service and HR
     routes.some((r) => r.path === "/enroll-face" && r.methods.post),
     "POST /enroll-face route must be registered"
   );
+  assert.ok(
+    routes.some((r) => r.path === "/face-profile" && r.methods.get),
+    "GET /face-profile route must be registered"
+  );
 
   // HRD verification endpoints
   assert.ok(

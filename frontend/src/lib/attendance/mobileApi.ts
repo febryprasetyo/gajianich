@@ -126,7 +126,23 @@ export async function fetchMobileHistory(period: "CURRENT" | "PREVIOUS" = "CURRE
   return res.data;
 }
 
+
+export interface FaceProfileData {
+  employeeId: number;
+  employeeName: string;
+  isEnrolled: boolean;
+  faceDescriptor: string | null;
+  samplePhotoUrl: string | null;
+  enrolledAt: string | null;
+}
+
+export async function fetchFaceProfile(): Promise<FaceProfileData> {
+  const res = await apiFetch<{ success: boolean; data: FaceProfileData }>("/attendance/mobile/face-profile");
+  return res.data;
+}
+
 export async function postEnrollFace(payload: {
+  faceDescriptor?: unknown;
   isEnrolled?: boolean;
   faceDescriptorHash?: string;
   samplePhotoBase64?: string;

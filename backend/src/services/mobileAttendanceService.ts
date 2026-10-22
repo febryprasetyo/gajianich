@@ -568,13 +568,60 @@ export async function getMobileAttendanceHistory(
   };
 }
 
+
+export async function getFaceProfile(userId: number, targetDb = db) {
+  const { employee } = await resolveEmployeeUser(userId, targetDb);
+  const profiles = await targetDb
+    .select()
+    .from(attendanceFaceProfiles)
+    .where(eq(attendanceFaceProfiles.employeeId, employee.id))
+    .limit(1);
+
+  const profile = profiles[0] || null;
+  return {
+    success: true,
+    data: {
+      employeeId: employee.id,
+      employeeName: employee.fullName,
+      isEnrolled: profile ? profile.isEnrolled : false,
+      faceDescriptor: profile ? profile.faceDescriptorHash : null,
+      samplePhotoUrl: profile ? profile.samplePhotoUrl : null,
+      enrolledAt: profile ? profile.enrolledAt : null,
+    },
+  };
+}
+
 export async function updateFaceEnrollment(
   userId: number,
-  payload: { isEnrolled?: boolean; faceDescriptorHash?: string; samplePhotoBase64?: string },
+  payload: {
+    isEnrolled?: boolean;
+    faceDescriptor?: unknown;
+    faceDescriptorHash?: string;
+    samplePhotoBase64?: string;
+  },
   targetDb = db
 ) {
   const { employee } = await resolveEmployeeUser(userId, targetDb);
   const isEnrolled = payload.isEnrolled !== undefined ? payload.isEnrolled : true;
+
+  let descriptorStr: string | null = null;
+  if (payload.faceDescriptor !== undefined) {
+    descriptorStr = typeof payload.faceDescriptor === "object"
+      ? JSON.stringify(payload.faceDescriptor)
+      : String(payload.faceDescriptor);
+  } else if (payload.faceDescriptorHash) {
+    descriptorStr = payload.faceDescriptorHash;
+  }
+
+  let samplePhotoUrl: string | null = null;
+  if (payload.samplePhotoBase64) {
+    try {
+      const saved = await saveAttendancePhoto(payload.samplePhotoBase64, `FACE-REF-${employee.id}`);
+      samplePhotoUrl = saved.photoUrl;
+    } catch {
+      // Photo save fallback
+    }
+  }
 
   const existing = await targetDb
     .select()
@@ -586,8 +633,8 @@ export async function updateFaceEnrollment(
     await targetDb.insert(attendanceFaceProfiles).values({
       employeeId: employee.id,
       isEnrolled,
-      faceDescriptorHash: payload.faceDescriptorHash || null,
-      samplePhotoUrl: null,
+      faceDescriptorHash: descriptorStr,
+      samplePhotoUrl,
       enrolledAt: new Date(),
       updatedAt: new Date(),
     });
@@ -596,7 +643,8 @@ export async function updateFaceEnrollment(
       .update(attendanceFaceProfiles)
       .set({
         isEnrolled,
-        faceDescriptorHash: payload.faceDescriptorHash || existing[0].faceDescriptorHash,
+        faceDescriptorHash: descriptorStr || existing[0].faceDescriptorHash,
+        samplePhotoUrl: samplePhotoUrl || existing[0].samplePhotoUrl,
         updatedAt: new Date(),
       })
       .where(eq(attendanceFaceProfiles.employeeId, employee.id));
@@ -606,6 +654,7 @@ export async function updateFaceEnrollment(
     success: true,
     message: isEnrolled ? "Wajah berhasil didaftarkan." : "Pendaftaran wajah dinonaktifkan.",
     isEnrolled,
+    faceDescriptor: descriptorStr,
   };
 }
 
