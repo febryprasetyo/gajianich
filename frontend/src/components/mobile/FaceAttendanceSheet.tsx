@@ -49,7 +49,7 @@ export default function FaceAttendanceSheet({
   const [viewState, setViewState] = useState<'CAMERA' | 'PROCESSING' | 'ERROR' | 'SUCCESS'>('CAMERA');
   const [stageProgress, setStageProgress] = useState({
     step: 2,
-    label: 'Tahap 2/5: Izin Kamera & Posisikan Wajah',
+    label: 'Tahap 2/5: Posisikan wajah di dalam bingkai',
     pct: 40,
   });
   const [scenario, setScenario] = useState<CameraScenario>('NORMAL');
@@ -58,25 +58,9 @@ export default function FaceAttendanceSheet({
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [hasRealCamera, setHasRealCamera] = useState(false);
+  const [cameraLoading, setCameraLoading] = useState(false);
+  const [cameraNote, setCameraNote] = useState<string | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-
-  const startCamera = async () => {
-    try {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user' },
-          audio: false,
-        });
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          setHasRealCamera(true);
-        }
-      }
-    } catch (err) {
-      setHasRealCamera(false);
-    }
-  };
 
   const stopCamera = () => {
     if (streamRef.current) {
@@ -84,6 +68,7 @@ export default function FaceAttendanceSheet({
       streamRef.current = null;
     }
     setHasRealCamera(false);
+    setCameraLoading(false);
   };
 
   const triggerError = (type: CameraScenario) => {
@@ -92,16 +77,65 @@ export default function FaceAttendanceSheet({
     setViewState('ERROR');
   };
 
+  const startCamera = async () => {
+    setCameraLoading(true);
+    setCameraNote(null);
+
+    // Check if secure context for WebRTC
+    if (typeof window !== 'undefined' && !window.isSecureContext && window.location.hostname !== 'localhost') {
+      setCameraLoading(false);
+      setCameraNote('Kamera asli browser memerlukan HTTPS. Mode simulasi wajah tetap aktif.');
+      return;
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setCameraLoading(false);
+      setCameraNote('Peramban ini tidak mendukung akses kamera langsung. Mode simulasi aktif.');
+      return;
+    }
+
+    try {
+      // Set timeout so it never hangs indefinitely on mobile
+      const streamPromise = navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user' },
+        audio: false,
+      });
+
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('CAMERA_TIMEOUT')), 5000)
+      );
+
+      const stream = await Promise.race([streamPromise, timeoutPromise]);
+      streamRef.current = stream;
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(() => {});
+        setHasRealCamera(true);
+      }
+      setCameraLoading(false);
+    } catch (err: unknown) {
+      stopCamera();
+      const errName = err instanceof Error ? err.name : '';
+      if (errName === 'NotAllowedError' || errName === 'PermissionDeniedError') {
+        triggerError('CAMERA_DENIED');
+      } else {
+        setCameraNote('Kamera fisik tidak dapat diakses. Menggunakan simulasi wajah terverifikasi.');
+      }
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       setViewState('CAMERA');
       setStageProgress({
         step: 2,
-        label: 'Tahap 2/5: Izin Kamera & Posisikan Wajah',
+        label: 'Tahap 2/5: Posisikan wajah di dalam bingkai',
         pct: 40,
       });
       setErrorType(null);
       setReceipt(null);
+      setCameraNote(null);
 
       if (!isOnline) {
         triggerError('NETWORK_OFFLINE');
@@ -119,8 +153,8 @@ export default function FaceAttendanceSheet({
         triggerError('ALREADY_RECORDED');
         return;
       }
-
-      startCamera();
+      // Note: We deliberately do NOT auto-block on getUserMedia on open.
+      // The user can tap "Coba Kamera Perangkat" or proceed with simulation.
     } else {
       stopCamera();
     }
@@ -178,8 +212,8 @@ export default function FaceAttendanceSheet({
           scanTime: scanTimeShort,
           txHash,
         });
-      }, 750);
-    }, 850);
+      }, 700);
+    }, 700);
   };
 
   if (!isOpen) return null;
@@ -189,7 +223,7 @@ export default function FaceAttendanceSheet({
       role="dialog"
       aria-modal="true"
       aria-labelledby="sheetFlowTitle"
-      className="absolute inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex flex-col justify-end animate-in fade-in duration-200"
+      className="fixed inset-0 sm:absolute sm:inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex flex-col justify-end animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
@@ -197,7 +231,7 @@ export default function FaceAttendanceSheet({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Sheet Header */}
-        <div className="px-5 pt-4 pb-3 border-b border-slate-200 flex items-center justify-between gap-2">
+        <div className="px-5 pt-4 pb-3 border-b border-slate-200 flex items-center justify-between gap-2 shrink-0">
           <div>
             <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#059669] block">
               Presensi wajah
@@ -244,7 +278,6 @@ export default function FaceAttendanceSheet({
                 onClick={() => {
                   setScenario('NORMAL');
                   setViewState('CAMERA');
-                  startCamera();
                 }}
                 className={`py-1.5 px-2 rounded-lg ${
                   scenario === 'NORMAL' ? 'bg-[#059669] text-white' : 'bg-white border border-slate-300 text-slate-700'
@@ -318,17 +351,26 @@ export default function FaceAttendanceSheet({
                 />
 
                 {!hasRealCamera && (
-                  <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-slate-800 to-slate-950 text-white gap-2">
-                    <span className="w-16 h-16 rounded-full bg-[#d1fae5] border border-[#a7f3d0] text-[#065f46] text-xl font-bold flex items-center justify-center">
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-slate-800 to-slate-950 text-white gap-2 p-4 text-center">
+                    <span className="w-16 h-16 rounded-full bg-[#d1fae5] border border-[#a7f3d0] text-[#065f46] text-xl font-bold flex items-center justify-center shadow-md">
                       FP
+                    </span>
+                    <strong className="text-sm font-bold text-white">Area Kamera Wajah</strong>
+                    <span className="text-[11px] text-slate-300">
+                      {cameraNote || 'Mode simulasi biometrik aktif'}
                     </span>
                     <button
                       type="button"
+                      disabled={cameraLoading}
                       onClick={startCamera}
-                      className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-semibold flex items-center gap-1.5 mt-2 transition"
+                      className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-[#059669] text-xs font-bold flex items-center gap-1.5 mt-1 shadow-sm transition active:scale-95 disabled:opacity-50"
                     >
-                      <Camera className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Aktifkan Kamera Perangkat</span>
+                      {cameraLoading ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#059669]" />
+                      ) : (
+                        <Camera className="w-3.5 h-3.5 text-[#059669]" />
+                      )}
+                      <span>{cameraLoading ? 'Menghubungkan...' : 'Coba Kamera Perangkat'}</span>
                     </button>
                   </div>
                 )}
@@ -339,19 +381,19 @@ export default function FaceAttendanceSheet({
                 </div>
 
                 {/* Status Overlay */}
-                <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-lg bg-black/70 text-white text-[11px] font-bold flex items-center gap-1.5">
+                <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-lg bg-black/70 text-white text-[11px] font-bold flex items-center gap-1.5 pointer-events-none">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span>{hasRealCamera ? 'Kamera Aktif' : 'Pratinjau Kamera'}</span>
+                  <span>{hasRealCamera ? 'Kamera Aktif' : 'Pratinjau Simulasi'}</span>
                 </div>
               </div>
 
               <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950 space-y-1">
                 <p className="font-extrabold text-sm text-emerald-800 flex items-center gap-1.5">
                   <Eye className="w-4 h-4" />
-                  <span>Posisikan Wajah & Kedipkan Mata</span>
+                  <span>Wajah terlihat jelas</span>
                 </p>
                 <p className="leading-relaxed text-slate-700">
-                  Pastikan pencahayaan cukup dan hadapkan wajah ke kamera. Sistem memeriksa keaktifan wajah sebelum menyimpan data presensi ke server.
+                  Gunakan pencahayaan cukup dan hadapkan wajah ke kamera. Sistem memeriksa keaktifan wajah sebelum menyimpan data presensi ke server.
                 </p>
               </div>
 
@@ -373,10 +415,10 @@ export default function FaceAttendanceSheet({
                 <Loader2 className="w-7 h-7 animate-spin" />
               </div>
               <h3 className="text-base font-extrabold text-slate-900">
-                Memverifikasi Identitas & Keaktifan Wajah...
+                Memproses simulasi presensi…
               </h3>
               <p className="text-xs text-slate-600 px-4">
-                Menunggu konfirmasi enkripsi dan pencatatan dari server GAJIANICH.
+                Memverifikasi keaktifan wajah dan mengonfirmasi pencatatan ke server GAJIANICH.
               </p>
             </div>
           )}
@@ -422,7 +464,6 @@ export default function FaceAttendanceSheet({
                   onClick={() => {
                     setScenario('NORMAL');
                     setViewState('CAMERA');
-                    startCamera();
                   }}
                   className="flex-1 min-h-[48px] py-3 px-4 rounded-xl bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-sm flex items-center justify-center gap-1.5 transition"
                 >
