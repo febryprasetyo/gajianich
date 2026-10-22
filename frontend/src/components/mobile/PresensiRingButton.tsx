@@ -1,14 +1,14 @@
 'use client';
 
-import React from 'react';
-import { ScanFace, MapPin } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ScanFace, MapPin, RotateCw, CheckCircle2 } from 'lucide-react';
+import { useRealtimeLocation } from '@/hooks/useRealtimeLocation';
 
 export type AttendanceRingState = 'NOT_CHECKED_IN' | 'CHECKED_IN' | 'COMPLETED';
 
 interface PresensiRingButtonProps {
   status: AttendanceRingState;
   onOpenFlow: () => void;
-  officeName?: string;
   onResetDemo?: () => void;
   showResetDemo?: boolean;
 }
@@ -16,67 +16,87 @@ interface PresensiRingButtonProps {
 export default function PresensiRingButton({
   status = 'NOT_CHECKED_IN',
   onOpenFlow,
-  officeName = 'PT Cahaya Mas Cemerlang',
   onResetDemo,
   showResetDemo = false,
 }: PresensiRingButtonProps) {
-  let title = 'Absen Masuk';
-  let subtitle = 'Buka Kamera Wajah';
-  let middleBorderColor = '#A7F3D0';
-  let btnBg = 'bg-[#059669] hover:bg-[#047857]';
+  const [currentTime, setCurrentTime] = useState('08.25');
+  const location = useRealtimeLocation();
 
-  if (status === 'CHECKED_IN') {
-    title = 'Absen Pulang';
-    subtitle = 'Buka Kamera Wajah';
-    middleBorderColor = '#FECDD3';
-    btnBg = 'bg-[#059669] hover:bg-[#047857]';
-  } else if (status === 'COMPLETED') {
-    title = 'Sudah Tercatat';
-    subtitle = 'Lihat Bukti Server';
-    middleBorderColor = '#CBD5E1';
-    btnBg = 'bg-slate-800 hover:bg-slate-900';
-  }
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      setCurrentTime(`${hh}.${mm}`);
+    };
+    updateTime();
+    const timer = setInterval(updateTime, 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const isCheckedIn = status === 'CHECKED_IN';
+  const isCompleted = status === 'COMPLETED';
+
+  let buttonLabel = 'Clock In';
+  if (isCheckedIn) buttonLabel = 'Clock Out';
+  if (isCompleted) buttonLabel = 'Selesai';
 
   return (
-    <div className="flex flex-col items-center justify-center px-5 py-4">
-      {/* Outer Ring */}
-      <div className="w-[160px] h-[160px] border border-[#a7f3d0] rounded-full p-1.5 flex items-center justify-center bg-[#ecfdf5] transition-all">
-        {/* Middle Ring */}
-        <div
-          className="w-full h-full p-1.5 flex items-center justify-center border rounded-full bg-white transition-colors"
-          style={{ borderColor: middleBorderColor }}
+    <div className="flex flex-col items-center justify-center pt-3 pb-2 px-5 select-none">
+      {/* 1. Hero Circular Face Scan Button with Ambient Halo */}
+      <div className="relative flex items-center justify-center">
+        {/* Subtle Outer Glow Halo */}
+        <div className="absolute w-[184px] h-[184px] rounded-full bg-emerald-500/15 animate-pulse" />
+
+        {/* Main Circular Button */}
+        <button
+          type="button"
+          onClick={onOpenFlow}
+          aria-label={buttonLabel + ' dengan Verifikasi Wajah Biometrik'}
+          className="relative w-[156px] h-[156px] rounded-full bg-[#059669] hover:bg-[#047857] text-white shadow-xl shadow-emerald-700/20 border-4 border-white flex flex-col items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer select-none"
         >
-          {/* Core Button */}
-          <button
-            type="button"
-            onClick={onOpenFlow}
-            aria-label={'Tombol ' + title + ' dengan Kamera Wajah'}
-            className={'w-full h-full rounded-full ' + btnBg + ' text-white shadow-sm flex flex-col justify-center items-center gap-0.5 transition-all active:scale-[0.98] select-none'}
-          >
-            <div className="w-11 h-11 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center mb-1">
-              <ScanFace className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-base font-extrabold tracking-tight leading-tight">
-              {title}
-            </span>
-            <span className="text-[10px] font-semibold text-emerald-100">
-              {subtitle}
-            </span>
-          </button>
+          {/* Face Scan Biometric Icon */}
+          <div className="w-11 h-11 rounded-full bg-white/15 flex items-center justify-center">
+            <ScanFace className="w-6 h-6 text-white" />
+          </div>
+          <span className="text-base font-extrabold tracking-wide">
+            {buttonLabel}
+          </span>
+          <span className="text-[10px] font-semibold text-emerald-100 opacity-90">
+            Scan Wajah
+          </span>
+        </button>
+      </div>
+
+      {/* 2. Big Digital Clock Display */}
+      <div className="text-center mt-3">
+        <p className="text-3xl font-extrabold font-mono tracking-tight text-slate-900">
+          {currentTime}
+        </p>
+
+        {/* 3. Realtime Accurate GPS Location for Dinas Luar */}
+        <div className="mt-1 flex flex-col items-center gap-0.5">
+          <div className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 bg-slate-100/90 border border-slate-200/80 px-2.5 py-0.5 rounded-full">
+            <MapPin className={`w-3.5 h-3.5 ${location.loading ? 'animate-bounce text-amber-500' : 'text-[#059669]'}`} />
+            <span className="max-w-[260px] truncate">{location.displayText}</span>
+            <button
+              type="button"
+              onClick={location.refetch}
+              title="Refresh sinyal GPS"
+              aria-label="Refresh sinyal GPS akurat"
+              className="p-0.5 text-slate-400 hover:text-slate-700 transition"
+            >
+              <RotateCw className={`w-3 h-3 ${location.loading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+
+          <p className="text-[10px] text-slate-500 font-medium">
+            Presensi dinas luar mencatat koordinat GPS akurat dari HP
+          </p>
         </div>
       </div>
 
-      {/* Location Caption */}
-      <div className="flex items-center justify-center gap-1.5 text-xs text-slate-700 mt-3 font-medium">
-        <MapPin className="w-3.5 h-3.5 text-[#059669]" />
-        <span>{officeName}</span>
-      </div>
-
-      {/* Guide Note */}
-      <p className="text-[10px] text-center text-slate-500 mt-1">
-        Posisikan wajah dengan jelas untuk melakukan presensi.
-      </p>
-
+      {/* Simulation Reset Action */}
       {showResetDemo && onResetDemo && (
         <button
           type="button"

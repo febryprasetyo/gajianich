@@ -1,18 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import {
   ChevronLeft,
   MoreHorizontal,
-  HandMetal,
-  MapPin,
-  Clock,
-  CheckCircle2,
   XCircle,
-  AlertCircle,
   ChevronDown,
 } from 'lucide-react';
+import PresensiRingButton from '@/components/mobile/PresensiRingButton';
 import DayDetailSheet, { DayDetailData } from '@/components/mobile/DayDetailSheet';
 import FaceAttendanceSheet from '@/components/mobile/FaceAttendanceSheet';
 
@@ -46,9 +42,9 @@ const MOCK_ATTENDANCE_LOG: AttendanceLogRow[] = [
     status: 'TEPAT_WAKTU',
     statusText: 'Hadir Tepat Waktu',
     approvalStatus: 'PENDING',
-    approvalNote: 'Pengajuan presensi sedang di-review oleh HRD.',
+    approvalNote: 'Pengajuan presensi dinas luar sedang di-review HRD.',
     serverRef: 'TX-GJN-20261022-772',
-    note: 'Presensi masuk biometrik wajah valid di area kantor.',
+    note: 'Presensi masuk biometrik wajah valid di lokasi dinas luar.',
   },
   {
     id: 'D-20261021',
@@ -64,7 +60,7 @@ const MOCK_ATTENDANCE_LOG: AttendanceLogRow[] = [
     approvalStatus: 'APPROVED',
     approvalNote: 'Telah diverifikasi dan disetujui HRD Pusat.',
     serverRef: 'TX-GJN-20261021-104',
-    note: 'Presensi biometrik wajah dan GPS sinkron server.',
+    note: 'Presensi biometrik wajah dan GPS dinas luar sinkron server.',
   },
   {
     id: 'D-20261020',
@@ -80,7 +76,7 @@ const MOCK_ATTENDANCE_LOG: AttendanceLogRow[] = [
     approvalStatus: 'APPROVED',
     approvalNote: 'Disetujui HRD.',
     serverRef: 'TX-GJN-20261020-098',
-    note: 'Presensi normal shift reguler.',
+    note: 'Presensi dinas luar terkonfirmasi valid.',
   },
   {
     id: 'D-20261019',
@@ -112,7 +108,7 @@ const MOCK_ATTENDANCE_LOG: AttendanceLogRow[] = [
     approvalStatus: 'APPROVED',
     approvalNote: 'Disetujui HRD.',
     serverRef: 'TX-GJN-20261016-512',
-    note: 'Presensi reguler kantor pusat.',
+    note: 'Presensi dinas luar kantor.',
   },
   {
     id: 'D-20261015',
@@ -126,9 +122,9 @@ const MOCK_ATTENDANCE_LOG: AttendanceLogRow[] = [
     status: 'TERLAMBAT',
     statusText: 'Terlambat 42 Menit',
     approvalStatus: 'APPROVED',
-    approvalNote: 'Disetujui HRD dengan toleransi lalu lintas.',
+    approvalNote: 'Disetujui HRD dengan toleransi perjalanan dinas.',
     serverRef: 'TX-GJN-20261015-321',
-    note: 'Keterlambatan masuk terkonfirmasi HRD.',
+    note: 'Keterlambatan masuk dinas terkonfirmasi HRD.',
   },
   {
     id: 'D-20261014',
@@ -144,7 +140,7 @@ const MOCK_ATTENDANCE_LOG: AttendanceLogRow[] = [
     approvalStatus: 'APPROVED',
     approvalNote: 'Disetujui HRD.',
     serverRef: 'TX-GJN-20261014-411',
-    note: 'Presensi normal.',
+    note: 'Presensi dinas luar normal.',
   },
   {
     id: 'D-20261013',
@@ -158,30 +154,17 @@ const MOCK_ATTENDANCE_LOG: AttendanceLogRow[] = [
     status: 'TIDAK_ABSEN',
     statusText: 'Tidak Absen',
     approvalStatus: 'REJECTED',
-    approvalNote: 'Ditolak: Belum ada pengajuan izin resmi.',
+    approvalNote: 'Ditolak: Belum ada pengajuan izin dinas luar resmi.',
     serverRef: 'TX-GJN-20261013-000',
     note: 'Data kehadiran kosong.',
   },
 ];
 
 export default function MobilePresensiPage() {
-  const [currentTime, setCurrentTime] = useState('08.25');
   const [isCheckedIn, setIsCheckedIn] = useState(true);
   const [isFaceSheetOpen, setIsFaceSheetOpen] = useState(false);
   const [selectedDayDetail, setSelectedDayDetail] = useState<DayDetailData | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<'CURRENT' | 'PREVIOUS'>('CURRENT');
-
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      const hh = String(now.getHours()).padStart(2, '0');
-      const mm = String(now.getMinutes()).padStart(2, '0');
-      setCurrentTime(`${hh}.${mm}`);
-    };
-    updateTime();
-    const timer = setInterval(updateTime, 30000);
-    return () => clearInterval(timer);
-  }, []);
 
   const handleClockButtonClick = () => {
     setIsFaceSheetOpen(true);
@@ -197,7 +180,7 @@ export default function MobilePresensiPage() {
       id: row.id,
       dayName: row.fullDateText.split(',')[0] || row.dayShort,
       dateStr: row.fullDateText.split(',')[1]?.trim() || row.dateStr,
-      schedule: '08:00 – 17:00 WIB',
+      schedule: '08:00 – 17:00 WIB (Dinas Luar)',
       status: row.status,
       statusText: row.statusText,
       checkIn: row.clockIn,
@@ -236,40 +219,11 @@ export default function MobilePresensiPage() {
         </button>
       </header>
 
-      {/* 2. Hero Action: Circular Clock In/Out Button */}
-      <section className="flex flex-col items-center justify-center pt-3 pb-2 px-5">
-        <div className="relative flex items-center justify-center">
-          {/* Subtle Outer Glow Halo */}
-          <div className="absolute w-[184px] h-[184px] rounded-full bg-emerald-500/15 animate-pulse" />
-
-          {/* Main Circular Button */}
-          <button
-            type="button"
-            onClick={handleClockButtonClick}
-            aria-label={isCheckedIn ? 'Tombol Clock Out' : 'Tombol Clock In'}
-            className="relative w-[156px] h-[156px] rounded-full bg-[#059669] hover:bg-[#047857] text-white shadow-xl shadow-emerald-700/20 border-4 border-white flex flex-col items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer select-none"
-          >
-            {/* Hand Tap Fingerprint Icon */}
-            <div className="w-11 h-11 rounded-full bg-white/15 flex items-center justify-center">
-              <HandMetal className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-base font-extrabold tracking-wide">
-              {isCheckedIn ? 'Clock Out' : 'Clock In'}
-            </span>
-          </button>
-        </div>
-
-        {/* Big Digital Clock Display */}
-        <div className="text-center mt-3">
-          <p className="text-3xl font-extrabold font-mono tracking-tight text-slate-900">
-            {currentTime}
-          </p>
-          <p className="text-[11px] text-slate-500 font-medium flex items-center justify-center gap-1 mt-1">
-            <MapPin className="w-3.5 h-3.5 text-[#059669] shrink-0" />
-            <span>Lokasi Anda wajib berada di area kantor</span>
-          </p>
-        </div>
-      </section>
+      {/* 2. Hero Action: Circular Face Scan Button (Shared with Beranda) */}
+      <PresensiRingButton
+        status={isCheckedIn ? 'CHECKED_IN' : 'NOT_CHECKED_IN'}
+        onOpenFlow={handleClockButtonClick}
+      />
 
       {/* 3. Today Summary Card: Clock In, Clock Out, Work Hours (NO Break Time) */}
       <section className="px-5 py-2">

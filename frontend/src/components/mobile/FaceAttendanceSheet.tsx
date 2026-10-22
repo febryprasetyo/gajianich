@@ -49,6 +49,7 @@ export default function FaceAttendanceSheet({
   employeeNik = 'CMC-2024-089',
   onSuccess,
 }: FaceAttendanceSheetProps) {
+  const location = useRealtimeLocation();
   const [viewState, setViewState] = useState<'CAMERA' | 'PROCESSING' | 'ERROR' | 'SUCCESS'>('CAMERA');
   const [scenario, setScenario] = useState<CameraScenario>('NORMAL');
   const [errorType, setErrorType] = useState<CameraScenario | null>(null);
@@ -392,10 +393,10 @@ export default function FaceAttendanceSheet({
             <div className="flex flex-col items-center">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-100">
                 <MapPin className="w-3.5 h-3.5 text-[#059669] shrink-0" />
-                <span>Current Location</span>
+                <span>GPS Dinas Luar</span>
               </div>
-              <p className="text-[11px] font-medium text-slate-600 text-center mt-1.5 leading-snug">
-                Head Quarter Jakarta - Lobby
+              <p className="text-[11px] font-medium text-slate-700 text-center mt-1.5 leading-snug truncate max-w-[170px]">
+                {location.displayText}
               </p>
             </div>
 
@@ -431,7 +432,7 @@ export default function FaceAttendanceSheet({
                 <span>Memverifikasi Wajah...</span>
               </div>
               <p className="text-[11px] text-slate-500">
-                Pencocokan biometrik dan koordinat lokasi kantor
+                Pencocokan biometrik dan koordinat GPS dinas luar
               </p>
             </div>
           )}
