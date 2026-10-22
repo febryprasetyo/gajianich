@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import {
-  X,
-  ScanFace,
-  Eye,
+  ArrowLeft,
+  Check,
+  MapPin,
+  Clock,
   Camera,
   Loader2,
   AlertTriangle,
@@ -47,11 +49,6 @@ export default function FaceAttendanceSheet({
   onSuccess,
 }: FaceAttendanceSheetProps) {
   const [viewState, setViewState] = useState<'CAMERA' | 'PROCESSING' | 'ERROR' | 'SUCCESS'>('CAMERA');
-  const [stageProgress, setStageProgress] = useState({
-    step: 2,
-    label: 'Tahap 2/5: Posisikan wajah di dalam bingkai',
-    pct: 40,
-  });
   const [scenario, setScenario] = useState<CameraScenario>('NORMAL');
   const [errorType, setErrorType] = useState<CameraScenario | null>(null);
   const [receipt, setReceipt] = useState<{ time: string; hash: string } | null>(null);
@@ -61,6 +58,21 @@ export default function FaceAttendanceSheet({
   const [cameraLoading, setCameraLoading] = useState(false);
   const [cameraNote, setCameraNote] = useState<string | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  // Live dynamic clock: HH : mm
+  const [currentTimeFormatted, setCurrentTimeFormatted] = useState('09 : 12');
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      setCurrentTimeFormatted(`${hh} : ${mm}`);
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const stopCamera = () => {
     if (streamRef.current) {
@@ -81,21 +93,19 @@ export default function FaceAttendanceSheet({
     setCameraLoading(true);
     setCameraNote(null);
 
-    // Check if secure context for WebRTC
     if (typeof window !== 'undefined' && !window.isSecureContext && window.location.hostname !== 'localhost') {
       setCameraLoading(false);
-      setCameraNote('Kamera asli browser memerlukan HTTPS. Mode simulasi wajah tetap aktif.');
+      setCameraNote('Kamera asli memerlukan HTTPS. Mode simulasi wajah aktif.');
       return;
     }
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       setCameraLoading(false);
-      setCameraNote('Peramban ini tidak mendukung akses kamera langsung. Mode simulasi aktif.');
+      setCameraNote('Browser tidak mendukung akses kamera langsung.');
       return;
     }
 
     try {
-      // Set timeout so it never hangs indefinitely on mobile
       const streamPromise = navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user' },
         audio: false,
@@ -120,7 +130,7 @@ export default function FaceAttendanceSheet({
       if (errName === 'NotAllowedError' || errName === 'PermissionDeniedError') {
         triggerError('CAMERA_DENIED');
       } else {
-        setCameraNote('Kamera fisik tidak dapat diakses. Menggunakan simulasi wajah terverifikasi.');
+        setCameraNote('Kamera tidak dapat diakses. Menggunakan simulasi wajah.');
       }
     }
   };
@@ -128,11 +138,6 @@ export default function FaceAttendanceSheet({
   useEffect(() => {
     if (isOpen) {
       setViewState('CAMERA');
-      setStageProgress({
-        step: 2,
-        label: 'Tahap 2/5: Posisikan wajah di dalam bingkai',
-        pct: 40,
-      });
       setErrorType(null);
       setReceipt(null);
       setCameraNote(null);
@@ -153,8 +158,6 @@ export default function FaceAttendanceSheet({
         triggerError('ALREADY_RECORDED');
         return;
       }
-      // Note: We deliberately do NOT auto-block on getUserMedia on open.
-      // The user can tap "Coba Kamera Perangkat" or proceed with simulation.
     } else {
       stopCamera();
     }
@@ -163,18 +166,13 @@ export default function FaceAttendanceSheet({
     };
   }, [isOpen]);
 
-  const handleSimulateOrCapture = () => {
+  const handleClockInAction = () => {
     if (!isOnline) {
       triggerError('NETWORK_OFFLINE');
       return;
     }
 
     setViewState('PROCESSING');
-    setStageProgress({
-      step: 3,
-      label: 'Tahap 3/5: Memeriksa Keaktifan & Kecocokan 1:1',
-      pct: 65,
-    });
 
     setTimeout(() => {
       if (scenario === 'VERIFY_FAILED') {
@@ -182,19 +180,8 @@ export default function FaceAttendanceSheet({
         return;
       }
 
-      setStageProgress({
-        step: 4,
-        label: 'Tahap 4/5: Menyimpan ke Server GAJIANICH',
-        pct: 85,
-      });
-
       setTimeout(() => {
         stopCamera();
-        setStageProgress({
-          step: 5,
-          label: 'Tahap 5/5: Bukti Berhasil Tercatat Server',
-          pct: 100,
-        });
 
         const now = new Date();
         const hh = String(now.getHours()).padStart(2, '0');
@@ -222,242 +209,234 @@ export default function FaceAttendanceSheet({
     <div
       role="dialog"
       aria-modal="true"
-      aria-labelledby="sheetFlowTitle"
-      className="fixed inset-0 sm:absolute sm:inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex flex-col justify-end animate-in fade-in duration-200"
-      onClick={onClose}
+      aria-labelledby="attendanceModalTitle"
+      className="fixed inset-0 sm:absolute sm:inset-0 z-50 bg-slate-950 flex flex-col justify-between overflow-hidden animate-in fade-in duration-200"
     >
-      <div
-        className="bg-white rounded-t-[32px] max-h-[94%] flex flex-col overflow-hidden border-t border-slate-200 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Sheet Header */}
-        <div className="px-5 pt-4 pb-3 border-b border-slate-200 flex items-center justify-between gap-2 shrink-0">
-          <div>
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#059669] block">
-              Presensi wajah
-            </span>
-            <h2 id="sheetFlowTitle" className="text-base font-extrabold text-slate-900">
-              {isCheckOut ? 'Absen Pulang — Kamera Biometrik' : 'Absen Masuk — Kamera Biometrik'}
-            </h2>
+      <style jsx>{`
+        @keyframes laserSweep {
+          0% {
+            transform: translateY(10px);
+            opacity: 0.7;
+          }
+          50% {
+            transform: translateY(195px);
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(10px);
+            opacity: 0.7;
+          }
+        }
+        .animate-laser {
+          animation: laserSweep 2.6s ease-in-out infinite;
+        }
+      `}</style>
+
+      {/* BACKGROUND CAMERA / SIMULATION FEED */}
+      <div className="absolute inset-0 z-0 bg-slate-900">
+        {hasRealCamera ? (
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="w-full h-full object-cover -scale-x-100"
+          />
+        ) : (
+          <div className="relative w-full h-full">
+            <Image
+              src="/images/mock-face-scan.jpg"
+              alt="Face scan preview"
+              fill
+              priority
+              sizes="100vw"
+              className="object-cover object-center"
+            />
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Tutup kamera"
-            className="min-h-[44px] min-w-[44px] rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
+        )}
+
+        {/* Soft vignette gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60 pointer-events-none" />
+      </div>
+
+      {/* TOP BAR OVERLAY */}
+      <div className="relative z-10 px-4 pt-4 sm:pt-6 flex items-center justify-between gap-2">
+        {/* Back Button */}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Kembali ke Beranda"
+          className="w-10 h-10 rounded-full bg-white/40 backdrop-blur-md border border-white/30 text-white flex items-center justify-center shadow-md active:scale-95 transition"
+        >
+          <ArrowLeft className="w-5 h-5 text-white" />
+        </button>
+
+        {/* Status Pill Badge */}
+        <div className="px-3.5 py-1.5 rounded-full bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-md flex items-center gap-1.5 max-w-[calc(100%-96px)]">
+          <span className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+            <Check className="w-2.5 h-2.5 stroke-[3]" />
+          </span>
+          <span className="text-[11px] font-semibold text-slate-700 truncate">
+            You have entered at absence zone
+          </span>
         </div>
 
-        {/* Sheet Body */}
-        <div className="p-4 overflow-y-auto space-y-3.5">
-          {/* Progress Bar */}
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1.5">
-            <div className="flex items-center justify-between text-xs font-extrabold">
-              <span className="text-slate-800">{stageProgress.label}</span>
-              <span className="font-mono text-[#059669]">{stageProgress.pct}%</span>
+        {/* Camera Toggle Button */}
+        <button
+          type="button"
+          onClick={hasRealCamera ? stopCamera : startCamera}
+          disabled={cameraLoading}
+          aria-label="Alihkan Kamera"
+          title={hasRealCamera ? 'Gunakan Simulasi' : 'Gunakan Kamera Fisik'}
+          className="w-10 h-10 rounded-full bg-white/40 backdrop-blur-md border border-white/30 text-white flex items-center justify-center shadow-md active:scale-95 transition disabled:opacity-50"
+        >
+          {cameraLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin text-white" />
+          ) : (
+            <Camera className="w-4 h-4 text-white" />
+          )}
+        </button>
+      </div>
+
+      {/* CENTER: FACE SCANNER VIEWPORT */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-2 pointer-events-none">
+        <div className="relative w-[250px] h-[280px] sm:w-[270px] sm:h-[300px] flex items-center justify-center">
+          {/* Rounded Corner SVG Frame */}
+          <svg
+            viewBox="0 0 260 290"
+            className="w-full h-full drop-shadow-[0_4px_16px_rgba(0,0,0,0.4)]"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            {/* Top Left */}
+            <path
+              d="M 14 74 L 14 46 A 34 34 0 0 1 48 12 L 76 12"
+              stroke="white"
+              strokeWidth="4.5"
+              strokeLinecap="round"
+            />
+            {/* Top Right */}
+            <path
+              d="M 184 12 L 212 12 A 34 34 0 0 1 246 46 L 246 74"
+              stroke="white"
+              strokeWidth="4.5"
+              strokeLinecap="round"
+            />
+            {/* Bottom Right */}
+            <path
+              d="M 246 216 L 246 244 A 34 34 0 0 1 212 278 L 184 278"
+              stroke="white"
+              strokeWidth="4.5"
+              strokeLinecap="round"
+            />
+            {/* Bottom Left */}
+            <path
+              d="M 76 278 L 48 278 A 34 34 0 0 1 14 244 L 14 216"
+              stroke="white"
+              strokeWidth="4.5"
+              strokeLinecap="round"
+            />
+          </svg>
+
+          {/* Laser Scan Beam */}
+          <div className="absolute inset-x-3 top-2 h-16 animate-laser pointer-events-none overflow-hidden">
+            <div className="w-full h-full bg-gradient-to-b from-sky-400/40 via-sky-500/20 to-transparent" />
+            <div className="w-full h-[2.5px] bg-[#1d63ff] shadow-[0_0_12px_#38bdf8]" />
+          </div>
+
+          {/* Status badge when camera note is present */}
+          {cameraNote && (
+            <div className="absolute bottom-2 inset-x-2 text-center pointer-events-auto">
+              <span className="inline-block px-2.5 py-1 rounded-md bg-black/70 backdrop-blur-sm text-[10px] text-white font-medium">
+                {cameraNote}
+              </span>
             </div>
-            <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-[#059669] transition-all duration-300"
-                style={{ width: `${stageProgress.pct}%` }}
-              ></div>
+          )}
+        </div>
+      </div>
+
+      {/* BOTTOM FLOATING CARD */}
+      <div className="relative z-10 w-full p-3 sm:p-4">
+        <div className="bg-white rounded-[28px] shadow-2xl p-5 border border-slate-100 flex flex-col gap-4 max-w-md mx-auto animate-in slide-in-from-bottom duration-300">
+          {/* Card Title */}
+          <h2
+            id="attendanceModalTitle"
+            className="text-center font-extrabold text-slate-900 text-base tracking-tight"
+          >
+            {isCheckOut ? 'Clock Out' : 'Clock In'}
+          </h2>
+
+          {/* Location & Time Grid */}
+          <div className="grid grid-cols-2 gap-3 text-center">
+            {/* Current Location */}
+            <div className="flex flex-col items-center">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-[11px] font-semibold">
+                <MapPin className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                <span>Current Location</span>
+              </div>
+              <p className="text-[11px] font-medium text-slate-500 text-center mt-1.5 leading-snug">
+                Head Quarter Jakarta - Lobby
+              </p>
+            </div>
+
+            {/* Current Time */}
+            <div className="flex flex-col items-center">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-[11px] font-semibold">
+                <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                <span>Current Time</span>
+              </div>
+              <p className="text-sm font-bold text-slate-800 text-center mt-1.5 font-mono tracking-wider">
+                {currentTimeFormatted}
+              </p>
             </div>
           </div>
 
-          {/* Test Scenario Buttons */}
-          <details className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 group">
-            <summary className="text-[11px] font-bold text-slate-500 cursor-pointer list-none flex justify-between items-center">
-              <span>Uji Kondisi Alur Presensi:</span>
-              <span className="text-emerald-700 text-[10px] group-open:rotate-180 transition">▼</span>
-            </summary>
-            <div className="grid grid-cols-3 gap-1.5 text-[11px] font-bold mt-2 pt-2 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={() => {
-                  setScenario('NORMAL');
-                  setViewState('CAMERA');
-                }}
-                className={`py-1.5 px-2 rounded-lg ${
-                  scenario === 'NORMAL' ? 'bg-[#059669] text-white' : 'bg-white border border-slate-300 text-slate-700'
-                }`}
-              >
-                1. Normal
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setScenario('CAMERA_DENIED');
-                  triggerError('CAMERA_DENIED');
-                }}
-                className="py-1.5 px-2 rounded-lg bg-white border border-slate-300 text-slate-700"
-              >
-                2. Ditolak
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setScenario('FACE_NOT_ENROLLED');
-                  triggerError('FACE_NOT_ENROLLED');
-                }}
-                className="py-1.5 px-2 rounded-lg bg-white border border-slate-300 text-slate-700"
-              >
-                3. Belum Daftar
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setScenario('VERIFY_FAILED');
-                  triggerError('VERIFY_FAILED');
-                }}
-                className="py-1.5 px-2 rounded-lg bg-white border border-slate-300 text-slate-700"
-              >
-                4. Gagal Cocok
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setScenario('NETWORK_OFFLINE');
-                  triggerError('NETWORK_OFFLINE');
-                }}
-                className="py-1.5 px-2 rounded-lg bg-white border border-slate-300 text-slate-700"
-              >
-                5. Offline
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setScenario('ALREADY_RECORDED');
-                  triggerError('ALREADY_RECORDED');
-                }}
-                className="py-1.5 px-2 rounded-lg bg-white border border-slate-300 text-slate-700"
-              >
-                6. Sudah Absen
-              </button>
-            </div>
-          </details>
-
-          {/* VIEWPORT: CAMERA */}
+          {/* Main Action Button */}
           {viewState === 'CAMERA' && (
-            <div className="space-y-3.5">
-              <div className="relative w-full aspect-[4/3] bg-slate-900 rounded-2xl overflow-hidden border border-slate-300 flex items-center justify-center">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className={`w-full h-full object-cover -scale-x-100 ${hasRealCamera ? '' : 'hidden'}`}
-                />
-
-                {!hasRealCamera && (
-                  <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-slate-800 to-slate-950 text-white gap-2 p-4 text-center">
-                    <span className="w-16 h-16 rounded-full bg-[#d1fae5] border border-[#a7f3d0] text-[#065f46] text-xl font-bold flex items-center justify-center shadow-md">
-                      FP
-                    </span>
-                    <strong className="text-sm font-bold text-white">Area Kamera Wajah</strong>
-                    <span className="text-[11px] text-slate-300">
-                      {cameraNote || 'Mode simulasi biometrik aktif'}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={cameraLoading}
-                      onClick={startCamera}
-                      className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-[#059669] text-xs font-bold flex items-center gap-1.5 mt-1 shadow-sm transition active:scale-95 disabled:opacity-50"
-                    >
-                      {cameraLoading ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#059669]" />
-                      ) : (
-                        <Camera className="w-3.5 h-3.5 text-[#059669]" />
-                      )}
-                      <span>{cameraLoading ? 'Menghubungkan...' : 'Coba Kamera Perangkat'}</span>
-                    </button>
-                  </div>
-                )}
-
-                {/* Oval Framing Guide */}
-                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                  <div className="w-40 h-52 rounded-full border-2 border-dashed border-emerald-400 relative animate-pulse"></div>
-                </div>
-
-                {/* Status Overlay */}
-                <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-lg bg-black/70 text-white text-[11px] font-bold flex items-center gap-1.5 pointer-events-none">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span>{hasRealCamera ? 'Kamera Aktif' : 'Pratinjau Simulasi'}</span>
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950 space-y-1">
-                <p className="font-extrabold text-sm text-emerald-800 flex items-center gap-1.5">
-                  <Eye className="w-4 h-4" />
-                  <span>Wajah terlihat jelas</span>
-                </p>
-                <p className="leading-relaxed text-slate-700">
-                  Gunakan pencahayaan cukup dan hadapkan wajah ke kamera. Sistem memeriksa keaktifan wajah sebelum menyimpan data presensi ke server.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleSimulateOrCapture}
-                className="w-full min-h-[52px] py-3.5 px-5 rounded-xl bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-base flex items-center justify-center gap-2 shadow-sm transition active:scale-[0.99]"
-              >
-                <ScanFace className="w-5 h-5" />
-                <span>{isCheckOut ? 'Simulasikan Absen Pulang' : 'Simulasikan Absen Masuk'}</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleClockInAction}
+              className="w-full min-h-[50px] py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[#1967d2] via-[#1a73e8] to-[#1e88e5] hover:from-[#1557b0] hover:to-[#1967d2] text-white font-extrabold text-base shadow-lg shadow-blue-500/25 active:scale-[0.98] transition flex items-center justify-center gap-2"
+            >
+              <span>{isCheckOut ? 'Clock Out' : 'Clock In'}</span>
+            </button>
           )}
 
-          {/* VIEWPORT: PROCESSING */}
+          {/* Processing View */}
           {viewState === 'PROCESSING' && (
-            <div className="py-8 text-center space-y-3">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 text-[#059669] flex items-center justify-center mx-auto">
-                <Loader2 className="w-7 h-7 animate-spin" />
+            <div className="py-2 flex flex-col items-center justify-center gap-2 text-center">
+              <div className="flex items-center justify-center gap-2 text-blue-600 font-bold text-sm">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Memverifikasi Wajah...</span>
               </div>
-              <h3 className="text-base font-extrabold text-slate-900">
-                Memproses simulasi presensi…
-              </h3>
-              <p className="text-xs text-slate-600 px-4">
-                Memverifikasi keaktifan wajah dan mengonfirmasi pencatatan ke server GAJIANICH.
+              <p className="text-[11px] text-slate-500">
+                Pencocokan biometrik dan koordinat lokasi kantor
               </p>
             </div>
           )}
 
-          {/* VIEWPORT: ERROR */}
+          {/* Error View */}
           {viewState === 'ERROR' && (
-            <div className="space-y-3.5">
-              <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 space-y-2.5">
-                <div className="flex items-start gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0">
-                    <AlertTriangle className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="inline-block px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-mono text-[10px] font-extrabold">
-                      {errorType || 'ERR_PRESENSI'}
-                    </span>
-                    <h3 className="text-base font-extrabold text-rose-950 mt-0.5">
-                      {errorType === 'CAMERA_DENIED' && 'Akses Kamera Ditolak'}
-                      {errorType === 'FACE_NOT_ENROLLED' && 'Wajah Belum Terdaftar di Sistem'}
-                      {errorType === 'VERIFY_FAILED' && 'Pencocokan Wajah atau Liveness Gagal'}
-                      {errorType === 'NETWORK_OFFLINE' && 'Tidak Ada Koneksi ke Server'}
-                      {errorType === 'ALREADY_RECORDED' && 'Presensi Hari Ini Sudah Lengkap'}
-                    </h3>
-                  </div>
+            <div className="space-y-3">
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="block font-bold">
+                    {errorType === 'CAMERA_DENIED' && 'Akses Kamera Ditolak'}
+                    {errorType === 'FACE_NOT_ENROLLED' && 'Wajah Belum Terdaftar'}
+                    {errorType === 'VERIFY_FAILED' && 'Pencocokan Wajah Gagal'}
+                    {errorType === 'NETWORK_OFFLINE' && 'Jaringan Offline'}
+                    {errorType === 'ALREADY_RECORDED' && 'Sudah Tercatat Hari Ini'}
+                  </strong>
+                  <span className="text-[11px] text-slate-600">
+                    {errorType === 'CAMERA_DENIED' && 'Izin kamera dibutuhkan untuk verifikasi.'}
+                    {errorType === 'VERIFY_FAILED' && 'Posisikan wajah tepat di dalam bingkai.'}
+                    {errorType === 'NETWORK_OFFLINE' && 'Periksa sambungan internet Anda.'}
+                    {errorType === 'ALREADY_RECORDED' && 'Presensi Anda sudah tersimpan di server.'}
+                    {!errorType && 'Terjadi kendala saat memproses presensi.'}
+                  </span>
                 </div>
-                <p className="text-xs sm:text-sm text-rose-900 leading-relaxed">
-                  {errorType === 'CAMERA_DENIED' &&
-                    'Aplikasi membutuhkan izin kamera melalui HTTPS untuk memverifikasi wajah Anda. Presensi belum tercatat.'}
-                  {errorType === 'FACE_NOT_ENROLLED' &&
-                    'Anda wajib memiliki profil biometrik wajah terdaftar agar sistem dapat mencocokkan identitas presensi Anda.'}
-                  {errorType === 'VERIFY_FAILED' &&
-                    'Wajah tidak cocok dengan profil terdaftar atau terdeteksi objek statis. Presensi ditolak.'}
-                  {errorType === 'NETWORK_OFFLINE' &&
-                    'Presensi wajib online dan baru dinyatakan sah setelah server mengonfirmasi penyimpanan.'}
-                  {errorType === 'ALREADY_RECORDED' &&
-                    'Server mengonfirmasi jam masuk dan jam pulang Anda hari ini telah tercatat lengkap.'}
-                </p>
               </div>
-
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -465,15 +444,15 @@ export default function FaceAttendanceSheet({
                     setScenario('NORMAL');
                     setViewState('CAMERA');
                   }}
-                  className="flex-1 min-h-[48px] py-3 px-4 rounded-xl bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-sm flex items-center justify-center gap-1.5 transition"
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-blue-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow"
                 >
-                  <RefreshCw className="w-4 h-4" />
+                  <RefreshCw className="w-3.5 h-3.5" />
                   <span>Coba Lagi</span>
                 </button>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="min-h-[48px] py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition"
+                  className="py-2.5 px-4 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs"
                 >
                   Tutup
                 </button>
@@ -481,46 +460,28 @@ export default function FaceAttendanceSheet({
             </div>
           )}
 
-          {/* VIEWPORT: SUCCESS */}
+          {/* Success View */}
           {viewState === 'SUCCESS' && receipt && (
-            <div className="space-y-3.5">
-              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-1.5">
-                <div className="w-12 h-12 rounded-2xl bg-[#059669] text-white flex items-center justify-center mx-auto">
-                  <CheckCheck className="w-6 h-6" />
+            <div className="space-y-3 animate-in fade-in zoom-in-95 duration-200">
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-center space-y-1">
+                <div className="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center mx-auto shadow-sm">
+                  <CheckCheck className="w-5 h-5" />
                 </div>
-                <span className="inline-block px-2.5 py-0.5 rounded-md bg-white border border-emerald-200 text-[#059669] text-[11px] font-extrabold">
-                  Tercatat Resmi di Server
-                </span>
-                <h3 className="text-lg font-extrabold text-slate-900">
-                  {isCheckOut ? 'Presensi Pulang Berhasil' : 'Presensi Masuk Berhasil'}
+                <h3 className="text-sm font-extrabold text-emerald-950">
+                  {isCheckOut ? 'Clock Out Berhasil!' : 'Clock In Berhasil!'}
                 </h3>
-              </div>
-
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2 text-xs">
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Karyawan</span>
-                  <span className="font-bold text-slate-900">
-                    {employeeName} ({employeeNik})
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Waktu Tercatat</span>
-                  <span className="font-mono font-extrabold text-[#059669]">{receipt.time}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Verifikasi Wajah</span>
-                  <span className="font-bold text-[#059669]">Terverifikasi 1:1 Sah</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Referensi Server</span>
-                  <span className="font-mono font-bold text-slate-800">{receipt.hash}</span>
-                </div>
+                <p className="text-[11px] text-emerald-800">
+                  Waktu: <span className="font-mono font-bold">{receipt.time}</span>
+                </p>
+                <p className="text-[10px] text-slate-500 font-mono">
+                  Ref: {receipt.hash}
+                </p>
               </div>
 
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full min-h-[50px] py-3 rounded-xl bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-sm transition"
+                className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm shadow transition"
               >
                 Selesai
               </button>
