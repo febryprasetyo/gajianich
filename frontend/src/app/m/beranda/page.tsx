@@ -238,7 +238,6 @@ export default function MobileBerandaPage() {
       <PresensiRingButton
         status={getRingStatus()}
         onOpenFlow={handleOpenFaceFlow}
-        officeName="PT Cahaya Mas Cemerlang"
         onResetDemo={handleResetToday}
         showResetDemo={attendanceState.checkedIn}
       />

@@ -7,6 +7,7 @@ import { useRealtimeLocation } from '@/hooks/useRealtimeLocation';
 export type AttendanceRingState = 'NOT_CHECKED_IN' | 'CHECKED_IN' | 'COMPLETED';
 
 interface PresensiRingButtonProps {
+  officeName?: string;
   status: AttendanceRingState;
   onOpenFlow: () => void;
   onResetDemo?: () => void;
