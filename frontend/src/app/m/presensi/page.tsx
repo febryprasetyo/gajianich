@@ -317,7 +317,7 @@ export default function MobilePresensiPage() {
         isOnline={true}
         isFaceEnrolled={summaryData?.faceEnrollment.isFaceEnrolled ?? true}
         employeeName={summaryData?.employee.fullName || "Karyawan"}
-        employeeNik={summaryData?.employee.employeeCode || "CMC-2024-089"}
+        employeeNik={summaryData?.employee.employeeCode || ""}
         onSuccess={handleFaceSuccess}
       />
 

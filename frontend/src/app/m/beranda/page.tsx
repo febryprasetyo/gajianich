@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Clock,
   CheckCircle2,
@@ -28,6 +29,7 @@ import {
 } from "@/lib/attendance/mobileApi";
 
 export default function MobileBerandaPage() {
+  const router = useRouter();
   const [summaryData, setSummaryData] = useState<MobileSummaryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
@@ -81,7 +83,12 @@ export default function MobileBerandaPage() {
       });
     } catch (err: any) {
       console.warn("loadSummary error:", err);
-      setErrorBanner(err.message || "Gagal memuat rekap presensi server.");
+      const msg = err.message || "";
+      if (msg.includes("401") || msg.includes("Unauthorized") || msg.includes("token missing")) {
+        router.push("/login");
+        return;
+      }
+      setErrorBanner(msg || "Gagal memuat rekap presensi server.");
     } finally {
       setLoading(false);
     }
@@ -381,7 +388,7 @@ export default function MobileBerandaPage() {
         isOnline={true}
         isFaceEnrolled={summaryData?.faceEnrollment.isFaceEnrolled ?? true}
         employeeName={employeeName}
-        employeeNik={summaryData?.employee.employeeCode || "CMC-2024-089"}
+        employeeNik={summaryData?.employee.employeeCode || ""}
         onSuccess={handleFaceSuccess}
       />
 

@@ -44,6 +44,7 @@ export default function LoginPage() {
           fullName?: string;
           roleId?: number;
           roleName: string;
+          employeeId?: number | null;
           permissions?: string[];
           mustChangePassword?: boolean;
         };
@@ -57,6 +58,7 @@ export default function LoginPage() {
           fullName: res.user.fullName || res.user.username || username.trim(),
           roleId: res.user.roleId,
           roleName: res.user.roleName,
+          employeeId: res.user.employeeId ?? null,
           permissions: res.user.permissions || [],
           mustChangePassword: Boolean(res.mustChangePassword ?? res.user.mustChangePassword),
         };
@@ -66,7 +68,16 @@ export default function LoginPage() {
         if (res.mustChangePassword || res.user.mustChangePassword) {
           router.push('/change-password');
         } else {
-          router.push('/dashboard');
+          const roleName = (res.user.roleName || "").toLowerCase().trim();
+          const isEmployee = roleName === "employee" || roleName === "karyawan";
+
+          if (isEmployee) {
+            router.push('/m/beranda');
+          } else if (roleName.includes("hr") && !roleName.includes("it")) {
+            router.push('/attendance');
+          } else {
+            router.push('/dashboard');
+          }
         }
       } else {
         throw new Error('Invalid response payload from server');

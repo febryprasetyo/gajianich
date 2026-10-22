@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { extractCanvasFaceDescriptor } from "@/lib/attendance/faceMatcher";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -28,6 +29,7 @@ export default function MobileProfilePage() {
   const [loading, setLoading] = useState(true);
   const [isFaceEnrolled, setIsFaceEnrolled] = useState(true);
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -44,6 +46,11 @@ export default function MobileProfilePage() {
       setSummaryData(res);
       setIsFaceEnrolled(res.faceEnrollment.isFaceEnrolled);
     } catch (err: any) {
+      const msg = err.message || "";
+      if (msg.includes("401") || msg.includes("Unauthorized") || msg.includes("token missing")) {
+        router.push("/login");
+        return;
+      }
       console.warn("loadProfile error:", err);
     } finally {
       setLoading(false);
@@ -54,13 +61,47 @@ export default function MobileProfilePage() {
     loadProfile();
   }, []);
 
-  const handleEnrollNow = async () => {
+  const handleEnrollNow = () => {
+    if (photoInputRef.current) {
+      photoInputRef.current.click();
+    }
+  };
+
+  const handlePhotoCaptured = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
     try {
-      const res = await postEnrollFace({ isEnrolled: true, faceDescriptorHash: "HASH-" + Date.now() });
-      setIsFaceEnrolled(res.isEnrolled);
-      showToast("Biometrik wajah berhasil diperbarui dan disinkronkan.");
+      showToast("Memproses foto & biometrik wajah...");
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const dataUrl = event.target?.result as string;
+        const img = new Image();
+        img.onload = async () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.min(img.width, 800);
+          canvas.height = Math.min(img.height, 800);
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const base64 = canvas.toDataURL("image/jpeg", 0.8);
+          const descriptor = extractCanvasFaceDescriptor(canvas);
+
+          const res = await postEnrollFace({
+            isEnrolled: true,
+            faceDescriptor: descriptor,
+            samplePhotoBase64: base64,
+          });
+
+          setIsFaceEnrolled(res.isEnrolled);
+          showToast("✓ Foto & biometrik wajah berhasil didaftarkan secara riil!");
+          await loadProfile();
+        };
+        img.src = dataUrl;
+      };
+      reader.readAsDataURL(file);
     } catch (err: any) {
-      showToast(err.message || "Gagal memperbarui wajah.");
+      showToast(err.message || "Gagal mendaftarkan biometrik wajah.");
     }
   };
 
@@ -85,16 +126,25 @@ export default function MobileProfilePage() {
     router.push("/login");
   };
 
-  const employeeName = summaryData?.employee.fullName || "Febry Prasetyo, S.T.";
-  const employeePosition = summaryData?.employee.position || "Project & Commissioning Engineer";
-  const employeeNik = summaryData?.employee.employeeCode || "CMC-2024-089";
-  const departmentName = summaryData?.employee.department || "Engineering — MedGas & WWTP";
-  const locationName = summaryData?.employee.workLocation || "Kawasan Industri Pulo Gadung, Jakarta Timur";
+  const employeeName = summaryData?.employee.fullName || "Karyawan";
+  const employeePosition = summaryData?.employee.position || "Staff";
+  const employeeNik = summaryData?.employee.employeeCode || "-";
+  const departmentName = summaryData?.employee.department || "Departemen";
+  const locationName = summaryData?.employee.workLocation || "Kantor Utama";
   const avatarInitial = summaryData?.employee.avatarInitial || "FP";
   const faceId = summaryData?.faceEnrollment.faceId || "BIO-CMC-089-V3";
 
   return (
     <main className="flex-1 flex flex-col bg-[#F8FAFC] pb-10">
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/*"
+        capture="user"
+        onChange={handlePhotoCaptured}
+        className="hidden"
+        aria-hidden="true"
+      />
       {/* Toast Notification */}
       {toastMessage && (
         <div

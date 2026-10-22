@@ -14,6 +14,7 @@ export interface User {
   fullName: string;
   roleId?: number;
   roleName: string;
+  employeeId?: number | null;
   permissions?: string[];
   mustChangePassword?: boolean;
 }

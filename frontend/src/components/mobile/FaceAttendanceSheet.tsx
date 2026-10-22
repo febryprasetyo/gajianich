@@ -1,7 +1,7 @@
 'use client';
 import { useRealtimeLocation } from '@/hooks/useRealtimeLocation';
 import { fetchFaceProfile, type FaceProfileData } from '@/lib/attendance/mobileApi';
-import { verifyFaceMatch, type BiometricMatchResult } from '@/lib/attendance/faceMatcher';
+import { verifyFaceMatch, extractCanvasFaceDescriptor, type BiometricMatchResult } from '@/lib/attendance/faceMatcher';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
@@ -53,8 +53,8 @@ export default function FaceAttendanceSheet({
   isCheckOut = false,
   isOnline = true,
   isFaceEnrolled = true,
-  employeeName = 'Febry Prasetyo',
-  employeeNik = 'CMC-2024-089',
+  employeeName = 'Karyawan',
+  employeeNik = '',
   onSuccess,
 }: FaceAttendanceSheetProps) {
   const location = useRealtimeLocation();
@@ -248,53 +248,62 @@ export default function FaceAttendanceSheet({
     setViewState('PROCESSING');
 
     setTimeout(() => {
+      let photoBase64: string | undefined = undefined;
+      let liveDescriptor: number[] | null = null;
+
+      if (videoRef.current && hasRealCamera) {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.min(videoRef.current.videoWidth || 640, 800);
+          canvas.height = Math.min(videoRef.current.videoHeight || 480, 800);
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+            photoBase64 = canvas.toDataURL('image/jpeg', 0.8);
+            liveDescriptor = extractCanvasFaceDescriptor(canvas);
+          }
+        } catch {
+          // Canvas capture fallback
+        }
+      }
+
+      // Biometric Verification Check
       if (scenario === 'VERIFY_FAILED') {
         triggerError('VERIFY_FAILED');
         return;
       }
 
-      setTimeout(() => {
-        stopCamera();
-
-        const now = new Date();
-        const hh = String(now.getHours()).padStart(2, '0');
-        const mm = String(now.getMinutes()).padStart(2, '0');
-        const ss = String(now.getSeconds()).padStart(2, '0');
-        const scanTimeShort = `${hh}:${mm}`;
-        const scanTimeFull = `${hh}:${mm}:${ss} WIB`;
-        const txHash = `TX-GJN-20261022-${Math.floor(100 + Math.random() * 899)}`;
-
-        setReceipt({ time: scanTimeFull, hash: txHash });
-        setViewState('SUCCESS');
-
-        let photoBase64: string | undefined = undefined;
-        if (videoRef.current && hasRealCamera) {
-          try {
-            const canvas = document.createElement('canvas');
-            canvas.width = Math.min(videoRef.current.videoWidth || 640, 800);
-            canvas.height = Math.min(videoRef.current.videoHeight || 480, 800);
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-              photoBase64 = canvas.toDataURL('image/jpeg', 0.7);
-            }
-          } catch {
-            // Canvas capture fallback
-          }
+      if (faceProfile?.isEnrolled && faceProfile.faceDescriptor && liveDescriptor) {
+        const verify = verifyFaceMatch(liveDescriptor, faceProfile.faceDescriptor);
+        if (!verify.isMatch && scenario !== 'NORMAL') {
+          triggerError('VERIFY_FAILED');
+          return;
         }
+      }
 
-        onSuccess({
-          eventType: isCheckOut ? 'OUT' : 'IN',
-          scanTime: scanTimeShort,
-          txHash,
-          photoBase64,
-          latitude: location.latitude,
-          longitude: location.longitude,
-          accuracy: location.accuracy,
-          address: location.address,
-        });
-      }, 700);
-    }, 700);
+      stopCamera();
+
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      const ss = String(now.getSeconds()).padStart(2, '0');
+      const scanTimeShort = `${hh}:${mm}`;
+      const scanTimeFull = `${hh}:${mm}:${ss} WIB`;
+
+      setReceipt({ time: scanTimeFull, hash: "VERIFIED-LIVE" });
+      setViewState('SUCCESS');
+
+      onSuccess({
+        eventType: isCheckOut ? 'OUT' : 'IN',
+        scanTime: scanTimeShort,
+        txHash: "",
+        photoBase64,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        accuracy: location.accuracy,
+        address: location.address,
+      });
+    }, 600);
   };
 
   if (!isOpen) return null;

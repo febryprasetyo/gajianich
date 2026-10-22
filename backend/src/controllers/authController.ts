@@ -85,6 +85,7 @@ export async function login(req: AuthenticatedRequest, res: Response) {
         fullName: user.username,
         roleId: userRoleId ?? undefined,
         roleName: user.role,
+        employeeId: user.employeeId ?? null,
         permissions: userPermissions,
         mustChangePassword: Boolean(user.mustChangePassword),
       },
