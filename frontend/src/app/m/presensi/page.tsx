@@ -1,201 +1,143 @@
 'use client';
 
-import React, { useState } from 'react';
-import Link from 'next/link';
+import React, { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import {
   ChevronLeft,
   MoreHorizontal,
   XCircle,
   ChevronDown,
-} from 'lucide-react';
-import PresensiRingButton from '@/components/mobile/PresensiRingButton';
-import DayDetailSheet, { DayDetailData } from '@/components/mobile/DayDetailSheet';
-import FaceAttendanceSheet from '@/components/mobile/FaceAttendanceSheet';
-
-interface AttendanceLogRow {
-  id: string;
-  dayShort: string;
-  dateStr: string;
-  fullDateText: string;
-  clockIn: string;
-  clockOut: string;
-  workHours: string;
-  isAbsent: boolean;
-  status: 'TEPAT_WAKTU' | 'TERLAMBAT' | 'TIDAK_ABSEN';
-  statusText: string;
-  approvalStatus: 'APPROVED' | 'PENDING' | 'REJECTED';
-  approvalNote: string;
-  serverRef: string;
-  note: string;
-}
-
-const MOCK_ATTENDANCE_LOG: AttendanceLogRow[] = [
-  {
-    id: 'D-20261022',
-    dayShort: 'Kam',
-    dateStr: '22 Okt',
-    fullDateText: 'Kamis, 22 Oktober 2026',
-    clockIn: '08:25',
-    clockOut: '--:--',
-    workHours: '04h 15m',
-    isAbsent: false,
-    status: 'TEPAT_WAKTU',
-    statusText: 'Hadir Tepat Waktu',
-    approvalStatus: 'PENDING',
-    approvalNote: 'Pengajuan presensi sedang diperiksa oleh HRD.',
-    serverRef: 'TX-GJN-20261022-772',
-    note: 'Presensi masuk tercatat valid via verifikasi wajah.',
-  },
-  {
-    id: 'D-20261021',
-    dayShort: 'Rab',
-    dateStr: '21 Okt',
-    fullDateText: 'Rabu, 21 Oktober 2026',
-    clockIn: '07:52',
-    clockOut: '17:04',
-    workHours: '9h 12m',
-    isAbsent: false,
-    status: 'TEPAT_WAKTU',
-    statusText: 'Hadir Tepat Waktu',
-    approvalStatus: 'APPROVED',
-    approvalNote: 'Telah diverifikasi dan disetujui HRD Pusat.',
-    serverRef: 'TX-GJN-20261021-104',
-    note: 'Presensi dan lokasi sekarang tersimpan rapi di server.',
-  },
-  {
-    id: 'D-20261020',
-    dayShort: 'Sel',
-    dateStr: '20 Okt',
-    fullDateText: 'Selasa, 20 Oktober 2026',
-    clockIn: '08:15',
-    clockOut: '17:30',
-    workHours: '9h 15m',
-    isAbsent: false,
-    status: 'TEPAT_WAKTU',
-    statusText: 'Hadir Tepat Waktu',
-    approvalStatus: 'APPROVED',
-    approvalNote: 'Disetujui HRD.',
-    serverRef: 'TX-GJN-20261020-098',
-    note: 'Presensi harian terkonfirmasi valid.',
-  },
-  {
-    id: 'D-20261019',
-    dayShort: 'Sen',
-    dateStr: '19 Okt',
-    fullDateText: 'Senin, 19 Oktober 2026',
-    clockIn: '--',
-    clockOut: '--',
-    workHours: '0h',
-    isAbsent: true,
-    status: 'TIDAK_ABSEN',
-    statusText: 'Tidak Absen (Alpa)',
-    approvalStatus: 'REJECTED',
-    approvalNote: 'Ditolak HRD: Tidak ada catatan presensi dan tanpa surat izin/cuti.',
-    serverRef: 'TX-GJN-20261019-000',
-    note: 'Tidak ada rekaman kehadiran server pada tanggal ini.',
-  },
-  {
-    id: 'D-20261016',
-    dayShort: 'Jum',
-    dateStr: '16 Okt',
-    fullDateText: 'Jumat, 16 Oktober 2026',
-    clockIn: '08:10',
-    clockOut: '17:15',
-    workHours: '9h 05m',
-    isAbsent: false,
-    status: 'TEPAT_WAKTU',
-    statusText: 'Hadir Tepat Waktu',
-    approvalStatus: 'APPROVED',
-    approvalNote: 'Disetujui HRD.',
-    serverRef: 'TX-GJN-20261016-512',
-    note: 'Presensi tercatat sesuai jadwal.',
-  },
-  {
-    id: 'D-20261015',
-    dayShort: 'Kam',
-    dateStr: '15 Okt',
-    fullDateText: 'Kamis, 15 Oktober 2026',
-    clockIn: '08:42',
-    clockOut: '17:45',
-    workHours: '9h 03m',
-    isAbsent: false,
-    status: 'TERLAMBAT',
-    statusText: 'Terlambat 42 Menit',
-    approvalStatus: 'APPROVED',
-    approvalNote: 'Disetujui HRD dengan toleransi perjalanan dinas.',
-    serverRef: 'TX-GJN-20261015-321',
-    note: 'Keterlambatan masuk telah diverifikasi HRD.',
-  },
-  {
-    id: 'D-20261014',
-    dayShort: 'Rab',
-    dateStr: '14 Okt',
-    fullDateText: 'Rabu, 14 Oktober 2026',
-    clockIn: '08:00',
-    clockOut: '17:00',
-    workHours: '9h',
-    isAbsent: false,
-    status: 'TEPAT_WAKTU',
-    statusText: 'Hadir Tepat Waktu',
-    approvalStatus: 'APPROVED',
-    approvalNote: 'Disetujui HRD.',
-    serverRef: 'TX-GJN-20261014-411',
-    note: 'Presensi tercatat normal.',
-  },
-  {
-    id: 'D-20261013',
-    dayShort: 'Sel',
-    dateStr: '13 Okt',
-    fullDateText: 'Selasa, 13 Oktober 2026',
-    clockIn: '--',
-    clockOut: '--',
-    workHours: '0h',
-    isAbsent: true,
-    status: 'TIDAK_ABSEN',
-    statusText: 'Tidak Absen',
-    approvalStatus: 'REJECTED',
-    approvalNote: 'Ditolak: Belum ada konfirmasi atau pengajuan izin resmi.',
-    serverRef: 'TX-GJN-20261013-000',
-    note: 'Data kehadiran kosong.',
-  },
-];
+  Clock,
+  RefreshCw,
+  CheckCircle2,
+} from "lucide-react";
+import PresensiRingButton from "@/components/mobile/PresensiRingButton";
+import DayDetailSheet, { DayDetailData } from "@/components/mobile/DayDetailSheet";
+import FaceAttendanceSheet from "@/components/mobile/FaceAttendanceSheet";
+import {
+  fetchMobileSummary,
+  fetchMobileHistory,
+  postMobileClock,
+  MobileSummaryData,
+  MobileHistoryItem,
+} from "@/lib/attendance/mobileApi";
 
 export default function MobilePresensiPage() {
-  const [isCheckedIn, setIsCheckedIn] = useState(true);
+  const [summaryData, setSummaryData] = useState<MobileSummaryData | null>(null);
+  const [historyItems, setHistoryItems] = useState<MobileHistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isFaceSheetOpen, setIsFaceSheetOpen] = useState(false);
   const [selectedDayDetail, setSelectedDayDetail] = useState<DayDetailData | null>(null);
-  const [selectedPeriod, setSelectedPeriod] = useState<'CURRENT' | 'PREVIOUS'>('CURRENT');
+  const [selectedPeriod, setSelectedPeriod] = useState<"CURRENT" | "PREVIOUS">("CURRENT");
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 4000);
+  };
+
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [sum, hist] = await Promise.all([
+        fetchMobileSummary().catch(() => null),
+        fetchMobileHistory(selectedPeriod).catch(() => null),
+      ]);
+
+      if (sum) setSummaryData(sum);
+      if (hist) setHistoryItems(hist.records || []);
+    } catch (err: any) {
+      console.warn("loadData error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedPeriod]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const isCheckedIn = summaryData?.attendance.checkedIn ?? false;
+  const isCheckedOut = summaryData?.attendance.checkedOut ?? false;
 
   const handleClockButtonClick = () => {
     setIsFaceSheetOpen(true);
   };
 
-  const handleFaceSuccess = (data: { eventType: 'IN' | 'OUT'; scanTime: string; txHash: string }) => {
+  const handleFaceSuccess = async (data: {
+    eventType: "IN" | "OUT";
+    scanTime: string;
+    txHash: string;
+    photoBase64?: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    accuracy?: number | null;
+    address?: string | null;
+  }) => {
     setIsFaceSheetOpen(false);
-    setIsCheckedIn(data.eventType === 'IN');
+
+    try {
+      const res = await postMobileClock({
+        eventType: data.eventType,
+        scanTime: data.scanTime,
+        txHash: data.txHash,
+        photoBase64: data.photoBase64,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        accuracy: data.accuracy,
+        address: data.address,
+      });
+
+      if (res.success) {
+        showToast(
+          data.eventType === "IN"
+            ? `Presensi masuk berhasil dicatat (${data.scanTime} WIB).`
+            : `Presensi pulang berhasil dicatat (${data.scanTime} WIB).`
+        );
+        await loadData();
+      }
+    } catch (err: any) {
+      showToast(err.message || "Gagal mencatat presensi.");
+    }
   };
 
-  const handleRowClick = (row: AttendanceLogRow) => {
+  const handleRowClick = (row: MobileHistoryItem) => {
     setSelectedDayDetail({
-      id: row.id,
-      dayName: row.fullDateText.split(',')[0] || row.dayShort,
-      dateStr: row.fullDateText.split(',')[1]?.trim() || row.dateStr,
-      schedule: '08:00 – 17:00 WIB',
+      id: String(row.id),
+      dayName: row.dayShort,
+      dateStr: `${row.dateStr} (${row.workDate})`,
+      schedule: row.schedule,
       status: row.status,
       statusText: row.statusText,
       checkIn: row.clockIn,
       checkOut: row.clockOut,
       duration: row.workHours,
-      note: row.note,
+      note: row.approvalNote || "Presensi tercatat di sistem.",
       serverRef: row.serverRef,
-      employeeName: 'Febry Prasetyo',
+      employeeName: row.employeeName || summaryData?.employee.fullName || "Karyawan",
       approvalStatus: row.approvalStatus,
       approvalNote: row.approvalNote,
+      mapUrl: row.mapUrl,
+      googleMapsUrl: row.googleMapsUrl,
+      address: row.address,
+      photoUrl: row.photoUrl,
     });
   };
 
+  const todayStr = summaryData?.attendance.workDate || new Date().toISOString().slice(0, 10);
+
   return (
     <main className="flex-1 flex flex-col bg-[#F8FAFC] pb-10">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-sm bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-200">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span className="flex-1">{toastMessage}</span>
+        </div>
+      )}
+
       {/* 1. Header Top Bar */}
       <header className="px-5 pt-3.5 pb-2 flex items-center justify-between">
         <Link
@@ -212,20 +154,21 @@ export default function MobilePresensiPage() {
 
         <button
           type="button"
-          aria-label="Pilihan opsi presensi"
+          onClick={loadData}
+          aria-label="Segarkan data presensi"
           className="w-10 h-10 rounded-full bg-white border border-slate-200/90 shadow-xs flex items-center justify-center text-slate-700 hover:bg-slate-50 active:scale-95 transition"
         >
-          <MoreHorizontal className="w-5 h-5" />
+          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-[#059669]" : ""}`} />
         </button>
       </header>
 
       {/* 2. Hero Action: Circular Face Scan Button (Shared with Beranda) */}
       <PresensiRingButton
-        status={isCheckedIn ? 'CHECKED_IN' : 'NOT_CHECKED_IN'}
+        status={isCheckedOut ? "COMPLETED" : isCheckedIn ? "CHECKED_IN" : "NOT_CHECKED_IN"}
         onOpenFlow={handleClockButtonClick}
       />
 
-      {/* 3. Today Summary Card: Clock In, Clock Out, Work Hours (NO Break Time) */}
+      {/* 3. Today Summary Card: Clock In, Clock Out, Work Hours */}
       <section className="px-5 py-2">
         <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-sm grid grid-cols-3 gap-2 text-center divide-x divide-slate-100">
           {/* Clock In */}
@@ -234,7 +177,7 @@ export default function MobilePresensiPage() {
               Clock In
             </span>
             <p className="text-sm font-extrabold font-mono text-slate-800 mt-1">
-              {isCheckedIn ? '08:25' : '--'}
+              {summaryData?.attendance.checkInTime || "--:--"}
             </p>
           </div>
 
@@ -244,7 +187,7 @@ export default function MobilePresensiPage() {
               Clock Out
             </span>
             <p className="text-sm font-extrabold font-mono text-slate-800 mt-1">
-              --
+              {summaryData?.attendance.checkOutTime || "--:--"}
             </p>
           </div>
 
@@ -254,7 +197,7 @@ export default function MobilePresensiPage() {
               Work Hours
             </span>
             <p className="text-sm font-extrabold font-mono text-slate-800 mt-1">
-              {isCheckedIn ? '04h 15m' : '--'}
+              {summaryData?.attendance.totalHours || "--:--"}
             </p>
           </div>
         </div>
@@ -272,7 +215,7 @@ export default function MobilePresensiPage() {
             <select
               aria-label="Filter Periode Presensi"
               value={selectedPeriod}
-              onChange={(e) => setSelectedPeriod(e.target.value as 'CURRENT' | 'PREVIOUS')}
+              onChange={(e) => setSelectedPeriod(e.target.value as "CURRENT" | "PREVIOUS")}
               className="appearance-none bg-white border border-slate-200 text-slate-700 font-extrabold text-xs rounded-full py-1.5 pl-3.5 pr-7 shadow-2xs hover:bg-slate-50 focus:outline-none cursor-pointer"
             >
               <option value="CURRENT">Bulan ini</option>
@@ -294,69 +237,75 @@ export default function MobilePresensiPage() {
 
           {/* Table Rows */}
           <div className="divide-y divide-slate-100">
-            {MOCK_ATTENDANCE_LOG.map((row) => {
-              const isToday = row.id === 'D-20261022';
+            {historyItems.length === 0 ? (
+              <div className="py-8 px-4 text-center text-slate-400 text-xs font-medium">
+                {loading ? "Memuat riwayat presensi..." : "Belum ada catatan presensi untuk periode ini."}
+              </div>
+            ) : (
+              historyItems.map((row) => {
+                const isToday = row.workDate === todayStr;
 
-              return (
-                <div
-                  key={row.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => handleRowClick(row)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      handleRowClick(row);
-                    }
-                  }}
-                  className={`px-3.5 py-3 grid grid-cols-12 items-center text-xs transition cursor-pointer hover:bg-slate-50/90 active:bg-slate-100/80 ${
-                    isToday ? 'bg-emerald-50/30' : ''
-                  }`}
-                >
-                  {/* Column 1: Date */}
-                  <div className="col-span-4 flex items-center gap-1.5">
-                    <span className="text-[11px] font-semibold text-slate-500">
-                      {row.dayShort}
-                    </span>
-                    <strong className="text-xs font-extrabold text-slate-900">
-                      {row.dateStr}
-                    </strong>
-                    {isToday && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#059669] shrink-0" title="Hari Ini" />
-                    )}
-                  </div>
-
-                  {/* Column 2 & 3: Clock In & Clock Out */}
-                  {row.isAbsent ? (
-                    <div className="col-span-6 flex items-center justify-center">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-extrabold">
-                        <XCircle className="w-3 h-3" />
-                        <span>Tidak Absen</span>
+                return (
+                  <div
+                    key={row.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleRowClick(row)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleRowClick(row);
+                      }
+                    }}
+                    className={`px-3.5 py-3 grid grid-cols-12 items-center text-xs transition cursor-pointer hover:bg-slate-50/90 active:bg-slate-100/80 ${
+                      isToday ? "bg-emerald-50/30" : ""
+                    }`}
+                  >
+                    {/* Column 1: Date */}
+                    <div className="col-span-4 flex items-center gap-1.5 min-w-0">
+                      <span className="text-[11px] font-semibold text-slate-500 shrink-0">
+                        {row.dayShort}
                       </span>
+                      <strong className="text-xs font-extrabold text-slate-900 truncate">
+                        {row.dateStr}
+                      </strong>
+                      {isToday && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#059669] shrink-0" title="Hari Ini" />
+                      )}
                     </div>
-                  ) : (
-                    <>
-                      <div className="col-span-3 text-center font-mono font-extrabold text-slate-900">
-                        {row.clockIn}
-                      </div>
-                      <div className="col-span-3 text-center font-mono font-extrabold text-slate-900">
-                        {row.clockOut}
-                      </div>
-                    </>
-                  )}
 
-                  {/* Column 4: Work Hours */}
-                  <div className="col-span-2 text-right font-mono font-extrabold text-slate-700 text-[11px]">
-                    {row.workHours}
+                    {/* Column 2 & 3: Clock In & Clock Out */}
+                    {row.isAbsent ? (
+                      <div className="col-span-6 flex items-center justify-center">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-extrabold">
+                          <XCircle className="w-3 h-3" />
+                          <span>Tidak Absen</span>
+                        </span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="col-span-3 text-center font-mono font-extrabold text-slate-900">
+                          {row.clockIn}
+                        </div>
+                        <div className="col-span-3 text-center font-mono font-extrabold text-slate-900">
+                          {row.clockOut}
+                        </div>
+                      </>
+                    )}
+
+                    {/* Column 4: Work Hours */}
+                    <div className="col-span-2 text-right font-mono font-extrabold text-slate-700 text-[11px]">
+                      {row.workHours}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
 
         <p className="text-[10px] text-center text-slate-400 mt-3">
-          Ketuk tanggal untuk melihat detail presensi & status persetujuan HRD.
+          Ketuk baris tanggal untuk melihat detail presensi, peta lokasi, & status persetujuan HRD.
         </p>
       </section>
 
@@ -364,11 +313,11 @@ export default function MobilePresensiPage() {
       <FaceAttendanceSheet
         isOpen={isFaceSheetOpen}
         onClose={() => setIsFaceSheetOpen(false)}
-        isCheckOut={isCheckedIn}
+        isCheckOut={isCheckedIn && !isCheckedOut}
         isOnline={true}
-        isFaceEnrolled={true}
-        employeeName="Febry Prasetyo"
-        employeeNik="CMC-2024-089"
+        isFaceEnrolled={summaryData?.faceEnrollment.isFaceEnrolled ?? true}
+        employeeName={summaryData?.employee.fullName || "Karyawan"}
+        employeeNik={summaryData?.employee.employeeCode || "CMC-2024-089"}
         onSuccess={handleFaceSuccess}
       />
 

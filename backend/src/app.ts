@@ -15,6 +15,7 @@ import userRoutes from './routes/userRoutes';
 import leaveRoutes from './routes/leaveRoutes';
 import systemSettingRoutes from './routes/systemSettingRoutes';
 import attendanceRoutes from './routes/attendanceRoutes';
+import mobileAttendanceRoutes from './routes/mobileAttendanceRoutes';
 import hrActivityRoutes from './routes/hrActivityRoutes';
 import goodsRequestRoutes from './routes/goodsRequestRoutes';
 import { checkDatabase } from './db';
@@ -97,6 +98,8 @@ export function createApp(options: AppOptions = {}): express.Express {
   app.use('/api/leaves', leaveRoutes);
   app.use('/api/v1/system/settings', systemSettingRoutes);
   app.use('/api/v1/settings', systemSettingRoutes);
+  app.use('/api/v1/attendance/mobile', mobileAttendanceRoutes);
+  app.use('/api/attendance/mobile', mobileAttendanceRoutes);
   app.use('/api/v1/attendance', attendanceRoutes);
   app.use('/api/attendance', attendanceRoutes);
   app.use('/api/v1/hr/activities', hrActivityRoutes);

@@ -147,6 +147,13 @@
       "when": 1792565909710,
       "tag": "0020_ga_goods_requests_edit_delete_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792652662940,
+      "tag": "0021_attendance_self_logs",
+      "breakpoints": true
     }
   ],
   "version": "7"

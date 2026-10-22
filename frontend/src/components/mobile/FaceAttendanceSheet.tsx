@@ -37,6 +37,10 @@ interface FaceAttendanceSheetProps {
     scanTime: string;
     txHash: string;
     photoBase64?: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    accuracy?: number | null;
+    address?: string | null;
   }) => void;
 }
 
@@ -210,10 +214,31 @@ export default function FaceAttendanceSheet({
         setReceipt({ time: scanTimeFull, hash: txHash });
         setViewState('SUCCESS');
 
+        let photoBase64: string | undefined = undefined;
+        if (videoRef.current && hasRealCamera) {
+          try {
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.min(videoRef.current.videoWidth || 640, 800);
+            canvas.height = Math.min(videoRef.current.videoHeight || 480, 800);
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+              photoBase64 = canvas.toDataURL('image/jpeg', 0.7);
+            }
+          } catch {
+            // Canvas capture fallback
+          }
+        }
+
         onSuccess({
           eventType: isCheckOut ? 'OUT' : 'IN',
           scanTime: scanTimeShort,
           txHash,
+          photoBase64,
+          latitude: location.latitude,
+          longitude: location.longitude,
+          accuracy: location.accuracy,
+          address: location.address,
         });
       }, 700);
     }, 700);
