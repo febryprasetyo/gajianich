@@ -3,13 +3,17 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import {
-  CalendarClock,
   Clock,
   CheckCircle2,
-  ShieldCheck,
-  ArrowUpRight,
   ChevronRight,
+  ArrowUpRight,
   Smartphone,
+  ShieldCheck,
+  AlertCircle,
+  FileCheck2,
+  CalendarCheck,
+  XCircle,
+  Clock4,
 } from 'lucide-react';
 import PresensiRingButton, { AttendanceRingState } from '@/components/mobile/PresensiRingButton';
 import AttendanceMetricsCards from '@/components/mobile/AttendanceMetricsCards';
@@ -24,13 +28,17 @@ export default function MobileBerandaPage() {
     checkOutTime: string;
     totalHours: string;
     txHash: string | null;
+    approvalStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
+    approvalNote: string;
   }>({
-    checkedIn: false,
+    checkedIn: true,
     checkedOut: false,
-    checkInTime: '--:--',
+    checkInTime: '07:55',
     checkOutTime: '--:--',
-    totalHours: '00:00',
-    txHash: null,
+    totalHours: '04:15',
+    txHash: 'TX-GJN-20261022-772',
+    approvalStatus: 'PENDING',
+    approvalNote: 'Menunggu review & approval tim HRD Pusat.',
   });
 
   const [isFaceSheetOpen, setIsFaceSheetOpen] = useState(false);
@@ -41,7 +49,7 @@ export default function MobileBerandaPage() {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage(null);
-    }, 3000);
+    }, 3500);
   };
 
   const getRingStatus = (): AttendanceRingState => {
@@ -55,15 +63,18 @@ export default function MobileBerandaPage() {
   };
 
   const handleFaceSuccess = (data: { eventType: 'IN' | 'OUT'; scanTime: string; txHash: string }) => {
+    setIsFaceSheetOpen(false);
+
     if (data.eventType === 'IN') {
       setAttendanceState((prev) => ({
         ...prev,
         checkedIn: true,
         checkInTime: data.scanTime,
         txHash: data.txHash,
-        totalHours: '00:15',
+        approvalStatus: 'PENDING',
+        approvalNote: 'Pengajuan presensi masuk dikirim ke HRD untuk di-review.',
       }));
-      showToast(`Presensi masuk berhasil dicatat pukul ${data.scanTime} WIB`);
+      showToast(`Presensi masuk dicatat (${data.scanTime} WIB), diteruskan ke review HRD`);
     } else {
       setAttendanceState((prev) => ({
         ...prev,
@@ -71,8 +82,10 @@ export default function MobileBerandaPage() {
         checkOutTime: data.scanTime,
         txHash: data.txHash,
         totalHours: '09:08',
+        approvalStatus: 'PENDING',
+        approvalNote: 'Pengajuan presensi pulang dikirim ke HRD untuk di-review.',
       }));
-      showToast(`Presensi pulang berhasil dicatat pukul ${data.scanTime} WIB`);
+      showToast(`Presensi pulang dicatat (${data.scanTime} WIB), diteruskan ke review HRD`);
     }
   };
 
@@ -84,6 +97,8 @@ export default function MobileBerandaPage() {
       checkOutTime: '--:--',
       totalHours: '00:00',
       txHash: null,
+      approvalStatus: 'PENDING',
+      approvalNote: 'Belum ada pengajuan presensi hari ini.',
     });
     showToast('Presensi hari ini direset untuk simulasi.');
   };
@@ -93,15 +108,16 @@ export default function MobileBerandaPage() {
       id: 'D-20261021',
       dayName: 'Rabu',
       dateStr: '21 Oktober 2026',
-      schedule: 'Shift Pagi (08:00 – 17:00 WIB)',
       status: 'TEPAT_WAKTU',
       statusText: 'Hadir Tepat Waktu',
       checkIn: '07:52',
       checkOut: '17:04',
       duration: '09j 12m',
-      note: 'Presensi dengan verifikasi wajah terkonfirmasi server.',
+      note: 'Presensi verifikasi biometrik wajah valid di area kantor.',
       serverRef: 'TX-GJN-20261021-104',
       employeeName: 'Febry Prasetyo',
+      approvalStatus: 'APPROVED',
+      approvalNote: 'Telah disetujui HRD (Auto-matched dengan log GPS kantor).',
     });
   };
 
@@ -144,7 +160,7 @@ export default function MobileBerandaPage() {
         </div>
 
         {/* Today Heading & Status Badge */}
-        <div className="flex flex-wrap justify-between items-center gap-2.5 mt-5 mb-3">
+        <div className="flex flex-wrap justify-between items-center gap-2.5 mt-5 mb-2.5">
           <div>
             <p className="text-[9px] font-bold tracking-wider text-slate-500 uppercase">
               Kamis, 22 Oktober 2026
@@ -176,18 +192,45 @@ export default function MobileBerandaPage() {
           )}
         </div>
 
-        {/* Shift Panel */}
-        <div className="flex items-center gap-2.5 border border-slate-200 rounded-2xl bg-white p-3 shadow-sm">
-          <div className="p-2 bg-emerald-50 text-[#059669] rounded-xl">
-            <CalendarClock className="w-5 h-5" />
+        {/* REQUEST STATUS ABSENSI (Review HRD) */}
+        <div className="border border-slate-200 rounded-2xl bg-white p-3.5 shadow-sm space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+              <FileCheck2 className="w-3.5 h-3.5 text-[#059669]" />
+              <span>Status Request Absensi</span>
+            </span>
+            {attendanceState.approvalStatus === 'APPROVED' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[#059669] text-[11px] font-extrabold">
+                <CheckCircle2 className="w-3 h-3" />
+                <span>Disetujui HRD</span>
+              </span>
+            )}
+            {attendanceState.approvalStatus === 'PENDING' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-extrabold">
+                <Clock className="w-3 h-3 animate-pulse text-amber-600" />
+                <span>Menunggu Review HRD</span>
+              </span>
+            )}
+            {attendanceState.approvalStatus === 'REJECTED' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-extrabold">
+                <XCircle className="w-3 h-3" />
+                <span>Ditolak HRD</span>
+              </span>
+            )}
           </div>
-          <div>
-            <strong className="text-xs font-bold text-slate-900">Shift Pagi</strong>
-            <p className="text-[11px] text-slate-500 mt-0.5">08:00 – 17:00 WIB</p>
+
+          <div className="bg-slate-50/80 rounded-xl p-2.5 border border-slate-200/80 text-xs">
+            <div className="flex justify-between items-center text-slate-700">
+              <span className="text-slate-500 font-medium">Pengajuan Terakhir:</span>
+              <span className="font-bold text-slate-900">
+                {attendanceState.checkedIn ? `Masuk (${attendanceState.checkInTime} WIB)` : 'Belum Ada'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-600 mt-1.5 leading-snug">
+              <strong className="font-bold text-slate-800">Catatan: </strong>
+              {attendanceState.approvalNote}
+            </p>
           </div>
-          <span className="ml-auto text-[10px] font-semibold text-slate-500">
-            Kantor pusat
-          </span>
         </div>
       </div>
 
@@ -197,38 +240,80 @@ export default function MobileBerandaPage() {
         onOpenFlow={handleOpenFaceFlow}
         officeName="PT Cahaya Mas Cemerlang"
         onResetDemo={handleResetToday}
-        showResetDemo={attendanceState.checkedIn && attendanceState.checkedOut}
+        showResetDemo={attendanceState.checkedIn}
       />
 
-      {/* 3 Metric Cards */}
-      <div className="px-4 pb-3">
+      {/* 3 Metric Cards Hari Ini */}
+      <div className="px-4 pb-2">
         <AttendanceMetricsCards
           checkInTime={attendanceState.checkInTime}
-          checkInSub={attendanceState.checkedIn ? 'Tercatat server' : 'Jadwal 08:00'}
+          checkInSub={attendanceState.checkedIn ? 'Tercatat server' : 'Belum absen'}
           checkOutTime={attendanceState.checkOutTime}
           checkOutSub={
             attendanceState.checkedOut
               ? 'Tercatat server'
               : attendanceState.checkedIn
               ? 'Menunggu pulang'
-              : 'Jadwal 17:00'
+              : 'Belum absen'
           }
           totalHours={attendanceState.totalHours}
           totalSub="Hari ini"
         />
       </div>
 
-      {/* Recent History Section */}
+      {/* REKAPAN ABSENSI DALAM PERIODE PAYROLL */}
       <div className="px-4 pt-2">
+        <div className="border border-slate-200 bg-white rounded-2xl p-4 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block">
+                Rekap Periode Payroll Aktif
+              </span>
+              <h3 className="text-xs font-extrabold text-slate-900 mt-0.5">
+                21 Sep 2026 – 20 Okt 2026
+              </h3>
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-[#059669] border border-emerald-200">
+              22 Hari Kerja
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 pt-1 text-center">
+            {/* Total Absensi */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5">
+              <span className="text-[10px] font-bold text-slate-500 uppercase block">Total Absen</span>
+              <p className="text-base font-extrabold font-mono text-slate-900 mt-0.5">22</p>
+              <span className="text-[9px] text-slate-500 font-semibold">100% Tercatat</span>
+            </div>
+
+            {/* Disetujui */}
+            <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-2.5">
+              <span className="text-[10px] font-bold text-emerald-800 uppercase block">Disetujui</span>
+              <p className="text-base font-extrabold font-mono text-[#059669] mt-0.5">20</p>
+              <span className="text-[9px] text-emerald-700 font-semibold">Valid Payroll</span>
+            </div>
+
+            {/* Ditolak */}
+            <div className="bg-rose-50/70 border border-rose-200 rounded-xl p-2.5">
+              <span className="text-[10px] font-bold text-rose-800 uppercase block">Ditolak</span>
+              <p className="text-base font-extrabold font-mono text-rose-700 mt-0.5">1</p>
+              <span className="text-[9px] text-rose-600 font-semibold">1 Menunggu</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent History Section */}
+      <div className="px-4 pt-3 pb-2">
         <div className="flex justify-between items-center mb-2.5">
           <h2 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
-            Presensi terakhir
+            Presensi Terakhir
           </h2>
           <Link
             href="/m/presensi"
             className="text-[11px] font-bold text-[#059669] flex items-center gap-1 hover:underline"
           >
-            <span>Lihat semua</span>
+            <span>Buka log lengkap</span>
             <ArrowUpRight className="w-3 h-3" />
           </Link>
         </div>
@@ -243,22 +328,25 @@ export default function MobileBerandaPage() {
             <small className="text-[8px] font-bold text-slate-500 uppercase mt-0.5">OKT</small>
           </div>
           <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-            <strong className="text-xs font-bold text-slate-900">Rabu, 21 Oktober</strong>
+            <div className="flex items-center gap-1.5">
+              <strong className="text-xs font-bold text-slate-900">Rabu, 21 Oktober</strong>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" title="Disetujui HRD" />
+            </div>
             <span className="text-[10px] font-mono text-slate-500">
-              07:52 <span className="px-0.5">→</span> 17:04
+              07:52 <span className="px-0.5">→</span> 17:04 (09j 12m)
             </span>
           </div>
-          <span className="text-[10px] font-bold text-[#059669] bg-emerald-50 rounded-lg px-2 py-1 shrink-0">
-            Tepat waktu
+          <span className="text-[10px] font-bold text-[#059669] bg-emerald-50 rounded-lg px-2 py-1 shrink-0 border border-emerald-200">
+            Disetujui
           </span>
           <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
         </button>
       </div>
 
       {/* Install PWA Hint */}
-      <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-500 mt-5 px-4 pb-2">
+      <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-500 mt-3 px-4 pb-4">
         <Smartphone className="w-3.5 h-3.5" />
-        <span>Dirancang untuk akses cepat PWA dari layar utama.</span>
+        <span>GAJIANICH PWA — Akses presensi mandiri karyawan</span>
       </div>
 
       {/* Face Flow Sheet Dialog */}

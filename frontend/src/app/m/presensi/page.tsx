@@ -1,334 +1,422 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ChevronLeft,
-  ChevronRight,
+  MoreHorizontal,
+  HandMetal,
+  MapPin,
+  Clock,
   CheckCircle2,
   XCircle,
-  ClockAlert,
-  Clock,
+  AlertCircle,
+  ChevronDown,
 } from 'lucide-react';
 import DayDetailSheet, { DayDetailData } from '@/components/mobile/DayDetailSheet';
+import FaceAttendanceSheet from '@/components/mobile/FaceAttendanceSheet';
+
+interface AttendanceLogRow {
+  id: string;
+  dayShort: string;
+  dateStr: string;
+  fullDateText: string;
+  clockIn: string;
+  clockOut: string;
+  workHours: string;
+  isAbsent: boolean;
+  status: 'TEPAT_WAKTU' | 'TERLAMBAT' | 'TIDAK_ABSEN';
+  statusText: string;
+  approvalStatus: 'APPROVED' | 'PENDING' | 'REJECTED';
+  approvalNote: string;
+  serverRef: string;
+  note: string;
+}
+
+const MOCK_ATTENDANCE_LOG: AttendanceLogRow[] = [
+  {
+    id: 'D-20261022',
+    dayShort: 'Kam',
+    dateStr: '22 Okt',
+    fullDateText: 'Kamis, 22 Oktober 2026',
+    clockIn: '08:25',
+    clockOut: '--:--',
+    workHours: '04h 15m',
+    isAbsent: false,
+    status: 'TEPAT_WAKTU',
+    statusText: 'Hadir Tepat Waktu',
+    approvalStatus: 'PENDING',
+    approvalNote: 'Pengajuan presensi sedang di-review oleh HRD.',
+    serverRef: 'TX-GJN-20261022-772',
+    note: 'Presensi masuk biometrik wajah valid di area kantor.',
+  },
+  {
+    id: 'D-20261021',
+    dayShort: 'Rab',
+    dateStr: '21 Okt',
+    fullDateText: 'Rabu, 21 Oktober 2026',
+    clockIn: '07:52',
+    clockOut: '17:04',
+    workHours: '9h 12m',
+    isAbsent: false,
+    status: 'TEPAT_WAKTU',
+    statusText: 'Hadir Tepat Waktu',
+    approvalStatus: 'APPROVED',
+    approvalNote: 'Telah diverifikasi dan disetujui HRD Pusat.',
+    serverRef: 'TX-GJN-20261021-104',
+    note: 'Presensi biometrik wajah dan GPS sinkron server.',
+  },
+  {
+    id: 'D-20261020',
+    dayShort: 'Sel',
+    dateStr: '20 Okt',
+    fullDateText: 'Selasa, 20 Oktober 2026',
+    clockIn: '08:15',
+    clockOut: '17:30',
+    workHours: '9h 15m',
+    isAbsent: false,
+    status: 'TEPAT_WAKTU',
+    statusText: 'Hadir Tepat Waktu',
+    approvalStatus: 'APPROVED',
+    approvalNote: 'Disetujui HRD.',
+    serverRef: 'TX-GJN-20261020-098',
+    note: 'Presensi normal shift reguler.',
+  },
+  {
+    id: 'D-20261019',
+    dayShort: 'Sen',
+    dateStr: '19 Okt',
+    fullDateText: 'Senin, 19 Oktober 2026',
+    clockIn: '--',
+    clockOut: '--',
+    workHours: '0h',
+    isAbsent: true,
+    status: 'TIDAK_ABSEN',
+    statusText: 'Tidak Absen (Alpa)',
+    approvalStatus: 'REJECTED',
+    approvalNote: 'Ditolak HRD: Tidak ada scan biometrik dan tanpa form izin cuti.',
+    serverRef: 'TX-GJN-20261019-000',
+    note: 'Tidak ada rekaman kehadiran server pada tanggal ini.',
+  },
+  {
+    id: 'D-20261016',
+    dayShort: 'Jum',
+    dateStr: '16 Okt',
+    fullDateText: 'Jumat, 16 Oktober 2026',
+    clockIn: '08:10',
+    clockOut: '17:15',
+    workHours: '9h 05m',
+    isAbsent: false,
+    status: 'TEPAT_WAKTU',
+    statusText: 'Hadir Tepat Waktu',
+    approvalStatus: 'APPROVED',
+    approvalNote: 'Disetujui HRD.',
+    serverRef: 'TX-GJN-20261016-512',
+    note: 'Presensi reguler kantor pusat.',
+  },
+  {
+    id: 'D-20261015',
+    dayShort: 'Kam',
+    dateStr: '15 Okt',
+    fullDateText: 'Kamis, 15 Oktober 2026',
+    clockIn: '08:42',
+    clockOut: '17:45',
+    workHours: '9h 03m',
+    isAbsent: false,
+    status: 'TERLAMBAT',
+    statusText: 'Terlambat 42 Menit',
+    approvalStatus: 'APPROVED',
+    approvalNote: 'Disetujui HRD dengan toleransi lalu lintas.',
+    serverRef: 'TX-GJN-20261015-321',
+    note: 'Keterlambatan masuk terkonfirmasi HRD.',
+  },
+  {
+    id: 'D-20261014',
+    dayShort: 'Rab',
+    dateStr: '14 Okt',
+    fullDateText: 'Rabu, 14 Oktober 2026',
+    clockIn: '08:00',
+    clockOut: '17:00',
+    workHours: '9h',
+    isAbsent: false,
+    status: 'TEPAT_WAKTU',
+    statusText: 'Hadir Tepat Waktu',
+    approvalStatus: 'APPROVED',
+    approvalNote: 'Disetujui HRD.',
+    serverRef: 'TX-GJN-20261014-411',
+    note: 'Presensi normal.',
+  },
+  {
+    id: 'D-20261013',
+    dayShort: 'Sel',
+    dateStr: '13 Okt',
+    fullDateText: 'Selasa, 13 Oktober 2026',
+    clockIn: '--',
+    clockOut: '--',
+    workHours: '0h',
+    isAbsent: true,
+    status: 'TIDAK_ABSEN',
+    statusText: 'Tidak Absen',
+    approvalStatus: 'REJECTED',
+    approvalNote: 'Ditolak: Belum ada pengajuan izin resmi.',
+    serverRef: 'TX-GJN-20261013-000',
+    note: 'Data kehadiran kosong.',
+  },
+];
 
 export default function MobilePresensiPage() {
-  const [selectedMonth, setSelectedMonth] = useState('2026-10');
-  const [selectedFilter, setSelectedFilter] = useState<'ALL' | 'TIDAK_ABSEN' | 'TEPAT_WAKTU' | 'TERLAMBAT'>('ALL');
+  const [currentTime, setCurrentTime] = useState('08.25');
+  const [isCheckedIn, setIsCheckedIn] = useState(true);
+  const [isFaceSheetOpen, setIsFaceSheetOpen] = useState(false);
   const [selectedDayDetail, setSelectedDayDetail] = useState<DayDetailData | null>(null);
+  const [selectedPeriod, setSelectedPeriod] = useState<'CURRENT' | 'PREVIOUS'>('CURRENT');
 
-  const logsByMonth: Record<string, DayDetailData[]> = {
-    '2026-10': [
-      {
-        id: 'D-20261022',
-        dayName: 'Kamis',
-        dateStr: '22 Oktober 2026',
-        schedule: 'Shift Pagi (08:00 – 17:00 WIB)',
-        status: 'BELUM_ABSEN',
-        statusText: 'Belum Absen Masuk',
-        checkIn: '--:--',
-        checkOut: '--:--',
-        duration: '00j 00m',
-        note: 'Menunggu presensi kamera wajah hari ini.',
-        serverRef: '-',
-        employeeName: 'Febry Prasetyo',
-      },
-      {
-        id: 'D-20261021',
-        dayName: 'Rabu',
-        dateStr: '21 Oktober 2026',
-        schedule: 'Shift Pagi (08:00 – 17:00 WIB)',
-        status: 'TEPAT_WAKTU',
-        statusText: 'Hadir Tepat Waktu',
-        checkIn: '07:52',
-        checkOut: '17:04',
-        duration: '09j 12m',
-        note: 'Presensi dengan verifikasi wajah terkonfirmasi server.',
-        serverRef: 'TX-GJN-20261021-104',
-        employeeName: 'Febry Prasetyo',
-      },
-      {
-        id: 'D-20261020',
-        dayName: 'Selasa',
-        dateStr: '20 Oktober 2026',
-        schedule: 'Shift Pagi (08:00 – 17:00 WIB)',
-        status: 'TIDAK_ABSEN',
-        statusText: 'Tidak Absen',
-        checkIn: '--:--',
-        checkOut: '--:--',
-        duration: '00j 00m',
-        note: 'Tidak tercatat presensi masuk maupun pulang pada hari kerja efektif.',
-        serverRef: 'ALPHA-AUTO-20261020',
-        employeeName: 'Febry Prasetyo',
-      },
-      {
-        id: 'D-20261019',
-        dayName: 'Senin',
-        dateStr: '19 Oktober 2026',
-        schedule: 'Shift Pagi (08:00 – 17:00 WIB)',
-        status: 'TERLAMBAT',
-        statusText: 'Terlambat 14m',
-        checkIn: '08:14',
-        checkOut: '17:18',
-        duration: '09j 04m',
-        note: 'Presensi masuk melewati batas toleransi 08:00 WIB. Kendala kemacetan lalu lintas.',
-        serverRef: 'TX-GJN-20261019-088',
-        employeeName: 'Febry Prasetyo',
-      },
-      {
-        id: 'D-20261016',
-        dayName: 'Jumat',
-        dateStr: '16 Oktober 2026',
-        schedule: 'Shift Pagi (08:00 – 17:00 WIB)',
-        status: 'TEPAT_WAKTU',
-        statusText: 'Hadir Tepat Waktu',
-        checkIn: '07:55',
-        checkOut: '17:02',
-        duration: '09j 07m',
-        note: 'Verifikasi wajah dan keaktifan berhasil dikonfirmasi server.',
-        serverRef: 'TX-GJN-20261016-042',
-        employeeName: 'Febry Prasetyo',
-      },
-      {
-        id: 'D-20261015',
-        dayName: 'Kamis',
-        dateStr: '15 Oktober 2026',
-        schedule: 'Shift Pagi (08:00 – 17:00 WIB)',
-        status: 'TEPAT_WAKTU',
-        statusText: 'Hadir Tepat Waktu',
-        checkIn: '07:50',
-        checkOut: '17:05',
-        duration: '09j 15m',
-        note: 'Verifikasi wajah & keaktifan berhasil.',
-        serverRef: 'TX-GJN-20261015-019',
-        employeeName: 'Febry Prasetyo',
-      },
-    ],
-    '2026-09': [
-      {
-        id: 'D-20260930',
-        dayName: 'Rabu',
-        dateStr: '30 September 2026',
-        schedule: 'Shift Pagi (08:00 – 17:00 WIB)',
-        status: 'TEPAT_WAKTU',
-        statusText: 'Hadir Tepat Waktu',
-        checkIn: '07:54',
-        checkOut: '17:01',
-        duration: '09j 07m',
-        note: 'Verifikasi biometrik terkonfirmasi.',
-        serverRef: 'TX-GJN-20260930-077',
-        employeeName: 'Febry Prasetyo',
-      },
-    ],
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      setCurrentTime(`${hh}.${mm}`);
+    };
+    updateTime();
+    const timer = setInterval(updateTime, 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleClockButtonClick = () => {
+    setIsFaceSheetOpen(true);
   };
 
-  const currentList = logsByMonth[selectedMonth] || [];
-  const filteredList =
-    selectedFilter === 'ALL'
-      ? currentList
-      : currentList.filter((item) => item.status === selectedFilter);
+  const handleFaceSuccess = (data: { eventType: 'IN' | 'OUT'; scanTime: string; txHash: string }) => {
+    setIsFaceSheetOpen(false);
+    setIsCheckedIn(data.eventType === 'IN');
+  };
+
+  const handleRowClick = (row: AttendanceLogRow) => {
+    setSelectedDayDetail({
+      id: row.id,
+      dayName: row.fullDateText.split(',')[0] || row.dayShort,
+      dateStr: row.fullDateText.split(',')[1]?.trim() || row.dateStr,
+      schedule: '08:00 – 17:00 WIB',
+      status: row.status,
+      statusText: row.statusText,
+      checkIn: row.clockIn,
+      checkOut: row.clockOut,
+      duration: row.workHours,
+      note: row.note,
+      serverRef: row.serverRef,
+      employeeName: 'Febry Prasetyo',
+      approvalStatus: row.approvalStatus,
+      approvalNote: row.approvalNote,
+    });
+  };
 
   return (
-    <main className="flex-1 flex flex-col">
-      {/* Curved Emerald Header */}
-      <div className="bg-[#059669] rounded-b-[28px] px-4 pt-4 pb-5 text-white shadow-sm">
-        <div className="flex items-center justify-between gap-2 relative z-10">
-          <Link
-            href="/m/beranda"
-            aria-label="Kembali ke Beranda"
-            className="min-h-[44px] min-w-[44px] rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 flex items-center justify-center transition"
-          >
-            <ChevronLeft className="w-5 h-5 text-white" />
-          </Link>
-          <div className="text-center">
-            <h1 className="text-lg font-extrabold tracking-tight">Riwayat Presensi</h1>
-            <p className="text-xs text-emerald-100 font-medium">Febry Prasetyo · NIK CMC-2024-089</p>
-          </div>
-          <div className="w-11"></div>
-        </div>
+    <main className="flex-1 flex flex-col bg-[#F8FAFC] pb-10">
+      {/* 1. Header Top Bar */}
+      <header className="px-5 pt-3.5 pb-2 flex items-center justify-between">
+        <Link
+          href="/m/beranda"
+          aria-label="Kembali ke Beranda"
+          className="w-10 h-10 rounded-full bg-white border border-slate-200/90 shadow-xs flex items-center justify-center text-slate-700 hover:bg-slate-50 active:scale-95 transition"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </Link>
 
-        {/* Month Selector Row */}
-        <div className="mt-3.5 flex items-center justify-between gap-2 relative z-10">
-          <label htmlFor="mobileMonthSelect" className="sr-only">
-            Pilih Bulan
-          </label>
-          <select
-            id="mobileMonthSelect"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="min-h-[44px] px-3.5 py-2 rounded-xl bg-white text-slate-900 font-extrabold text-xs sm:text-sm border border-white focus:outline-none shadow-sm cursor-pointer"
-          >
-            <option value="2026-10">Oktober 2026</option>
-            <option value="2026-09">September 2026</option>
-          </select>
+        <h1 className="text-base font-extrabold text-slate-900 tracking-tight">
+          Presensi
+        </h1>
 
-          <div className="px-3 py-2 rounded-xl bg-black/20 border border-white/20 text-xs font-bold text-white flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span>
-            <span>Sinkron Server</span>
-          </div>
-        </div>
-      </div>
+        <button
+          type="button"
+          aria-label="Pilihan opsi presensi"
+          className="w-10 h-10 rounded-full bg-white border border-slate-200/90 shadow-xs flex items-center justify-center text-slate-700 hover:bg-slate-50 active:scale-95 transition"
+        >
+          <MoreHorizontal className="w-5 h-5" />
+        </button>
+      </header>
 
-      {/* Filter Chips Horizontal Scroll */}
-      <div className="px-4 pt-3.5 pb-2">
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+      {/* 2. Hero Action: Circular Clock In/Out Button */}
+      <section className="flex flex-col items-center justify-center pt-3 pb-2 px-5">
+        <div className="relative flex items-center justify-center">
+          {/* Subtle Outer Glow Halo */}
+          <div className="absolute w-[184px] h-[184px] rounded-full bg-emerald-500/15 animate-pulse" />
+
+          {/* Main Circular Button */}
           <button
             type="button"
-            onClick={() => setSelectedFilter('ALL')}
-            className={`min-h-[44px] px-3.5 py-2 rounded-xl font-extrabold text-xs shrink-0 transition ${
-              selectedFilter === 'ALL'
-                ? 'bg-[#059669] text-white shadow-sm'
-                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-            }`}
+            onClick={handleClockButtonClick}
+            aria-label={isCheckedIn ? 'Tombol Clock Out' : 'Tombol Clock In'}
+            className="relative w-[156px] h-[156px] rounded-full bg-[#059669] hover:bg-[#047857] text-white shadow-xl shadow-emerald-700/20 border-4 border-white flex flex-col items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer select-none"
           >
-            Semua Hari
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedFilter('TIDAK_ABSEN')}
-            className={`min-h-[44px] px-3.5 py-2 rounded-xl font-extrabold text-xs shrink-0 flex items-center gap-1.5 transition ${
-              selectedFilter === 'TIDAK_ABSEN'
-                ? 'bg-rose-600 text-white shadow-sm'
-                : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100/70'
-            }`}
-          >
-            <span className="w-2 h-2 rounded-full bg-rose-600"></span>
-            <span>Tidak Absen</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedFilter('TEPAT_WAKTU')}
-            className={`min-h-[44px] px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition ${
-              selectedFilter === 'TEPAT_WAKTU'
-                ? 'bg-[#059669] text-white shadow-sm font-extrabold'
-                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-            }`}
-          >
-            Tepat Waktu
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedFilter('TERLAMBAT')}
-            className={`min-h-[44px] px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition ${
-              selectedFilter === 'TERLAMBAT'
-                ? 'bg-amber-500 text-white shadow-sm font-extrabold'
-                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-            }`}
-          >
-            Terlambat
+            {/* Hand Tap Fingerprint Icon */}
+            <div className="w-11 h-11 rounded-full bg-white/15 flex items-center justify-center">
+              <HandMetal className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-base font-extrabold tracking-wide">
+              {isCheckedIn ? 'Clock Out' : 'Clock In'}
+            </span>
           </button>
         </div>
-      </div>
 
-      {/* List of Attendance Cards */}
-      <div className="px-4 py-2 space-y-3 pb-6">
-        {filteredList.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 text-center space-y-1">
-            <p className="text-sm font-extrabold text-slate-800">Tidak Ada Data pada Filter Ini</p>
-            <p className="text-xs text-slate-500">
-              Pilih "Semua Hari" untuk menampilkan seluruh riwayat harian Anda.
+        {/* Big Digital Clock Display */}
+        <div className="text-center mt-3">
+          <p className="text-3xl font-extrabold font-mono tracking-tight text-slate-900">
+            {currentTime}
+          </p>
+          <p className="text-[11px] text-slate-500 font-medium flex items-center justify-center gap-1 mt-1">
+            <MapPin className="w-3.5 h-3.5 text-[#059669] shrink-0" />
+            <span>Lokasi Anda wajib berada di area kantor</span>
+          </p>
+        </div>
+      </section>
+
+      {/* 3. Today Summary Card: Clock In, Clock Out, Work Hours (NO Break Time) */}
+      <section className="px-5 py-2">
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-sm grid grid-cols-3 gap-2 text-center divide-x divide-slate-100">
+          {/* Clock In */}
+          <div className="px-1">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              Clock In
+            </span>
+            <p className="text-sm font-extrabold font-mono text-slate-800 mt-1">
+              {isCheckedIn ? '08:25' : '--'}
             </p>
           </div>
-        ) : (
-          filteredList.map((item) => {
-            let cardStyle = 'bg-white border-slate-200';
-            let badgeStyle = 'bg-emerald-50 text-[#059669] border-emerald-200';
-            let IconComponent = CheckCircle2;
-            let timeColor = 'text-slate-900';
 
-            if (item.status === 'TIDAK_ABSEN') {
-              cardStyle = 'bg-rose-50/70 border-rose-300';
-              badgeStyle = 'bg-rose-600 text-white border-rose-600';
-              IconComponent = XCircle;
-              timeColor = 'text-rose-700';
-            } else if (item.status === 'TERLAMBAT') {
-              cardStyle = 'bg-white border-amber-300';
-              badgeStyle = 'bg-amber-50 text-amber-800 border-amber-200';
-              IconComponent = ClockAlert;
-            } else if (item.status === 'BELUM_ABSEN') {
-              cardStyle = 'bg-white border-slate-200';
-              badgeStyle = 'bg-amber-50 text-amber-800 border-amber-200';
-              IconComponent = Clock;
-            }
+          {/* Clock Out */}
+          <div className="px-1">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              Clock Out
+            </span>
+            <p className="text-sm font-extrabold font-mono text-slate-800 mt-1">
+              --
+            </p>
+          </div>
 
-            const isToday = item.id === 'D-20261022';
+          {/* Work Hours */}
+          <div className="px-1">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              Work Hours
+            </span>
+            <p className="text-sm font-extrabold font-mono text-slate-800 mt-1">
+              {isCheckedIn ? '04h 15m' : '--'}
+            </p>
+          </div>
+        </div>
+      </section>
 
-            return (
-              <article
-                key={item.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => setSelectedDayDetail(item)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    setSelectedDayDetail(item);
-                  }
-                }}
-                className={`border rounded-2xl p-4 shadow-sm transition cursor-pointer active:scale-[0.99] hover:border-emerald-300 ${cardStyle}`}
-              >
-                <div className="flex items-start justify-between gap-2 pb-2.5 border-b border-slate-200/80">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
-                        {item.dayName}, {item.dateStr}
-                      </h3>
-                      {isToday && (
-                        <span className="px-2 py-0.5 rounded bg-slate-900 text-white text-[10px] font-bold">
-                          Hari Ini
-                        </span>
-                      )}
+      {/* 4. Attendance Log Table Section */}
+      <section className="px-5 pt-3 pb-6 flex-1 flex flex-col">
+        {/* Section Header with Period Filter */}
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-extrabold text-slate-900 tracking-tight">
+            Attendance Log
+          </h2>
+
+          <div className="relative">
+            <select
+              aria-label="Filter Periode Presensi"
+              value={selectedPeriod}
+              onChange={(e) => setSelectedPeriod(e.target.value as 'CURRENT' | 'PREVIOUS')}
+              className="appearance-none bg-white border border-slate-200 text-slate-700 font-extrabold text-xs rounded-full py-1.5 pl-3.5 pr-7 shadow-2xs hover:bg-slate-50 focus:outline-none cursor-pointer"
+            >
+              <option value="CURRENT">This month</option>
+              <option value="PREVIOUS">Last month</option>
+            </select>
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+        </div>
+
+        {/* Data Table */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+          {/* Table Header Bar */}
+          <div className="bg-slate-600 text-white text-[11px] font-extrabold uppercase tracking-wider px-3.5 py-2.5 grid grid-cols-12 items-center">
+            <span className="col-span-4">Date</span>
+            <span className="col-span-3 text-center">Clock In</span>
+            <span className="col-span-3 text-center">Clock Out</span>
+            <span className="col-span-2 text-right">Work Hours</span>
+          </div>
+
+          {/* Table Rows */}
+          <div className="divide-y divide-slate-100">
+            {MOCK_ATTENDANCE_LOG.map((row) => {
+              const isToday = row.id === 'D-20261022';
+
+              return (
+                <div
+                  key={row.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handleRowClick(row)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleRowClick(row);
+                    }
+                  }}
+                  className={`px-3.5 py-3 grid grid-cols-12 items-center text-xs transition cursor-pointer hover:bg-slate-50/90 active:bg-slate-100/80 ${
+                    isToday ? 'bg-emerald-50/30' : ''
+                  }`}
+                >
+                  {/* Column 1: Date */}
+                  <div className="col-span-4 flex items-center gap-1.5">
+                    <span className="text-[11px] font-semibold text-slate-500">
+                      {row.dayShort}
+                    </span>
+                    <strong className="text-xs font-extrabold text-slate-900">
+                      {row.dateStr}
+                    </strong>
+                    {isToday && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#059669] shrink-0" title="Hari Ini" />
+                    )}
+                  </div>
+
+                  {/* Column 2 & 3: Clock In & Clock Out */}
+                  {row.isAbsent ? (
+                    <div className="col-span-6 flex items-center justify-center">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-extrabold">
+                        <XCircle className="w-3 h-3" />
+                        <span>Tidak Absen</span>
+                      </span>
                     </div>
-                    <p className="text-xs text-slate-500 font-medium mt-0.5">{item.schedule}</p>
-                  </div>
+                  ) : (
+                    <>
+                      <div className="col-span-3 text-center font-mono font-extrabold text-slate-900">
+                        {row.clockIn}
+                      </div>
+                      <div className="col-span-3 text-center font-mono font-extrabold text-slate-900">
+                        {row.clockOut}
+                      </div>
+                    </>
+                  )}
 
-                  <span
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl border text-xs font-extrabold shrink-0 ${badgeStyle}`}
-                  >
-                    <IconComponent className="w-3.5 h-3.5" />
-                    <span>{item.statusText}</span>
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 py-2.5 text-xs">
-                  <div>
-                    <span className="text-slate-500 font-semibold block">Jam Masuk</span>
-                    <span className={`font-mono font-extrabold text-sm ${timeColor}`}>
-                      {item.checkIn}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 font-semibold block">Jam Pulang</span>
-                    <span className={`font-mono font-extrabold text-sm ${timeColor}`}>
-                      {item.checkOut}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 font-semibold block">Durasi</span>
-                    <span className="font-mono font-extrabold text-sm text-slate-800">
-                      {item.duration || '00j 00m'}
-                    </span>
+                  {/* Column 4: Work Hours */}
+                  <div className="col-span-2 text-right font-mono font-extrabold text-slate-700 text-[11px]">
+                    {row.workHours}
                   </div>
                 </div>
+              );
+            })}
+          </div>
+        </div>
 
-                <div className="pt-2 border-t border-slate-200/70 flex items-center justify-between gap-2 text-xs">
-                  <p
-                    className={`truncate ${
-                      item.status === 'TIDAK_ABSEN' ? 'text-rose-800 font-bold' : 'text-slate-600'
-                    }`}
-                  >
-                    {item.note}
-                  </p>
-                  <span className="font-extrabold text-[#059669] shrink-0 flex items-center gap-0.5">
-                    <span>Detail</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </span>
-                </div>
-              </article>
-            );
-          })
-        )}
-      </div>
+        <p className="text-[10px] text-center text-slate-400 mt-3">
+          Ketuk baris tanggal untuk melihat detail lengkap & status approval HRD.
+        </p>
+      </section>
+
+      {/* Face Flow Sheet Dialog */}
+      <FaceAttendanceSheet
+        isOpen={isFaceSheetOpen}
+        onClose={() => setIsFaceSheetOpen(false)}
+        isCheckOut={isCheckedIn}
+        isOnline={true}
+        isFaceEnrolled={true}
+        employeeName="Febry Prasetyo"
+        employeeNik="CMC-2024-089"
+        onSuccess={handleFaceSuccess}
+      />
 
       {/* Day Detail Sheet Dialog */}
       <DayDetailSheet

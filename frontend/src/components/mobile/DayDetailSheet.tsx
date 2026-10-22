@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useEffect } from "react";
-import { X } from "lucide-react";
+import { X, ShieldCheck, Clock, XCircle } from "lucide-react";
 
 export interface DayDetailData {
   id: string;
   dayName: string;
   dateStr: string;
-  schedule: string;
+  schedule?: string;
   status: "TEPAT_WAKTU" | "TERLAMBAT" | "TIDAK_ABSEN" | "BELUM_ABSEN";
   statusText: string;
   checkIn: string;
@@ -16,6 +16,8 @@ export interface DayDetailData {
   note: string;
   serverRef: string;
   employeeName?: string;
+  approvalStatus?: "APPROVED" | "PENDING" | "REJECTED";
+  approvalNote?: string;
 }
 
 interface DayDetailSheetProps {
@@ -88,16 +90,58 @@ export default function DayDetailSheet({ isOpen, onClose, data }: DayDetailSheet
             <p className="text-sm font-extrabold mt-0.5">{data.statusText}</p>
           </div>
 
+          {/* HR Review Status Banner */}
+          {data.approvalStatus && (
+            <div
+              className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${
+                data.approvalStatus === 'APPROVED'
+                  ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950'
+                  : data.approvalStatus === 'REJECTED'
+                  ? 'bg-rose-50/80 border-rose-300 text-rose-950'
+                  : 'bg-amber-50/80 border-amber-200 text-amber-950'
+              }`}
+            >
+              <div className="space-y-0.5">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider block opacity-75">
+                  Status Review HRD
+                </span>
+                <p className="text-xs font-extrabold">
+                  {data.approvalStatus === 'APPROVED'
+                    ? 'Disetujui HRD'
+                    : data.approvalStatus === 'REJECTED'
+                    ? 'Ditolak HRD'
+                    : 'Menunggu Persetujuan HRD'}
+                </p>
+                {data.approvalNote && (
+                  <p className="text-[11px] opacity-85 leading-tight">{data.approvalNote}</p>
+                )}
+              </div>
+              <div className="shrink-0">
+                {data.approvalStatus === 'APPROVED' && (
+                  <ShieldCheck className="w-5 h-5 text-[#059669]" />
+                )}
+                {data.approvalStatus === 'PENDING' && (
+                  <Clock className="w-5 h-5 text-amber-600 animate-pulse" />
+                )}
+                {data.approvalStatus === 'REJECTED' && (
+                  <XCircle className="w-5 h-5 text-rose-600" />
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Grid Info */}
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-slate-500">Nama Karyawan</span>
               <span className="font-bold text-slate-900">{data.employeeName || "Febry Prasetyo"}</span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-slate-500">Jadwal Kerja</span>
-              <span className="font-semibold text-slate-800">{data.schedule}</span>
-            </div>
+            {data.schedule && (
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">Jadwal Kerja</span>
+                <span className="font-semibold text-slate-800">{data.schedule}</span>
+              </div>
+            )}
             <div className="flex justify-between items-center">
               <span className="text-slate-500">Jam Masuk</span>
               <span className="font-mono font-bold text-slate-900">{data.checkIn}</span>
