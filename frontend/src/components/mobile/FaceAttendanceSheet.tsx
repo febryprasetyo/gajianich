@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import Image from 'next/image';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   ArrowLeft,
   Check,
@@ -12,6 +11,8 @@ import {
   AlertTriangle,
   RefreshCw,
   CheckCheck,
+  User,
+  ShieldCheck,
 } from 'lucide-react';
 
 export type CameraScenario =
@@ -74,28 +75,29 @@ export default function FaceAttendanceSheet({
     return () => clearInterval(interval);
   }, []);
 
-  const stopCamera = () => {
+  const stopCamera = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
     setHasRealCamera(false);
     setCameraLoading(false);
-  };
+  }, []);
 
-  const triggerError = (type: CameraScenario) => {
+  const triggerError = useCallback((type: CameraScenario) => {
     stopCamera();
     setErrorType(type);
     setViewState('ERROR');
-  };
+  }, [stopCamera]);
 
-  const startCamera = async () => {
+  const startCamera = useCallback(async () => {
     setCameraLoading(true);
     setCameraNote(null);
 
+    // Browsers on mobile require HTTPS for camera access
     if (typeof window !== 'undefined' && !window.isSecureContext && window.location.hostname !== 'localhost') {
       setCameraLoading(false);
-      setCameraNote('Kamera asli memerlukan HTTPS. Mode simulasi wajah aktif.');
+      setCameraNote('Kamera HP mewajibkan HTTPS (atau localhost). Menampilkan bingkai biometrik.');
       return;
     }
 
@@ -107,12 +109,17 @@ export default function FaceAttendanceSheet({
 
     try {
       const streamPromise = navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user' },
+        video: {
+          facingMode: 'user',
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
         audio: false,
       });
 
+      // 4-second timeout to prevent indefinite hanging on some mobile OS
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('CAMERA_TIMEOUT')), 5000)
+        setTimeout(() => reject(new Error('CAMERA_TIMEOUT')), 4000)
       );
 
       const stream = await Promise.race([streamPromise, timeoutPromise]);
@@ -130,10 +137,10 @@ export default function FaceAttendanceSheet({
       if (errName === 'NotAllowedError' || errName === 'PermissionDeniedError') {
         triggerError('CAMERA_DENIED');
       } else {
-        setCameraNote('Kamera tidak dapat diakses. Menggunakan simulasi wajah.');
+        setCameraNote('Kamera tidak aktif. Posisikan wajah dan tekan tombol presensi.');
       }
     }
-  };
+  }, [stopCamera, triggerError]);
 
   useEffect(() => {
     if (isOpen) {
@@ -158,13 +165,20 @@ export default function FaceAttendanceSheet({
         triggerError('ALREADY_RECORDED');
         return;
       }
+
+      // Automatically attempt to start camera if in secure context
+      if (typeof window !== 'undefined' && (window.isSecureContext || window.location.hostname === 'localhost')) {
+        startCamera();
+      } else {
+        setCameraNote('Koneksi HTTP non-secure. Akses kamera di HP butuh HTTPS/localhost.');
+      }
     } else {
       stopCamera();
     }
     return () => {
       stopCamera();
     };
-  }, [isOpen]);
+  }, [isOpen, isOnline, isFaceEnrolled, scenario, startCamera, stopCamera, triggerError]);
 
   const handleClockInAction = () => {
     if (!isOnline) {
@@ -215,48 +229,54 @@ export default function FaceAttendanceSheet({
       <style jsx>{`
         @keyframes laserSweep {
           0% {
-            transform: translateY(10px);
-            opacity: 0.7;
+            transform: translateY(12px);
+            opacity: 0.6;
           }
           50% {
             transform: translateY(195px);
             opacity: 1;
           }
           100% {
-            transform: translateY(10px);
-            opacity: 0.7;
+            transform: translateY(12px);
+            opacity: 0.6;
           }
         }
         .animate-laser {
-          animation: laserSweep 2.6s ease-in-out infinite;
+          animation: laserSweep 2.4s ease-in-out infinite;
         }
       `}</style>
 
-      {/* BACKGROUND CAMERA / SIMULATION FEED */}
-      <div className="absolute inset-0 z-0 bg-slate-900">
-        {hasRealCamera ? (
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full h-full object-cover -scale-x-100"
-          />
-        ) : (
-          <div className="relative w-full h-full">
-            <Image
-              src="/images/mock-face-scan.jpg"
-              alt="Face scan preview"
-              fill
-              priority
-              sizes="100vw"
-              className="object-cover object-center"
-            />
+      {/* BACKGROUND CAMERA / BIOMETRIC VIEWPORT */}
+      <div className="absolute inset-0 z-0 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 overflow-hidden">
+        {/* Live video feed if real camera is streaming */}
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className={`w-full h-full object-cover -scale-x-100 ${hasRealCamera ? 'block' : 'hidden'}`}
+        />
+
+        {/* Clean Silhouette / Viewfinder when camera is idle or non-HTTPS */}
+        {!hasRealCamera && (
+          <div className="w-full h-full flex flex-col items-center justify-center relative">
+            {/* Subtle background glow */}
+            <div className="absolute w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+
+            {/* Abstract Face Silhouette Line */}
+            <div className="w-48 h-56 rounded-[56px] border border-dashed border-emerald-500/30 flex flex-col items-center justify-center text-emerald-400/70 gap-2 mb-12">
+              <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
+                <User className="w-10 h-10 text-emerald-400 stroke-[1.5]" />
+              </div>
+              <span className="text-xs font-semibold text-emerald-300/80 tracking-wide">
+                Area Wajah
+              </span>
+            </div>
           </div>
         )}
 
-        {/* Soft vignette gradient */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60 pointer-events-none" />
+        {/* Subtle dark vignette */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/60 pointer-events-none" />
       </div>
 
       {/* TOP BAR OVERLAY */}
@@ -266,17 +286,17 @@ export default function FaceAttendanceSheet({
           type="button"
           onClick={onClose}
           aria-label="Kembali ke Beranda"
-          className="w-10 h-10 rounded-full bg-white/40 backdrop-blur-md border border-white/30 text-white flex items-center justify-center shadow-md active:scale-95 transition"
+          className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white flex items-center justify-center shadow-md active:scale-95 transition hover:bg-white/30"
         >
           <ArrowLeft className="w-5 h-5 text-white" />
         </button>
 
         {/* Status Pill Badge */}
-        <div className="px-3.5 py-1.5 rounded-full bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-md flex items-center gap-1.5 max-w-[calc(100%-96px)]">
-          <span className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+        <div className="px-3.5 py-1.5 rounded-full bg-white/95 backdrop-blur-md border border-emerald-100 shadow-md flex items-center gap-1.5 max-w-[calc(100%-96px)]">
+          <span className="w-4 h-4 rounded-full bg-[#059669] text-white flex items-center justify-center shrink-0 shadow-sm">
             <Check className="w-2.5 h-2.5 stroke-[3]" />
           </span>
-          <span className="text-[11px] font-semibold text-slate-700 truncate">
+          <span className="text-[11px] font-bold text-slate-800 truncate">
             You have entered at absence zone
           </span>
         </div>
@@ -287,8 +307,8 @@ export default function FaceAttendanceSheet({
           onClick={hasRealCamera ? stopCamera : startCamera}
           disabled={cameraLoading}
           aria-label="Alihkan Kamera"
-          title={hasRealCamera ? 'Gunakan Simulasi' : 'Gunakan Kamera Fisik'}
-          className="w-10 h-10 rounded-full bg-white/40 backdrop-blur-md border border-white/30 text-white flex items-center justify-center shadow-md active:scale-95 transition disabled:opacity-50"
+          title={hasRealCamera ? 'Matikan Kamera' : 'Nyalakan Kamera Perangkat'}
+          className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white flex items-center justify-center shadow-md active:scale-95 transition hover:bg-white/30 disabled:opacity-50"
         >
           {cameraLoading ? (
             <Loader2 className="w-4 h-4 animate-spin text-white" />
@@ -301,10 +321,10 @@ export default function FaceAttendanceSheet({
       {/* CENTER: FACE SCANNER VIEWPORT */}
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-2 pointer-events-none">
         <div className="relative w-[250px] h-[280px] sm:w-[270px] sm:h-[300px] flex items-center justify-center">
-          {/* Rounded Corner SVG Frame */}
+          {/* Rounded Corner White Frame (matching reference) */}
           <svg
             viewBox="0 0 260 290"
-            className="w-full h-full drop-shadow-[0_4px_16px_rgba(0,0,0,0.4)]"
+            className="w-full h-full drop-shadow-[0_4px_16px_rgba(0,0,0,0.5)]"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
@@ -338,16 +358,16 @@ export default function FaceAttendanceSheet({
             />
           </svg>
 
-          {/* Laser Scan Beam */}
+          {/* Emerald Laser Scan Beam */}
           <div className="absolute inset-x-3 top-2 h-16 animate-laser pointer-events-none overflow-hidden">
-            <div className="w-full h-full bg-gradient-to-b from-sky-400/40 via-sky-500/20 to-transparent" />
-            <div className="w-full h-[2.5px] bg-[#1d63ff] shadow-[0_0_12px_#38bdf8]" />
+            <div className="w-full h-full bg-gradient-to-b from-emerald-400/40 via-emerald-500/20 to-transparent" />
+            <div className="w-full h-[2.5px] bg-[#059669] shadow-[0_0_12px_#34d399]" />
           </div>
 
-          {/* Status badge when camera note is present */}
+          {/* Camera Info Note */}
           {cameraNote && (
             <div className="absolute bottom-2 inset-x-2 text-center pointer-events-auto">
-              <span className="inline-block px-2.5 py-1 rounded-md bg-black/70 backdrop-blur-sm text-[10px] text-white font-medium">
+              <span className="inline-block px-3 py-1 rounded-lg bg-black/75 backdrop-blur-sm text-[10px] text-emerald-200 font-medium border border-emerald-500/30">
                 {cameraNote}
               </span>
             </div>
@@ -370,19 +390,19 @@ export default function FaceAttendanceSheet({
           <div className="grid grid-cols-2 gap-3 text-center">
             {/* Current Location */}
             <div className="flex flex-col items-center">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-[11px] font-semibold">
-                <MapPin className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-100">
+                <MapPin className="w-3.5 h-3.5 text-[#059669] shrink-0" />
                 <span>Current Location</span>
               </div>
-              <p className="text-[11px] font-medium text-slate-500 text-center mt-1.5 leading-snug">
+              <p className="text-[11px] font-medium text-slate-600 text-center mt-1.5 leading-snug">
                 Head Quarter Jakarta - Lobby
               </p>
             </div>
 
             {/* Current Time */}
             <div className="flex flex-col items-center">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-[11px] font-semibold">
-                <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-100">
+                <Clock className="w-3.5 h-3.5 text-[#059669] shrink-0" />
                 <span>Current Time</span>
               </div>
               <p className="text-sm font-bold text-slate-800 text-center mt-1.5 font-mono tracking-wider">
@@ -391,13 +411,14 @@ export default function FaceAttendanceSheet({
             </div>
           </div>
 
-          {/* Main Action Button */}
+          {/* Main Action Button - Emerald Theme */}
           {viewState === 'CAMERA' && (
             <button
               type="button"
               onClick={handleClockInAction}
-              className="w-full min-h-[50px] py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[#1967d2] via-[#1a73e8] to-[#1e88e5] hover:from-[#1557b0] hover:to-[#1967d2] text-white font-extrabold text-base shadow-lg shadow-blue-500/25 active:scale-[0.98] transition flex items-center justify-center gap-2"
+              className="w-full min-h-[50px] py-3.5 px-6 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-base shadow-lg shadow-emerald-700/25 active:scale-[0.98] transition flex items-center justify-center gap-2"
             >
+              <ShieldCheck className="w-5 h-5 text-emerald-200" />
               <span>{isCheckOut ? 'Clock Out' : 'Clock In'}</span>
             </button>
           )}
@@ -405,7 +426,7 @@ export default function FaceAttendanceSheet({
           {/* Processing View */}
           {viewState === 'PROCESSING' && (
             <div className="py-2 flex flex-col items-center justify-center gap-2 text-center">
-              <div className="flex items-center justify-center gap-2 text-blue-600 font-bold text-sm">
+              <div className="flex items-center justify-center gap-2 text-[#059669] font-bold text-sm">
                 <Loader2 className="w-5 h-5 animate-spin" />
                 <span>Memverifikasi Wajah...</span>
               </div>
@@ -433,7 +454,6 @@ export default function FaceAttendanceSheet({
                     {errorType === 'VERIFY_FAILED' && 'Posisikan wajah tepat di dalam bingkai.'}
                     {errorType === 'NETWORK_OFFLINE' && 'Periksa sambungan internet Anda.'}
                     {errorType === 'ALREADY_RECORDED' && 'Presensi Anda sudah tersimpan di server.'}
-                    {!errorType && 'Terjadi kendala saat memproses presensi.'}
                   </span>
                 </div>
               </div>
@@ -444,7 +464,7 @@ export default function FaceAttendanceSheet({
                     setScenario('NORMAL');
                     setViewState('CAMERA');
                   }}
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-blue-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow"
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-[#059669] hover:bg-[#047857] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   <span>Coba Lagi</span>
@@ -464,7 +484,7 @@ export default function FaceAttendanceSheet({
           {viewState === 'SUCCESS' && receipt && (
             <div className="space-y-3 animate-in fade-in zoom-in-95 duration-200">
               <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-center space-y-1">
-                <div className="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center mx-auto shadow-sm">
+                <div className="w-9 h-9 rounded-full bg-[#059669] text-white flex items-center justify-center mx-auto shadow-sm">
                   <CheckCheck className="w-5 h-5" />
                 </div>
                 <h3 className="text-sm font-extrabold text-emerald-950">
@@ -481,7 +501,7 @@ export default function FaceAttendanceSheet({
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm shadow transition"
+                className="w-full py-3 rounded-xl bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-sm shadow transition"
               >
                 Selesai
               </button>
