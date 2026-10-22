@@ -31,9 +31,9 @@ export default function BottomNavigation({ onTabChange, activeTabOverride }: Bot
   return (
     <nav
       aria-label="Navigasi Bawah 3 Menu"
-      className="absolute bottom-0 inset-x-0 px-4 pt-2 pb-4 bg-gradient-to-t from-[#F8FAFC] via-[#F8FAFC]/95 to-transparent z-30"
+      className="fixed sm:absolute bottom-0 inset-x-0 w-full sm:max-w-[412px] sm:mx-auto px-4 pt-2 pb-4 bg-gradient-to-t from-[#F8FAFC] via-[#F8FAFC]/95 to-transparent z-40 pointer-events-none"
     >
-      <div className="bg-[#059669] rounded-2xl p-1.5 shadow-lg border border-emerald-700 grid grid-cols-3 gap-1.5">
+      <div className="bg-[#059669] rounded-2xl p-1.5 shadow-lg border border-emerald-700 grid grid-cols-3 gap-1.5 pointer-events-auto">
         <Link
           href="/m/beranda"
           onClick={() => handleNav('beranda')}

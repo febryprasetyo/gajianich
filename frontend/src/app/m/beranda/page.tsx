@@ -123,16 +123,6 @@ export default function MobileBerandaPage() {
 
       {/* Header Container */}
       <div className="px-5 pt-4 pb-2">
-        {/* App Wordmark */}
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-xl font-extrabold tracking-tight text-slate-900">
-            gajianich<span className="text-[#059669]">.</span>
-          </span>
-          <span className="text-[10px] font-bold tracking-wider text-slate-500 bg-slate-100 border border-slate-200 rounded-md px-2 py-0.5">
-            PWA PORTAL
-          </span>
-        </div>
-
         {/* Greeting Row */}
         <div className="flex justify-between items-center gap-3">
           <div>

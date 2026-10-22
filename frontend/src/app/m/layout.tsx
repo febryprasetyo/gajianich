@@ -45,7 +45,7 @@ export default function MobileAppLayout({
       {/* Mobile Shell Device Container */}
       <div
         id="interactivePhoneWrapper"
-        className="w-full sm:w-[412px] sm:h-[860px] min-h-dvh sm:min-h-0 bg-[#F8FAFC] sm:rounded-[46px] sm:border-[8px] sm:border-white shadow-2xl relative flex flex-col overflow-hidden"
+        className="w-full sm:w-[412px] h-dvh sm:h-[860px] max-h-dvh sm:max-h-[860px] bg-[#F8FAFC] sm:rounded-[46px] sm:border-[8px] sm:border-white shadow-2xl relative flex flex-col overflow-hidden"
       >
         {/* Device Status Bar (Desktop Mockup Header) */}
         <div className="hidden sm:flex items-center justify-between px-7 pt-2.5 pb-1 bg-[#059669] text-white text-xs font-bold select-none z-20">
@@ -78,7 +78,7 @@ export default function MobileAppLayout({
         {/* Scroll Container */}
         <div
           id="phoneScrollContainer"
-          className="flex-1 overflow-y-auto no-scrollbar pb-24 flex flex-col relative"
+          className="flex-1 overflow-y-auto no-scrollbar pb-28 flex flex-col relative"
         >
           {children}
         </div>
