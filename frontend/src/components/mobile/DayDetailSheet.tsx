@@ -1,6 +1,6 @@
 'use client';
 
-import React from "react";
+import React, { useEffect } from "react";
 import { X } from "lucide-react";
 
 export interface DayDetailData {
@@ -25,6 +25,15 @@ interface DayDetailSheetProps {
 }
 
 export default function DayDetailSheet({ isOpen, onClose, data }: DayDetailSheetProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isOpen]);
+
   if (!isOpen || !data) return null;
 
   const isAbsent = data.status === "TIDAK_ABSEN";
@@ -34,13 +43,16 @@ export default function DayDetailSheet({ isOpen, onClose, data }: DayDetailSheet
       role="dialog"
       aria-modal="true"
       aria-labelledby="dayDetailTitle"
-      className="absolute inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex flex-col justify-end animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex flex-col justify-end items-center animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-t-[28px] p-5 border-t border-slate-200 shadow-2xl space-y-4 max-h-[92%] overflow-y-auto"
+        className="w-full sm:max-w-[412px] bg-white rounded-t-[32px] p-5 pb-8 sm:pb-6 border-t border-slate-200 shadow-2xl space-y-4 max-h-[85dvh] overflow-y-auto overscroll-contain animate-in slide-in-from-bottom-6 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Handle bar indicator bottom sheet */}
+        <div className="w-12 h-1.5 bg-slate-300 rounded-full mx-auto -mt-1 mb-1.5" />
+
         <div className="flex items-start justify-between gap-2 pb-2.5 border-b border-slate-200">
           <div>
             <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
@@ -54,7 +66,7 @@ export default function DayDetailSheet({ isOpen, onClose, data }: DayDetailSheet
             type="button"
             onClick={onClose}
             aria-label="Tutup detail presensi"
-            className="min-h-[40px] min-w-[40px] rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition"
+            className="min-h-[40px] min-w-[40px] rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition active:scale-95"
           >
             <X className="w-5 h-5" />
           </button>
@@ -116,7 +128,7 @@ export default function DayDetailSheet({ isOpen, onClose, data }: DayDetailSheet
         <button
           type="button"
           onClick={onClose}
-          className="w-full min-h-[48px] py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-sm transition"
+          className="w-full min-h-[48px] py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-sm transition active:scale-[0.99]"
         >
           Tutup Detail
         </button>

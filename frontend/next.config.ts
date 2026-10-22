@@ -14,6 +14,10 @@ const nextConfig: NextConfig = {
     "192.168.10.23",
     "192.168.10.212",
     "192.168.20.53",
+    "*.loca.lt",
+    "*.trycloudflare.com",
+    "*.ngrok-free.app",
+    "*.ngrok.io",
   ],
   async rewrites() {
     if (process.env.NODE_ENV !== "development") {

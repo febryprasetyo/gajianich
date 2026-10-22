@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { LogOut } from 'lucide-react';
 
 interface LogoutSheetProps {
@@ -10,17 +10,27 @@ interface LogoutSheetProps {
 }
 
 export default function LogoutSheet({ isOpen, onClose, onConfirm }: LogoutSheetProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isOpen]);
+
+  if (!isOpen) return null;
 
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label="Konfirmasi keluar akun"
-      className="absolute inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-5 animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xl w-full space-y-4 text-center max-w-sm"
+        className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xl w-full space-y-4 text-center max-w-sm sm:max-w-[360px] animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto">
@@ -36,14 +46,14 @@ export default function LogoutSheet({ isOpen, onClose, onConfirm }: LogoutSheetP
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[46px] rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition"
+            className="min-h-[46px] rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition active:scale-95"
           >
             Batal
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className="min-h-[46px] rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-sm transition"
+            className="min-h-[46px] rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-sm transition active:scale-95"
           >
             Ya, Keluar
           </button>
