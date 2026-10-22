@@ -99,13 +99,13 @@ export default function FaceAttendanceSheet({
     // Browsers on mobile require HTTPS for camera access
     if (typeof window !== 'undefined' && !window.isSecureContext && window.location.hostname !== 'localhost') {
       setCameraLoading(false);
-      setCameraNote('Kamera HP mewajibkan HTTPS (atau localhost). Menampilkan bingkai biometrik.');
+      setCameraNote('Akses kamera di HP memerlukan HTTPS. Menampilkan mode panduan wajah.');
       return;
     }
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       setCameraLoading(false);
-      setCameraNote('Browser tidak mendukung akses kamera langsung.');
+      setCameraNote('Browser Anda belum mendukung akses kamera langsung.');
       return;
     }
 
@@ -139,7 +139,7 @@ export default function FaceAttendanceSheet({
       if (errName === 'NotAllowedError' || errName === 'PermissionDeniedError') {
         triggerError('CAMERA_DENIED');
       } else {
-        setCameraNote('Kamera tidak aktif. Posisikan wajah dan tekan tombol presensi.');
+        setCameraNote('Kamera belum aktif. Arahkan wajah dan tekan tombol absen.');
       }
     }
   }, [stopCamera, triggerError]);
@@ -172,7 +172,7 @@ export default function FaceAttendanceSheet({
       if (typeof window !== 'undefined' && (window.isSecureContext || window.location.hostname === 'localhost')) {
         startCamera();
       } else {
-        setCameraNote('Koneksi HTTP non-secure. Akses kamera di HP butuh HTTPS/localhost.');
+        setCameraNote('Akses kamera di HP memerlukan HTTPS. Menampilkan mode panduan wajah.');
       }
     } else {
       stopCamera();
@@ -299,7 +299,7 @@ export default function FaceAttendanceSheet({
             <Check className="w-2.5 h-2.5 stroke-[3]" />
           </span>
           <span className="text-[11px] font-bold text-slate-800 truncate">
-            You have entered at absence zone
+            Lokasi presensi siap
           </span>
         </div>
 
@@ -385,7 +385,7 @@ export default function FaceAttendanceSheet({
             id="attendanceModalTitle"
             className="text-center font-extrabold text-slate-900 text-base tracking-tight"
           >
-            {isCheckOut ? 'Clock Out' : 'Clock In'}
+            {isCheckOut ? 'Absen Pulang' : 'Absen Masuk'}
           </h2>
 
           {/* Location & Time Grid */}
@@ -394,7 +394,7 @@ export default function FaceAttendanceSheet({
             <div className="flex flex-col items-center">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-100">
                 <MapPin className="w-3.5 h-3.5 text-[#059669] shrink-0" />
-                <span>GPS Dinas Luar</span>
+                <span>Lokasi Sekarang</span>
               </div>
               <p className="text-[11px] font-medium text-slate-700 text-center mt-1.5 leading-snug truncate max-w-[170px]">
                 {location.displayText}
@@ -405,7 +405,7 @@ export default function FaceAttendanceSheet({
             <div className="flex flex-col items-center">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-100">
                 <Clock className="w-3.5 h-3.5 text-[#059669] shrink-0" />
-                <span>Current Time</span>
+                <span>Waktu Sekarang</span>
               </div>
               <p className="text-sm font-bold text-slate-800 text-center mt-1.5 font-mono tracking-wider">
                 {currentTimeFormatted}
@@ -421,7 +421,7 @@ export default function FaceAttendanceSheet({
               className="w-full min-h-[50px] py-3.5 px-6 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-base shadow-lg shadow-emerald-700/25 active:scale-[0.98] transition flex items-center justify-center gap-2"
             >
               <ShieldCheck className="w-5 h-5 text-emerald-200" />
-              <span>{isCheckOut ? 'Clock Out' : 'Clock In'}</span>
+              <span>{isCheckOut ? 'Absen Pulang' : 'Absen Masuk'}</span>
             </button>
           )}
 
@@ -433,7 +433,7 @@ export default function FaceAttendanceSheet({
                 <span>Memverifikasi Wajah...</span>
               </div>
               <p className="text-[11px] text-slate-500">
-                Pencocokan biometrik dan koordinat GPS dinas luar
+                Memverifikasi wajah dan mencatat lokasi sekarang...
               </p>
             </div>
           )}
@@ -445,17 +445,17 @@ export default function FaceAttendanceSheet({
                 <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                 <div>
                   <strong className="block font-bold">
-                    {errorType === 'CAMERA_DENIED' && 'Akses Kamera Ditolak'}
+                    {errorType === 'CAMERA_DENIED' && 'Akses Kamera Belum Diizinkan'}
                     {errorType === 'FACE_NOT_ENROLLED' && 'Wajah Belum Terdaftar'}
-                    {errorType === 'VERIFY_FAILED' && 'Pencocokan Wajah Gagal'}
-                    {errorType === 'NETWORK_OFFLINE' && 'Jaringan Offline'}
-                    {errorType === 'ALREADY_RECORDED' && 'Sudah Tercatat Hari Ini'}
+                    {errorType === 'VERIFY_FAILED' && 'Wajah Tidak Terdeteksi'}
+                    {errorType === 'NETWORK_OFFLINE' && 'Koneksi Internet Terputus'}
+                    {errorType === 'ALREADY_RECORDED' && 'Sudah Absen Hari Ini'}
                   </strong>
                   <span className="text-[11px] text-slate-600">
-                    {errorType === 'CAMERA_DENIED' && 'Izin kamera dibutuhkan untuk verifikasi.'}
-                    {errorType === 'VERIFY_FAILED' && 'Posisikan wajah tepat di dalam bingkai.'}
-                    {errorType === 'NETWORK_OFFLINE' && 'Periksa sambungan internet Anda.'}
-                    {errorType === 'ALREADY_RECORDED' && 'Presensi Anda sudah tersimpan di server.'}
+                    {errorType === 'CAMERA_DENIED' && 'Mohon berikan izin kamera di browser HP Anda.'}
+                    {errorType === 'VERIFY_FAILED' && 'Pastikan wajah berada di dalam bingkai dan pencahayaan cukup.'}
+                    {errorType === 'NETWORK_OFFLINE' && 'Periksa koneksi internet Anda lalu coba lagi.'}
+                    {errorType === 'ALREADY_RECORDED' && 'Data presensi Anda hari ini sudah tersimpan.'}
                   </span>
                 </div>
               </div>
@@ -490,13 +490,13 @@ export default function FaceAttendanceSheet({
                   <CheckCheck className="w-5 h-5" />
                 </div>
                 <h3 className="text-sm font-extrabold text-emerald-950">
-                  {isCheckOut ? 'Clock Out Berhasil!' : 'Clock In Berhasil!'}
+                  {isCheckOut ? 'Absen Pulang Berhasil!' : 'Absen Masuk Berhasil!'}
                 </h3>
                 <p className="text-[11px] text-emerald-800">
                   Waktu: <span className="font-mono font-bold">{receipt.time}</span>
                 </p>
                 <p className="text-[10px] text-slate-500 font-mono">
-                  Ref: {receipt.hash}
+                  No. Referensi: {receipt.hash}
                 </p>
               </div>
 

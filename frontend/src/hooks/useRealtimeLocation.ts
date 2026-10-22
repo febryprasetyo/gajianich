@@ -22,7 +22,7 @@ export function useRealtimeLocation() {
     address: null,
     error: null,
     timestamp: null,
-    displayText: 'Mendeteksi sinyal GPS akurat...',
+    displayText: 'Mencari lokasi sekarang...', 
   });
 
   const fetchLocation = useCallback(() => {
@@ -35,7 +35,7 @@ export function useRealtimeLocation() {
         address: 'Jakarta, Indonesia',
         error: null,
         timestamp: Date.now(),
-        displayText: 'Dinas Luar: GPS Terkunci (-6.2088, 106.8456 • ±10m)',
+        displayText: 'Lokasi Sekarang: -6.2088, 106.8456 (Akurasi ±10m)', 
       });
       return;
     }
@@ -43,7 +43,7 @@ export function useRealtimeLocation() {
     setLocation((prev) => ({
       ...prev,
       loading: true,
-      displayText: 'Mengunci sinyal GPS akurat dari HP...',
+      displayText: 'Mengunci lokasi sekarang...', 
       error: null,
     }));
 
@@ -79,8 +79,8 @@ export function useRealtimeLocation() {
         }
 
         const displayText = addressText
-          ? `Dinas Luar: ${addressText} (±${acc}m)`
-          : `Dinas Luar: ${lat}, ${lng} (Akurasi: ±${acc}m)`;
+          ? `Lokasi Sekarang: ${addressText} (±${acc}m)`
+          : `Lokasi Sekarang: ${lat}, ${lng} (Akurasi: ±${acc}m)`;
 
         setLocation({
           loading: false,
@@ -104,10 +104,10 @@ export function useRealtimeLocation() {
           latitude: -6.2088,
           longitude: 106.8456,
           accuracy: 12,
-          address: 'Lokasi Dinas Luar Terkunci',
+          address: 'Lokasi Sekarang Terkunci', 
           error: fallbackMsg,
           timestamp: Date.now(),
-          displayText: 'Dinas Luar: GPS Terkunci (-6.2088, 106.8456 • ±12m)',
+          displayText: 'Lokasi Sekarang: -6.2088, 106.8456 (Akurasi ±12m)', 
         });
       },
       {

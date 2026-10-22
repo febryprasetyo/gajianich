@@ -42,9 +42,9 @@ const MOCK_ATTENDANCE_LOG: AttendanceLogRow[] = [
     status: 'TEPAT_WAKTU',
     statusText: 'Hadir Tepat Waktu',
     approvalStatus: 'PENDING',
-    approvalNote: 'Pengajuan presensi dinas luar sedang di-review HRD.',
+    approvalNote: 'Pengajuan presensi sedang diperiksa oleh HRD.',
     serverRef: 'TX-GJN-20261022-772',
-    note: 'Presensi masuk biometrik wajah valid di lokasi dinas luar.',
+    note: 'Presensi masuk tercatat valid via verifikasi wajah.',
   },
   {
     id: 'D-20261021',
@@ -60,7 +60,7 @@ const MOCK_ATTENDANCE_LOG: AttendanceLogRow[] = [
     approvalStatus: 'APPROVED',
     approvalNote: 'Telah diverifikasi dan disetujui HRD Pusat.',
     serverRef: 'TX-GJN-20261021-104',
-    note: 'Presensi biometrik wajah dan GPS dinas luar sinkron server.',
+    note: 'Presensi dan lokasi sekarang tersimpan rapi di server.',
   },
   {
     id: 'D-20261020',
@@ -76,7 +76,7 @@ const MOCK_ATTENDANCE_LOG: AttendanceLogRow[] = [
     approvalStatus: 'APPROVED',
     approvalNote: 'Disetujui HRD.',
     serverRef: 'TX-GJN-20261020-098',
-    note: 'Presensi dinas luar terkonfirmasi valid.',
+    note: 'Presensi harian terkonfirmasi valid.',
   },
   {
     id: 'D-20261019',
@@ -90,7 +90,7 @@ const MOCK_ATTENDANCE_LOG: AttendanceLogRow[] = [
     status: 'TIDAK_ABSEN',
     statusText: 'Tidak Absen (Alpa)',
     approvalStatus: 'REJECTED',
-    approvalNote: 'Ditolak HRD: Tidak ada scan biometrik dan tanpa form izin cuti.',
+    approvalNote: 'Ditolak HRD: Tidak ada catatan presensi dan tanpa surat izin/cuti.',
     serverRef: 'TX-GJN-20261019-000',
     note: 'Tidak ada rekaman kehadiran server pada tanggal ini.',
   },
@@ -108,7 +108,7 @@ const MOCK_ATTENDANCE_LOG: AttendanceLogRow[] = [
     approvalStatus: 'APPROVED',
     approvalNote: 'Disetujui HRD.',
     serverRef: 'TX-GJN-20261016-512',
-    note: 'Presensi dinas luar kantor.',
+    note: 'Presensi tercatat sesuai jadwal.',
   },
   {
     id: 'D-20261015',
@@ -124,7 +124,7 @@ const MOCK_ATTENDANCE_LOG: AttendanceLogRow[] = [
     approvalStatus: 'APPROVED',
     approvalNote: 'Disetujui HRD dengan toleransi perjalanan dinas.',
     serverRef: 'TX-GJN-20261015-321',
-    note: 'Keterlambatan masuk dinas terkonfirmasi HRD.',
+    note: 'Keterlambatan masuk telah diverifikasi HRD.',
   },
   {
     id: 'D-20261014',
@@ -140,7 +140,7 @@ const MOCK_ATTENDANCE_LOG: AttendanceLogRow[] = [
     approvalStatus: 'APPROVED',
     approvalNote: 'Disetujui HRD.',
     serverRef: 'TX-GJN-20261014-411',
-    note: 'Presensi dinas luar normal.',
+    note: 'Presensi tercatat normal.',
   },
   {
     id: 'D-20261013',
@@ -154,7 +154,7 @@ const MOCK_ATTENDANCE_LOG: AttendanceLogRow[] = [
     status: 'TIDAK_ABSEN',
     statusText: 'Tidak Absen',
     approvalStatus: 'REJECTED',
-    approvalNote: 'Ditolak: Belum ada pengajuan izin dinas luar resmi.',
+    approvalNote: 'Ditolak: Belum ada konfirmasi atau pengajuan izin resmi.',
     serverRef: 'TX-GJN-20261013-000',
     note: 'Data kehadiran kosong.',
   },
@@ -180,7 +180,7 @@ export default function MobilePresensiPage() {
       id: row.id,
       dayName: row.fullDateText.split(',')[0] || row.dayShort,
       dateStr: row.fullDateText.split(',')[1]?.trim() || row.dateStr,
-      schedule: '08:00 – 17:00 WIB (Dinas Luar)',
+      schedule: '08:00 – 17:00 WIB',
       status: row.status,
       statusText: row.statusText,
       checkIn: row.clockIn,
@@ -260,12 +260,12 @@ export default function MobilePresensiPage() {
         </div>
       </section>
 
-      {/* 4. Attendance Log Table Section */}
+      {/* 4. Riwayat Presensi Table Section */}
       <section className="px-5 pt-3 pb-6 flex-1 flex flex-col">
         {/* Section Header with Period Filter */}
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-extrabold text-slate-900 tracking-tight">
-            Attendance Log
+            Riwayat Presensi
           </h2>
 
           <div className="relative">
@@ -275,8 +275,8 @@ export default function MobilePresensiPage() {
               onChange={(e) => setSelectedPeriod(e.target.value as 'CURRENT' | 'PREVIOUS')}
               className="appearance-none bg-white border border-slate-200 text-slate-700 font-extrabold text-xs rounded-full py-1.5 pl-3.5 pr-7 shadow-2xs hover:bg-slate-50 focus:outline-none cursor-pointer"
             >
-              <option value="CURRENT">This month</option>
-              <option value="PREVIOUS">Last month</option>
+              <option value="CURRENT">Bulan ini</option>
+              <option value="PREVIOUS">Bulan lalu</option>
             </select>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
@@ -286,10 +286,10 @@ export default function MobilePresensiPage() {
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
           {/* Table Header Bar */}
           <div className="bg-slate-600 text-white text-[11px] font-extrabold uppercase tracking-wider px-3.5 py-2.5 grid grid-cols-12 items-center">
-            <span className="col-span-4">Date</span>
-            <span className="col-span-3 text-center">Clock In</span>
-            <span className="col-span-3 text-center">Clock Out</span>
-            <span className="col-span-2 text-right">Work Hours</span>
+            <span className="col-span-4">Tanggal</span>
+            <span className="col-span-3 text-center">Masuk</span>
+            <span className="col-span-3 text-center">Pulang</span>
+            <span className="col-span-2 text-right">Durasi</span>
           </div>
 
           {/* Table Rows */}
@@ -356,7 +356,7 @@ export default function MobilePresensiPage() {
         </div>
 
         <p className="text-[10px] text-center text-slate-400 mt-3">
-          Ketuk baris tanggal untuk melihat detail lengkap & status approval HRD.
+          Ketuk tanggal untuk melihat detail presensi & status persetujuan HRD.
         </p>
       </section>
 

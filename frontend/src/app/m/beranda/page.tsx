@@ -113,11 +113,11 @@ export default function MobileBerandaPage() {
       checkIn: '07:52',
       checkOut: '17:04',
       duration: '09j 12m',
-      note: 'Presensi verifikasi biometrik wajah valid di area kantor.',
+      note: 'Presensi verifikasi wajah valid.',
       serverRef: 'TX-GJN-20261021-104',
       employeeName: 'Febry Prasetyo',
       approvalStatus: 'APPROVED',
-      approvalNote: 'Telah disetujui HRD (Auto-matched dengan log GPS kantor).',
+      approvalNote: 'Telah disetujui oleh tim HRD.',
     });
   };
 

@@ -1,15 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ScanFace, MapPin, RotateCw, CheckCircle2 } from 'lucide-react';
+import { ScanFace, MapPin, RotateCw } from 'lucide-react';
 import { useRealtimeLocation } from '@/hooks/useRealtimeLocation';
 
 export type AttendanceRingState = 'NOT_CHECKED_IN' | 'CHECKED_IN' | 'COMPLETED';
 
 interface PresensiRingButtonProps {
-  officeName?: string;
   status: AttendanceRingState;
   onOpenFlow: () => void;
+  officeName?: string;
   onResetDemo?: () => void;
   showResetDemo?: boolean;
 }
@@ -38,9 +38,15 @@ export default function PresensiRingButton({
   const isCheckedIn = status === 'CHECKED_IN';
   const isCompleted = status === 'COMPLETED';
 
-  let buttonLabel = 'Clock In';
-  if (isCheckedIn) buttonLabel = 'Clock Out';
-  if (isCompleted) buttonLabel = 'Selesai';
+  let buttonLabel = 'Absen Masuk';
+  let subLabel = 'Verifikasi Wajah';
+  if (isCheckedIn) {
+    buttonLabel = 'Absen Pulang';
+    subLabel = 'Verifikasi Wajah';
+  } else if (isCompleted) {
+    buttonLabel = 'Selesai';
+    subLabel = 'Presensi Lengkap';
+  }
 
   return (
     <div className="flex flex-col items-center justify-center pt-3 pb-2 px-5 select-none">
@@ -53,7 +59,7 @@ export default function PresensiRingButton({
         <button
           type="button"
           onClick={onOpenFlow}
-          aria-label={buttonLabel + ' dengan Verifikasi Wajah Biometrik'}
+          aria-label={buttonLabel + ' dengan verifikasi wajah'}
           className="relative w-[156px] h-[156px] rounded-full bg-[#059669] hover:bg-[#047857] text-white shadow-xl shadow-emerald-700/20 border-4 border-white flex flex-col items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer select-none"
         >
           {/* Face Scan Biometric Icon */}
@@ -64,7 +70,7 @@ export default function PresensiRingButton({
             {buttonLabel}
           </span>
           <span className="text-[10px] font-semibold text-emerald-100 opacity-90">
-            Scan Wajah
+            {subLabel}
           </span>
         </button>
       </div>
@@ -75,25 +81,21 @@ export default function PresensiRingButton({
           {currentTime}
         </p>
 
-        {/* 3. Realtime Accurate GPS Location for Dinas Luar */}
-        <div className="mt-1 flex flex-col items-center gap-0.5">
-          <div className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 bg-slate-100/90 border border-slate-200/80 px-2.5 py-0.5 rounded-full">
+        {/* 3. Realtime Accurate GPS Location */}
+        <div className="mt-1.5 flex flex-col items-center gap-1">
+          <div className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 bg-slate-100/90 border border-slate-200/80 px-2.5 py-1 rounded-full">
             <MapPin className={`w-3.5 h-3.5 ${location.loading ? 'animate-bounce text-amber-500' : 'text-[#059669]'}`} />
-            <span className="max-w-[260px] truncate">{location.displayText}</span>
+            <span className="max-w-[270px] truncate">{location.displayText}</span>
             <button
               type="button"
               onClick={location.refetch}
-              title="Refresh sinyal GPS"
-              aria-label="Refresh sinyal GPS akurat"
+              title="Perbarui sinyal lokasi"
+              aria-label="Perbarui sinyal lokasi sekarang"
               className="p-0.5 text-slate-400 hover:text-slate-700 transition"
             >
               <RotateCw className={`w-3 h-3 ${location.loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
-
-          <p className="text-[10px] text-slate-500 font-medium">
-            Presensi dinas luar mencatat koordinat GPS akurat dari HP
-          </p>
         </div>
       </div>
 
