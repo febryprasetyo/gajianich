@@ -17,13 +17,13 @@ function decodeJwt(token: string): JwtPayload | null {
     if (parts.length !== 3) return null;
     const base64Url = parts[1];
     const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split("")
-        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-        .join("")
-    );
-    return JSON.parse(jsonPayload);
+    let jsonStr = "";
+    if (typeof Buffer !== "undefined") {
+      jsonStr = Buffer.from(base64, "base64").toString("utf8");
+    } else {
+      jsonStr = atob(base64);
+    }
+    return JSON.parse(jsonStr);
   } catch {
     return null;
   }
@@ -32,8 +32,12 @@ function decodeJwt(token: string): JwtPayload | null {
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Only protect dashboard routes
-  if (!pathname.startsWith("/dashboard")) {
+  const isProtectedPath =
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/m") ||
+    pathname.startsWith("/attendance");
+
+  if (!isProtectedPath) {
     return NextResponse.next();
   }
 
@@ -42,7 +46,9 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
+  const token =
+    request.cookies.get(AUTH_COOKIE_NAME)?.value ||
+    request.cookies.get("token")?.value;
 
   if (!token) {
     const loginUrl = new URL("/login", request.url);
@@ -56,23 +62,41 @@ export function proxy(request: NextRequest) {
     const loginUrl = new URL("/login", request.url);
     const response = NextResponse.redirect(loginUrl);
     response.cookies.delete(AUTH_COOKIE_NAME);
+    response.cookies.delete("token");
     return response;
   }
 
-  const hasAccess = canAccessRoute(pathname, {
-    roleName: payload.roleName,
-    permissions: payload.permissions,
-  });
+  const roleName = (payload.roleName || "").toLowerCase().trim();
+  const isEmployee = roleName === "employee" || roleName === "karyawan";
 
-  if (!hasAccess) {
-    const unauthorizedUrl = new URL("/dashboard/unauthorized", request.url);
-    unauthorizedUrl.searchParams.set("from", pathname);
-    return NextResponse.redirect(unauthorizedUrl);
+  // If Employee tries to access desktop admin dashboard, redirect to Mobile PWA
+  if (isEmployee && pathname.startsWith("/dashboard")) {
+    return NextResponse.redirect(new URL("/m/beranda", request.url));
+  }
+
+  if (pathname.startsWith("/dashboard")) {
+    const hasAccess = canAccessRoute(pathname, {
+      roleName: payload.roleName,
+      permissions: payload.permissions,
+    });
+
+    if (!hasAccess) {
+      const unauthorizedUrl = new URL("/dashboard/unauthorized", request.url);
+      unauthorizedUrl.searchParams.set("from", pathname);
+      return NextResponse.redirect(unauthorizedUrl);
+    }
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/dashboard"],
+  matcher: [
+    "/dashboard/:path*",
+    "/dashboard",
+    "/m/:path*",
+    "/m",
+    "/attendance/:path*",
+    "/attendance",
+  ],
 };

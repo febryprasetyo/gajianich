@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { extractCanvasFaceDescriptor } from "@/lib/attendance/faceMatcher";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import {
   ChevronLeft,
   ChevronRight,
@@ -15,6 +16,7 @@ import {
   Server,
   LogOut,
   RefreshCw,
+  Loader2,
 } from "lucide-react";
 import LogoutSheet from "@/components/mobile/LogoutSheet";
 import {
@@ -25,6 +27,8 @@ import {
 
 export default function MobileProfilePage() {
   const router = useRouter();
+  const { logout, user } = useAuth();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [summaryData, setSummaryData] = useState<MobileSummaryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFaceEnrolled, setIsFaceEnrolled] = useState(true);
@@ -58,8 +62,15 @@ export default function MobileProfilePage() {
   };
 
   useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) {
+      setIsAuthenticated(false);
+      router.replace("/login");
+      return;
+    }
+    setIsAuthenticated(true);
     loadProfile();
-  }, []);
+  }, [router]);
 
   const handleEnrollNow = () => {
     if (photoInputRef.current) {
@@ -118,12 +129,7 @@ export default function MobileProfilePage() {
 
   const handleConfirmLogout = () => {
     setIsLogoutOpen(false);
-    try {
-      localStorage.removeItem("token");
-    } catch {
-      // Ignore
-    }
-    router.push("/login");
+    logout();
   };
 
   const employeeName = summaryData?.employee.fullName || "Karyawan";
@@ -133,6 +139,15 @@ export default function MobileProfilePage() {
   const locationName = summaryData?.employee.workLocation || "Kantor Utama";
   const avatarInitial = summaryData?.employee.avatarInitial || "FP";
   const faceId = summaryData?.faceEnrollment.faceId || "BIO-CMC-089-V3";
+
+  if (isAuthenticated !== true) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center gap-3">
+        <Loader2 className="w-6 h-6 animate-spin text-[#059669]" />
+        <p className="text-xs text-slate-500 font-semibold">Memeriksa sesi login...</p>
+      </div>
+    );
+  }
 
   return (
     <main className="flex-1 flex flex-col bg-[#F8FAFC] pb-10">

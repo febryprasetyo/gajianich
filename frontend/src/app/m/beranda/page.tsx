@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import {
   Clock,
   CheckCircle2,
@@ -17,6 +18,8 @@ import {
   Clock4,
   MapPin,
   RefreshCw,
+  LogOut,
+  Loader2,
 } from "lucide-react";
 import PresensiRingButton, { AttendanceRingState } from "@/components/mobile/PresensiRingButton";
 import AttendanceMetricsCards from "@/components/mobile/AttendanceMetricsCards";
@@ -30,6 +33,8 @@ import {
 
 export default function MobileBerandaPage() {
   const router = useRouter();
+  const { logout, user } = useAuth();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [summaryData, setSummaryData] = useState<MobileSummaryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
@@ -95,8 +100,15 @@ export default function MobileBerandaPage() {
   }, []);
 
   useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) {
+      setIsAuthenticated(false);
+      router.replace("/login");
+      return;
+    }
+    setIsAuthenticated(true);
     loadSummary();
-  }, [loadSummary]);
+  }, [router, loadSummary]);
 
   const getRingStatus = (): AttendanceRingState => {
     if (!attendanceState.checkedIn) return "NOT_CHECKED_IN";
@@ -148,21 +160,22 @@ export default function MobileBerandaPage() {
   };
 
   const openRecentDetail = () => {
+    if (!summaryData) return;
     setSelectedDayDetail({
-      id: "D-RECENT",
-      dayName: "Kemarin",
-      dateStr: "21 Oktober 2026",
-      schedule: summaryData ? `${summaryData.shift.scheduleIn} – ${summaryData.shift.scheduleOut} WIB` : "08:00 – 17:00 WIB",
-      status: "TEPAT_WAKTU",
-      statusText: "Hadir Tepat Waktu",
-      checkIn: "07:52",
-      checkOut: "17:04",
-      duration: "09h 12m",
-      note: "Presensi mobile terverifikasi sistem dan disetujui HRD.",
-      serverRef: "TX-GJN-20261021-992",
-      employeeName: summaryData?.employee.fullName || "Karyawan",
-      approvalStatus: "APPROVED",
-      approvalNote: "Presensi telah diverifikasi & disetujui HRD Pusat.",
+      id: "D-TODAY",
+      dayName: "Hari Ini",
+      dateStr: summaryData.attendance.workDate,
+      schedule: `${summaryData.shift.scheduleIn} – ${summaryData.shift.scheduleOut} WIB`,
+      status: summaryData.attendance.status === "CHECKED_IN" ? "TEPAT_WAKTU" : "BELUM_ABSEN",
+      statusText: summaryData.attendance.status === "CHECKED_IN" ? "Sudah Absen Masuk" : "Belum Absen",
+      checkIn: summaryData.attendance.checkInTime || "--:--",
+      checkOut: summaryData.attendance.checkOutTime || "--:--",
+      duration: summaryData.attendance.totalHours || "--:--",
+      note: summaryData.attendance.approvalNote || "Presensi mobile mandiri.",
+      serverRef: summaryData.attendance.txHash || "-",
+      employeeName: summaryData.employee.fullName,
+      approvalStatus: summaryData.attendance.approvalStatus,
+      approvalNote: summaryData.attendance.approvalNote,
     });
   };
 
@@ -173,6 +186,15 @@ export default function MobileBerandaPage() {
   const shiftSchedule = summaryData ? `${summaryData.shift.scheduleIn} – ${summaryData.shift.scheduleOut} WIB` : "08:00 – 17:00 WIB";
   const officeLocation = summaryData?.employee.workLocation || "PT Cahaya Mas Cemerlang HQ";
 
+    if (isAuthenticated !== true) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center gap-3">
+        <Loader2 className="w-6 h-6 animate-spin text-[#059669]" />
+        <p className="text-xs text-slate-500 font-semibold">Memeriksa sesi login...</p>
+      </div>
+    );
+  }
+
   return (
     <main className="flex-1 flex flex-col bg-[#F8FAFC] pb-10">
       {/* Toast Notification */}
@@ -180,6 +202,44 @@ export default function MobileBerandaPage() {
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-sm bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-200">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span className="flex-1">{toastMessage}</span>
+        </div>
+      )}
+
+      
+      {/* Admin Notice Banner if logged in as Non-Employee */}
+      {user && user.roleName && user.roleName.toLowerCase() !== "employee" && (
+        <div className="mx-4 mt-2 mb-1 p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+            <p className="text-[11px] leading-tight">
+              Login sebagai <strong>{user.fullName || user.username}</strong> ({user.roleName})
+            </p>
+          </div>
+          <Link
+            href="/dashboard"
+            className="text-[10px] font-extrabold text-blue-700 bg-white border border-blue-300 rounded-lg px-2 py-1 shadow-2xs hover:bg-blue-100 shrink-0 transition"
+          >
+            Buka Dashboard
+          </Link>
+        </div>
+      )}
+
+      
+      {/* Admin Notice Banner if logged in as Non-Employee */}
+      {user && user.roleName && user.roleName.toLowerCase() !== "employee" && (
+        <div className="mx-4 mt-2 mb-1 p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+            <p className="text-[11px] leading-tight">
+              Login sebagai <strong>{user.fullName || user.username}</strong> ({user.roleName})
+            </p>
+          </div>
+          <Link
+            href="/dashboard"
+            className="text-[10px] font-extrabold text-blue-700 bg-white border border-blue-300 rounded-lg px-2 py-1 shadow-2xs hover:bg-blue-100 shrink-0 transition"
+          >
+            Buka Dashboard
+          </Link>
         </div>
       )}
 
@@ -208,9 +268,15 @@ export default function MobileBerandaPage() {
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-[#059669]" : ""}`} />
           </button>
-          <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-emerald-50 text-[#059669] border border-emerald-200 tracking-wider">
-            PORTAL
-          </span>
+          <button
+            type="button"
+            onClick={logout}
+            title="Keluar / Ganti Akun"
+            aria-label="Keluar akun"
+            className="w-8 h-8 rounded-full bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition active:scale-95 cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
@@ -349,29 +415,51 @@ export default function MobileBerandaPage() {
           </Link>
         </div>
 
-        <button
-          type="button"
-          onClick={openRecentDetail}
-          className="flex items-center text-left gap-2.5 w-full border border-slate-200 bg-white rounded-2xl p-3 shadow-sm hover:border-emerald-200 transition active:scale-[0.99] cursor-pointer"
-        >
-          <div className="w-10 h-11 rounded-xl bg-slate-100 flex flex-col items-center justify-center shrink-0">
-            <strong className="text-sm font-bold text-slate-900 leading-none">21</strong>
-            <small className="text-[8px] font-bold text-slate-500 uppercase mt-0.5">OKT</small>
-          </div>
-          <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <strong className="text-xs font-bold text-slate-900">Rabu, 21 Oktober</strong>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" title="Disetujui HRD" />
+        {attendanceState.checkedIn ? (
+          <button
+            type="button"
+            onClick={openRecentDetail}
+            className="flex items-center text-left gap-2.5 w-full border border-slate-200 bg-white rounded-2xl p-3 shadow-sm hover:border-emerald-200 transition active:scale-[0.99] cursor-pointer"
+          >
+            <div className="w-10 h-11 rounded-xl bg-emerald-50 border border-emerald-200 flex flex-col items-center justify-center shrink-0">
+              <strong className="text-sm font-bold text-[#059669] leading-none">
+                {summaryData?.attendance.workDate ? new Date(summaryData.attendance.workDate).getDate() : "Hari Ini"}
+              </strong>
+              <small className="text-[8px] font-bold text-[#059669] uppercase mt-0.5">PRESENSI</small>
             </div>
-            <span className="text-[10px] font-mono text-slate-500">
-              07:52 <span className="px-0.5">→</span> 17:04 (09j 12m)
+            <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <strong className="text-xs font-bold text-slate-900">
+                  {summaryData?.attendance.workDate || "Presensi Hari Ini"}
+                </strong>
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    attendanceState.approvalStatus === "APPROVED" ? "bg-emerald-500" : "bg-amber-500 animate-pulse"
+                  }`}
+                  title={attendanceState.approvalStatus}
+                />
+              </div>
+              <span className="text-[10px] font-mono text-slate-500">
+                {attendanceState.checkInTime} <span className="px-0.5">→</span> {attendanceState.checkOutTime || "--:--"} ({attendanceState.totalHours || "--:--"})
+              </span>
+            </div>
+            <span
+              className={`text-[10px] font-bold rounded-lg px-2 py-1 shrink-0 border ${
+                attendanceState.approvalStatus === "APPROVED"
+                  ? "text-[#059669] bg-emerald-50 border-emerald-200"
+                  : "text-amber-800 bg-amber-50 border-amber-200"
+              }`}
+            >
+              {attendanceState.approvalStatus === "APPROVED" ? "Disetujui" : "Menunggu HRD"}
             </span>
+            <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+          </button>
+        ) : (
+          <div className="p-4 rounded-2xl border border-slate-200 bg-white text-center space-y-1">
+            <p className="text-xs font-bold text-slate-700">Belum ada catatan presensi hari ini</p>
+            <p className="text-[11px] text-slate-500">Tekan tombol lingkaran di atas untuk merekam jam masuk Anda.</p>
           </div>
-          <span className="text-[10px] font-bold text-[#059669] bg-emerald-50 rounded-lg px-2 py-1 shrink-0 border border-emerald-200">
-            Disetujui
-          </span>
-          <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
-        </button>
+        )}
       </div>
 
       {/* Install PWA Hint */}

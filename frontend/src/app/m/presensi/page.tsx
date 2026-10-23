@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
   MoreHorizontal,
@@ -9,6 +10,7 @@ import {
   ChevronDown,
   Clock,
   RefreshCw,
+  Loader2,
   CheckCircle2,
 } from "lucide-react";
 import PresensiRingButton from "@/components/mobile/PresensiRingButton";
@@ -23,6 +25,8 @@ import {
 } from "@/lib/attendance/mobileApi";
 
 export default function MobilePresensiPage() {
+  const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [summaryData, setSummaryData] = useState<MobileSummaryData | null>(null);
   const [historyItems, setHistoryItems] = useState<MobileHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,8 +60,15 @@ export default function MobilePresensiPage() {
   }, [selectedPeriod]);
 
   useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) {
+      setIsAuthenticated(false);
+      router.replace("/login");
+      return;
+    }
+    setIsAuthenticated(true);
     loadData();
-  }, [loadData]);
+  }, [router, loadData]);
 
   const isCheckedIn = summaryData?.attendance.checkedIn ?? false;
   const isCheckedOut = summaryData?.attendance.checkedOut ?? false;
@@ -127,6 +138,15 @@ export default function MobilePresensiPage() {
   };
 
   const todayStr = summaryData?.attendance.workDate || new Date().toISOString().slice(0, 10);
+
+  if (isAuthenticated !== true) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center gap-3">
+        <Loader2 className="w-6 h-6 animate-spin text-[#059669]" />
+        <p className="text-xs text-slate-500 font-semibold">Memeriksa sesi login...</p>
+      </div>
+    );
+  }
 
   return (
     <main className="flex-1 flex flex-col bg-[#F8FAFC] pb-10">

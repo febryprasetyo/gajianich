@@ -108,10 +108,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     setToken(null);
     setUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    document.cookie = `${AUTH_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; Max-Age=0; SameSite=Lax`;
-    router.push('/login');
+    try {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      sessionStorage.clear();
+    } catch {
+      // Ignore storage errors
+    }
+    // Clear all possible cookie names and scopes
+    const expireStr = "expires=Thu, 01 Jan 1970 00:00:01 GMT; Max-Age=0; path=/;";
+    document.cookie = `${AUTH_COOKIE_NAME}=;${expireStr} SameSite=Lax`;
+    document.cookie = `token=;${expireStr} SameSite=Lax`;
+    document.cookie = `ams_prod_token=;${expireStr} SameSite=Lax`;
+    router.replace('/login');
   };
 
   const hasPermission = (permissionCode: string): boolean => {
