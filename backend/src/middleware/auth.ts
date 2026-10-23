@@ -145,6 +145,9 @@ export function requirePermission(permissionCode: string | string[]) {
         if (normRole === 'itstaff' && codes.some((c) => c === 'assets.view' || c === 'assets.assign' || c.startsWith('tickets.') || c === 'licenses.view' || c === 'hardware_audits.view' || c === 'master.view')) {
           return next();
         }
+        if ((normRole.includes('hr') || normRole.includes('attendance')) && codes.some((c) => c === 'access.users.view' || c === 'access.users.manage')) {
+          return next();
+        }
       }
 
       if (match.length === 0) {

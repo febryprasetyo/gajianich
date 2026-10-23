@@ -109,3 +109,13 @@ test('HR role with access.users.view can access /dashboard/access', () => {
 
   assert.equal(canAccessRoute('/dashboard/access', hrdUser), true);
 });
+test('access route moduleName is Manajemen Pengguna and accessible to HR', () => {
+  const rule = findMatchingRouteRule('/dashboard/access');
+  assert.equal(rule?.moduleName, 'Manajemen Pengguna');
+
+  const hrdBasic = {
+    roleName: 'HR Attendance & Time',
+    permissions: [],
+  };
+  assert.equal(canAccessRoute('/dashboard/access', hrdBasic), true);
+});

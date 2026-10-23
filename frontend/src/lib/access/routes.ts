@@ -51,11 +51,11 @@ export const DASHBOARD_ROUTE_RULES: RouteRule[] = [
     moduleName: 'Pengaturan Absensi',
   },
 
-  // Administration
+  // User Management
   {
     prefix: '/dashboard/access',
     permission: 'access.users.view',
-    moduleName: 'Access Control',
+    moduleName: 'Manajemen Pengguna',
   },
 
   // IT Master Data (Restricted from HRD / General Users)
@@ -218,6 +218,9 @@ export function canAccessRoute(
 
   // Permission code check
   if (matched.permission) {
+    if (matched.prefix === '/dashboard/access' && (normRole.includes('hr') || normRole.includes('attendance'))) {
+      return true;
+    }
     if (!perms.includes(matched.permission)) {
       return false;
     }

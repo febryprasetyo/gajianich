@@ -15,6 +15,7 @@ import RoleFormModal from '@/components/access/RoleFormModal';
 import PermissionMatrixPanel from '@/components/access/PermissionMatrixPanel';
 import {
   ShieldCheck,
+  UserRoundCog,
   Users,
   Shield,
   Loader2,
@@ -27,7 +28,7 @@ export default function AccessManagementPage() {
   const { user: currentUser } = useAuth();
 
   const normRole = (currentUser?.roleName || (currentUser as any)?.role || "").toLowerCase().replace(/[\s_-]+/g, "");
-  const isHrd = normRole === "hrattendance" || normRole === "hrd";
+  const isHrd = normRole === "hrattendance" || normRole === "hrd" || normRole.includes("hr") || normRole.includes("attendance");
   const canManageRoles = Boolean(
     currentUser?.permissions?.includes("*") ||
     currentUser?.permissions?.includes("access.roles.manage")
@@ -257,14 +258,16 @@ export default function AccessManagementPage() {
         <div>
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
-              <ShieldCheck className="w-5 h-5" />
+              <UserRoundCog className="w-5 h-5" />
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                Access & Role Management
+                Manajemen Pengguna
               </h1>
               <p className="text-xs text-slate-500 mt-0.5">
-                Manage system user accounts, roles, and modular permission matrix
+                {isHrd
+                  ? 'Kelola akun pengguna karyawan dan status akses absensi'
+                  : 'Kelola akun pengguna, hak akses role, dan matriks wewenang'}
               </p>
             </div>
           </div>
@@ -292,7 +295,7 @@ export default function AccessManagementPage() {
           }`}
         >
           <Users className="w-4 h-4" />
-          <span>Users Directory</span>
+          <span>Daftar Pengguna</span>
           <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
             {users.length}
           </span>
@@ -309,7 +312,7 @@ export default function AccessManagementPage() {
             }`}
           >
             <Shield className="w-4 h-4" />
-            <span>Roles & Permissions Matrix</span>
+            <span>Role & Hak Akses</span>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
               {roles.length}
             </span>

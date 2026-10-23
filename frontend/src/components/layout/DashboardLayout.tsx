@@ -98,6 +98,7 @@ export const navGroups: NavGroup[] = [
           { name: 'Karyawan Absensi', href: '/dashboard/attendance/master/employees', icon: Users, permission: 'attendance.view' },
           { name: 'Departemen Absensi', href: '/dashboard/attendance/master/departments', icon: Building2, permission: 'attendance.view' },
           { name: 'Shift & Jam Kerja', href: '/dashboard/attendance/master/shifts', icon: Clock, permission: 'attendance.view' },
+          { name: 'Akun Pengguna', href: '/dashboard/access', icon: UserRoundCog, permission: 'access.users.view' },
           { name: 'Pengaturan Absensi', href: '/dashboard/attendance/settings', icon: Settings, permission: 'attendance.manage', adminOnly: true },
         ],
       },
@@ -146,9 +147,9 @@ export const navGroups: NavGroup[] = [
     ],
   },
   {
-    title: 'Administration',
+    title: 'Pengguna & Akses',
     items: [
-      { name: 'Access Control', href: '/dashboard/access', icon: ShieldCheck, permission: 'access.users.view' },
+      { name: 'Manajemen Pengguna', href: '/dashboard/access', icon: UserRoundCog, permission: 'access.users.view' },
     ],
   },
 ];
@@ -167,7 +168,7 @@ const ROUTE_PERMISSION_MAP: { prefix: string; permission: string; moduleName: st
   { prefix: '/dashboard/leaves/balances', permission: 'attendance.view', moduleName: 'Leave Balances' },
   { prefix: '/dashboard/leaves', permission: 'attendance.view', moduleName: 'Leave Requests' },
   { prefix: '/dashboard/master', permission: 'master.view', moduleName: 'Master Data' },
-  { prefix: '/dashboard/access', permission: 'access.users.view', moduleName: 'Access Control' },
+  { prefix: '/dashboard/access', permission: 'access.users.view', moduleName: 'Manajemen Pengguna' },
   { prefix: '/dashboard/employee/overview', permission: '', moduleName: 'Employee Workspace' },
   { prefix: '/dashboard/management/overview', permission: '', moduleName: 'Management Workspace' },
   { prefix: '/dashboard/welcome', permission: '', moduleName: 'Welcome Overview' },
@@ -228,6 +229,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const normRole = (user.roleName || (user as { role?: string }).role || '').toLowerCase().replace(/[\s_-]+/g, '');
     if (normRole === 'superadmin' || user.permissions?.includes('*')) return true;
 
+    if (subItem.href === '/dashboard/access') {
+      return Boolean(
+        normRole === 'admin' ||
+        normRole === 'superadmin' ||
+        normRole.includes('hr') ||
+        normRole.includes('attendance') ||
+        user.permissions?.includes('access.users.view') ||
+        user.permissions?.includes('access.roles.manage')
+      );
+    }
+
     if (subItem.adminOnly && !canManageCustodians(user.roleName)) return false;
 
     if (subItem.permission) {
@@ -248,6 +260,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (item.href === '/dashboard/access') {
       return Boolean(
         normRole === 'admin' ||
+        normRole === 'superadmin' ||
+        normRole.includes('hr') ||
+        normRole.includes('attendance') ||
         user.permissions?.includes('access.users.view') ||
         user.permissions?.includes('access.roles.manage')
       );

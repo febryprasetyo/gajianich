@@ -16,6 +16,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { BRAND_NAME, BRAND_TAGLINE } from '@/lib/gajianichBrand';
+import { getDefaultRedirectForUser } from "@/lib/access/routes";
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -74,9 +75,9 @@ export default function LoginPage() {
           if (isEmployee) {
             router.push('/m/beranda');
           } else if (roleName.includes("hr") && !roleName.includes("it")) {
-            router.push('/attendance');
+            router.push("/dashboard/attendance/overview");
           } else {
-            router.push('/dashboard');
+            router.push(getDefaultRedirectForUser(formattedUser));
           }
         }
       } else {
