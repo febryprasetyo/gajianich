@@ -1,7 +1,7 @@
 export interface UserItem {
   id: number;
   username: string;
-  email: string;
+  email?: string;
   roleId: number | null;
   role: string;
   employeeId: number | null;

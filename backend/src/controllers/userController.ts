@@ -10,7 +10,7 @@ import { generateSecureTemporaryPassword, validatePasswordStrength } from '../do
 
 const createUserSchema = z.object({
   username: z.string().min(3).max(100),
-  email: z.string().email().max(255),
+  email: z.string().email().max(255).optional().or(z.literal("")),
   password: z.string().optional(),
   roleId: z.number().int().positive(),
   employeeId: z.number().int().positive().nullable().optional(),
@@ -19,7 +19,7 @@ const createUserSchema = z.object({
 
 const updateUserSchema = z.object({
   username: z.string().min(3).max(100),
-  email: z.string().email().max(255),
+  email: z.string().email().max(255).optional().or(z.literal("")),
   roleId: z.number().int().positive(),
   employeeId: z.number().int().positive().nullable().optional(),
   status: z.enum(['active', 'inactive']).optional(),
@@ -85,11 +85,30 @@ export async function getUsers(req: AuthenticatedRequest, res: Response) {
 export async function createUser(req: AuthenticatedRequest, res: Response) {
   try {
     const parsed = createUserSchema.parse(req.body);
+    const cleanUsername = parsed.username.trim();
+
+    // Determine email (fallback to employee email or @ams.internal)
+    let finalEmail = parsed.email?.trim() || "";
+    if (!finalEmail) {
+      if (parsed.employeeId) {
+        const emp = (await db.select().from(employees).where(eq(employees.id, parsed.employeeId)).limit(1))[0];
+        if (emp?.email) {
+          finalEmail = emp.email.trim();
+        }
+      }
+      if (!finalEmail) {
+        finalEmail = `${cleanUsername.toLowerCase()}@ams.internal`;
+      }
+    }
 
     // Check duplicate email
-    const existingEmail = await db.select().from(users).where(eq(users.email, parsed.email)).limit(1);
+    let existingEmail = await db.select().from(users).where(eq(users.email, finalEmail)).limit(1);
     if (existingEmail.length > 0) {
-      return res.status(400).json({ error: 'User with this email already exists' });
+      if (!parsed.email?.trim()) {
+        finalEmail = `${cleanUsername.toLowerCase()}.${Date.now()}@ams.internal`;
+      } else {
+        return res.status(400).json({ error: 'User with this email already exists' });
+      }
     }
 
     // Check duplicate username
@@ -128,7 +147,7 @@ export async function createUser(req: AuthenticatedRequest, res: Response) {
       .insert(users)
       .values({
         username: parsed.username,
-        email: parsed.email,
+        email: finalEmail,
         passwordHash,
         mustChangePassword: true,
         roleId: parsed.roleId,
@@ -174,15 +193,33 @@ export async function updateUser(req: AuthenticatedRequest, res: Response) {
     }
 
     const parsed = updateUserSchema.parse(req.body);
+    const cleanUsername = parsed.username.trim();
+
+    let finalEmail = parsed.email?.trim() || existingUser.email;
+    if (!finalEmail) {
+      if (parsed.employeeId) {
+        const emp = (await db.select().from(employees).where(eq(employees.id, parsed.employeeId)).limit(1))[0];
+        if (emp?.email) {
+          finalEmail = emp.email.trim();
+        }
+      }
+      if (!finalEmail) {
+        finalEmail = `${cleanUsername.toLowerCase()}@ams.internal`;
+      }
+    }
 
     // Check duplicate email
     const duplicateEmail = await db
       .select()
       .from(users)
-      .where(and(eq(users.email, parsed.email), ne(users.id, userId)))
+      .where(and(eq(users.email, finalEmail), ne(users.id, userId)))
       .limit(1);
     if (duplicateEmail.length > 0) {
-      return res.status(400).json({ error: 'Email is already used by another user' });
+      if (!parsed.email?.trim()) {
+        finalEmail = `${cleanUsername.toLowerCase()}.${Date.now()}@ams.internal`;
+      } else {
+        return res.status(400).json({ error: 'Email is already used by another user' });
+      }
     }
 
     // Check duplicate username
@@ -221,7 +258,7 @@ export async function updateUser(req: AuthenticatedRequest, res: Response) {
       .update(users)
       .set({
         username: parsed.username,
-        email: parsed.email,
+        email: finalEmail,
         roleId: parsed.roleId,
         role: targetRole.name,
         employeeId: parsed.employeeId || null,

@@ -80,14 +80,16 @@ export default function TemporaryPasswordModal({
             </p>
           </div>
 
-          <div>
-            <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-semibold block mb-0.5">
-              Email
-            </span>
-            <p className="text-xs font-mono text-slate-700 bg-white px-3 py-1.5 rounded-lg border border-slate-200/80">
-              {data.email}
-            </p>
-          </div>
+          {data.email && !data.email.endsWith("@ams.internal") && (
+            <div>
+              <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-semibold block mb-0.5">
+                Email
+              </span>
+              <p className="text-xs font-mono text-slate-700 bg-white px-3 py-1.5 rounded-lg border border-slate-200/80">
+                {data.email}
+              </p>
+            </div>
+          )}
 
           <div>
             <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-semibold block mb-1">

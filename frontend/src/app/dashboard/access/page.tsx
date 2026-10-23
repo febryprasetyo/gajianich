@@ -68,13 +68,13 @@ export default function AccessManagementPage() {
           permissions: [],
           modules: [],
         })),
-        api.get<{ employees: any[] }>('/employees').catch(() => ({ employees: [] })),
+        api.get<any>('/employees').catch(() => []),
       ]);
 
       const loadedUsers = usersRes.users || [];
       const loadedRoles = rolesRes.roles || [];
       const loadedModules = permsRes.modules || [];
-      const loadedEmployees = employeesRes.employees || [];
+      const loadedEmployees = Array.isArray(employeesRes) ? employeesRes : ((employeesRes as any)?.employees || (employeesRes as any)?.data || []);
 
       setUsers(loadedUsers);
       setRoles(loadedRoles);
@@ -110,7 +110,7 @@ export default function AccessManagementPage() {
         if (res?.temporaryPassword) {
           setTemporaryPasswordData({
             username: formData.username,
-            email: formData.email,
+            email: res?.user?.email || formData.email || '',
             temporaryPassword: res.temporaryPassword,
             isReset: false,
           });
@@ -141,7 +141,7 @@ export default function AccessManagementPage() {
       if (res?.temporaryPassword && targetUser) {
         setTemporaryPasswordData({
           username: targetUser.username,
-          email: targetUser.email,
+          email: targetUser.email || "",
           temporaryPassword: res.temporaryPassword,
           isReset: true,
         });
