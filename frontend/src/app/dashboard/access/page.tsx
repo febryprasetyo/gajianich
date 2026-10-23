@@ -26,6 +26,13 @@ import {
 export default function AccessManagementPage() {
   const { user: currentUser } = useAuth();
 
+  const normRole = (currentUser?.roleName || (currentUser as any)?.role || "").toLowerCase().replace(/[\s_-]+/g, "");
+  const isHrd = normRole === "hrattendance" || normRole === "hrd";
+  const canManageRoles = Boolean(
+    currentUser?.permissions?.includes("*") ||
+    currentUser?.permissions?.includes("access.roles.manage")
+  );
+
   const [activeTab, setActiveTab] = useState<'users' | 'roles'>('users');
   const [users, setUsers] = useState<UserItem[]>([]);
   const [roles, setRoles] = useState<RoleItem[]>([]);
@@ -61,15 +68,26 @@ export default function AccessManagementPage() {
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [usersRes, rolesRes, permsRes, employeesRes] = await Promise.all([
+      const promises: [Promise<any>, Promise<any>, Promise<any>, Promise<any>?] = [
         api.get<{ users: UserItem[] }>('/users').catch(() => ({ users: [] })),
         api.get<{ roles: RoleItem[] }>('/roles').catch(() => ({ roles: [] })),
-        api.get<{ permissions: PermissionItem[]; modules: ModuleGroup[] }>('/roles/permissions').catch(() => ({
-          permissions: [],
-          modules: [],
-        })),
         api.get<any>('/employees').catch(() => []),
-      ]);
+      ];
+
+      if (canManageRoles) {
+        promises.push(
+          api.get<{ permissions: PermissionItem[]; modules: ModuleGroup[] }>('/roles/permissions').catch(() => ({
+            permissions: [],
+            modules: [],
+          }))
+        );
+      }
+
+      const results = await Promise.all(promises);
+      const usersRes = results[0];
+      const rolesRes = results[1];
+      const employeesRes = results[2];
+      const permsRes = canManageRoles && results[3] ? results[3] : { permissions: [], modules: [] };
 
       const loadedUsers = usersRes.users || [];
       const loadedRoles = rolesRes.roles || [];
@@ -280,21 +298,23 @@ export default function AccessManagementPage() {
           </span>
         </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('roles')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer ${
-            activeTab === 'roles'
-              ? 'border-emerald-600 text-emerald-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <Shield className="w-4 h-4" />
-          <span>Roles & Permissions Matrix</span>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-            {roles.length}
-          </span>
-        </button>
+        {canManageRoles && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('roles')}
+            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer ${
+              activeTab === 'roles'
+                ? 'border-emerald-600 text-emerald-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Shield className="w-4 h-4" />
+            <span>Roles & Permissions Matrix</span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+              {roles.length}
+            </span>
+          </button>
+        )}
       </div>
 
       {/* Content based on Active Tab */}
@@ -303,7 +323,7 @@ export default function AccessManagementPage() {
           <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
           <p className="text-xs text-slate-500 font-medium">Loading access control configuration...</p>
         </div>
-      ) : activeTab === 'users' ? (
+      ) : (activeTab === 'users' || !canManageRoles) ? (
         <div className="space-y-6">
           <UserStatsCard users={users} roles={roles} />
           <UserTable
@@ -365,6 +385,7 @@ export default function AccessManagementPage() {
         roles={roles}
         employees={employees}
         initialData={editingUser}
+        isHrd={isHrd}
       />
 
       {/* Reset Password Modal */}

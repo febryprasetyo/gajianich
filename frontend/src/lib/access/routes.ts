@@ -55,7 +55,6 @@ export const DASHBOARD_ROUTE_RULES: RouteRule[] = [
   {
     prefix: '/dashboard/access',
     permission: 'access.users.view',
-    adminOnly: true,
     moduleName: 'Access Control',
   },
 

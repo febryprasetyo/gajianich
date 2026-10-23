@@ -66,7 +66,7 @@ export async function login(req: AuthenticatedRequest, res: Response) {
 
     const token = generateToken({
       userId: user.id,
-      email: user.email,
+      email: user.email || "",
       username: user.username,
       roleId: userRoleId ?? 0,
       roleName: user.role,
@@ -81,7 +81,7 @@ export async function login(req: AuthenticatedRequest, res: Response) {
       user: {
         id: user.id,
         username: user.username,
-        email: user.email,
+        email: user.email || "",
         fullName: user.username,
         roleId: userRoleId ?? undefined,
         roleName: user.role,
@@ -136,7 +136,7 @@ export async function changePassword(req: AuthenticatedRequest, res: Response) {
 
     const token = generateToken({
       userId: user.id,
-      email: user.email,
+      email: user.email || "",
       username: user.username,
       roleId: user.roleId ?? 0,
       roleName: user.role,
@@ -151,7 +151,7 @@ export async function changePassword(req: AuthenticatedRequest, res: Response) {
       user: {
         id: user.id,
         username: user.username,
-        email: user.email,
+        email: user.email || "",
         fullName: user.username,
         roleId: user.roleId ?? undefined,
         roleName: user.role,

@@ -12,6 +12,7 @@ import {
   Check,
   ChevronDown,
   UserX,
+  Shield,
 } from "lucide-react";
 
 interface UserFormModalProps {
@@ -22,6 +23,7 @@ interface UserFormModalProps {
   employees?: any[];
   initialData?: UserItem | null;
   isLoading?: boolean;
+  isHrd?: boolean;
 }
 
 export default function UserFormModal({
@@ -32,11 +34,27 @@ export default function UserFormModal({
   employees = [],
   initialData = null,
   isLoading = false,
+  isHrd = false,
 }: UserFormModalProps) {
   const isEdit = Boolean(initialData);
 
+  const defaultEmployeeRole = useMemo(() => {
+    return (
+      roles.find(
+        (r) => r.code === "employee" || r.name.toLowerCase() === "employee"
+      ) || roles[0]
+    );
+  }, [roles]);
+
+  const availableRoles = useMemo(() => {
+    if (isHrd && defaultEmployeeRole) {
+      return [defaultEmployeeRole];
+    }
+    return roles;
+  }, [isHrd, defaultEmployeeRole, roles]);
+
   const [username, setUsername] = useState("");
-  const [roleId, setRoleId] = useState<number>(roles[0]?.id || 1);
+  const [roleId, setRoleId] = useState<number>(defaultEmployeeRole?.id || 1);
   const [employeeId, setEmployeeId] = useState<number | null>(null);
   const [status, setStatus] = useState<"active" | "inactive">("active");
   const [error, setError] = useState<string | null>(null);
@@ -49,19 +67,19 @@ export default function UserFormModal({
   useEffect(() => {
     if (initialData) {
       setUsername(initialData.username);
-      setRoleId(initialData.roleId || roles[0]?.id || 1);
+      setRoleId(initialData.roleId || defaultEmployeeRole?.id || roles[0]?.id || 1);
       setEmployeeId(initialData.employeeId || null);
       setStatus(initialData.status);
     } else {
       setUsername("");
-      setRoleId(roles[0]?.id || 1);
+      setRoleId(defaultEmployeeRole?.id || roles[0]?.id || 1);
       setEmployeeId(null);
       setStatus("active");
     }
     setError(null);
     setIsEmployeePickerOpen(false);
     setEmployeeSearchQuery("");
-  }, [initialData, roles, isOpen]);
+  }, [initialData, roles, defaultEmployeeRole, isOpen]);
 
   // Close employee picker when clicking outside
   useEffect(() => {
@@ -104,7 +122,7 @@ export default function UserFormModal({
     setEmployeeId(emp.id);
     setIsEmployeePickerOpen(false);
 
-    // Auto-fill username if blank
+    // Auto-fill clean username if blank
     if (!username.trim()) {
       const autoUser = (emp.fullName || "")
         .toLowerCase()
@@ -114,14 +132,9 @@ export default function UserFormModal({
       setUsername(autoUser);
     }
 
-    // Auto-select "Employee" role if creating and role is not yet customized
-    if (!isEdit) {
-      const employeeRole = roles.find(
-        (r) => r.code === "employee" || r.name.toLowerCase() === "employee"
-      );
-      if (employeeRole) {
-        setRoleId(employeeRole.id);
-      }
+    // Default to Employee role on create
+    if (!isEdit && defaultEmployeeRole) {
+      setRoleId(defaultEmployeeRole.id);
     }
   };
 
@@ -130,21 +143,20 @@ export default function UserFormModal({
     setError(null);
 
     if (!username.trim()) {
-      setError("Username wajib diisi");
+      setError("Username wajib ditentukan");
       return;
     }
 
     try {
       await onSubmit({
         username: username.trim(),
-        email: initialData?.email || "",
         roleId: Number(roleId),
         employeeId: employeeId ? Number(employeeId) : null,
         status,
       });
       onClose();
     } catch (err: any) {
-      setError(err?.message || "Gagal menyimpan akun pengguna");
+      setError(err?.message || (isEdit ? "Gagal memperbarui user" : "Gagal membuat user"));
     }
   };
 
@@ -152,11 +164,11 @@ export default function UserFormModal({
     <ModalShell
       isOpen={isOpen}
       onClose={onClose}
-      title={isEdit ? "Edit Akun Pengguna" : "Tambah Akun Pengguna Baru"}
+      title={isEdit ? "Edit Pengguna" : "Registrasi Pengguna Baru"}
       subtitle={
         isEdit
-          ? "Perbarui detail akun, penetapan role, dan tautan karyawan"
-          : "Lengkapi kredensial akun dan tautkan ke karyawan"
+          ? "Perbarui konfigurasi akun dan profil karyawan"
+          : "Daftarkan akun login baru yang terintegrasi dengan data master karyawan"
       }
       icon={
         isEdit ? (
@@ -165,15 +177,13 @@ export default function UserFormModal({
           <UserPlus className="w-5 h-5 text-emerald-600" />
         )
       }
-      maxWidthClass="max-w-lg"
-      isLoading={isLoading}
+      maxWidthClass="max-w-md"
       footer={
-        <>
+        <div className="flex items-center justify-end gap-2.5">
           <button
             type="button"
             onClick={onClose}
-            disabled={isLoading}
-            className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
+            className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer"
           >
             Batal
           </button>
@@ -181,49 +191,43 @@ export default function UserFormModal({
             type="submit"
             form="user-form"
             disabled={isLoading}
-            className="px-4 py-2 text-xs font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            className="px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
           >
             {isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-            <span>{isEdit ? "Simpan Perubahan" : "Buat Akun Pengguna"}</span>
+            <span>{isEdit ? "Simpan Perubahan" : "Daftarkan Pengguna"}</span>
           </button>
-        </>
+        </div>
       }
     >
       <form id="user-form" onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="p-3 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl">
+          <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs">
             {error}
           </div>
         )}
 
-        {/* Linked Employee Picker with Live Filter */}
-        <div className="relative" ref={pickerRef}>
-          <div className="flex items-center justify-between mb-1">
-            <label className="block text-xs font-semibold text-slate-700">
-              Tautkan Karyawan <span className="text-slate-400 font-normal">(Opsional / Presensi Mobile)</span>
-            </label>
-            {selectedEmployee && (
-              <button
-                type="button"
-                onClick={() => handleSelectEmployee(null)}
-                className="text-[11px] text-rose-600 hover:text-rose-700 font-medium transition cursor-pointer"
-              >
-                Hapus Tautan
-              </button>
-            )}
-          </div>
+        {/* 1. Pilih Profil Karyawan (Master Data) */}
+        <div ref={pickerRef} className="relative">
+          <label className="block text-xs font-semibold text-slate-700 mb-1">
+            Data Karyawan (Master Data){" "}
+            <span className="text-slate-400 font-normal">(Rekomendasi)</span>
+          </label>
 
-          {selectedEmployee ? (
-            <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => setIsEmployeePickerOpen((prev) => !prev)}
+            className="w-full px-3.5 py-2.5 text-xs text-left bg-white border border-slate-200 rounded-xl hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition flex items-center justify-between cursor-pointer"
+          >
+            {selectedEmployee ? (
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center shrink-0 border border-emerald-300">
+                <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[10px] shrink-0">
                   {selectedEmployee.fullName?.[0]?.toUpperCase() || "K"}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-bold text-slate-900 truncate">
+                  <p className="font-bold text-slate-900 truncate">
                     {selectedEmployee.fullName}
                   </p>
-                  <p className="text-[11px] text-slate-600 truncate font-mono">
+                  <p className="text-[10px] text-slate-500 truncate font-mono">
                     NIK: {selectedEmployee.employeeCode}{" "}
                     {selectedEmployee.departmentName
                       ? `• ${selectedEmployee.departmentName}`
@@ -231,36 +235,16 @@ export default function UserFormModal({
                   </p>
                 </div>
               </div>
+            ) : (
+              <div className="flex items-center gap-2 text-slate-400">
+                <Search className="w-3.5 h-3.5" />
+                <span>Pilih karyawan dari master data...</span>
+              </div>
+            )}
+            <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
+          </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setIsEmployeePickerOpen(true);
-                  setEmployeeSearchQuery("");
-                }}
-                className="px-2.5 py-1.5 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 bg-white border border-emerald-200 rounded-lg shadow-2xs hover:bg-emerald-50 transition cursor-pointer shrink-0"
-              >
-                Ganti
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                setIsEmployeePickerOpen(!isEmployeePickerOpen);
-                setEmployeeSearchQuery("");
-              }}
-              className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white text-left flex items-center justify-between text-slate-500 hover:border-slate-300 transition cursor-pointer"
-            >
-              <span className="flex items-center gap-2 truncate">
-                <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <span>Pilih atau ketik nama karyawan / NIK...</span>
-              </span>
-              <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
-            </button>
-          )}
-
-          {/* Dropdown with Search Filter */}
+          {/* Autocomplete Dropdown Panel */}
           {isEmployeePickerOpen && (
             <div className="absolute z-50 left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden animate-in fade-in-0 zoom-in-95 duration-100">
               <div className="p-2 border-b border-slate-100 bg-slate-50/70">
@@ -278,29 +262,31 @@ export default function UserFormModal({
               </div>
 
               <div className="max-h-56 overflow-y-auto divide-y divide-slate-100 p-1">
-                {/* Option to clear link */}
-                <button
-                  type="button"
-                  onClick={() => handleSelectEmployee(null)}
-                  className={`w-full px-3 py-2 text-left text-xs rounded-lg transition flex items-center justify-between cursor-pointer ${
-                    !employeeId
-                      ? "bg-slate-100 text-slate-900 font-bold"
-                      : "text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <UserX className="w-3.5 h-3.5 text-slate-400" />
-                    <div>
-                      <p className="font-semibold text-slate-800">
-                        Tanpa Tautan Karyawan (Akun Sistem / Mandiri)
-                      </p>
-                      <p className="text-[10px] text-slate-400">
-                        Akun independen tanpa integrasi presensi mobile
-                      </p>
+                {/* Opsi tanpa tautan karyawan (khusus akun sistem jika admin) */}
+                {!isHrd && (
+                  <button
+                    type="button"
+                    onClick={() => handleSelectEmployee(null)}
+                    className={`w-full px-3 py-2 text-left text-xs rounded-lg transition flex items-center justify-between cursor-pointer ${
+                      !employeeId
+                        ? "bg-slate-100 text-slate-900 font-bold"
+                        : "text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <UserX className="w-3.5 h-3.5 text-slate-400" />
+                      <div>
+                        <p className="font-semibold text-slate-800">
+                          Tanpa Tautan Karyawan (Akun Sistem Mandiri)
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          Akun independen tanpa integrasi master data
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  {!employeeId && <Check className="w-4 h-4 text-emerald-600" />}
-                </button>
+                    {!employeeId && <Check className="w-4 h-4 text-emerald-600" />}
+                  </button>
+                )}
 
                 {/* Filtered employee list */}
                 {filteredEmployees.length === 0 ? (
@@ -357,7 +343,7 @@ export default function UserFormModal({
           </p>
         </div>
 
-        {/* Username */}
+        {/* 2. Menentukan Username */}
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1">
             Username <span className="text-red-500">*</span>
@@ -375,38 +361,58 @@ export default function UserFormModal({
           </p>
         </div>
 
-        {/* Automatic Temporary Password Info (only on create) */}
+        {/* Info Temporary Password Otomatis */}
         {!isEdit && (
-          <div className="p-3 bg-red-50/70 border border-red-200/80 rounded-xl text-red-900 text-xs flex items-start gap-2.5">
-            <KeyRound className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+          <div className="p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl text-emerald-950 text-xs flex items-start gap-2.5">
+            <KeyRound className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
             <div className="text-[11px] leading-relaxed">
-              <span className="font-semibold text-red-800">
+              <span className="font-semibold text-emerald-900">
                 Temporary Password Otomatis:
               </span>{" "}
-              Sistem akan otomatis membuatkan password temporary acak yang aman (huruf, angka & simbol). Password tersebut akan ditampilkan setelah akun dibuat untuk disalin.
+              Sistem akan otomatis membuatkan password temporary acak yang aman. Password akan ditampilkan setelah akun dibuat untuk disalin.
             </div>
           </div>
         )}
 
-        {/* Role Selection */}
+        {/* 3. Role Assignment (Default: Employee) */}
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Role Assignment <span className="text-red-500">*</span>
+          <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+            <span>
+              Peran Akun (Role) <span className="text-red-500">*</span>
+            </span>
+            {isHrd && (
+              <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-medium flex items-center gap-1 border border-emerald-200">
+                <Shield className="w-3 h-3" />
+                Khusus Karyawan
+              </span>
+            )}
           </label>
           <select
             value={roleId}
+            disabled={isHrd}
             onChange={(e) => setRoleId(Number(e.target.value))}
-            className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
+            className={`w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white ${
+              isHrd ? "opacity-90 bg-slate-50 cursor-not-allowed" : ""
+            }`}
           >
-            {roles.map((r) => (
+            {availableRoles.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.name} ({r.code}) {r.isSystem ? "• System" : ""}
               </option>
             ))}
           </select>
+          {isHrd ? (
+            <p className="text-[10px] text-slate-400 mt-1">
+              Sebagai HRD, Anda hanya berwenang mendaftarkan dan mengelola akun dengan role Employee.
+            </p>
+          ) : (
+            <p className="text-[10px] text-slate-400 mt-1">
+              Default peran untuk pengguna reguler adalah Employee.
+            </p>
+          )}
         </div>
 
-        {/* Status */}
+        {/* 4. Status Akun (Default: Active) */}
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1.5">
             Status Akun
@@ -421,7 +427,7 @@ export default function UserFormModal({
                 onChange={() => setStatus("active")}
                 className="text-emerald-600 focus:ring-emerald-500"
               />
-              Aktif
+              Aktif (Active)
             </label>
             <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-700 font-medium">
               <input
@@ -432,7 +438,7 @@ export default function UserFormModal({
                 onChange={() => setStatus("inactive")}
                 className="text-emerald-600 focus:ring-emerald-500"
               />
-              Nonaktif
+              Nonaktif (Inactive)
             </label>
           </div>
         </div>

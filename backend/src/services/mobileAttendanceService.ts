@@ -148,7 +148,7 @@ export async function getMobileTodaySummary(userId: number, targetDb = db) {
   const shifts = await targetDb.select().from(attendanceShifts);
   const assignments = await targetDb.select().from(attendanceShiftAssignments);
 
-  const activeShift = resolveEmployeeShift(employee, shifts, assignments) || DEFAULT_OFFICE_SHIFT;
+  const activeShift = resolveEmployeeShift(employee, shifts as any, assignments as any) || DEFAULT_OFFICE_SHIFT;
   const dailySchedule = getWorkingScheduleForDate(workDate, activeShift);
   const shiftCategory = determineShiftCategory(activeShift);
 
@@ -272,7 +272,7 @@ export async function recordMobileClock(
   // Load shifts to evaluate schedule & verification rules
   const shifts = await targetDb.select().from(attendanceShifts);
   const assignments = await targetDb.select().from(attendanceShiftAssignments);
-  const activeShift = resolveEmployeeShift(employee, shifts, assignments) || DEFAULT_OFFICE_SHIFT;
+  const activeShift = resolveEmployeeShift(employee, shifts as any, assignments as any) || DEFAULT_OFFICE_SHIFT;
   const dailySchedule = getWorkingScheduleForDate(workDate, activeShift);
   const shiftCategory = determineShiftCategory(activeShift);
 
@@ -617,7 +617,7 @@ export async function updateFaceEnrollment(
   if (payload.samplePhotoBase64) {
     try {
       const saved = await saveAttendancePhoto(payload.samplePhotoBase64, `FACE-REF-${employee.id}`);
-      samplePhotoUrl = saved.photoUrl;
+      samplePhotoUrl = (saved as any).photoUrl;
     } catch {
       // Photo save fallback
     }

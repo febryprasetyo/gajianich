@@ -30,7 +30,7 @@ export const rolePermissions = pgTable('role_permissions', {
 export const users = pgTable('users', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
   username: varchar('username', { length: 100 }).notNull().unique(),
-  email: varchar('email', { length: 255 }).notNull().unique(),
+  email: varchar('email', { length: 255 }).unique(),
   passwordHash: varchar('password_hash', { length: 255 }).notNull(),
   mustChangePassword: boolean('must_change_password').default(false).notNull(),
   roleId: bigint('role_id', { mode: 'number' }).references(() => roles.id),

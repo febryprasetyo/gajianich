@@ -52,7 +52,8 @@ export default function UserTable({
       const matchesSearch =
         u.username.toLowerCase().includes(search.toLowerCase()) ||
         (u.email || "").toLowerCase().includes(search.toLowerCase()) ||
-        (u.employeeName && u.employeeName.toLowerCase().includes(search.toLowerCase()));
+        (u.employeeName && u.employeeName.toLowerCase().includes(search.toLowerCase())) ||
+        (u.employeeCode && u.employeeCode.toLowerCase().includes(search.toLowerCase()));
 
       const matchesRole =
         selectedRole === 'all' ||

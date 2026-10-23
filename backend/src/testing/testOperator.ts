@@ -17,7 +17,7 @@ export async function createTestOperator() {
 
   return {
     userId: user.id,
-    email: user.email,
+    email: user.email || "",
     token(roleName = 'SuperAdmin') {
       return generateToken({ userId: user.id, email: user.email, roleId: user.id, roleName });
     },

@@ -43,7 +43,7 @@ export interface ModuleGroup {
 
 export interface UserFormData {
   username: string;
-  email: string;
+  email?: string;
   password?: string;
   roleId: number;
   employeeId?: number | null;

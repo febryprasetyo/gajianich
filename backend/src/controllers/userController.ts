@@ -10,7 +10,7 @@ import { generateSecureTemporaryPassword, validatePasswordStrength } from '../do
 
 const createUserSchema = z.object({
   username: z.string().min(3).max(100),
-  email: z.string().email().max(255).optional().or(z.literal("")),
+  email: z.string().email().max(255).optional().or(z.literal("")).nullable(),
   password: z.string().optional(),
   roleId: z.number().int().positive(),
   employeeId: z.number().int().positive().nullable().optional(),
@@ -19,7 +19,7 @@ const createUserSchema = z.object({
 
 const updateUserSchema = z.object({
   username: z.string().min(3).max(100),
-  email: z.string().email().max(255).optional().or(z.literal("")),
+  email: z.string().email().max(255).optional().or(z.literal("")).nullable(),
   roleId: z.number().int().positive(),
   employeeId: z.number().int().positive().nullable().optional(),
   status: z.enum(['active', 'inactive']).optional(),
@@ -32,6 +32,11 @@ const toggleStatusSchema = z.object({
 const resetPasswordSchema = z.object({
   newPassword: z.string().optional(),
 }).optional();
+
+export function isCallerHrd(req: AuthenticatedRequest): boolean {
+  const normRole = (req.user?.roleName || '').toLowerCase().replace(/[\s_-]+/g, '');
+  return normRole === 'hrattendance' || normRole === 'hrd';
+}
 
 async function isLastActiveSuperAdmin(userId: number): Promise<boolean> {
   // Count how many active users have SuperAdmin role or role.code === 'super_admin'
@@ -53,7 +58,8 @@ async function isLastActiveSuperAdmin(userId: number): Promise<boolean> {
 
 export async function getUsers(req: AuthenticatedRequest, res: Response) {
   try {
-    const userRows = await db
+    const isHrd = isCallerHrd(req);
+    const query = db
       .select({
         id: users.id,
         username: users.username,
@@ -73,8 +79,11 @@ export async function getUsers(req: AuthenticatedRequest, res: Response) {
       })
       .from(users)
       .leftJoin(roles, eq(users.roleId, roles.id))
-      .leftJoin(employees, eq(users.employeeId, employees.id))
-      .orderBy(users.id);
+      .leftJoin(employees, eq(users.employeeId, employees.id));
+
+    const userRows = isHrd
+      ? await query.where(eq(roles.code, 'employee')).orderBy(users.id)
+      : await query.orderBy(users.id);
 
     return res.status(200).json({ users: userRows });
   } catch (err: any) {
@@ -123,6 +132,11 @@ export async function createUser(req: AuthenticatedRequest, res: Response) {
       return res.status(400).json({ error: 'Selected role does not exist' });
     }
 
+    // HRD scope restriction: HRD can only create Employee user accounts
+    if (isCallerHrd(req) && targetRole.code !== 'employee') {
+      return res.status(403).json({ error: 'Forbidden: HRD is only permitted to create Employee user accounts' });
+    }
+
     // Check employee if provided
     if (parsed.employeeId) {
       const emp = (await db.select().from(employees).where(eq(employees.id, parsed.employeeId)).limit(1))[0];
@@ -131,6 +145,7 @@ export async function createUser(req: AuthenticatedRequest, res: Response) {
       }
     }
 
+    // Password generation: if provided, validate complexity; if not, generate secure temporary password
     let rawPassword = parsed.password;
     if (rawPassword) {
       const policyCheck = validatePasswordStrength(rawPassword);
@@ -149,7 +164,7 @@ export async function createUser(req: AuthenticatedRequest, res: Response) {
         username: parsed.username,
         email: finalEmail,
         passwordHash,
-        mustChangePassword: true,
+        mustChangePassword: true, // Must change on first login
         roleId: parsed.roleId,
         role: targetRole.name,
         employeeId: parsed.employeeId || null,
@@ -159,11 +174,11 @@ export async function createUser(req: AuthenticatedRequest, res: Response) {
         id: users.id,
         username: users.username,
         email: users.email,
-        mustChangePassword: users.mustChangePassword,
         roleId: users.roleId,
         role: users.role,
         employeeId: users.employeeId,
         status: users.status,
+        mustChangePassword: users.mustChangePassword,
         createdAt: users.createdAt,
       });
 
@@ -187,9 +202,22 @@ export async function updateUser(req: AuthenticatedRequest, res: Response) {
       return res.status(400).json({ error: 'Invalid user ID' });
     }
 
-    const existingUser = (await db.select().from(users).where(eq(users.id, userId)).limit(1))[0];
-    if (!existingUser) {
+    const existing = (
+      await db
+        .select({ user: users, roleCode: roles.code })
+        .from(users)
+        .leftJoin(roles, eq(users.roleId, roles.id))
+        .where(eq(users.id, userId))
+        .limit(1)
+    )[0];
+    if (!existing) {
       return res.status(404).json({ error: 'User not found' });
+    }
+    const existingUser = existing.user;
+
+    // HRD scope restriction: HRD can only manage accounts with role 'employee'
+    if (isCallerHrd(req) && existing.roleCode !== 'employee') {
+      return res.status(403).json({ error: 'Forbidden: HRD can only manage Employee user accounts' });
     }
 
     const parsed = updateUserSchema.parse(req.body);
@@ -236,6 +264,11 @@ export async function updateUser(req: AuthenticatedRequest, res: Response) {
     const targetRole = (await db.select().from(roles).where(eq(roles.id, parsed.roleId)).limit(1))[0];
     if (!targetRole) {
       return res.status(400).json({ error: 'Selected role does not exist' });
+    }
+
+    // HRD scope restriction: HRD cannot assign roles other than Employee
+    if (isCallerHrd(req) && targetRole.code !== 'employee') {
+      return res.status(403).json({ error: 'Forbidden: HRD cannot assign roles other than Employee' });
     }
 
     // Anti-lockout: if changing role away from SuperAdmin for the last active SuperAdmin
@@ -293,12 +326,25 @@ export async function toggleUserStatus(req: AuthenticatedRequest, res: Response)
       return res.status(400).json({ error: 'Invalid user ID' });
     }
 
-    const parsed = toggleStatusSchema.parse(req.body);
-
-    const existingUser = (await db.select().from(users).where(eq(users.id, userId)).limit(1))[0];
-    if (!existingUser) {
+    const existing = (
+      await db
+        .select({ user: users, roleCode: roles.code })
+        .from(users)
+        .leftJoin(roles, eq(users.roleId, roles.id))
+        .where(eq(users.id, userId))
+        .limit(1)
+    )[0];
+    if (!existing) {
       return res.status(404).json({ error: 'User not found' });
     }
+    const existingUser = existing.user;
+
+    // HRD scope restriction: HRD can only manage accounts with role 'employee'
+    if (isCallerHrd(req) && existing.roleCode !== 'employee') {
+      return res.status(403).json({ error: 'Forbidden: HRD can only manage Employee user accounts' });
+    }
+
+    const parsed = toggleStatusSchema.parse(req.body);
 
     // Anti-lockout: Cannot deactivate own account
     if (req.user && req.user.userId === userId && parsed.status === 'inactive') {
@@ -342,12 +388,24 @@ export async function resetPassword(req: AuthenticatedRequest, res: Response) {
       return res.status(400).json({ error: 'Invalid user ID' });
     }
 
-    const parsed = resetPasswordSchema ? resetPasswordSchema.parse(req.body) : {};
-
-    const existingUser = (await db.select().from(users).where(eq(users.id, userId)).limit(1))[0];
-    if (!existingUser) {
+    const existing = (
+      await db
+        .select({ user: users, roleCode: roles.code })
+        .from(users)
+        .leftJoin(roles, eq(users.roleId, roles.id))
+        .where(eq(users.id, userId))
+        .limit(1)
+    )[0];
+    if (!existing) {
       return res.status(404).json({ error: 'User not found' });
     }
+
+    // HRD scope restriction: HRD can only manage accounts with role 'employee'
+    if (isCallerHrd(req) && existing.roleCode !== 'employee') {
+      return res.status(403).json({ error: 'Forbidden: HRD can only manage Employee user accounts' });
+    }
+
+    const parsed = resetPasswordSchema ? resetPasswordSchema.parse(req.body) : {};
 
     let rawPassword = parsed?.newPassword;
     if (rawPassword) {
@@ -389,9 +447,21 @@ export async function deleteUser(req: AuthenticatedRequest, res: Response) {
       return res.status(400).json({ error: 'Invalid user ID' });
     }
 
-    const existingUser = (await db.select().from(users).where(eq(users.id, userId)).limit(1))[0];
-    if (!existingUser) {
+    const existing = (
+      await db
+        .select({ user: users, roleCode: roles.code })
+        .from(users)
+        .leftJoin(roles, eq(users.roleId, roles.id))
+        .where(eq(users.id, userId))
+        .limit(1)
+    )[0];
+    if (!existing) {
       return res.status(404).json({ error: 'User not found' });
+    }
+
+    // HRD scope restriction: HRD can only manage accounts with role 'employee'
+    if (isCallerHrd(req) && existing.roleCode !== 'employee') {
+      return res.status(403).json({ error: 'Forbidden: HRD can only manage Employee user accounts' });
     }
 
     // Anti-lockout: Cannot delete own account

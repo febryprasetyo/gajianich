@@ -148,7 +148,7 @@ export const navGroups: NavGroup[] = [
   {
     title: 'Administration',
     items: [
-      { name: 'Access Control', href: '/dashboard/access', icon: ShieldCheck, permission: 'access.users.view', adminOnly: true },
+      { name: 'Access Control', href: '/dashboard/access', icon: ShieldCheck, permission: 'access.users.view' },
     ],
   },
 ];

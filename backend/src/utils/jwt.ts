@@ -5,7 +5,7 @@ const JWT_EXPIRES_IN = '1d';
 
 export interface TokenPayload {
   userId: number;
-  email: string;
+  email?: string | null;
   username?: string;
   roleId: number;
   roleName: string;
