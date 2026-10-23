@@ -12,12 +12,16 @@
     "test": "NODE_OPTIONS=\"--no-deprecation\" tsx --test --test-concurrency=1 src/**/*.test.ts src/db/schema/*.test.ts"
   },
   "dependencies": {
+    "@tensorflow/tfjs": "^4.22.0",
+    "@tensorflow/tfjs-backend-wasm": "^4.22.0",
+    "@vladmandic/face-api": "^1.7.15",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "drizzle-orm": "^0.45.2",
     "exceljs": "^4.4.0",
     "express": "^4.19.2",
+    "geo-tz": "^8.1.10",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.3.0",

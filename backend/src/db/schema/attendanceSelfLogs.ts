@@ -7,6 +7,7 @@ import {
   boolean,
   text,
   index,
+  jsonb,
 } from 'drizzle-orm/pg-core';
 import { employees } from './employees';
 import { users } from './users';
@@ -26,6 +27,12 @@ export const attendanceSelfLogs = pgTable(
     scanTime: varchar('scan_time', { length: 10 }).notNull(), // 'HH:mm:ss'
     shiftCode: varchar('shift_code', { length: 50 }).notNull(), // 'OFFICE' | 'PROD_6D'
     shiftCategory: varchar('shift_category', { length: 20 }).notNull(), // 'OFFICE' | 'PRODUCTION'
+    timeZone: varchar('time_zone', { length: 50 }).default('Asia/Jakarta').notNull(),
+    scanDate: varchar('scan_date', { length: 10 }),
+    scheduleIn: varchar('schedule_in', { length: 10 }),
+    scheduleOut: varchar('schedule_out', { length: 10 }),
+    occurredAt: timestamp('occurred_at', { withTimezone: true }).defaultNow().notNull(),
+    reviewHistory: jsonb('review_history').$type<{ status: string; note: string; actorId: number; at: string }[]>().default([]).notNull(),
 
     // OpenStreetMap Coordinates & Location Verification for HRD
     latitude: varchar('latitude', { length: 30 }),

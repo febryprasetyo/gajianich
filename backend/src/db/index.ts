@@ -20,6 +20,7 @@ import * as hrAuditSchema from './schema/hrAudit';
 import * as attendanceWorkspaceSchema from './schema/attendanceWorkspace';
 import * as attendanceSelfLogsSchema from './schema/attendanceSelfLogs';
 import * as attendanceFaceProfilesSchema from './schema/attendanceFaceProfiles';
+import * as attendanceFaceRequestsSchema from './schema/attendanceFaceRequests';
 
 let poolInstance: Pool | null = null;
 
@@ -59,6 +60,7 @@ export const db = drizzle(getPool(), {
     ...attendanceWorkspaceSchema,
     ...attendanceSelfLogsSchema,
     ...attendanceFaceProfilesSchema,
+    ...attendanceFaceRequestsSchema,
   },
 });
 
@@ -99,4 +101,5 @@ export {
   attendanceWorkspaceSchema,
   attendanceSelfLogsSchema,
   attendanceFaceProfilesSchema,
+  attendanceFaceRequestsSchema,
 };

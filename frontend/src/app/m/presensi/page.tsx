@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -15,11 +15,10 @@ import {
 } from "lucide-react";
 import PresensiRingButton from "@/components/mobile/PresensiRingButton";
 import DayDetailSheet, { DayDetailData } from "@/components/mobile/DayDetailSheet";
-import FaceAttendanceSheet from "@/components/mobile/FaceAttendanceSheet";
+import FaceAttendanceSheet, { type AttendanceReceipt } from "@/components/mobile/FaceAttendanceSheet";
 import {
   fetchMobileSummary,
   fetchMobileHistory,
-  postMobileClock,
   MobileSummaryData,
   MobileHistoryItem,
 } from "@/lib/attendance/mobileApi";
@@ -28,12 +27,19 @@ export default function MobilePresensiPage() {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [summaryData, setSummaryData] = useState<MobileSummaryData | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+
   const [historyItems, setHistoryItems] = useState<MobileHistoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+
   const [isFaceSheetOpen, setIsFaceSheetOpen] = useState(false);
   const [selectedDayDetail, setSelectedDayDetail] = useState<DayDetailData | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<"CURRENT" | "PREVIOUS">("CURRENT");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const latestHistoryRequestIdRef = useRef(0);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -42,22 +48,62 @@ export default function MobilePresensiPage() {
     }, 4000);
   };
 
-  const loadData = useCallback(async () => {
+  const loadSummary = useCallback(async () => {
+    setSummaryLoading(true);
+    setSummaryError(null);
     try {
-      setLoading(true);
-      const [sum, hist] = await Promise.all([
-        fetchMobileSummary().catch(() => null),
-        fetchMobileHistory(selectedPeriod).catch(() => null),
-      ]);
-
-      if (sum) setSummaryData(sum);
-      if (hist) setHistoryItems(hist.records || []);
+      const res = await fetchMobileSummary();
+      setSummaryData(res);
     } catch (err: any) {
-      console.warn("loadData error:", err);
+      console.warn("loadSummary error:", err);
+      const msg = err.message || "";
+      if (msg.includes("401") || msg.includes("Unauthorized") || msg.includes("token missing")) {
+        router.replace("/login");
+        return;
+      }
+      setSummaryError(err.message || "Gagal memuat status presensi hari ini.");
     } finally {
-      setLoading(false);
+      setSummaryLoading(false);
     }
-  }, [selectedPeriod]);
+  }, [router]);
+
+  const loadHistory = useCallback(async (period: "CURRENT" | "PREVIOUS") => {
+    const requestId = ++latestHistoryRequestIdRef.current;
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const res = await fetchMobileHistory(period);
+      if (requestId === latestHistoryRequestIdRef.current) {
+        setHistoryItems(res.records || []);
+      }
+    } catch (err: any) {
+      console.warn("loadHistory error:", err);
+      const msg = err.message || "";
+      if (msg.includes("401") || msg.includes("Unauthorized") || msg.includes("token missing")) {
+        router.replace("/login");
+        return;
+      }
+      if (requestId === latestHistoryRequestIdRef.current) {
+        setHistoryError(err.message || "Gagal memuat riwayat presensi.");
+      }
+    } finally {
+      if (requestId === latestHistoryRequestIdRef.current) {
+        setHistoryLoading(false);
+      }
+    }
+  }, [router]);
+
+  const handlePeriodChange = (newPeriod: "CURRENT" | "PREVIOUS") => {
+    setSelectedPeriod(newPeriod);
+    setHistoryItems([]);
+    setHistoryError(null);
+    loadHistory(newPeriod);
+  };
+
+  const loadData = useCallback(() => {
+    loadSummary();
+    loadHistory(selectedPeriod);
+  }, [loadSummary, loadHistory, selectedPeriod]);
 
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -74,38 +120,21 @@ export default function MobilePresensiPage() {
   const isCheckedOut = summaryData?.attendance.checkedOut ?? false;
 
   const handleClockButtonClick = () => {
+    if (summaryLoading || summaryError || !summaryData) return;
     setIsFaceSheetOpen(true);
   };
 
-  const handleFaceSuccess = async (data: {
-    eventType: "IN" | "OUT";
-    scanTime: string;
-    txHash: string;
-    photoBase64?: string;
-    latitude?: number | null;
-    longitude?: number | null;
-    accuracy?: number | null;
-    address?: string | null;
-  }) => {
+  const handleFaceSuccess = async (data: AttendanceReceipt) => {
     setIsFaceSheetOpen(false);
 
     try {
-      const res = await postMobileClock({
-        eventType: data.eventType,
-        scanTime: data.scanTime,
-        txHash: data.txHash,
-        photoBase64: data.photoBase64,
-        latitude: data.latitude,
-        longitude: data.longitude,
-        accuracy: data.accuracy,
-        address: data.address,
-      });
+      const res = { success: true, data };
 
       if (res.success) {
         showToast(
           data.eventType === "IN"
-            ? `Presensi masuk berhasil dicatat (${data.scanTime} WIB).`
-            : `Presensi pulang berhasil dicatat (${data.scanTime} WIB).`
+            ? `Presensi masuk berhasil dicatat (${data.scanTime} ${data.timeZoneLabel}).`
+            : `Presensi pulang berhasil dicatat (${data.scanTime} ${data.timeZoneLabel}).`
         );
         await loadData();
       }
@@ -134,6 +163,7 @@ export default function MobilePresensiPage() {
       googleMapsUrl: row.googleMapsUrl,
       address: row.address,
       photoUrl: row.photoUrl,
+      events: row.events,
     });
   };
 
@@ -178,14 +208,28 @@ export default function MobilePresensiPage() {
           aria-label="Segarkan data presensi"
           className="w-10 h-10 rounded-full bg-white border border-slate-200/90 shadow-xs flex items-center justify-center text-slate-700 hover:bg-slate-50 active:scale-95 transition"
         >
-          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-[#059669]" : ""}`} />
+          <RefreshCw className={`w-4 h-4 ${summaryLoading || historyLoading ? "animate-spin text-[#059669]" : ""}`} />
         </button>
       </header>
+
+      {summaryError && (
+        <div className="mx-5 mb-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center justify-between gap-2">
+          <span>{summaryError}</span>
+          <button
+            type="button"
+            onClick={loadSummary}
+            className="px-2 py-1 rounded bg-amber-200/60 font-bold text-amber-900 hover:bg-amber-200 transition cursor-pointer"
+          >
+            Coba lagi
+          </button>
+        </div>
+      )}
 
       {/* 2. Hero Action: Circular Face Scan Button (Shared with Beranda) */}
       <PresensiRingButton
         status={isCheckedOut ? "COMPLETED" : isCheckedIn ? "CHECKED_IN" : "NOT_CHECKED_IN"}
         onOpenFlow={handleClockButtonClick}
+        disabled={summaryLoading || Boolean(summaryError) || !summaryData}
       />
 
       {/* 3. Today Summary Card: Clock In, Clock Out, Work Hours */}
@@ -235,7 +279,7 @@ export default function MobilePresensiPage() {
             <select
               aria-label="Filter Periode Presensi"
               value={selectedPeriod}
-              onChange={(e) => setSelectedPeriod(e.target.value as "CURRENT" | "PREVIOUS")}
+              onChange={(e) => handlePeriodChange(e.target.value as "CURRENT" | "PREVIOUS")}
               className="appearance-none bg-white border border-slate-200 text-slate-700 font-extrabold text-xs rounded-full py-1.5 pl-3.5 pr-7 shadow-2xs hover:bg-slate-50 focus:outline-none cursor-pointer"
             >
               <option value="CURRENT">Bulan ini</option>
@@ -257,9 +301,26 @@ export default function MobilePresensiPage() {
 
           {/* Table Rows */}
           <div className="divide-y divide-slate-100">
-            {historyItems.length === 0 ? (
+            {historyLoading ? (
+              <div className="py-8 px-4 text-center text-slate-400 text-xs font-medium flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-[#059669]" />
+                <span>Memuat riwayat presensi...</span>
+              </div>
+            ) : historyError ? (
+              <div className="py-8 px-4 text-center space-y-2">
+                <p className="text-xs font-semibold text-rose-600">{historyError}</p>
+                <button
+                  type="button"
+                  onClick={() => loadHistory(selectedPeriod)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-50 text-[#059669] text-xs font-bold border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Coba lagi</span>
+                </button>
+              </div>
+            ) : historyItems.length === 0 ? (
               <div className="py-8 px-4 text-center text-slate-400 text-xs font-medium">
-                {loading ? "Memuat riwayat presensi..." : "Belum ada catatan presensi untuk periode ini."}
+                Belum ada catatan presensi untuk periode ini.
               </div>
             ) : (
               historyItems.map((row) => {
@@ -335,7 +396,7 @@ export default function MobilePresensiPage() {
         onClose={() => setIsFaceSheetOpen(false)}
         isCheckOut={isCheckedIn && !isCheckedOut}
         isOnline={true}
-        isFaceEnrolled={summaryData?.faceEnrollment.isFaceEnrolled ?? true}
+        isFaceEnrolled={summaryData?.faceEnrollment.isFaceEnrolled ?? false}
         employeeName={summaryData?.employee.fullName || "Karyawan"}
         employeeNik={summaryData?.employee.employeeCode || ""}
         onSuccess={handleFaceSuccess}
@@ -345,6 +406,7 @@ export default function MobilePresensiPage() {
       <DayDetailSheet
         isOpen={Boolean(selectedDayDetail)}
         onClose={() => setSelectedDayDetail(null)}
+        onUpdated={() => { setSelectedDayDetail(null); void loadData(); }}
         data={selectedDayDetail}
       />
     </main>

@@ -138,6 +138,8 @@ function Provider({ children }: { children: React.ReactNode }) {
 }
 
 export default function AttendanceWorkspace({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  if (pathname.startsWith('/dashboard/attendance/approvals')) return <DashboardLayout>{children}</DashboardLayout>;
   return (
     <DashboardLayout>
       <Provider>{children}</Provider>

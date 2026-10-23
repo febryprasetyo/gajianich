@@ -12,6 +12,7 @@ interface PresensiRingButtonProps {
   officeName?: string;
   onResetDemo?: () => void;
   showResetDemo?: boolean;
+  disabled?: boolean;
 }
 
 export default function PresensiRingButton({
@@ -19,6 +20,7 @@ export default function PresensiRingButton({
   onOpenFlow,
   onResetDemo,
   showResetDemo = false,
+  disabled = false,
 }: PresensiRingButtonProps) {
   const [currentTime, setCurrentTime] = useState('08.25');
   const location = useRealtimeLocation();
@@ -59,8 +61,13 @@ export default function PresensiRingButton({
         <button
           type="button"
           onClick={onOpenFlow}
+          disabled={disabled}
           aria-label={buttonLabel + ' dengan verifikasi wajah'}
-          className="relative w-[156px] h-[156px] rounded-full bg-[#059669] hover:bg-[#047857] text-white shadow-xl shadow-emerald-700/20 border-4 border-white flex flex-col items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer select-none"
+          className={`relative w-[156px] h-[156px] rounded-full bg-[#059669] text-white shadow-xl shadow-emerald-700/20 border-4 border-white flex flex-col items-center justify-center gap-1.5 transition select-none ${
+            disabled
+              ? 'opacity-50 cursor-not-allowed pointer-events-none'
+              : 'hover:bg-[#047857] active:scale-95 cursor-pointer'
+          }`}
         >
           {/* Face Scan Biometric Icon */}
           <div className="w-11 h-11 rounded-full bg-white/15 flex items-center justify-center">
@@ -83,9 +90,9 @@ export default function PresensiRingButton({
 
         {/* 3. Realtime Accurate GPS Location */}
         <div className="mt-1.5 flex flex-col items-center gap-1">
-          <div className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 bg-slate-100/90 border border-slate-200/80 px-2.5 py-1 rounded-full">
+          <div className="flex w-full items-start justify-center gap-2 text-[11px] font-semibold text-slate-700 px-3 py-2">
             <MapPin className={`w-3.5 h-3.5 ${location.loading ? 'animate-bounce text-amber-500' : 'text-[#059669]'}`} />
-            <span className="max-w-[270px] truncate">{location.displayText}</span>
+            <span className="min-w-0 flex-1 text-center leading-relaxed break-words">{location.displayText}</span>
             <button
               type="button"
               onClick={location.refetch}

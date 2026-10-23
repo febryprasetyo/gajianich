@@ -53,7 +53,7 @@ export default function EmployeeDetailPage({ employeeId, basePath = '/dashboard/
             <header className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <p className="font-mono text-sm text-red-700">{employee.employeeCode}</p>
+                  <div className="flex items-center gap-3">{employee.photoUrl && <img src={employee.photoUrl} alt={`Foto ${employee.fullName}`} className="h-16 w-16 rounded-full object-cover" />}<p className="font-mono text-sm text-red-700">{employee.employeeCode}</p></div>
                   <h1 className="mt-1 text-2xl font-bold text-slate-900">{employee.fullName}</h1>
                   <p className="mt-1 text-sm text-slate-500">
                     {employee.departmentName || 'Departemen belum diisi'} · {employee.position || 'Jabatan belum diisi'}

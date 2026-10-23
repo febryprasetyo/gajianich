@@ -119,3 +119,8 @@ test('access route moduleName is Manajemen Pengguna and accessible to HR', () =>
   };
   assert.equal(canAccessRoute('/dashboard/access', hrdBasic), true);
 });
+
+test('mobile approvals require their dedicated permission for a custom reviewer', () => {
+  assert.equal(canAccessRoute('/dashboard/attendance/approvals', { roleName: 'CustomReviewer', permissions: ['attendance.mobile.verify'] }), true);
+  assert.equal(canAccessRoute('/dashboard/attendance/approvals', { roleName: 'HRViewer', permissions: ['attendance.view'] }), false);
+});

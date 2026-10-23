@@ -75,6 +75,7 @@ export const navGroups: NavGroup[] = [
         icon: CalendarCheck,
                 children: [
           { name: 'Ringkasan HR', href: '/dashboard/attendance/overview', icon: LayoutDashboard, permission: 'attendance.view' },
+          { name: 'Approval Presensi & Foto', href: '/dashboard/attendance/approvals', icon: CalendarCheck, permission: 'attendance.mobile.verify' },
           { name: 'Data Absensi', href: '/dashboard/attendance', icon: CalendarCheck, permission: 'attendance.view' },
           { name: 'Impor Absensi', href: '/dashboard/attendance/imports', icon: FileInput, permission: 'attendance.import' },
           { name: 'Kartu Absensi', href: '/dashboard/attendance/employees', icon: ClipboardList, permission: 'attendance.view' },
@@ -595,7 +596,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex-1 flex flex-col min-w-0">
           {/* Top Navbar */}
           <header className="h-16 bg-white/90 border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 backdrop-blur-xl shadow-2xs print:hidden">
-            <div className="flex items-center gap-4">
+            <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
               <button
                 onClick={() => setMobileOpen(true)}
                 aria-label="Buka navigasi"
@@ -605,7 +606,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </button>
 
               {/* Breadcrumb Trail */}
-              <div className="flex items-center gap-2 text-xs font-medium">
+              <div className="flex min-w-0 items-center gap-2 text-xs font-medium [&>span:not(:last-child)]:hidden md:[&>span:not(:last-child)]:inline">
                 <span className="text-slate-400">{BRAND_NAME}</span>
                 <span className="text-slate-300">/</span>
                 <span className="text-slate-400">{currentNavigableItem?.groupTitle || 'Dashboard'}</span>
@@ -616,7 +617,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   </>
                 )}
                 <span className="text-slate-300">/</span>
-                <span className="text-emerald-600 font-bold">{currentNavigableItem?.name || 'Overview'}</span>
+                <span className="min-w-0 truncate text-emerald-700 font-bold">{currentNavigableItem?.name || 'Overview'}</span>
               </div>
             </div>
 

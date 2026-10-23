@@ -15,11 +15,11 @@ const clockPayloadSchema = z.object({
   eventType: z.enum(["IN", "OUT"]),
   workDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   scanTime: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/).optional(),
-  latitude: z.number().nullable().optional(),
-  longitude: z.number().nullable().optional(),
-  accuracy: z.number().nullable().optional(),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  accuracy: z.number().min(0).max(100000).nullable().optional(),
   address: z.string().nullable().optional(),
-  photoBase64: z.string().nullable().optional(),
+  photoBase64: z.string().min(1).max(8000000),
   deviceInfo: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   txHash: z.string().optional(),
@@ -28,7 +28,7 @@ const clockPayloadSchema = z.object({
 const verifyPayloadSchema = z.object({
   logId: z.number().positive(),
   status: z.enum(["APPROVED", "REJECTED"]),
-  note: z.string().optional(),
+  note: z.string().max(2000).optional(),
 });
 
 const enrollFacePayloadSchema = z.object({
@@ -117,7 +117,7 @@ export async function enrollFaceController(req: AuthenticatedRequest, res: Respo
     if (err instanceof z.ZodError) {
       return res.status(400).json({ success: false, error: "Validasi gagal", details: err.issues });
     }
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
       error: err.message || "Gagal memperbarui status pendaftaran wajah",
     });

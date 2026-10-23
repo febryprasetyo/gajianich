@@ -16,7 +16,7 @@ import ResolveTicketModal from '@/components/tickets/ResolveTicketModal';
 export default function TicketDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }> | { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const router = useRouter();
 

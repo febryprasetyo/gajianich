@@ -1,0 +1,46 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { eq } from 'drizzle-orm';
+import { createHrAuditTestDatabase } from '../testing/hrAuditDatabase';
+import { runMigrations } from '../db/migrate';
+import { roles, permissions, rolePermissions, users } from '../db/schema/users';
+import { employees } from '../db/schema/employees';
+import { attendanceSelfLogs } from '../db/schema/attendanceSelfLogs';
+import { generateToken } from '../utils/jwt';
+test('mobile API requires dedicated reviewer permission and protects employee evidence', async t => {
+  const fixture = await createHrAuditTestDatabase();
+  await runMigrations(fixture.ownerUrl, undefined, fixture.runtimeRole);
+  const original = process.env.DATABASE_URL;
+  process.env.DATABASE_URL = fixture.ownerUrl;
+  const { createApp } = await import('../app');
+  const { getPool } = await import('../db');
+  const server = createApp().listen(0, '127.0.0.1');
+  await new Promise<void>(resolve => server.once('listening', resolve));
+  t.after(async () => { await new Promise<void>(resolve => server.close(() => resolve())); await getPool().end(); process.env.DATABASE_URL = original; await fixture.cleanup(); });
+  const database = drizzle(fixture.owner);
+  const [reviewRole, employeeRole] = await database.insert(roles).values([{ code: 'custom_mobile_reviewer', name: 'Custom Mobile Reviewer' }, { code: 'custom_mobile_employee', name: 'Custom Mobile Employee' }]).returning();
+  const [permission] = await database.select().from(permissions).where(eq(permissions.code, 'attendance.mobile.verify'));
+  await database.insert(rolePermissions).values({ roleId: reviewRole.id, permissionId: permission.id });
+  const [employee, other] = await database.insert(employees).values([{ employeeCode: 'API-01', fullName: 'API Employee' }, { employeeCode: 'API-02', fullName: 'Other API Employee' }]).returning();
+  const [owner, reviewer, outsider] = await database.insert(users).values([{ username: 'api-owner', passwordHash: 'test-only', employeeId: employee.id, roleId: employeeRole.id }, { username: 'api-reviewer', passwordHash: 'test-only', roleId: reviewRole.id }, { username: 'api-outsider', passwordHash: 'test-only', employeeId: other.id, roleId: employeeRole.id }]).returning();
+  const token = (user: typeof owner, role: typeof reviewRole) => generateToken({ userId: user.id, roleId: role.id, roleName: role.name, email: null });
+  const address = server.address() as { port: number };
+  const url = `http://127.0.0.1:${address.port}/api/v1/attendance/mobile`;
+  const get = (endpoint: string, auth?: string) => fetch(url + endpoint, { headers: auth ? { Authorization: `Bearer ${auth}` } : {} });
+  const employeeToken = token(owner, employeeRole); const reviewerToken = token(reviewer, reviewRole);
+  for (const endpoint of ['/verifications','/approval-settings','/face-requests']) {
+    assert.equal((await get(endpoint)).status, 401);
+    assert.equal((await get(endpoint, employeeToken)).status, 403);
+    assert.equal((await get(endpoint, reviewerToken)).status, 200);
+  }
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'ams-private-photo-')); t.after(() => rm(dir, { recursive: true, force: true }));
+  const photo = path.join(dir, 'photo.webp'); await writeFile(photo, 'test-evidence');
+  const [log] = await database.insert(attendanceSelfLogs).values({ employeeId: employee.id, eventType: 'IN', workDate: '2026-10-23', scanTime: '08:00', shiftCode: 'OFFICE', shiftCategory: 'OFFICE', txHash: 'api-evidence', photoUrl: photo }).returning();
+  assert.equal((await get(`/photos/${log.id}`, employeeToken)).status, 200);
+  assert.equal((await get(`/photos/${log.id}`, token(outsider, employeeRole))).status, 403);
+  assert.equal((await get(`/photos/${log.id}`, reviewerToken)).status, 200);
+});

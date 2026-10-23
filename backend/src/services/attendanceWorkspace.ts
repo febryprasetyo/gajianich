@@ -1,5 +1,6 @@
 import { eq, and, sql, asc, inArray } from "drizzle-orm";
 import { db } from "../db";
+import { approvedAttendanceRecords } from "./approvedAttendanceRecords";
 import { employees } from "../db/schema/employees";
 import { departments, locations } from "../db/schema/master";
 import { systemSettings } from "../db/schema/system";
@@ -199,7 +200,7 @@ export async function loadAttendanceWorkspace(
       externalNoId: i.externalNoId,
       employeeId: i.employeeId,
     })),
-    records: recRows.map((r) => ({
+    records: (await approvedAttendanceRecords(recRows, tx)).map((r) => ({
       id: r.id,
       employeeId: r.employeeId,
       workDate: r.workDate,

@@ -8,6 +8,7 @@ export const employees = pgTable('employees', {
   fullName: varchar('full_name', { length: 150 }).notNull(),
   email: varchar('email', { length: 150 }).unique(),
   phone: varchar('phone', { length: 50 }),
+  photoUrl: text('photo_url'),
   departmentId: bigint('department_id', { mode: 'number' }).references(() => departments.id),
   locationId: bigint('location_id', { mode: 'number' }).references(() => locations.id),
   position: varchar('position', { length: 100 }),

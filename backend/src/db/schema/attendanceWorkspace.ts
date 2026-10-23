@@ -53,6 +53,8 @@ export const attendanceShifts = pgTable(
     saturdayScheduleIn: varchar('saturday_schedule_in', { length: 10 }),
     saturdayScheduleOut: varchar('saturday_schedule_out', { length: 10 }),
     description: text('description'),
+    autoApproveIn: boolean('auto_approve_in').default(false).notNull(),
+    autoApproveOut: boolean('auto_approve_out').default(false).notNull(),
     isDefault: boolean('is_default').default(false).notNull(),
     isActive: boolean('is_active').default(true).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),

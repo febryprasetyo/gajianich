@@ -2,6 +2,7 @@ export interface DepartmentOption { id: number; code: string; name: string; }
 export interface LocationOption { id: number; code: string; name: string; }
 
 export interface EmployeeItem {
+  photoUrl?: string | null;
   id: number;
   employeeCode: string;
   fullName: string;

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authenticateToken, requirePermission } from "../middleware/auth";
+import mobileApprovalRoutes from './mobileApprovalRoutes';
 import {
   getTodaySummaryController,
   clockAttendanceController,
@@ -11,6 +12,7 @@ import {
 } from "../controllers/mobileAttendanceController";
 
 const router = Router();
+router.use(mobileApprovalRoutes);
 
 // Employee Self-Service Mobile Endpoints (Scoped to authenticated employee)
 router.get("/summary", authenticateToken, getTodaySummaryController);
@@ -23,14 +25,14 @@ router.post("/enroll-face", authenticateToken, enrollFaceController);
 router.get(
   "/verifications",
   authenticateToken,
-  requirePermission(["attendance.view", "attendance.manage", "attendance.mobile.verify"]),
+  requirePermission('attendance.mobile.verify'),
   getVerificationsController
 );
 
 router.post(
   "/verify",
   authenticateToken,
-  requirePermission(["attendance.manage", "attendance.mobile.verify"]),
+  requirePermission('attendance.mobile.verify'),
   verifyAttendanceController
 );
 

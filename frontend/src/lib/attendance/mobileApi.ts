@@ -1,6 +1,7 @@
 import { apiFetch } from "@/lib/api";
 
 export interface MobileEmployeeProfile {
+  photoUrl?: string | null;
   id: number;
   employeeCode: string;
   fullName: string;
@@ -23,6 +24,9 @@ export interface MobileShiftInfo {
 }
 
 export interface MobileTodayAttendance {
+  timeZone: string;
+  timeZoneLabel: string;
+  events: MobileAttendanceEvent[];
   workDate: string;
   checkedIn: boolean;
   checkedOut: boolean;
@@ -30,12 +34,14 @@ export interface MobileTodayAttendance {
   checkOutTime: string | null;
   totalHours: string;
   status: "NOT_CHECKED_IN" | "CHECKED_IN" | "COMPLETED";
-  approvalStatus: "PENDING" | "APPROVED" | "REJECTED";
+  approvalStatus: "PENDING" | "APPROVED" | "REJECTED" | null;
   approvalNote: string;
   txHash: string | null;
 }
 
 export interface MobileFaceEnrollment {
+  changeStatus?: string | null;
+  changeNote?: string | null;
   isFaceEnrolled: boolean;
   faceId: string | null;
 }
@@ -65,6 +71,7 @@ export interface MobileClockResponse {
   success: boolean;
   message: string;
   data: {
+    timeZoneLabel: string;
     txHash: string;
     eventType: "IN" | "OUT";
     scanTime: string;
@@ -80,6 +87,7 @@ export interface MobileClockResponse {
 }
 
 export interface MobileHistoryItem {
+  events: MobileAttendanceEvent[];
   id: number;
   workDate: string;
   dayShort: string;
@@ -90,7 +98,7 @@ export interface MobileHistoryItem {
   status: string;
   statusText: string;
   isAbsent: boolean;
-  approvalStatus: string;
+  approvalStatus?: string;
   approvalNote: string;
   serverRef: string;
   mapUrl: string | null;
@@ -154,4 +162,19 @@ export async function postEnrollFace(payload: {
       body: JSON.stringify(payload),
     }
   );
+}
+
+export interface MobileAttendanceEvent {
+  id: number;
+  eventType: 'IN' | 'OUT';
+  scanTime: string;
+  scanDate: string;
+  timeZoneLabel: string;
+  approvalStatus: string;
+  approvalNote: string | null;
+  latitude: string | null;
+  longitude: string | null;
+  address: string | null;
+  photoUrl: string | null;
+  reviewHistory: { status: string; note: string; actorId: number; at: string }[];
 }

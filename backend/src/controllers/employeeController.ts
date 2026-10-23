@@ -16,6 +16,7 @@ const employeeFields = {
   id: employees.id,
   employeeCode: employees.employeeCode,
   fullName: employees.fullName,
+  photoUrl: employees.photoUrl,
   email: employees.email,
   phone: employees.phone,
   mobilePhone: employees.mobilePhone,

@@ -12,6 +12,8 @@ export type AttendanceStatus =
 export type ReviewStatus = 'READY' | 'NEEDS_REVIEW' | 'BLOCKED' | 'SKIPPED';
 
 export interface WorkShift {
+  autoApproveIn?: boolean;
+  autoApproveOut?: boolean;
   id: number;
   code: string;
   name: string;

@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   ChevronRight,
   ArrowUpRight,
-  Smartphone,
   ShieldCheck,
   AlertCircle,
   FileCheck2,
@@ -23,11 +22,10 @@ import {
 } from "lucide-react";
 import PresensiRingButton, { AttendanceRingState } from "@/components/mobile/PresensiRingButton";
 import AttendanceMetricsCards from "@/components/mobile/AttendanceMetricsCards";
-import FaceAttendanceSheet from "@/components/mobile/FaceAttendanceSheet";
+import FaceAttendanceSheet, { type AttendanceReceipt } from "@/components/mobile/FaceAttendanceSheet";
 import DayDetailSheet, { DayDetailData } from "@/components/mobile/DayDetailSheet";
 import {
   fetchMobileSummary,
-  postMobileClock,
   MobileSummaryData,
 } from "@/lib/attendance/mobileApi";
 
@@ -46,7 +44,7 @@ export default function MobileBerandaPage() {
     checkOutTime: string;
     totalHours: string;
     txHash: string | null;
-    approvalStatus: string;
+    approvalStatus: string | null;
     approvalNote: string;
   }>({
     checkedIn: false,
@@ -55,7 +53,7 @@ export default function MobileBerandaPage() {
     checkOutTime: "--:--",
     totalHours: "--:--",
     txHash: null,
-    approvalStatus: "PENDING",
+    approvalStatus: null,
     approvalNote: "Memuat status presensi...",
   });
 
@@ -120,35 +118,17 @@ export default function MobileBerandaPage() {
     setIsFaceSheetOpen(true);
   };
 
-  const handleFaceSuccess = async (data: {
-    eventType: "IN" | "OUT";
-    scanTime: string;
-    txHash: string;
-    photoBase64?: string;
-    latitude?: number | null;
-    longitude?: number | null;
-    accuracy?: number | null;
-    address?: string | null;
-  }) => {
+  const handleFaceSuccess = async (data: AttendanceReceipt) => {
     setIsFaceSheetOpen(false);
 
     try {
-      const clockRes = await postMobileClock({
-        eventType: data.eventType,
-        scanTime: data.scanTime,
-        txHash: data.txHash,
-        photoBase64: data.photoBase64,
-        latitude: data.latitude,
-        longitude: data.longitude,
-        accuracy: data.accuracy,
-        address: data.address,
-      });
+      const clockRes = { success: true, data };
 
       if (clockRes.success) {
         showToast(
           data.eventType === "IN"
-            ? `Presensi masuk tercatat (${data.scanTime} WIB)! ${clockRes.data.approvalNote}`
-            : `Presensi pulang tercatat (${data.scanTime} WIB)! ${clockRes.data.approvalNote}`
+            ? `Presensi masuk tercatat (${data.scanTime} ${data.timeZoneLabel})! ${clockRes.data.approvalNote}`
+            : `Presensi pulang tercatat (${data.scanTime} ${data.timeZoneLabel})! ${clockRes.data.approvalNote}`
         );
         // Refresh server summary
         await loadSummary();
@@ -165,9 +145,9 @@ export default function MobileBerandaPage() {
       id: "D-TODAY",
       dayName: "Hari Ini",
       dateStr: summaryData.attendance.workDate,
-      schedule: `${summaryData.shift.scheduleIn} – ${summaryData.shift.scheduleOut} WIB`,
-      status: summaryData.attendance.status === "CHECKED_IN" ? "TEPAT_WAKTU" : "BELUM_ABSEN",
-      statusText: summaryData.attendance.status === "CHECKED_IN" ? "Sudah Absen Masuk" : "Belum Absen",
+      schedule: `${summaryData.shift.scheduleIn} – ${summaryData.shift.scheduleOut} ${summaryData.attendance.timeZoneLabel}`,
+      status: summaryData.attendance.status === "COMPLETED" ? "COMPLETED" : summaryData.attendance.status === "CHECKED_IN" ? "CHECKED_IN" : "NOT_CHECKED_IN",
+      statusText: summaryData.attendance.status === "COMPLETED" ? "Presensi lengkap" : summaryData.attendance.status === "CHECKED_IN" ? "Sudah absen masuk" : "Belum absen",
       checkIn: summaryData.attendance.checkInTime || "--:--",
       checkOut: summaryData.attendance.checkOutTime || "--:--",
       duration: summaryData.attendance.totalHours || "--:--",
@@ -176,6 +156,7 @@ export default function MobileBerandaPage() {
       employeeName: summaryData.employee.fullName,
       approvalStatus: summaryData.attendance.approvalStatus,
       approvalNote: summaryData.attendance.approvalNote,
+      events: summaryData.attendance.events,
     });
   };
 
@@ -183,8 +164,7 @@ export default function MobileBerandaPage() {
   const employeePosition = summaryData?.employee.position || "Staff";
   const avatarInitial = summaryData?.employee.avatarInitial || "EM";
   const shiftName = summaryData?.shift.name || "Shift Reguler";
-  const shiftSchedule = summaryData ? `${summaryData.shift.scheduleIn} – ${summaryData.shift.scheduleOut} WIB` : "08:00 – 17:00 WIB";
-  const officeLocation = summaryData?.employee.workLocation || "PT Cahaya Mas Cemerlang HQ";
+  const shiftSchedule = summaryData ? `${summaryData.shift.scheduleIn} – ${summaryData.shift.scheduleOut} ${summaryData.attendance.timeZoneLabel}` : "Jadwal mengikuti waktu lokal";
 
     if (isAuthenticated !== true) {
     return (
@@ -323,14 +303,7 @@ export default function MobileBerandaPage() {
                 <span>{shiftSchedule}</span>
               </p>
             </div>
-            <div className="text-right">
-              <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">
-                Lokasi Kantor
-              </span>
-              <p className="text-[11px] font-bold text-slate-700 truncate max-w-[150px]">
-                {officeLocation}
-              </p>
-            </div>
+
           </div>
         </div>
 
@@ -344,7 +317,7 @@ export default function MobileBerandaPage() {
             {attendanceState.approvalStatus === "APPROVED" && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[#059669] text-[11px] font-extrabold">
                 <CheckCircle2 className="w-3 h-3" />
-                <span>Disetujui HRD</span>
+                <span>Disetujui</span>
               </span>
             )}
             {attendanceState.approvalStatus === "PENDING" && (
@@ -359,13 +332,18 @@ export default function MobileBerandaPage() {
                 <span>Ditolak HRD</span>
               </span>
             )}
+            {!attendanceState.approvalStatus && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-600 text-[11px] font-bold">
+                <span>Belum Ada Pengajuan</span>
+              </span>
+            )}
           </div>
 
           <div className="bg-slate-50/80 rounded-xl p-2.5 border border-slate-200/80 text-xs">
             <div className="flex justify-between items-center text-slate-700">
               <span className="text-slate-500 font-medium">Pengajuan Terakhir:</span>
               <span className="font-bold text-slate-900">
-                {attendanceState.checkedIn ? `Masuk (${attendanceState.checkInTime} WIB)` : "Belum Ada"}
+                {attendanceState.checkedIn ? `Masuk (${attendanceState.checkInTime} ${summaryData?.attendance.timeZoneLabel || ""})` : "Belum Ada"}
               </span>
             </div>
             <p className="text-[11px] text-slate-600 mt-1.5 leading-snug">
@@ -436,7 +414,7 @@ export default function MobileBerandaPage() {
                   className={`w-1.5 h-1.5 rounded-full ${
                     attendanceState.approvalStatus === "APPROVED" ? "bg-emerald-500" : "bg-amber-500 animate-pulse"
                   }`}
-                  title={attendanceState.approvalStatus}
+                  title={attendanceState.approvalStatus || undefined}
                 />
               </div>
               <span className="text-[10px] font-mono text-slate-500">
@@ -450,7 +428,7 @@ export default function MobileBerandaPage() {
                   : "text-amber-800 bg-amber-50 border-amber-200"
               }`}
             >
-              {attendanceState.approvalStatus === "APPROVED" ? "Disetujui" : "Menunggu HRD"}
+              {attendanceState.approvalStatus === "APPROVED" ? "Disetujui" : attendanceState.approvalStatus === "REJECTED" ? "Ditolak" : attendanceState.approvalStatus === "PENDING" ? "Menunggu HRD" : "Belum Ada"}
             </span>
             <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
           </button>
@@ -462,19 +440,13 @@ export default function MobileBerandaPage() {
         )}
       </div>
 
-      {/* Install PWA Hint */}
-      <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-500 mt-3 px-4 pb-4">
-        <Smartphone className="w-3.5 h-3.5" />
-        <span>GAJIANICH PWA — Akses presensi mandiri karyawan</span>
-      </div>
-
       {/* Face Flow Sheet Dialog */}
       <FaceAttendanceSheet
         isOpen={isFaceSheetOpen}
         onClose={() => setIsFaceSheetOpen(false)}
         isCheckOut={attendanceState.checkedIn && !attendanceState.checkedOut}
         isOnline={true}
-        isFaceEnrolled={summaryData?.faceEnrollment.isFaceEnrolled ?? true}
+        isFaceEnrolled={summaryData?.faceEnrollment.isFaceEnrolled ?? false}
         employeeName={employeeName}
         employeeNik={summaryData?.employee.employeeCode || ""}
         onSuccess={handleFaceSuccess}
@@ -484,6 +456,7 @@ export default function MobileBerandaPage() {
       <DayDetailSheet
         isOpen={Boolean(selectedDayDetail)}
         onClose={() => setSelectedDayDetail(null)}
+        onUpdated={() => { setSelectedDayDetail(null); void loadSummary(); }}
         data={selectedDayDetail}
       />
     </main>

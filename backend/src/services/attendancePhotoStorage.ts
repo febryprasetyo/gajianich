@@ -53,6 +53,7 @@ export async function purgeExpiredAttendancePhotos(
     .where(
       and(
         isNotNull(attendanceSelfLogs.photoUrl),
+        eq(attendanceSelfLogs.approvalStatus, 'APPROVED'),
         lte(attendanceSelfLogs.createdAt, cutoffDate)
       )
     );

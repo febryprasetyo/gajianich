@@ -13,7 +13,7 @@ export interface RealtimeLocationState {
   displayText: string;
 }
 
-export function useRealtimeLocation() {
+export function useRealtimeLocation(enabled = true) {
   const [location, setLocation] = useState<RealtimeLocationState>({
     loading: true,
     latitude: null,
@@ -22,20 +22,20 @@ export function useRealtimeLocation() {
     address: null,
     error: null,
     timestamp: null,
-    displayText: 'Mencari lokasi sekarang...', 
+    displayText: 'Mencari lokasi sekarang...',
   });
 
   const fetchLocation = useCallback(() => {
     if (typeof window === 'undefined' || !navigator.geolocation) {
       setLocation({
         loading: false,
-        latitude: -6.2088,
-        longitude: 106.8456,
-        accuracy: 10,
-        address: 'Jakarta, Indonesia',
-        error: null,
+        latitude: null,
+        longitude: null,
+        accuracy: null,
+        address: null,
+        error: 'Browser tidak mendukung lokasi GPS.',
         timestamp: Date.now(),
-        displayText: 'Lokasi Sekarang: -6.2088, 106.8456 (Akurasi ±10m)', 
+        displayText: 'Browser tidak mendukung lokasi GPS.',
       });
       return;
     }
@@ -43,7 +43,7 @@ export function useRealtimeLocation() {
     setLocation((prev) => ({
       ...prev,
       loading: true,
-      displayText: 'Mengunci lokasi sekarang...', 
+      displayText: 'Mengunci lokasi sekarang...',
       error: null,
     }));
 
@@ -67,11 +67,11 @@ export function useRealtimeLocation() {
 
           if (res.ok) {
             const data = await res.json();
-            const addr = data.address;
+            const addr = data.address || {};
             const road = addr.road || addr.suburb || addr.neighbourhood || '';
             const city = addr.city || addr.town || addr.municipality || addr.county || '';
             if (road || city) {
-              addressText = [road, city].filter(Boolean).join(', ');
+              addressText = data.display_name || [road, city].filter(Boolean).join(', ');
             }
           }
         } catch {
@@ -80,7 +80,7 @@ export function useRealtimeLocation() {
 
         const displayText = addressText
           ? `Lokasi Sekarang: ${addressText} (±${acc}m)`
-          : `Lokasi Sekarang: ${lat}, ${lng} (Akurasi: ±${acc}m)`;
+          : 'Lokasi ditemukan. Alamat belum tersedia; titik GPS tetap disimpan.';
 
         setLocation({
           loading: false,
@@ -101,13 +101,13 @@ export function useRealtimeLocation() {
 
         setLocation({
           loading: false,
-          latitude: -6.2088,
-          longitude: 106.8456,
-          accuracy: 12,
-          address: 'Lokasi Sekarang Terkunci', 
+          latitude: null,
+          longitude: null,
+          accuracy: null,
+          address: null,
           error: fallbackMsg,
           timestamp: Date.now(),
-          displayText: 'Lokasi Sekarang: -6.2088, 106.8456 (Akurasi ±12m)', 
+          displayText: fallbackMsg,
         });
       },
       {
@@ -119,8 +119,8 @@ export function useRealtimeLocation() {
   }, []);
 
   useEffect(() => {
-    fetchLocation();
-  }, [fetchLocation]);
+    if (enabled) fetchLocation();
+  }, [fetchLocation, enabled]);
 
   return {
     ...location,

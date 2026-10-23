@@ -1,3 +1,4 @@
+import { approvedAttendanceRecords } from '../services/approvedAttendanceRecords';
 import { Request, Response } from 'express';
 import { db } from '../db';
 import { attendanceBatches, attendanceRecords } from '../db/schema/attendance';
@@ -93,7 +94,7 @@ export async function getAttendanceRecords(req: Request, res: Response) {
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(attendanceRecords.workDate));
 
-    return res.status(200).json(rows);
+    return res.status(200).json(await approvedAttendanceRecords(rows, db));
   } catch (err) {
     console.error('getAttendanceRecords error:', err);
     return res.status(500).json({ error: 'Failed to retrieve attendance records' });

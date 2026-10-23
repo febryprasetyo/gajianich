@@ -17,7 +17,8 @@ export const attendanceFaceProfiles = pgTable(
       .references(() => employees.id, { onDelete: 'cascade' })
       .unique(),
     isEnrolled: boolean('is_enrolled').default(true).notNull(),
-    faceDescriptorHash: varchar('face_descriptor_hash', { length: 128 }),
+    faceDescriptorHash: text('face_descriptor_hash'),
+    descriptorVersion: varchar('descriptor_version', { length: 50 }),
     samplePhotoUrl: text('sample_photo_url'),
     enrolledAt: timestamp('enrolled_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
