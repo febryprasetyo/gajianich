@@ -17,6 +17,7 @@ Dokumen ini adalah **indeks utama roadmap**. Setiap item prioritas dipecah ke be
 | **07** | Presensi Mobile PWA Karyawan & Backend Integrasi | **Selesai** | [07-presensi-mobile-pwa.md](./07-presensi-mobile-pwa.md) | [Spec](../superpowers/specs/2026-10-22-mobile-attendance-backend-design.md) \| [Plan](../superpowers/plans/2026-10-22-mobile-attendance-backend.md) |
 | **08** | Arsitektur Modular Package-by-Feature (Screaming Architecture) & Drizzle | **Rencana** | [08-arsitektur-modular-package-by-feature.md](./08-arsitektur-modular-package-by-feature.md) | Analisa Arsitektur Monorepo Next.js |
 | **09** | Perbaikan Hasil Audit Presensi Mobile | **Selesai** | [Checklist](#perbaikan-hasil-audit-presensi-mobile) | [Spec](../superpowers/specs/2026-10-23-mobile-attendance-audit-fixes-design.md) \| [Plan](../superpowers/plans/2026-10-23-mobile-attendance-audit-fixes.md) |
+| **10** | Smart Clock Selection (Pilihan Masuk vs Pulang) | **Rencana** | [10-smart-clock-selection.md](./10-smart-clock-selection.md) | [Spec](../superpowers/specs/2026-10-23-smart-clock-selection-design.md) \| [Plan](../superpowers/plans/2026-10-23-smart-clock-selection.md) |
 
 ---
 
