@@ -486,22 +486,44 @@ export async function addComment(actor: TicketActor, ticketId: number, input: Ad
   }
 }
 
-export async function getTicketById(ticketId: number): Promise<TicketDetail> {
-  const tRes = await pool.query("SELECT * FROM helpdesk_tickets WHERE id = $1", [ticketId]);
+export async function getTicketById(ticketIdOrNumber: number | string): Promise<TicketDetail> {
+  const isNumeric = typeof ticketIdOrNumber === "number" || /^\d+$/.test(String(ticketIdOrNumber).trim());
+  const tRes = isNumeric
+    ? await pool.query("SELECT * FROM helpdesk_tickets WHERE id = $1", [Number(ticketIdOrNumber)])
+    : await pool.query("SELECT * FROM helpdesk_tickets WHERE ticket_number = $1", [String(ticketIdOrNumber).trim()]);
   if (tRes.rowCount === 0) {
     throw new Error("Tiket tidak ditemukan");
   }
 
+  const realId = tRes.rows[0].id;
   const commentsRes = await pool.query(
     "SELECT * FROM helpdesk_ticket_comments WHERE ticket_id = $1 ORDER BY created_at ASC",
-    [ticketId]
+    [realId]
   );
   const attachmentsRes = await pool.query(
     "SELECT * FROM helpdesk_attachments WHERE ticket_id = $1 ORDER BY uploaded_at DESC",
-    [ticketId]
+    [realId]
+  );
+  const auditRes = await pool.query(
+    "SELECT * FROM helpdesk_ticket_audit WHERE ticket_id = $1 ORDER BY occurred_at ASC",
+    [realId]
   );
 
-  return mapTicketRowToDetail(tRes.rows[0], commentsRes.rows, attachmentsRes.rows);
+  const detail = mapTicketRowToDetail(tRes.rows[0], commentsRes.rows, attachmentsRes.rows);
+  detail.audit = auditRes.rows.map((row) => ({
+    id: String(row.id),
+    ticketId: String(row.ticket_id),
+    actorUserId: Number(row.actor_user_id),
+    actorName: row.actor_name_snapshot,
+    action: row.action,
+    fieldChanged: row.field_changed,
+    oldValue: row.old_value,
+    newValue: row.new_value,
+    note: row.note,
+    occurredAt: new Date(row.occurred_at).toISOString(),
+  }));
+
+  return detail;
 }
 
 export interface TicketListFilters {

@@ -45,7 +45,12 @@ export async function getTicketDetail(
   id: number | string,
   signal?: AbortSignal
 ): Promise<{ success: boolean; data: TicketDetail }> {
-  return api.get<{ success: boolean; data: TicketDetail }>(`/helpdesk/tickets/${id}`, { signal });
+  const res = await api.get<any>(`/helpdesk/tickets/${id}`, { signal });
+  const rawData = res?.data !== undefined ? res.data : res;
+  return {
+    success: true,
+    data: rawData,
+  };
 }
 
 export async function createTicket(
@@ -61,20 +66,36 @@ export async function updateTicketStatus(
     status: string;
     reason?: string;
     resolutionNotes?: string;
+    resolutionNote?: string;
     confirmationChannel?: string;
     feedbackScore?: number;
     feedbackNotes?: string;
+    feedbackNote?: string;
+    reopenJustification?: string;
   }
 ): Promise<{ success: boolean; data: TicketDetail }> {
-  return api.patch<{ success: boolean; data: TicketDetail }>(`/helpdesk/tickets/${id}/status`, body);
+  const payload: any = { status: body.status };
+  const resNote = body.resolutionNotes || body.resolutionNote;
+  if (resNote) payload.resolutionNote = resNote;
+  if (body.confirmationChannel) payload.resolutionConfirmationChannel = body.confirmationChannel;
+  if (body.feedbackScore) {
+    payload.feedbackScore = body.feedbackScore;
+    payload.feedbackSource = "STAFF_RECORDED";
+  }
+  const fbNote = body.feedbackNotes || body.feedbackNote;
+  if (fbNote) payload.feedbackNote = fbNote;
+  const reason = body.reason || body.reopenJustification;
+  if (reason) payload.reopenJustification = reason;
+
+  return api.patch<{ success: boolean; data: TicketDetail }>(`/helpdesk/tickets/${id}/status`, payload);
 }
 
 export async function assignTicket(
   id: number | string,
-  assignedToEmployeeId: number
+  assignedToUserId: number
 ): Promise<{ success: boolean; data: TicketDetail }> {
   return api.patch<{ success: boolean; data: TicketDetail }>(`/helpdesk/tickets/${id}/assign`, {
-    assignedToEmployeeId,
+    assignedToUserId: Number(assignedToUserId),
   });
 }
 

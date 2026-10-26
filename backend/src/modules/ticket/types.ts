@@ -88,6 +88,7 @@ export interface TicketDetail extends TicketSummary {
   slaResponseMinutes: number | null;
   comments: TicketComment[];
   attachments?: TicketAttachment[];
+  audit?: TicketAuditEntry[];
 }
 
 export interface Page<T> {

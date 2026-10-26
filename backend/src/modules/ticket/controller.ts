@@ -109,14 +109,14 @@ export async function listTicketsHandler(req: AuthenticatedRequest, res: Respons
 
 export async function getTicketDetailHandler(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
+    const rawId = req.params.id;
+    if (!rawId) {
       res.status(400).json({ error: "ID tiket tidak valid" });
       return;
     }
 
-    const ticket = await getTicketById(id);
-    res.json({ data: ticket });
+    const ticket = await getTicketById(rawId);
+    res.json({ success: true, data: ticket });
   } catch (err: any) {
     if (err.message === "Tiket tidak ditemukan") {
       res.status(404).json({ error: "Tiket tidak ditemukan" });
@@ -153,7 +153,7 @@ export async function updateTicketHandler(req: AuthenticatedRequest, res: Respon
 
     const actor = await resolveTicketActor(req);
     const updated = await updateTicket(actor, id, parsed.data);
-    res.json({ data: updated });
+    res.json({ success: true, data: updated });
   } catch (err: any) {
     if (err.message === "Tiket tidak ditemukan") {
       res.status(404).json({ error: "Tiket tidak ditemukan" });
@@ -187,7 +187,7 @@ export async function addCommentHandler(req: AuthenticatedRequest, res: Response
 
     const actor = await resolveTicketActor(req);
     const comment = await addComment(actor, id, parsed.data);
-    res.status(201).json({ data: comment });
+    res.status(201).json({ success: true, data: comment });
   } catch (err: any) {
     if (err.message === "Tiket tidak ditemukan") {
       res.status(404).json({ error: "Tiket tidak ditemukan" });
@@ -206,7 +206,7 @@ export async function getTicketAuditHandler(req: AuthenticatedRequest, res: Resp
     }
 
     const audit = await getTicketAuditTrail(id);
-    res.json({ data: audit });
+    res.json({ success: true, data: audit });
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Gagal memuat riwayat tiket" });
   }

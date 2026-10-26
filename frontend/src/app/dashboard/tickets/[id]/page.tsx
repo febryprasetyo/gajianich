@@ -25,7 +25,10 @@ export default function TicketDetailPage({
       setLoading(true);
       setError(null);
       const res = await getTicketDetail(ticketId);
-      if (res.success && res.data) {
+      const ticketData = res?.data || (res as any);
+      if (ticketData && (ticketData.id || ticketData.ticketNumber)) {
+        setTicket(ticketData);
+      } else if (res?.success && res?.data) {
         setTicket(res.data);
       } else {
         setError("Tiket tidak ditemukan.");
