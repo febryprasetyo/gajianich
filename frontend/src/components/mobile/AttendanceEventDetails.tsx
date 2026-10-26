@@ -49,9 +49,26 @@ export default function AttendanceEventDetails({
       )}
       {events.map((event) => (
         <section key={event.id} className="space-y-3 rounded-xl border border-slate-200 p-3">
-          <h4 className="text-sm font-bold text-slate-900">
-            {event.eventType === 'IN' ? 'Presensi masuk' : 'Presensi pulang'} · {event.scanTime} {event.timeZoneLabel}
+          <h4 className="flex flex-wrap items-center gap-2 text-sm font-bold text-slate-900">
+            <span>
+              {event.eventType === 'IN' ? 'Presensi masuk' : 'Presensi pulang'} · {event.scanTime} {event.timeZoneLabel}
+            </span>
+            {event.eventType === 'OUT' && (event.notes?.includes('[DIRECT_OUT]') || event.approvalNote?.includes('[DIRECT_OUT]')) && (
+              <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/20">
+                Langsung Pulang
+              </span>
+            )}
           </h4>
+          {event.eventType === 'OUT' && (event.notes?.includes('[DIRECT_OUT]') || event.approvalNote?.includes('[DIRECT_OUT]')) && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+              <p className="font-semibold">⚠️ Presensi Langsung Pulang (Tanpa Masuk)</p>
+              {event.notes && (
+                <p className="mt-0.5 text-[11px] text-amber-800">
+                  Klarifikasi: &ldquo;{event.notes.replace('[DIRECT_OUT]', '').trim()}&rdquo;
+                </p>
+              )}
+            </div>
+          )}
           <p className="text-xs text-slate-700">
             {sent.includes(event.id)
               ? 'Koreksi menunggu pemeriksaan HRD.'

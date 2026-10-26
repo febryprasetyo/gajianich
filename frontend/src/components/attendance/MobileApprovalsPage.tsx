@@ -288,7 +288,14 @@ export default function MobileApprovalsPage() {
               return (
                 <div key={row.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
                   <div className="space-y-1">
-                    <p className="text-sm font-bold text-slate-900">{row.employeeName}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-bold text-slate-900">{row.employeeName}</p>
+                      {'eventType' in row && row.notes?.includes('[DIRECT_OUT]') && (
+                        <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/20">
+                          Langsung Pulang (Tanpa Masuk)
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-slate-600">
                       {row.employeeCode}
                       {'eventType' in row
@@ -365,6 +372,21 @@ export default function MobileApprovalsPage() {
             <p className="font-bold">{log?.employeeName || photo?.employeeName}</p>
             {log && (
               <>
+                {log.notes?.includes('[DIRECT_OUT]') && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                    <p className="font-bold flex items-center gap-1.5">
+                      <span>⚠️</span> Presensi Langsung Pulang (Tanpa Absen Masuk)
+                    </p>
+                    <p className="mt-1 leading-relaxed">
+                      Karyawan tidak melakukan absen masuk pada shift ini. Jika disetujui, kehadiran akan dicatat dengan jam masuk kosong.
+                    </p>
+                    {log.notes && (
+                      <p className="mt-1.5 font-medium italic text-amber-800">
+                        Keterangan karyawan: &ldquo;{log.notes.replace('[DIRECT_OUT]', '').trim()}&rdquo;
+                      </p>
+                    )}
+                  </div>
+                )}
                 <p>
                   {log.eventType === 'IN' ? 'Masuk' : 'Pulang'} · {log.scanDate || log.workDate} {log.scanTime} {log.timeZoneLabel}
                 </p>

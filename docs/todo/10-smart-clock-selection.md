@@ -1,6 +1,6 @@
 # Fitur 10: Smart Clock Selection (Pilihan Masuk vs Pulang)
 
-**Status:** Rencana (Siap Eksekusi)  
+**Status:** Selesai  
 **Dokumen Desain:** [Spec](../superpowers/specs/2026-10-23-smart-clock-selection-design.md)  
 **Dokumen Rencana:** [Plan](../superpowers/plans/2026-10-23-smart-clock-selection.md)
 
@@ -29,17 +29,17 @@ Menyediakan pemilihan cerdas (Smart Clock Selection) ketika karyawan belum melak
 - [x] Buat automated test di `backend/src/services/mobileClock.integration.test.ts` untuk memverifikasi log `isDirectOut`, penolakan tanpa catatan, multi-clocking, dan proyeksi approval.
 
 ### Phase 2: Frontend Smart Selection UI & Modal
-- [ ] Buat komponen `frontend/src/components/mobile/SmartClockSelectionModal.tsx` berbasis `ModalShell`.
-- [ ] Tampilkan ringkasan waktu, peringatan belum ada jam masuk, serta 2 pilihan aksi: "Absen Masuk" atau "Langsung Absen Pulang".
-- [ ] Sediakan field catatan wajib saat memilih langsung pulang.
-- [ ] Integrasikan ke `frontend/src/app/m/beranda/page.tsx` dan `frontend/src/app/m/presensi/page.tsx` pada trigger tombol presensi.
-- [ ] Hubungkan ke `FaceAttendanceSheet` dengan meneruskan payload `isDirectOut` dan `notes`.
+- [x] Buat komponen `frontend/src/components/mobile/SmartClockSelectionModal.tsx` berbasis `ModalShell`.
+- [x] Tampilkan ringkasan waktu, peringatan belum ada jam masuk, serta 2 pilihan aksi: "Absen Masuk" atau "Langsung Absen Pulang".
+- [x] Sediakan field catatan wajib saat memilih langsung pulang.
+- [x] Integrasikan ke `frontend/src/app/m/beranda/page.tsx` dan `frontend/src/app/m/presensi/page.tsx` pada trigger tombol presensi.
+- [x] Hubungkan ke `FaceAttendanceSheet` dengan meneruskan payload `isDirectOut` dan `notes`.
 
 ### Phase 3: Reviewer & Detail Display
-- [ ] Tampilkan penanda khusus *"Langsung Pulang (Tanpa Masuk)"* pada `AttendanceEventDetails.tsx` dan antrean review `MobileApprovalsPage.tsx`.
+- [x] Tampilkan penanda khusus *"Langsung Pulang (Tanpa Masuk)"* pada `AttendanceEventDetails.tsx` dan antrean review `MobileApprovalsPage.tsx`.
 
 ### Phase 4: Full Verification Loop
-- [ ] Jalankan verifikasi backend: unit/integration tests dan `npx tsc --noEmit`.
-- [ ] Jalankan verifikasi frontend: unit tests, `npm run lint`, `npx tsc --noEmit`, dan `npm run build`.
-- [ ] Uji skenario browser Playwright jika diperlukan.
-- [ ] Update checkpoint TODO dan commit Git per milestone.
+- [x] Jalankan verifikasi backend: unit/integration tests dan `npx tsc --noEmit`.
+- [x] Jalankan verifikasi frontend: unit tests, `npm run lint`, `npx tsc --noEmit`, dan `npm run build`.
+- [x] Uji skenario browser Playwright jika diperlukan.
+- [x] Update checkpoint TODO dan commit Git per milestone.

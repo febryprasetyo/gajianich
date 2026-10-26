@@ -1,7 +1,7 @@
 # Implementation Plan: Smart Clock Selection (Pilihan Masuk vs Pulang)
 
 **Tanggal:** 26 Oktober 2026  
-**Status:** APPROVED (Telah Dikonfirmasi & Disetujui Pengguna)  
+**Status:** COMPLETED (Selesai & Terverifikasi Penuh)  
 **Dokumen Terkait:** [Design Spec](../specs/2026-10-23-smart-clock-selection-design.md)
 
 ---
@@ -48,31 +48,31 @@ Fitur ini memberikan kecerdasan kontekstual pada presensi mobile PWA:
     - Multi-clocking: absen pulang beberapa kali dapat diapprove oleh HRD dan mengupdate rekam absensi.
 
 ### Phase 2: Frontend Smart Selection UI & Modal
-- [ ] Buat komponen `frontend/src/components/mobile/SmartClockSelectionModal.tsx` menggunakan `ModalShell`:
+- [x] Buat komponen `frontend/src/components/mobile/SmartClockSelectionModal.tsx` menggunakan `ModalShell`:
   - Menampilkan waktu saat ini dan peringatan bahwa belum ada rekam masuk.
   - Pilihan 1: "Absen Masuk (Terlambat)".
   - Pilihan 2: "Langsung Absen Pulang (Lupa Masuk Pagi)" dengan textarea catatan wajib diisi.
-- [ ] Perbarui `frontend/src/components/mobile/FaceAttendanceSheet.tsx`:
+- [x] Perbarui `frontend/src/components/mobile/FaceAttendanceSheet.tsx`:
   - Tambahkan prop `isDirectOut?: boolean` dan `notes?: string`.
   - Teruskan ke `postMobileClock({ ...payload, isDirectOut, notes })`.
-- [ ] Integrasikan ke `frontend/src/app/m/beranda/page.tsx` & `frontend/src/app/m/presensi/page.tsx`:
+- [x] Integrasikan ke `frontend/src/app/m/beranda/page.tsx` & `frontend/src/app/m/presensi/page.tsx`:
   - Deteksi apakah waktu saat ini `>= scheduleIn + 5 jam` dan `checkedIn === false`.
   - Jika ya: klik tombol cincin presensi membuka `SmartClockSelectionModal`.
   - Dari modal, lanjutkan ke `FaceAttendanceSheet` dengan parameter yang dipilih.
   - Dukung mode strict vs default untuk status tombol pasca-presensi.
 
 ### Phase 3: Reviewer & Detail Display
-- [ ] Perbarui `frontend/src/components/attendance/MobileApprovalsPage.tsx`:
+- [x] Perbarui `frontend/src/components/attendance/MobileApprovalsPage.tsx`:
   - Deteksi tag `[DIRECT_OUT]` atau event `OUT` tanpa masuk.
   - Tampilkan badge khusus: **"Langsung Pulang (Tanpa Masuk)"** (varian Amber/Indigo).
-- [ ] Perbarui `frontend/src/components/mobile/AttendanceEventDetails.tsx` & `DayDetailSheet.tsx`:
+- [x] Perbarui `frontend/src/components/mobile/AttendanceEventDetails.tsx` & `DayDetailSheet.tsx`:
   - Tampilkan label/badge yang jelas saat riwayat merupakan presensi kepulangan langsung.
 
 ### Phase 4: Full Verification Loop
-- [ ] Backend: `cd backend && npx tsx --test src/services/mobileClock.integration.test.ts && npx tsc --noEmit`.
-- [ ] Frontend: `cd frontend && npx tsc --noEmit && npm run lint && npm test`.
-- [ ] Verifikasi browser Playwright jika diperlukan.
-- [ ] Perbarui berkas TODO dan lakukan commit Git bertahap.
+- [x] Backend: `cd backend && npx tsx --test src/services/mobileClock.integration.test.ts && npx tsc --noEmit`.
+- [x] Frontend: `cd frontend && npx tsc --noEmit && npm run lint && npm test && npm run build`.
+- [x] Verifikasi browser Playwright jika diperlukan.
+- [x] Perbarui berkas TODO dan lakukan commit Git bertahap.
 
 ---
 

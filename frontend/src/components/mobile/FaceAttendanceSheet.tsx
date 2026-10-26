@@ -7,11 +7,18 @@ import { useRealtimeLocation } from '@/hooks/useRealtimeLocation';
 import { postMobileClock, type MobileClockResponse } from '@/lib/attendance/mobileApi';
 export type AttendanceReceipt = MobileClockResponse['data'];
 interface Props {
-  isOpen: boolean; onClose: () => void; isCheckOut?: boolean; isOnline?: boolean;
-  isFaceEnrolled?: boolean; employeeName?: string; employeeNik?: string;
+  isOpen: boolean;
+  onClose: () => void;
+  isCheckOut?: boolean;
+  isDirectOut?: boolean;
+  notes?: string;
+  isOnline?: boolean;
+  isFaceEnrolled?: boolean;
+  employeeName?: string;
+  employeeNik?: string;
   onSuccess: (data: AttendanceReceipt) => void | Promise<void>;
 }
-export default function FaceAttendanceSheet({ isOpen, onClose, isCheckOut = false, isOnline = true, isFaceEnrolled = false, employeeName, onSuccess }: Props) {
+export default function FaceAttendanceSheet({ isOpen, onClose, isCheckOut = false, isDirectOut = false, notes, isOnline = true, isFaceEnrolled = false, employeeName, onSuccess }: Props) {
   const location = useRealtimeLocation(isOpen);
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
@@ -53,12 +60,12 @@ export default function FaceAttendanceSheet({ isOpen, onClose, isCheckOut = fals
     ctx.drawImage(video.current, 0, 0, canvas.width, canvas.height);
     submitting.current = true; setBusy(true);
     try {
-      const result = await postMobileClock({ eventType: isCheckOut ? 'OUT' : 'IN', photoBase64: canvas.toDataURL('image/jpeg', 0.85), latitude: location.latitude, longitude: location.longitude, accuracy: location.accuracy, address: location.address, deviceInfo: navigator.userAgent });
+      const result = await postMobileClock({ eventType: isCheckOut || isDirectOut ? 'OUT' : 'IN', isDirectOut, notes, photoBase64: canvas.toDataURL('image/jpeg', 0.85), latitude: location.latitude, longitude: location.longitude, accuracy: location.accuracy, address: location.address, deviceInfo: navigator.userAgent });
       await onSuccess(result.data);
     } catch (err) { setError(err instanceof Error ? err.message : 'Presensi gagal. Silakan ulangi.'); }
     finally { submitting.current = false; setBusy(false); }
   }
-  return <ModalShell isOpen={isOpen} onClose={onClose} title={isCheckOut ? 'Presensi pulang' : 'Presensi masuk'} isLoading={busy} footer={<button type="button" onClick={capture} disabled={busy || !ready || !isFaceEnrolled || location.loading} className="min-h-11 w-full rounded-xl bg-emerald-700 px-4 py-3 text-sm font-bold text-white disabled:opacity-50">{busy ? 'Memeriksa wajah dan menyimpan...' : 'Ambil foto dan presensi'}</button>}>
+  return <ModalShell isOpen={isOpen} onClose={onClose} title={isDirectOut ? 'Presensi pulang (langsung)' : isCheckOut ? 'Presensi pulang' : 'Presensi masuk'} isLoading={busy} footer={<button type="button" onClick={capture} disabled={busy || !ready || !isFaceEnrolled || location.loading} className="min-h-11 w-full rounded-xl bg-emerald-700 px-4 py-3 text-sm font-bold text-white disabled:opacity-50">{busy ? 'Memeriksa wajah dan menyimpan...' : 'Ambil foto dan presensi'}</button>}>
     <div className="space-y-4">
       <p className="text-sm text-slate-700">{employeeName}. Hadapkan wajah ke kamera dengan pencahayaan cukup.</p>
       {!isFaceEnrolled ? <p role="alert" className="text-sm text-rose-800">Wajah belum terdaftar. <Link href="/m/profile" className="underline">Daftarkan melalui profil</Link>.</p> : <video ref={video} autoPlay playsInline muted className="aspect-[4/3] w-full rounded-xl bg-slate-900 object-cover -scale-x-100" aria-label="Pratinjau kamera wajah" />}

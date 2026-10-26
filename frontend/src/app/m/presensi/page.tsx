@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import PresensiRingButton from "@/components/mobile/PresensiRingButton";
 import DayDetailSheet, { DayDetailData } from "@/components/mobile/DayDetailSheet";
+import SmartClockSelectionModal, { SmartClockSelectionResult } from "@/components/mobile/SmartClockSelectionModal";
 import FaceAttendanceSheet, { type AttendanceReceipt } from "@/components/mobile/FaceAttendanceSheet";
 import {
   fetchMobileSummary,
@@ -35,6 +36,8 @@ export default function MobilePresensiPage() {
   const [historyError, setHistoryError] = useState<string | null>(null);
 
   const [isFaceSheetOpen, setIsFaceSheetOpen] = useState(false);
+  const [isSmartModalOpen, setIsSmartModalOpen] = useState(false);
+  const [smartSelection, setSmartSelection] = useState<SmartClockSelectionResult | null>(null);
   const [selectedDayDetail, setSelectedDayDetail] = useState<DayDetailData | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<"CURRENT" | "PREVIOUS">("CURRENT");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -121,6 +124,17 @@ export default function MobilePresensiPage() {
 
   const handleClockButtonClick = () => {
     if (summaryLoading || summaryError || !summaryData) return;
+    if (!isCheckedIn && !isCheckedOut && summaryData.attendance.shiftWindow?.canDirectOut) {
+      setIsSmartModalOpen(true);
+      return;
+    }
+    setSmartSelection(null);
+    setIsFaceSheetOpen(true);
+  };
+
+  const handleSmartConfirm = (result: SmartClockSelectionResult) => {
+    setIsSmartModalOpen(false);
+    setSmartSelection(result);
     setIsFaceSheetOpen(true);
   };
 
@@ -227,7 +241,7 @@ export default function MobilePresensiPage() {
 
       {/* 2. Hero Action: Circular Face Scan Button (Shared with Beranda) */}
       <PresensiRingButton
-        status={isCheckedOut ? "COMPLETED" : isCheckedIn ? "CHECKED_IN" : "NOT_CHECKED_IN"}
+        status={isCheckedOut ? (summaryData?.attendance.strictClock ? "COMPLETED" : "CHECKED_IN") : isCheckedIn ? "CHECKED_IN" : "NOT_CHECKED_IN"}
         onOpenFlow={handleClockButtonClick}
         disabled={summaryLoading || Boolean(summaryError) || !summaryData}
       />
@@ -393,13 +407,28 @@ export default function MobilePresensiPage() {
       {/* Face Flow Sheet Dialog */}
       <FaceAttendanceSheet
         isOpen={isFaceSheetOpen}
-        onClose={() => setIsFaceSheetOpen(false)}
-        isCheckOut={isCheckedIn && !isCheckedOut}
+        onClose={() => {
+          setIsFaceSheetOpen(false);
+          setSmartSelection(null);
+        }}
+        isCheckOut={smartSelection ? smartSelection.eventType === "OUT" : Boolean(isCheckedIn && !isCheckedOut)}
+        isDirectOut={smartSelection?.isDirectOut ?? false}
+        notes={smartSelection?.notes}
         isOnline={true}
         isFaceEnrolled={summaryData?.faceEnrollment.isFaceEnrolled ?? false}
         employeeName={summaryData?.employee.fullName || "Karyawan"}
         employeeNik={summaryData?.employee.employeeCode || ""}
         onSuccess={handleFaceSuccess}
+      />
+
+      {/* Smart Clock Selection Modal */}
+      <SmartClockSelectionModal
+        isOpen={isSmartModalOpen}
+        onClose={() => setIsSmartModalOpen(false)}
+        currentTimeStr={new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+        scheduleIn={summaryData?.shift.scheduleIn}
+        scheduleOut={summaryData?.shift.scheduleOut}
+        onConfirm={handleSmartConfirm}
       />
 
       {/* Day Detail Sheet Dialog */}

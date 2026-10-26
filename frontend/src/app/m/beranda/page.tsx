@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import PresensiRingButton, { AttendanceRingState } from "@/components/mobile/PresensiRingButton";
 import AttendanceMetricsCards from "@/components/mobile/AttendanceMetricsCards";
+import SmartClockSelectionModal, { SmartClockSelectionResult } from "@/components/mobile/SmartClockSelectionModal";
 import FaceAttendanceSheet, { type AttendanceReceipt } from "@/components/mobile/FaceAttendanceSheet";
 import DayDetailSheet, { DayDetailData } from "@/components/mobile/DayDetailSheet";
 import {
@@ -58,6 +59,8 @@ export default function MobileBerandaPage() {
   });
 
   const [isFaceSheetOpen, setIsFaceSheetOpen] = useState(false);
+  const [isSmartModalOpen, setIsSmartModalOpen] = useState(false);
+  const [smartSelection, setSmartSelection] = useState<SmartClockSelectionResult | null>(null);
   const [selectedDayDetail, setSelectedDayDetail] = useState<DayDetailData | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -109,12 +112,26 @@ export default function MobileBerandaPage() {
   }, [router, loadSummary]);
 
   const getRingStatus = (): AttendanceRingState => {
-    if (!attendanceState.checkedIn) return "NOT_CHECKED_IN";
-    if (attendanceState.checkedIn && !attendanceState.checkedOut) return "CHECKED_IN";
-    return "COMPLETED";
+    const isStrict = summaryData?.attendance.strictClock === true;
+    if (attendanceState.checkedOut) {
+      return isStrict ? "COMPLETED" : "CHECKED_IN";
+    }
+    if (attendanceState.checkedIn) return "CHECKED_IN";
+    return "NOT_CHECKED_IN";
   };
 
   const handleOpenFaceFlow = () => {
+    if (!attendanceState.checkedIn && !attendanceState.checkedOut && summaryData?.attendance.shiftWindow?.canDirectOut) {
+      setIsSmartModalOpen(true);
+      return;
+    }
+    setSmartSelection(null);
+    setIsFaceSheetOpen(true);
+  };
+
+  const handleSmartConfirm = (result: SmartClockSelectionResult) => {
+    setIsSmartModalOpen(false);
+    setSmartSelection(result);
     setIsFaceSheetOpen(true);
   };
 
@@ -443,13 +460,28 @@ export default function MobileBerandaPage() {
       {/* Face Flow Sheet Dialog */}
       <FaceAttendanceSheet
         isOpen={isFaceSheetOpen}
-        onClose={() => setIsFaceSheetOpen(false)}
-        isCheckOut={attendanceState.checkedIn && !attendanceState.checkedOut}
+        onClose={() => {
+          setIsFaceSheetOpen(false);
+          setSmartSelection(null);
+        }}
+        isCheckOut={smartSelection ? smartSelection.eventType === "OUT" : Boolean(attendanceState.checkedIn && !attendanceState.checkedOut)}
+        isDirectOut={smartSelection?.isDirectOut ?? false}
+        notes={smartSelection?.notes}
         isOnline={true}
         isFaceEnrolled={summaryData?.faceEnrollment.isFaceEnrolled ?? false}
         employeeName={employeeName}
         employeeNik={summaryData?.employee.employeeCode || ""}
         onSuccess={handleFaceSuccess}
+      />
+
+      {/* Smart Clock Selection Modal */}
+      <SmartClockSelectionModal
+        isOpen={isSmartModalOpen}
+        onClose={() => setIsSmartModalOpen(false)}
+        currentTimeStr={new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+        scheduleIn={summaryData?.shift.scheduleIn}
+        scheduleOut={summaryData?.shift.scheduleOut}
+        onConfirm={handleSmartConfirm}
       />
 
       {/* Day Detail Sheet Dialog */}

@@ -37,6 +37,13 @@ export interface MobileTodayAttendance {
   approvalStatus: "PENDING" | "APPROVED" | "REJECTED" | null;
   approvalNote: string;
   txHash: string | null;
+  isLateAfternoon?: boolean;
+  strictClock?: boolean;
+  shiftWindow?: {
+    scheduleIn: string;
+    scheduleOut: string;
+    canDirectOut: boolean;
+  };
 }
 
 export interface MobileFaceEnrollment {
@@ -55,6 +62,7 @@ export interface MobileSummaryData {
 
 export interface MobileClockRequest {
   eventType: "IN" | "OUT";
+  isDirectOut?: boolean;
   workDate?: string;
   scanTime?: string;
   latitude?: number | null;
@@ -176,5 +184,6 @@ export interface MobileAttendanceEvent {
   longitude: string | null;
   address: string | null;
   photoUrl: string | null;
+  notes?: string | null;
   reviewHistory: { status: string; note: string; actorId: number; at: string }[];
 }
