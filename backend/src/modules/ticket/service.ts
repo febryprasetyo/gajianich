@@ -629,7 +629,17 @@ export async function getTicketAuditTrail(ticketId: number): Promise<TicketAudit
   }));
 }
 
-function mapTicketRowToSummary(row: any): TicketSummary {
+function mapTicketRowToSummary(row: any): any {
+  const requesterEmployeeId = Number(row.requester_employee_id);
+  const requesterName = row.requester_name_snapshot || null;
+  const requesterDepartment = row.requester_department_snapshot || null;
+
+  const createdById = Number(row.created_by_user_id);
+  const createdByName = row.created_by_name_snapshot || null;
+
+  const assignedToEmployeeId = row.assigned_to_user_id ? Number(row.assigned_to_user_id) : null;
+  const assignedToName = row.assigned_to_name_snapshot || null;
+
   return {
     id: String(row.id),
     ticketNumber: row.ticket_number,
@@ -641,23 +651,30 @@ function mapTicketRowToSummary(row: any): TicketSummary {
     isInternal: row.is_internal,
     reportedAt: new Date(row.reported_at).toISOString(),
     createdAt: new Date(row.created_at).toISOString(),
+    requesterEmployeeId,
+    requesterName,
+    requesterDepartment,
+    createdById,
+    createdByName,
+    assignedToEmployeeId,
+    assignedToName,
     requester: {
-      employeeId: Number(row.requester_employee_id),
-      nameSnapshot: row.requester_name_snapshot,
-      departmentSnapshot: row.requester_department_snapshot,
+      employeeId: requesterEmployeeId,
+      nameSnapshot: requesterName || "",
+      departmentSnapshot: requesterDepartment || "",
     },
     createdBy: {
-      userId: Number(row.created_by_user_id),
-      nameSnapshot: row.created_by_name_snapshot,
+      userId: createdById,
+      nameSnapshot: createdByName || "",
     },
-    assignedTo: row.assigned_to_user_id ? {
-      userId: Number(row.assigned_to_user_id),
-      nameSnapshot: row.assigned_to_name_snapshot,
+    assignedTo: assignedToEmployeeId ? {
+      userId: assignedToEmployeeId,
+      nameSnapshot: assignedToName || "",
     } : null,
   };
 }
 
-function mapTicketRowToDetail(row: any, comments: any[], attachments: any[]): TicketDetail {
+function mapTicketRowToDetail(row: any, comments: any[], attachments: any[]): any {
   const summary = mapTicketRowToSummary(row);
   return {
     ...summary,
@@ -665,11 +682,14 @@ function mapTicketRowToDetail(row: any, comments: any[], attachments: any[]): Ti
     reportEvidence: row.report_evidence,
     resolvedAt: row.resolved_at ? new Date(row.resolved_at).toISOString() : null,
     resolutionNote: row.resolution_note,
+    resolutionNotes: row.resolution_note,
     resolutionConfirmedBy: row.resolution_confirmed_by,
     resolutionConfirmedAt: row.resolution_confirmed_at ? new Date(row.resolution_confirmed_at).toISOString() : null,
     resolutionConfirmationChannel: row.resolution_confirmation_channel,
+    confirmationChannel: row.resolution_confirmation_channel,
     feedbackScore: row.feedback_score,
     feedbackNote: row.feedback_note,
+    feedbackNotes: row.feedback_note,
     feedbackSource: row.feedback_source,
     affectedAsset: row.affected_asset_id ? {
       id: String(row.affected_asset_id),

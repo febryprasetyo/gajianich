@@ -35,6 +35,13 @@ export interface TicketSummary {
   requester: TicketIdentity;
   createdBy: TicketIdentity;
   assignedTo: TicketIdentity | null;
+  requesterEmployeeId?: number;
+  requesterName?: string | null;
+  requesterDepartment?: string | null;
+  createdById?: number;
+  createdByName?: string | null;
+  assignedToEmployeeId?: number | null;
+  assignedToName?: string | null;
 }
 
 export interface TicketComment {
@@ -81,6 +88,9 @@ export interface TicketDetail extends TicketSummary {
   resolutionConfirmationChannel: ConfirmationChannel | null;
   feedbackScore: number | null;
   feedbackNote: string | null;
+  feedbackNotes?: string | null;
+  resolutionNotes?: string | null;
+  confirmationChannel?: ConfirmationChannel | null;
   feedbackSource: "STAFF_RECORDED" | null;
   affectedAsset: { id: string; label: string } | null;
   affectedEmployee: { id: string; label: string } | null;

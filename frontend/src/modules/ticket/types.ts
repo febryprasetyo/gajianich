@@ -51,6 +51,19 @@ export interface TicketSummary {
   slaBreached?: boolean;
   auditCount?: number;
   attachmentsCount?: number;
+  requester?: {
+    employeeId?: number;
+    nameSnapshot?: string;
+    departmentSnapshot?: string;
+  };
+  createdBy?: {
+    userId?: number;
+    nameSnapshot?: string;
+  };
+  assignedTo?: {
+    userId?: number;
+    nameSnapshot?: string;
+  } | null;
 }
 
 export interface TicketAuditItem {

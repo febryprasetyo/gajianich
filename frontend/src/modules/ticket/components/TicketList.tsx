@@ -165,7 +165,7 @@ export default function TicketList({
                           Pelapor:
                         </span>
                         <span className="font-semibold text-slate-900 truncate max-w-[160px]">
-                          {t.requesterName || "Karyawan #" + t.requesterEmployeeId}
+                          {t.requesterName || t.requester?.nameSnapshot || (t.requesterEmployeeId ? "Karyawan #" + t.requesterEmployeeId : "Karyawan Pelapor")}
                         </span>
                         {t.requesterDepartment && (
                           <span className="text-[10px] text-slate-400">
@@ -299,7 +299,7 @@ export default function TicketList({
                 <div className="flex justify-between">
                   <span className="text-slate-400">Pelapor:</span>
                   <span className="font-medium text-slate-900">
-                    {t.requesterName || "Karyawan #" + t.requesterEmployeeId}
+                    {t.requesterName || t.requester?.nameSnapshot || (t.requesterEmployeeId ? "Karyawan #" + t.requesterEmployeeId : "Karyawan Pelapor")}
                   </span>
                 </div>
                 <div className="flex justify-between">

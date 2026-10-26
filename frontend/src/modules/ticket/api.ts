@@ -1,3 +1,70 @@
+export function normalizeTicket<T extends Record<string, any>>(raw: T): T {
+  const requester = raw.requester || {};
+  const createdBy = raw.createdBy || {};
+  const assignedTo = raw.assignedTo || {};
+
+  const requesterName =
+    raw.requesterName ||
+    requester.nameSnapshot ||
+    requester.fullName ||
+    requester.name ||
+    null;
+
+  const requesterEmployeeId =
+    raw.requesterEmployeeId ??
+    requester.employeeId ??
+    requester.id ??
+    null;
+
+  const requesterDepartment =
+    raw.requesterDepartment ||
+    requester.departmentSnapshot ||
+    requester.department ||
+    null;
+
+  const createdByName =
+    raw.createdByName ||
+    createdBy.nameSnapshot ||
+    createdBy.username ||
+    createdBy.name ||
+    null;
+
+  const createdById =
+    raw.createdById ??
+    createdBy.userId ??
+    createdBy.id ??
+    null;
+
+  const assignedToName =
+    raw.assignedToName ||
+    assignedTo.nameSnapshot ||
+    assignedTo.fullName ||
+    assignedTo.name ||
+    null;
+
+  const assignedToEmployeeId =
+    raw.assignedToEmployeeId ??
+    raw.assignedToUserId ??
+    assignedTo.userId ??
+    assignedTo.employeeId ??
+    assignedTo.id ??
+    null;
+
+  return {
+    ...raw,
+    requesterName,
+    requesterEmployeeId,
+    requesterDepartment,
+    createdByName,
+    createdById,
+    assignedToName,
+    assignedToEmployeeId,
+    resolutionNotes: raw.resolutionNotes || raw.resolutionNote || null,
+    feedbackNotes: raw.feedbackNotes || raw.feedbackNote || null,
+    confirmationChannel: raw.confirmationChannel || raw.resolutionConfirmationChannel || null,
+  };
+}
+
 import { api } from "@/lib/api";
 import {
   TicketSummary,
@@ -30,7 +97,8 @@ export async function listTickets(
     `/helpdesk/tickets${qs ? `?${qs}` : ""}`,
     { signal }
   );
-  const items = res?.data || res?.items || (Array.isArray(res) ? res : []);
+  const rawItems = res?.data || res?.items || (Array.isArray(res) ? res : []);
+  const items = (Array.isArray(rawItems) ? rawItems : []).map(normalizeTicket);
   const total = Number(res?.totalCount ?? res?.total ?? items.length);
   return {
     success: true,
@@ -49,7 +117,7 @@ export async function getTicketDetail(
   const rawData = res?.data !== undefined ? res.data : res;
   return {
     success: true,
-    data: rawData,
+    data: normalizeTicket(rawData),
   };
 }
 
@@ -57,7 +125,12 @@ export async function createTicket(
   input: CreateTicketInput
 ): Promise<{ success: boolean; data: TicketDetail }> {
   const payload = buildCreateTicketPayload(input);
-  return api.post<{ success: boolean; data: TicketDetail }>("/helpdesk/tickets", payload);
+  const res = await api.post<any>("/helpdesk/tickets", payload);
+  const rawData = res?.data !== undefined ? res.data : res;
+  return {
+    success: true,
+    data: normalizeTicket(rawData),
+  };
 }
 
 export async function updateTicketStatus(

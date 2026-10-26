@@ -144,10 +144,10 @@ export default function TicketDetail({ ticket, onRefresh }: TicketDetailProps) {
               1. Identitas Pelapor (Karyawan HR)
             </div>
             <div className="text-sm font-extrabold text-slate-900">
-              {ticket.requesterName || `Karyawan #${ticket.requesterEmployeeId}`}
+              {ticket.requesterName || ticket.requester?.nameSnapshot || (ticket.requesterEmployeeId ? `Karyawan #${ticket.requesterEmployeeId}` : `Karyawan Pelapor`)}
             </div>
             <div className="text-xs text-slate-500 mt-0.5">
-              {ticket.requesterDepartment || "Departemen Tidak Terdaftar"}
+              {ticket.requesterDepartment || ticket.requester?.departmentSnapshot || "Departemen Tidak Terdaftar"}
             </div>
             <div className="text-xs text-slate-400 mt-0.5 truncate">
               {ticket.requesterEmail || "-"}
@@ -165,13 +165,13 @@ export default function TicketDetail({ ticket, onRefresh }: TicketDetailProps) {
               2. Dicatat Oleh (Staf IT)
             </div>
             <div className="text-sm font-extrabold text-slate-900">
-              {ticket.createdByName || ticket.createdByUsername || "Staf IT"}
+              {ticket.createdByName || ticket.createdBy?.nameSnapshot || ticket.createdByUsername || "Staf IT"}
             </div>
             <div className="text-xs text-slate-500 mt-0.5">
-              Username: {ticket.createdByUsername || "-"}
+              Username: {ticket.createdByUsername || ticket.createdBy?.nameSnapshot || "-"}
             </div>
             <div className="text-xs text-slate-400 mt-0.5">
-              ID Akun: #{ticket.createdById}
+              ID Akun: #{ticket.createdById || ticket.createdBy?.userId || "-"}
             </div>
           </div>
           <div className="mt-3 pt-2 border-t border-slate-100 text-[10px] text-emerald-600 font-medium">
@@ -186,7 +186,7 @@ export default function TicketDetail({ ticket, onRefresh }: TicketDetailProps) {
               3. Petugas Penanggung Jawab
             </div>
             <div className="text-sm font-extrabold text-slate-900">
-              {ticket.assignedToName || (
+              {ticket.assignedToName || ticket.assignedTo?.nameSnapshot || (
                 <span className="text-slate-400 italic font-normal">Belum Ditugaskan</span>
               )}
             </div>
