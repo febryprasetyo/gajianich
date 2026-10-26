@@ -139,7 +139,7 @@ export function requirePermission(permissionCode: string | string[]) {
       }
 
       if (match.length === 0) {
-        if (normRole === 'itadmin' && codes.some((c) => c.startsWith('assets.') || c.startsWith('tickets.') || c.startsWith('licenses.') || c.startsWith('infrastructure.') || c.startsWith('hardware_audits.') || c.startsWith('master.'))) {
+        if (normRole === 'itadmin' && codes.some((c) => c.startsWith('assets.') || c.startsWith('tickets.') || c.startsWith('helpdesk.') || c.startsWith('helpdesk.') || c.startsWith('licenses.') || c.startsWith('infrastructure.') || c.startsWith('hardware_audits.') || c.startsWith('master.'))) {
           return next();
         }
         if (normRole === 'itstaff' && codes.some((c) => c === 'assets.view' || c === 'assets.assign' || c.startsWith('tickets.') || c === 'licenses.view' || c === 'hardware_audits.view' || c === 'master.view')) {

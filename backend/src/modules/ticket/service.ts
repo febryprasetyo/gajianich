@@ -128,11 +128,15 @@ export async function createTicket(actor: TicketActor, input: CreateTicketDTO): 
       }
     }
 
-    // 5. Validasi timestamp
+    // 5. Validasi timestamp (dengan toleransi clock drift client 5 menit)
     const now = new Date();
-    const reportedAt = input.reportedAt ? new Date(input.reportedAt) : now;
-    if (reportedAt.getTime() > now.getTime() + 1000) { // toleransi 1 detik clock drift
-      throw new Error("Waktu laporan (reported_at) tidak boleh lebih maju daripada waktu pencatatan tiket");
+    let reportedAt = input.reportedAt ? new Date(input.reportedAt) : now;
+    if (reportedAt.getTime() > now.getTime()) {
+      if (reportedAt.getTime() - now.getTime() <= 5 * 60 * 1000) {
+        reportedAt = now;
+      } else {
+        throw new Error("Waktu laporan (reported_at) tidak boleh lebih maju daripada waktu pencatatan tiket");
+      }
     }
 
     // 6. Nomor tiket

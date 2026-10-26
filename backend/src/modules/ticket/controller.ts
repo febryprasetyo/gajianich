@@ -68,7 +68,7 @@ export async function createTicketHandler(req: AuthenticatedRequest, res: Respon
 
     const actor = await resolveTicketActor(req);
     const ticket = await createTicket(actor, parsed.data);
-    res.status(201).json({ data: ticket });
+    res.status(201).json({ success: true, data: ticket });
   } catch (err: any) {
     const status = err.message === "Unauthorized" ? 401 : err.message?.includes("tidak ditemukan") || err.message?.includes("tidak boleh") || err.message?.includes("dilarang") ? 400 : 500;
     res.status(status).json({ error: err.message || "Gagal membuat tiket" });
@@ -94,7 +94,14 @@ export async function listTicketsHandler(req: AuthenticatedRequest, res: Respons
     if (req.query.limit) filters.limit = parseInt(String(req.query.limit), 10);
 
     const result = await listTickets(filters);
-    res.json(result);
+    res.json({
+      success: true,
+      data: result.items,
+      items: result.items,
+      total: result.totalCount,
+      totalCount: result.totalCount,
+      nextCursor: result.nextCursor
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Gagal memuat daftar tiket" });
   }

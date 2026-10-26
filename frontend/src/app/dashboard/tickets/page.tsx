@@ -61,9 +61,9 @@ export default function TicketsPage() {
         page,
         limit,
       });
-      if (res.success) {
-        setTickets(res.data || []);
-        setTotal(res.total || 0);
+      if (res?.success || res?.data || (res as any)?.items) {
+        setTickets(res?.data || (res as any)?.items || []);
+        setTotal(res?.total ?? (res as any)?.totalCount ?? 0);
       }
     } catch (err: any) {
       setError(err?.message || "Gagal memuat data tiket.");

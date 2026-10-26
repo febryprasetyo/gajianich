@@ -69,7 +69,7 @@ export default function TicketStats({ stats, loading }: TicketStatsProps) {
     },
     {
       title: "Kepatuhan SLA",
-      value: `${stats.slaCompliancePercentage}%`,
+      value: stats.slaCompliancePercentage > 0 ? `${stats.slaCompliancePercentage}%` : (stats.openCount + stats.inProgressCount + stats.resolvedTodayCount > 0 ? "0%" : "-"),
       icon: ShieldCheck,
       iconColor: stats.slaCompliancePercentage >= 90 ? "text-emerald-600" : "text-amber-600",
       bgColor: stats.slaCompliancePercentage >= 90 ? "bg-emerald-50" : "bg-amber-50",
@@ -77,7 +77,7 @@ export default function TicketStats({ stats, loading }: TicketStatsProps) {
     },
     {
       title: "Rata-rata Delay",
-      value: formatDelayMinutes(stats.avgDelayMinutes),
+      value: stats.avgDelayMinutes > 0 ? formatDelayMinutes(stats.avgDelayMinutes) : (stats.openCount + stats.inProgressCount + stats.resolvedTodayCount > 0 ? "0 mnt" : "-"),
       icon: TimerReset,
       iconColor: stats.avgDelayMinutes <= 15 ? "text-slate-600" : "text-amber-600",
       bgColor: stats.avgDelayMinutes <= 15 ? "bg-slate-50" : "bg-amber-50",

@@ -146,8 +146,21 @@ export default function TicketCreateForm({
     e.preventDefault();
     setError(null);
 
-    if (!requester) {
-      setError("Pilih karyawan pelapor.");
+    let currentRequester = requester;
+    if (!currentRequester && employeeSearch.trim()) {
+      const trimmed = employeeSearch.trim().toLowerCase();
+      const match =
+        initialEmployeeList.find((emp) => emp.name.toLowerCase() === trimmed) ||
+        employeeList.find((emp) => emp.name.toLowerCase() === trimmed) ||
+        (employeeList.length === 1 ? employeeList[0] : null);
+      if (match) {
+        currentRequester = match;
+        setRequester(match);
+      }
+    }
+
+    if (!currentRequester) {
+      setError("Pilih karyawan pelapor dari daftar.");
       return;
     }
 
@@ -168,7 +181,7 @@ export default function TicketCreateForm({
         : new Date().toISOString();
 
       const input: CreateTicketInput = {
-        requesterEmployeeId: requester.id,
+        requesterEmployeeId: currentRequester.id,
         reportedAt: reportedAtIso,
         category,
         origin,
@@ -179,9 +192,10 @@ export default function TicketCreateForm({
       };
 
       const res = await createTicket(input);
+      const ticket = (res as any)?.data || res;
+      const ticketId = ticket?.id;
 
-      if (res.success && res.data) {
-        const ticketId = res.data.id;
+      if (ticketId) {
         if (attachment) {
           try {
             await uploadTicketAttachment(ticketId, attachment);
@@ -195,6 +209,8 @@ export default function TicketCreateForm({
         } else {
           router.push(`/dashboard/tickets/${ticketId}`);
         }
+      } else {
+        throw new Error("Gagal membuat tiket: respons server tidak valid.");
       }
     } catch (err: any) {
       setError(err?.message || "Gagal membuat tiket.");

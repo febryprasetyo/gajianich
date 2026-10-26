@@ -26,10 +26,19 @@ export async function listTickets(
   if (params?.limit) query.set("limit", String(params.limit));
 
   const qs = query.toString();
-  return api.get<{ success: boolean; data: TicketSummary[]; total: number; page: number; limit: number }>(
+  const res = await api.get<any>(
     `/helpdesk/tickets${qs ? `?${qs}` : ""}`,
     { signal }
   );
+  const items = res?.data || res?.items || (Array.isArray(res) ? res : []);
+  const total = Number(res?.totalCount ?? res?.total ?? items.length);
+  return {
+    success: true,
+    data: items,
+    total,
+    page: Number(params?.page || 1),
+    limit: Number(params?.limit || 20),
+  };
 }
 
 export async function getTicketDetail(
@@ -87,18 +96,18 @@ export async function uploadTicketAttachment(
 }
 
 export async function getTicketStats(): Promise<{ success: boolean; data: TicketStatsData }> {
-  const res = await api.get<{ success: boolean; data: any }>("/helpdesk/stats");
-  const d = res.data || {};
+  const res = await api.get<any>("/helpdesk/stats");
+  const d = res?.data || res || {};
   return {
     success: true,
     data: {
-      openCount: d.openTickets ?? d.openCount ?? 0,
-      inProgressCount: d.inProgressTickets ?? d.inProgressCount ?? 0,
-      resolvedTodayCount: d.resolvedTickets ?? d.resolvedTodayCount ?? 0,
-      criticalCount: d.criticalCount ?? 0,
-      avgResolutionMinutes: d.avgResolutionMinutes ?? 0,
-      avgDelayMinutes: d.avgRecordingDelayMinutes ?? d.avgDelayMinutes ?? 0,
-      slaCompliancePercentage: d.totalTickets > 0 ? 100 : 100,
+      openCount: Number(d.openCount ?? d.openTickets ?? 0),
+      inProgressCount: Number(d.inProgressCount ?? d.inProgressTickets ?? 0),
+      resolvedTodayCount: Number(d.resolvedTodayCount ?? 0),
+      criticalCount: Number(d.criticalCount ?? 0),
+      avgResolutionMinutes: Number(d.avgResolutionMinutes ?? 0),
+      avgDelayMinutes: Number(d.avgRecordingDelayMinutes ?? d.avgDelayMinutes ?? 0),
+      slaCompliancePercentage: Number(d.slaCompliancePercentage ?? 0),
     },
   };
 }

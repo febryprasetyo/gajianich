@@ -6,13 +6,19 @@ export interface TicketStats {
   totalTickets: number;         // is_internal = false
   totalInternal: number;        // is_internal = true
   openTickets: number;
+  openCount: number;
   inProgressTickets: number;
+  inProgressCount: number;
   pendingTickets: number;
   resolvedTickets: number;
+  resolvedTodayCount: number;
   closedTickets: number;
+  criticalCount: number;
+  slaCompliancePercentage: number;
   avgFirstResponseMinutes: number;   // SLA dari reported_at ke first_response_at
   avgResolutionMinutes: number;      // SLA dari reported_at ke resolved_at
   avgRecordingDelayMinutes: number;  // Selisih created_at - reported_at
+  avgDelayMinutes: number;
   byCategory: Record<string, number>;
   byOrigin: Record<string, number>;
   byDepartment: Record<string, number>;
@@ -45,6 +51,68 @@ export async function calculateTicketStats(startDate?: string, endDate?: string)
       COUNT(*) FILTER (WHERE is_internal = false AND status = 'PENDING') AS pending_tickets,
       COUNT(*) FILTER (WHERE is_internal = false AND status = 'RESOLVED') AS resolved_tickets,
       COUNT(*) FILTER (WHERE is_internal = false AND status = 'CLOSED') AS closed_tickets,
+      -- Tiket kritis aktif
+      COUNT(*) FILTER (
+        WHERE is_internal = false
+          AND priority = 'CRITICAL'
+          AND status IN ('OPEN', 'IN_PROGRESS', 'PENDING')
+      ) AS critical_tickets,
+      -- Selesai hari ini berdasarkan waktu WIB
+      COUNT(*) FILTER (
+        WHERE is_internal = false
+          AND status IN ('RESOLVED', 'CLOSED')
+          AND (COALESCE(resolved_at, updated_at) AT TIME ZONE 'Asia/Jakarta')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Jakarta')::date
+      ) AS resolved_today_tickets,
+      -- Tiket selesai yang memenuhi SLA target
+      COUNT(*) FILTER (
+        WHERE is_internal = false
+          AND status IN ('RESOLVED', 'CLOSED')
+          AND resolved_at IS NOT NULL
+          AND (EXTRACT(EPOCH FROM (resolved_at - reported_at)) / 60) <=
+            CASE priority
+              WHEN 'CRITICAL' THEN 60
+              WHEN 'HIGH' THEN 240
+              WHEN 'MEDIUM' THEN 480
+              ELSE 1440
+            END
+      ) AS resolved_on_time,
+      -- Tiket selesai yang melewati SLA target
+      COUNT(*) FILTER (
+        WHERE is_internal = false
+          AND status IN ('RESOLVED', 'CLOSED')
+          AND resolved_at IS NOT NULL
+          AND (EXTRACT(EPOCH FROM (resolved_at - reported_at)) / 60) >
+            CASE priority
+              WHEN 'CRITICAL' THEN 60
+              WHEN 'HIGH' THEN 240
+              WHEN 'MEDIUM' THEN 480
+              ELSE 1440
+            END
+      ) AS resolved_late,
+      -- Tiket aktif yang masih dalam batas SLA target
+      COUNT(*) FILTER (
+        WHERE is_internal = false
+          AND status IN ('OPEN', 'IN_PROGRESS', 'PENDING')
+          AND (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - reported_at)) / 60) <=
+            CASE priority
+              WHEN 'CRITICAL' THEN 60
+              WHEN 'HIGH' THEN 240
+              WHEN 'MEDIUM' THEN 480
+              ELSE 1440
+            END
+      ) AS active_on_time,
+      -- Tiket aktif yang sudah melewati batas SLA target (breach)
+      COUNT(*) FILTER (
+        WHERE is_internal = false
+          AND status IN ('OPEN', 'IN_PROGRESS', 'PENDING')
+          AND (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - reported_at)) / 60) >
+            CASE priority
+              WHEN 'CRITICAL' THEN 60
+              WHEN 'HIGH' THEN 240
+              WHEN 'MEDIUM' THEN 480
+              ELSE 1440
+            END
+      ) AS active_breached,
       -- SLA Response (menit dari reported_at ke first_response_at)
       AVG(EXTRACT(EPOCH FROM (first_response_at - reported_at)) / 60)
         FILTER (WHERE is_internal = false AND first_response_at IS NOT NULL AND first_response_at >= reported_at) AS avg_response_min,
@@ -94,17 +162,36 @@ export async function calculateTicketStats(startDate?: string, endDate?: string)
     byDepartment[d.requester_department_snapshot] = parseInt(d.cnt, 10);
   }
 
+  const resolvedOnTime = parseInt(row.resolved_on_time || "0", 10);
+  const resolvedLate = parseInt(row.resolved_late || "0", 10);
+  const activeOnTime = parseInt(row.active_on_time || "0", 10);
+  const activeBreached = parseInt(row.active_breached || "0", 10);
+
+  const totalEvaluated = resolvedOnTime + resolvedLate + activeOnTime + activeBreached;
+  const compliantTotal = resolvedOnTime + activeOnTime;
+  const slaCompliancePercentage = totalEvaluated > 0 ? Math.round((compliantTotal / totalEvaluated) * 100) : 100;
+
+  const avgDelay = Math.round(parseFloat(row.avg_delay_min || "0") * 10) / 10;
+  const openCount = parseInt(row.open_tickets || "0", 10);
+  const inProgressCount = parseInt(row.in_progress_tickets || "0", 10);
+
   return {
     totalTickets: parseInt(row.total_tickets || "0", 10),
     totalInternal: parseInt(row.total_internal || "0", 10),
-    openTickets: parseInt(row.open_tickets || "0", 10),
-    inProgressTickets: parseInt(row.in_progress_tickets || "0", 10),
+    openTickets: openCount,
+    openCount,
+    inProgressTickets: inProgressCount,
+    inProgressCount,
     pendingTickets: parseInt(row.pending_tickets || "0", 10),
     resolvedTickets: parseInt(row.resolved_tickets || "0", 10),
+    resolvedTodayCount: parseInt(row.resolved_today_tickets || "0", 10),
     closedTickets: parseInt(row.closed_tickets || "0", 10),
+    criticalCount: parseInt(row.critical_tickets || "0", 10),
+    slaCompliancePercentage,
     avgFirstResponseMinutes: Math.round(parseFloat(row.avg_response_min || "0") * 10) / 10,
     avgResolutionMinutes: Math.round(parseFloat(row.avg_resolution_min || "0") * 10) / 10,
-    avgRecordingDelayMinutes: Math.round(parseFloat(row.avg_delay_min || "0") * 10) / 10,
+    avgRecordingDelayMinutes: avgDelay,
+    avgDelayMinutes: avgDelay,
     byCategory,
     byOrigin,
     byDepartment,
@@ -119,7 +206,7 @@ export async function getHelpdeskStatsHandler(req: AuthenticatedRequest, res: Re
     const startDate = req.query.startDate ? String(req.query.startDate) : undefined;
     const endDate = req.query.endDate ? String(req.query.endDate) : undefined;
     const stats = await calculateTicketStats(startDate, endDate);
-    res.json({ data: stats });
+    res.json({ success: true, data: stats });
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Gagal menghitung statistik helpdesk" });
   }
