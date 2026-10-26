@@ -17,7 +17,6 @@ import {
   UserPlus,
   Pencil,
   Trash2,
-  RefreshCw,
   Loader2,
   AlertCircle,
 } from 'lucide-react';
@@ -189,16 +188,6 @@ export default function LicenseDetailPage({ params }: { params: Promise<{ id: st
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
             <span>Back to Software Catalog</span>
           </Link>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={fetchLicenseData}
-              className="p-2 bg-white border border-slate-200 hover:border-slate-300 rounded-xl text-slate-600 hover:text-slate-900 shadow-2xs transition-all cursor-pointer"
-              title="Refresh Workspace"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-          </div>
         </div>
 
         {/* Workspace Top Header */}

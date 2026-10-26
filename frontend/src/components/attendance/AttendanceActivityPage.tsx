@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   History,
   AlertCircle,
-  RefreshCw,
+  Loader2,
   ChevronLeft,
   ChevronRight,
   Eye,
@@ -127,16 +127,6 @@ export default function AttendanceActivityPage() {
             Audit trail server append-only: jejak perubahan data absensi, cuti, shift, impor, dan master HR.
           </p>
         </div>
-
-        <button
-          type="button"
-          onClick={() => fetchActivities(filters, currentCursor)}
-          disabled={isLoading}
-          className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-2xs transition-colors disabled:opacity-50"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isLoading ? 'animate-spin' : ''}`} />
-          Segarkan Data
-        </button>
       </div>
 
       {/* Filter Component */}
@@ -183,7 +173,7 @@ export default function AttendanceActivityPage() {
               {isLoading && items.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-400">
-                    <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-emerald-600" />
+                    <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-emerald-600" />
                     Memuat riwayat aktivitas...
                   </td>
                 </tr>

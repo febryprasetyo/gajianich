@@ -16,7 +16,6 @@ import {
   XCircle,
   Clock4,
   MapPin,
-  RefreshCw,
   LogOut,
   Loader2,
 } from "lucide-react";
@@ -257,14 +256,6 @@ export default function MobileBerandaPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={loadSummary}
-            aria-label="Refresh status presensi"
-            className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-900 active:scale-95 transition"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-[#059669]" : ""}`} />
-          </button>
           <button
             type="button"
             onClick={logout}

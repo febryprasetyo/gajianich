@@ -16,7 +16,6 @@ import { getTimeBasedGreeting } from '@/lib/attendance/overviewMetrics';
 import {
   HardDrive,
   Plus,
-  RefreshCw,
   ExternalLink,
   ShieldCheck,
   AlertTriangle,
@@ -50,14 +49,12 @@ export default function AssetDashboardOverviewPage() {
 
   const [data, setData] = useState<DashboardSummaryResponse['data'] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
 
-  const fetchDashboardData = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
+  const fetchDashboardData = useCallback(async () => {
+    setLoading(true);
     setError(null);
 
     try {
@@ -72,7 +69,6 @@ export default function AssetDashboardOverviewPage() {
       setError(err.message || 'Gagal memuat ringkasan dashboard aset operasional');
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   }, []);
 
@@ -120,16 +116,6 @@ export default function AssetDashboardOverviewPage() {
 
             {/* Quick Action Buttons */}
             <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => fetchDashboardData(true)}
-                disabled={loading || refreshing}
-                className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition-all cursor-pointer disabled:opacity-50"
-                title="Muat Ulang Data"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-emerald-600" : "text-slate-500"}`} />
-                <span>{refreshing ? "Menyinkronkan..." : "Sinkronkan"}</span>
-              </button>
 
               <Link
                 href="/dashboard/assets"
@@ -238,7 +224,7 @@ export default function AssetDashboardOverviewPage() {
           canManage={canManage}
           onSuccess={() => {
             setIsAssetModalOpen(false);
-            fetchDashboardData(true);
+            fetchDashboardData();
           }}
         />
       )}

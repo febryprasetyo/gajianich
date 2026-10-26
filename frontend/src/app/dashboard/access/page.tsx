@@ -21,7 +21,6 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
-  RefreshCw,
 } from 'lucide-react';
 
 export default function AccessManagementPage() {
@@ -273,14 +272,6 @@ export default function AccessManagementPage() {
           </div>
         </div>
 
-        <button
-          onClick={loadData}
-          disabled={isLoading}
-          className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer self-start sm:self-auto disabled:opacity-50"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-          <span>Refresh</span>
-        </button>
       </div>
 
       {/* Navigation Tabs */}

@@ -21,7 +21,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  RefreshCw,
   X,
 } from 'lucide-react';
 
@@ -171,14 +170,6 @@ export default function HardwareAuditsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={fetchAudits}
-              disabled={isLoading}
-              className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-mono font-bold flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-emerald-600' : 'text-slate-500'}`} />
-              <span>Refresh</span>
-            </button>
 
             <Link
               href="/dashboard/assets"

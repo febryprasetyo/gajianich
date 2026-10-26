@@ -12,7 +12,7 @@ import {
   TicketFilterParams,
 } from "@/modules/ticket/types";
 import { listTickets, getTicketStats } from "@/modules/ticket/api";
-import { Ticket, Plus, X, RefreshCw } from "lucide-react";
+import { Ticket, Plus, X } from "lucide-react";
 
 export default function TicketsPage() {
   // Stats state
@@ -171,17 +171,6 @@ export default function TicketsPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                fetchStats();
-                fetchTickets();
-              }}
-              className="p-2 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 text-slate-600 shadow-2xs transition-all"
-              title="Muat Ulang Data"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
             <button
               type="button"
               onClick={() => setShowCreateModal(true)}

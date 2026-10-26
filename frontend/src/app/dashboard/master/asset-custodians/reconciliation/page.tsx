@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, Loader2, RefreshCw, Sparkles } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import ReconciliationCandidateCard, {
   ReconciliationItem,
@@ -121,14 +121,6 @@ export default function CustodianReconciliationPage() {
                 Review unverified holders and resolve them with official HR employee records or merge duplicate profiles.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={loadData}
-              disabled={loading}
-              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-40 transition-colors cursor-pointer"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
-            </button>
           </div>
         </div>
 

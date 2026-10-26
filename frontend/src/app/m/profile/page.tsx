@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Camera, ChevronLeft, History, LogOut, RefreshCw } from 'lucide-react';
+import { Camera, ChevronLeft, History, LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import LogoutSheet from '@/components/mobile/LogoutSheet';
 import { fetchMobileSummary, postEnrollFace, type MobileSummaryData } from '@/lib/attendance/mobileApi';
@@ -49,7 +49,6 @@ export default function MobileProfilePage() {
     <header className="flex items-center justify-between gap-3">
       <Link href="/m/beranda" aria-label="Kembali ke beranda" className="flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-slate-200 bg-white"><ChevronLeft size={20} /></Link>
       <h1 className="text-lg font-extrabold text-slate-900">Profil Karyawan</h1>
-      <button type="button" onClick={load} disabled={loading || busy} aria-label="Muat ulang profil" className="flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-slate-200 bg-white"><RefreshCw size={18} className={loading ? 'animate-spin' : ''} /></button>
     </header>
     {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
     {message && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{message}</p>}

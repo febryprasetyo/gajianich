@@ -296,3 +296,11 @@ Agen mencatat rujukan pola dan bukti pemeriksaan yang benar-benar dilakukan.
 
 Dokumen desain khusus halaman hanya boleh menambah kebutuhan domain, pemetaan komponen,
 dan layout konten yang belum tercakup. Tidak boleh membuat token atau master tema alternatif.
+
+### 4.4 Larangan Keras Tombol Refresh Manual (No Manual Refresh Buttons)
+
+> **ATURAN MUTLAK**: **Dilarang keras menyediakan tombol "Refresh", "Segarkan", "Muat Ulang", atau tombol berikon `RefreshCw`/`RotateCw` untuk reload data di header halaman, action toolbar, filter, maupun footer.**
+
+1. **Reaktif & Otomatis**: Semua data tabel, ringkasan, dan kartu KPI wajib dimuat secara reaktif (otomatis load saat komponen di-mount, saat parameter query/filter/pagination berubah, dan otomatis refetch saat aksi create/edit/delete di modal selesai).
+2. **Kenapa dilarang**: Tombol refresh manual adalah antipattern di aplikasi web modern, mengotori antarmuka (visual noise), membingungkan pengguna, dan mengganggu efisiensi navigasi.
+3. **Pengecualian terbatas**: Hanya diizinkan untuk tombol sinkronisasi integrasi eksternal eksplisit (misal trigger sync API Accurate Server) atau pembacaan sensor fisik perangkat (misal update koordinat GPS pada mobile presensi).

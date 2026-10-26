@@ -9,7 +9,6 @@ import {
   XCircle,
   ChevronDown,
   Clock,
-  RefreshCw,
   Loader2,
   CheckCircle2,
 } from "lucide-react";
@@ -216,14 +215,6 @@ export default function MobilePresensiPage() {
           Presensi
         </h1>
 
-        <button
-          type="button"
-          onClick={loadData}
-          aria-label="Segarkan data presensi"
-          className="w-10 h-10 rounded-full bg-white border border-slate-200/90 shadow-xs flex items-center justify-center text-slate-700 hover:bg-slate-50 active:scale-95 transition"
-        >
-          <RefreshCw className={`w-4 h-4 ${summaryLoading || historyLoading ? "animate-spin text-[#059669]" : ""}`} />
-        </button>
       </header>
 
       {summaryError && (
@@ -323,14 +314,6 @@ export default function MobilePresensiPage() {
             ) : historyError ? (
               <div className="py-8 px-4 text-center space-y-2">
                 <p className="text-xs font-semibold text-rose-600">{historyError}</p>
-                <button
-                  type="button"
-                  onClick={() => loadHistory(selectedPeriod)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-50 text-[#059669] text-xs font-bold border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Coba lagi</span>
-                </button>
               </div>
             ) : historyItems.length === 0 ? (
               <div className="py-8 px-4 text-center text-slate-400 text-xs font-medium">

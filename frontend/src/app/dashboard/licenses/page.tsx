@@ -9,7 +9,7 @@ import LicenseTable from '@/components/licenses/LicenseTable';
 import LicenseFormModal from '@/components/licenses/LicenseFormModal';
 import LicenseAllocationModal from '@/components/licenses/LicenseAllocationModal';
 import { api } from '@/lib/api';
-import { Key, Plus, RefreshCw, AlertCircle } from 'lucide-react';
+import { Key, Plus, AlertCircle } from 'lucide-react';
 import {
   SoftwareLicense,
   Vendor,
@@ -151,14 +151,6 @@ export default function LicensesPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={fetchData}
-              disabled={loading}
-              className="p-2.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200/80 rounded-xl shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
-              title="Refresh Data"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-emerald-600' : ''}`} />
-            </button>
 
             <button
               onClick={openCreateModal}

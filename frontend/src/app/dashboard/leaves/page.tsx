@@ -13,7 +13,7 @@ import {
   FileText,
   Trash2,
   AlertCircle,
-  RefreshCw,
+  Loader2,
   Filter,
   ChevronLeft,
   ChevronRight,
@@ -295,7 +295,7 @@ export default function LeaveRequestsListPage() {
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
         {isLoading ? (
           <div className="p-12 flex items-center justify-center gap-3 text-slate-500 text-xs">
-            <RefreshCw className="w-5 h-5 animate-spin text-emerald-600" /> Memuat data permohonan cuti...
+            <Loader2 className="w-5 h-5 animate-spin text-emerald-600" /> Memuat data permohonan cuti...
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center">
@@ -536,7 +536,7 @@ export default function LeaveRequestsListPage() {
                 disabled={isProcessingAction}
                 className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white shadow-sm transition-all flex items-center gap-2 cursor-pointer"
               >
-                {isProcessingAction ? <RefreshCw className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                {isProcessingAction ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                 Setujui Sekarang
               </button>
             </div>
@@ -581,7 +581,7 @@ export default function LeaveRequestsListPage() {
                 disabled={isProcessingAction}
                 className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white shadow-sm transition-all flex items-center gap-2 cursor-pointer"
               >
-                {isProcessingAction ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                {isProcessingAction ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                 Hapus Draft
               </button>
             </div>

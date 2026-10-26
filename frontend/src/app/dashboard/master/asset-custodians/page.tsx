@@ -20,7 +20,6 @@ import {
   AlertCircle,
   GitMerge,
   Plus,
-  RefreshCw,
   Search,
   UserRoundCog,
 } from 'lucide-react';
@@ -191,14 +190,6 @@ export default function AssetCustodiansPage() {
               className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition-colors cursor-pointer"
             >
               <Plus className="h-4 w-4" /> New Custodian
-            </button>
-            <button
-              type="button"
-              onClick={fetchData}
-              disabled={loading}
-              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50 transition-colors cursor-pointer"
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
             </button>
           </div>
         </div>
