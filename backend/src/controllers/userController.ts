@@ -479,6 +479,11 @@ export async function deleteUser(req: AuthenticatedRequest, res: Response) {
 
     return res.status(200).json({ message: 'User deleted successfully' });
   } catch (err: any) {
+    if (err && (err.code === '23503' || (err.message && err.message.includes('foreign key constraint')))) {
+      return res.status(400).json({
+        error: 'Tidak dapat menghapus pengguna karena masih memiliki riwayat data terkait (seperti permohonan pengadaan barang, log transaksi, atau audit). Silakan nonaktifkan akun terlebih dahulu.',
+      });
+    }
     return res.status(500).json({ error: err.message || 'Internal server error' });
   }
 }
