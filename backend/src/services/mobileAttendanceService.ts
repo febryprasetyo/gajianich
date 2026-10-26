@@ -20,6 +20,7 @@ import { attendanceSelfLogs } from '../db/schema/attendanceSelfLogs';
 import { attendanceFaceProfiles } from '../db/schema/attendanceFaceProfiles';
 import { attendanceFaceRequests } from '../db/schema/attendanceFaceRequests';
 import { attendanceShifts, attendanceShiftAssignments, attendanceLocks } from '../db/schema/attendanceWorkspace';
+import { systemSettings } from '../db/schema/system';
 import { resolveEmployeeShift, resolveActiveEmployeeShift, getWorkingScheduleForDate } from '../domain/attendanceSchedule';
 import { isWithinGeofence, buildMapLinks } from '../domain/geofence';
 import { determineShiftCategory, evaluateAttendanceApproval } from '../domain/attendanceVerificationPolicy';
@@ -30,6 +31,11 @@ import { saveAttendancePhoto } from './attendancePhotoStorage';
 import { eq, and, or, desc, gte, lte, sql } from 'drizzle-orm';
 
 type SelfLog = typeof attendanceSelfLogs.$inferSelect;
+export async function isMobileStrictClockEnabled(targetDb: any): Promise<boolean> {
+  const [row] = await targetDb.select().from(systemSettings).where(eq(systemSettings.key, 'attendance_mobile_strict_clock')).limit(1);
+  if (!row) return false;
+  return row.value === true || row.value === 'true' || (typeof row.value === 'object' && row.value?.enabled === true);
+}
 export const DEFAULT_OFFICE_COORDINATES = { name: 'PT Cahaya Mas Cemerlang HQ', latitude: -6.2088, longitude: 106.8456, radiusMeters: 100 };
 export function getWibDateAndTimeString(date = new Date()) {
   const time = localAttendanceTime(date, 'Asia/Jakarta');
@@ -72,8 +78,8 @@ export async function projectApprovedLog(tx: any, log: SelfLog) {
   await checkUnlocked(tx, log.workDate);
   const all: SelfLog[] = await tx.select().from(attendanceSelfLogs).where(and(eq(attendanceSelfLogs.employeeId, log.employeeId), eq(attendanceSelfLogs.workDate, log.workDate))).orderBy(desc(attendanceSelfLogs.id));
   const approved = all.filter(l => l.approvalStatus === 'APPROVED');
-  const inLog = approved.find(l => l.eventType === 'IN');
-  const outLog = approved.find(l => l.eventType === 'OUT');
+  const inLog = log.eventType === 'IN' ? log : approved.find(l => l.eventType === 'IN');
+  const outLog = log.eventType === 'OUT' ? log : approved.find(l => l.eventType === 'OUT');
   const [storedRecord] = await tx.select().from(attendanceRecords).where(and(eq(attendanceRecords.employeeId, log.employeeId), eq(attendanceRecords.workDate, log.workDate)));
   if (storedRecord?.scanIn) {
     const isMobileOwned = storedRecord.sourceBatchId === null
@@ -87,7 +93,9 @@ export async function projectApprovedLog(tx: any, log: SelfLog) {
     }
   }
   const existing = storedRecord ? approvedMobileRecord(storedRecord, all) : null;
-  if (!inLog && !existing?.scanIn) return;
+  const hasPendingIn = all.some(l => l.eventType === "IN" && l.approvalStatus === "PENDING");
+  const isDirectOut = Boolean(outLog && (outLog.notes?.includes("[DIRECT_OUT]") || !all.some(l => l.eventType === "IN")));
+  if (!inLog && !existing?.scanIn && (!isDirectOut || hasPendingIn)) return;
   const scanIn = inLog?.scanTime || existing?.scanIn || null;
   const scanOut = outLog?.scanTime || existing?.scanOut || null;
   const scheduleIn = log.scheduleIn || existing?.scheduleIn || '08:00';
@@ -99,7 +107,8 @@ export async function projectApprovedLog(tx: any, log: SelfLog) {
     .onConflictDoUpdate({ target: [attendanceRecords.employeeId, attendanceRecords.workDate], set: { ...values, revision: sql`${attendanceRecords.revision} + 1` } });
 }
 export interface MobileClockInput {
-  eventType: 'IN' | 'OUT'; workDate?: string; scanTime?: string; latitude?: number | null; longitude?: number | null; accuracy?: number | null; address?: string | null; photoBase64?: string | null; deviceInfo?: string | null; notes?: string | null; txHash?: string | null;
+  eventType: 'IN' | 'OUT';
+  isDirectOut?: boolean; workDate?: string; scanTime?: string; latitude?: number | null; longitude?: number | null; accuracy?: number | null; address?: string | null; photoBase64?: string | null; deviceInfo?: string | null; notes?: string | null; txHash?: string | null;
 }
 export async function recordMobileClock(userId: number, payload: MobileClockInput, targetDb = db, recognize: typeof extractPhotoFace = extractPhotoFace) {
   const { user, employee } = await resolveEmployeeUser(userId, targetDb);
@@ -135,13 +144,24 @@ export async function recordMobileClock(userId: number, payload: MobileClockInpu
       if (payload.eventType === 'IN' && existingRecord?.scanIn) {
         throw new Error('Presensi masuk sudah tercatat di sistem.');
       }
+      const strictClock = await isMobileStrictClockEnabled(tx);
       const todayLogs = logs.filter(l => l.workDate === workDate);
-      if (todayLogs.some(l => l.eventType === payload.eventType)) throw new Error('Presensi sudah tercatat. Gunakan pengajuan koreksi jika ditolak.');
-      if (payload.eventType === 'OUT' && !entry) throw new Error('Belum melakukan presensi masuk.');
+      if (strictClock && todayLogs.some(l => l.eventType === payload.eventType)) throw new Error('Presensi sudah tercatat. Gunakan pengajuan koreksi jika ditolak.');
+      if (payload.isDirectOut) {
+        if (payload.eventType !== 'OUT') throw new Error('isDirectOut hanya berlaku untuk event OUT.');
+        if (!payload.notes || payload.notes.trim().length < 3) throw new Error('Keterangan wajib diisi untuk absensi pulang tanpa jam masuk.');
+      }
+      if (payload.eventType === 'OUT' && !entry && !payload.isDirectOut) throw new Error('Belum melakukan presensi masuk.');
       if (payload.eventType === 'IN' && entry && !logs.some(l => l.workDate === entry.workDate && l.eventType === 'OUT')) throw new Error('Selesaikan presensi pulang shift sebelumnya terlebih dahulu.');
       const { shift, approvalShift } = await shiftForEmployee(employee, tx);
       const daily = getWorkingScheduleForDate(workDate, shift);
-      const approval = evaluateAttendanceApproval(approvalShift, payload.eventType);
+      const isReclock = todayLogs.some(l => l.eventType === payload.eventType);
+      const approval = payload.isDirectOut
+        ? { requiresVerification: true, approvalStatus: 'PENDING' as const, approvalNote: 'Menunggu pemeriksaan HRD (Langsung Absen Pulang).' }
+        : isReclock
+        ? { requiresVerification: true, approvalStatus: 'PENDING' as const, approvalNote: 'Menunggu pemeriksaan HRD (Absensi Ulang).' }
+        : evaluateAttendanceApproval(approvalShift, payload.eventType);
+      const finalNotes = payload.isDirectOut ? `[DIRECT_OUT] ${payload.notes!.trim()}` : payload.notes;
       const geo = isWithinGeofence(payload.latitude, payload.longitude, DEFAULT_OFFICE_COORDINATES.latitude, DEFAULT_OFFICE_COORDINATES.longitude, DEFAULT_OFFICE_COORDINATES.radiusMeters);
       const links = buildMapLinks(payload.latitude!, payload.longitude!);
       const [log] = await tx.insert(attendanceSelfLogs).values({ employeeId: employee.id, userId: user.id, eventType: payload.eventType, workDate, scanDate: local.workDate, scanTime: local.scanTime, timeZone: zone, occurredAt: now,
@@ -149,7 +169,7 @@ export async function recordMobileClock(userId: number, payload: MobileClockInpu
         shiftCode: entry && payload.eventType === 'OUT' ? entry.shiftCode : shift.code, shiftCategory: determineShiftCategory(shift),
         latitude: String(payload.latitude), longitude: String(payload.longitude), accuracy: payload.accuracy == null ? null : Math.round(payload.accuracy), address: payload.address || null,
         mapUrl: links.osmUrl, googleMapsUrl: links.googleMapsUrl, isWithinGeofence: geo.isWithin, distanceMeters: geo.distanceMeters,
-        photoUrl: photoPath, txHash: hash, deviceInfo: payload.deviceInfo, notes: payload.notes, ...approval,
+        photoUrl: photoPath, txHash: hash, deviceInfo: payload.deviceInfo, notes: finalNotes, ...approval,
         reviewHistory: [{ status: approval.approvalStatus, note: approval.approvalNote, actorId: user.id, at: now.toISOString() }],
       }).returning();
       if (log.approvalStatus === 'APPROVED') await projectApprovedLog(tx, log);
@@ -183,12 +203,21 @@ export async function getMobileTodaySummary(userId: number, targetDb = db) {
   const daily = getWorkingScheduleForDate(workDate, shift);
   const face = await getFaceProfile(userId, targetDb);
   const approval = reviewSummary(current);
+  const strictClock = await isMobileStrictClockEnabled(targetDb);
+  const scheduleInMinutes = minuteValue(daily.scheduleIn);
+  const thresholdMinutes = scheduleInMinutes + 5 * 60;
+  const currentLocal = localAttendanceTime(new Date(), zone);
+  const currentMinutes = minuteValue(currentLocal.scanTime);
+  const isLateAfternoon = currentMinutes >= thresholdMinutes;
+  const canDirectOut = !inLog && !outLog && isLateAfternoon;
+
   return {
     employee: { ...employee, position: employee.position || 'Staff', department: employee.departmentName || '-', workLocation: employee.locationName || '', avatarInitial: employee.fullName.split(' ').slice(0,2).map(n => n[0]).join('') },
     shift: { ...shift, category: determineShiftCategory(shift), ...daily, officeLatitude: DEFAULT_OFFICE_COORDINATES.latitude, officeLongitude: DEFAULT_OFFICE_COORDINATES.longitude, geofenceRadiusMeters: 100 },
     attendance: { workDate, checkedIn: !!inLog, checkedOut: !!outLog, checkInTime: inLog?.scanTime || null, checkOutTime: outLog?.scanTime || null,
       totalHours: inLog?.approvalStatus === 'APPROVED' && outLog?.approvalStatus === 'APPROVED' ? formatDurationMinutes(Math.floor((outLog.occurredAt.getTime() - inLog.occurredAt.getTime()) / 60000)) : '--:--',
-      status: outLog ? 'COMPLETED' : inLog ? 'CHECKED_IN' : 'NOT_CHECKED_IN', approvalStatus: approval.status, approvalNote: approval.note, txHash: current[0]?.txHash || null, timeZone: zone, timeZoneLabel: entry ? zoneLabels[zone] : 'waktu lokal', events: current.map(publicLog) },
+      status: outLog ? 'COMPLETED' : inLog ? 'CHECKED_IN' : 'NOT_CHECKED_IN', approvalStatus: approval.status, approvalNote: approval.note, txHash: current[0]?.txHash || null, timeZone: zone, timeZoneLabel: entry ? zoneLabels[zone] : 'waktu lokal', events: current.map(publicLog),
+      isLateAfternoon, strictClock, shiftWindow: { scheduleIn: daily.scheduleIn, scheduleOut: daily.scheduleOut, canDirectOut } },
     faceEnrollment: { isFaceEnrolled: face.data.isEnrolled, faceId: face.data.isEnrolled ? `BIO-${employee.id}` : null, changeStatus: face.data.changeStatus, changeNote: face.data.changeNote },
   };
 }
