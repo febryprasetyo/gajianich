@@ -31,9 +31,9 @@ const manageHelpdesk = requirePermission(["helpdesk.manage", "super_admin"]);
 router.get("/stats", viewHelpdesk, getHelpdeskStatsHandler);
 
 // Lookup endpoints
-router.get("/employees", manageHelpdesk, searchEmployeesHandler);
-router.get("/assignees", manageHelpdesk, searchAssigneesHandler);
-router.get("/technicians", manageHelpdesk, searchAssigneesHandler);
+router.get("/employees", viewHelpdesk, searchEmployeesHandler);
+router.get("/assignees", viewHelpdesk, searchAssigneesHandler);
+router.get("/technicians", viewHelpdesk, searchAssigneesHandler);
 
 // CRUD Tiket
 router.post("/tickets", manageHelpdesk, createTicketHandler);

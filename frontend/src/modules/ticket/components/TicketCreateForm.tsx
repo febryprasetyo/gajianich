@@ -43,6 +43,7 @@ export default function TicketCreateForm({
   const [requester, setRequester] = useState<EmployeeLookupItem | null>(null);
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [employeeList, setEmployeeList] = useState<EmployeeLookupItem[]>([]);
+  const [initialEmployeeList, setInitialEmployeeList] = useState<EmployeeLookupItem[]>([]);
   const [isSearchingEmployees, setIsSearchingEmployees] = useState(false);
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
 
@@ -70,10 +71,37 @@ export default function TicketCreateForm({
   // Search debounce
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Preload initial employees on mount
   useEffect(() => {
-    if (!employeeSearch.trim() || requester?.name === employeeSearch) {
-      setEmployeeList([]);
-      setShowEmployeeDropdown(false);
+    let active = true;
+    async function loadInitialEmployees() {
+      try {
+        setIsSearchingEmployees(true);
+        const res = await getEmployeeLookups();
+        if (active && res.success && res.data) {
+          setInitialEmployeeList(res.data);
+          setEmployeeList(res.data);
+        }
+      } catch (err) {
+        console.error("Gagal memuat daftar awal karyawan:", err);
+      } finally {
+        if (active) setIsSearchingEmployees(false);
+      }
+    }
+    loadInitialEmployees();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Filter or search employees when input changes
+  useEffect(() => {
+    if (!employeeSearch.trim()) {
+      setEmployeeList(initialEmployeeList);
+      return;
+    }
+
+    if (requester?.name === employeeSearch) {
       return;
     }
 
@@ -81,19 +109,28 @@ export default function TicketCreateForm({
       try {
         setIsSearchingEmployees(true);
         const res = await getEmployeeLookups(employeeSearch);
-        if (res.success) {
+        if (res.success && res.data) {
           setEmployeeList(res.data);
           setShowEmployeeDropdown(true);
         }
       } catch (err) {
         console.error("Gagal mencari karyawan:", err);
+        // Fallback local filter
+        const term = employeeSearch.toLowerCase();
+        const localFiltered = initialEmployeeList.filter(
+          (emp) =>
+            emp.name.toLowerCase().includes(term) ||
+            (emp.department && emp.department.toLowerCase().includes(term))
+        );
+        setEmployeeList(localFiltered);
+        setShowEmployeeDropdown(true);
       } finally {
         setIsSearchingEmployees(false);
       }
-    }, 300);
+    }, 250);
 
     return () => clearTimeout(timer);
-  }, [employeeSearch, requester]);
+  }, [employeeSearch, requester, initialEmployeeList]);
 
   // Click outside to close employee dropdown
   useEffect(() => {
@@ -228,40 +265,58 @@ export default function TicketCreateForm({
                     type="text"
                     placeholder="Ketik nama atau departemen karyawan..."
                     value={employeeSearch}
-                    onChange={(e) => setEmployeeSearch(e.target.value)}
-                    onFocus={() => {
-                      if (employeeList.length > 0) setShowEmployeeDropdown(true);
+                    onChange={(e) => {
+                      setEmployeeSearch(e.target.value);
+                      setShowEmployeeDropdown(true);
                     }}
+                    onFocus={() => {
+                      setShowEmployeeDropdown(true);
+                      if (employeeList.length === 0 && initialEmployeeList.length > 0) {
+                        setEmployeeList(initialEmployeeList);
+                      }
+                    }}
+                    onClick={() => setShowEmployeeDropdown(true)}
                     className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                   />
                   {isSearchingEmployees && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">
-                      Mencari...
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 flex items-center gap-1">
+                      <div className="w-2.5 h-2.5 border-2 border-emerald-500/30 border-t-emerald-600 rounded-full animate-spin"></div>
+                      Memuat...
                     </div>
                   )}
                 </div>
               )}
 
               {/* Dropdown search results */}
-              {showEmployeeDropdown && employeeList.length > 0 && !requester && (
-                <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-56 overflow-y-auto divide-y divide-slate-100">
-                  {employeeList.map((emp) => (
-                    <button
-                      key={emp.id}
-                      type="button"
-                      onClick={() => {
-                        setRequester(emp);
-                        setEmployeeSearch(emp.name);
-                        setShowEmployeeDropdown(false);
-                      }}
-                      className="w-full text-left p-3 hover:bg-slate-50 transition-colors flex flex-col"
-                    >
-                      <span className="font-bold text-xs text-slate-900">{emp.name}</span>
-                      <span className="text-[11px] text-slate-500">
-                        {emp.department || "Tanpa Departemen"} • {emp.email || "-"}
-                      </span>
-                    </button>
-                  ))}
+              {showEmployeeDropdown && !requester && (
+                <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto divide-y divide-slate-100">
+                  {employeeList.length > 0 ? (
+                    employeeList.map((emp) => (
+                      <button
+                        key={emp.id}
+                        type="button"
+                        onClick={() => {
+                          setRequester(emp);
+                          setEmployeeSearch(emp.name);
+                          setShowEmployeeDropdown(false);
+                        }}
+                        className="w-full text-left p-3 hover:bg-slate-50 transition-colors flex flex-col group"
+                      >
+                        <span className="font-bold text-xs text-slate-900 group-hover:text-emerald-700">
+                          {emp.name}
+                        </span>
+                        <span className="text-[11px] text-slate-500">
+                          {emp.department || "Tanpa Departemen"} • {emp.email || "-"}
+                        </span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-xs text-slate-500">
+                      {isSearchingEmployees
+                        ? "Mencari daftar karyawan..."
+                        : "Tidak ada data karyawan yang cocok."}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

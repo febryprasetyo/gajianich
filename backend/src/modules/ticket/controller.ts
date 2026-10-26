@@ -207,8 +207,8 @@ export async function getTicketAuditHandler(req: AuthenticatedRequest, res: Resp
 
 export async function searchEmployeesHandler(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
-    const q = String(req.query.q || "").trim();
-    const limit = Math.min(Math.max(parseInt(String(req.query.limit || "20"), 10), 1), 50);
+    const q = String(req.query.q || req.query.search || "").trim();
+    const limit = Math.min(Math.max(parseInt(String(req.query.limit || "50"), 10), 1), 100);
 
     const query = `
       SELECT e.id, e.employee_number AS "employeeCode", e.full_name AS "fullName",
@@ -222,7 +222,17 @@ export async function searchEmployeesHandler(req: AuthenticatedRequest, res: Res
     `;
 
     const resDb = await pool.query(query, [q, `%${q}%`, limit]);
-    res.json({ items: resDb.rows });
+    const items = resDb.rows.map(r => ({
+      id: Number(r.id),
+      employeeCode: r.employeeCode,
+      fullName: r.fullName,
+      name: r.fullName,
+      department: r.departmentName,
+      departmentName: r.departmentName,
+      position: r.position,
+      email: null
+    }));
+    res.json({ success: true, data: items, items });
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Gagal mencari karyawan" });
   }
@@ -230,8 +240,8 @@ export async function searchEmployeesHandler(req: AuthenticatedRequest, res: Res
 
 export async function searchAssigneesHandler(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
-    const q = String(req.query.q || "").trim();
-    const limit = Math.min(Math.max(parseInt(String(req.query.limit || "20"), 10), 1), 50);
+    const q = String(req.query.q || req.query.search || "").trim();
+    const limit = Math.min(Math.max(parseInt(String(req.query.limit || "50"), 10), 1), 100);
 
     const query = `
       SELECT u.id, u.username, COALESCE(e.full_name, u.username) AS "fullName", u.role
@@ -244,7 +254,15 @@ export async function searchAssigneesHandler(req: AuthenticatedRequest, res: Res
     `;
 
     const resDb = await pool.query(query, [q, `%${q}%`, limit]);
-    res.json({ items: resDb.rows });
+    const items = resDb.rows.map(r => ({
+      id: Number(r.id),
+      username: r.username,
+      fullName: r.fullName,
+      name: r.fullName,
+      role: r.role,
+      email: null
+    }));
+    res.json({ success: true, data: items, items });
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Gagal mencari petugas IT" });
   }

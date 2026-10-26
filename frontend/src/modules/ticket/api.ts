@@ -106,13 +106,29 @@ export async function getTicketStats(): Promise<{ success: boolean; data: Ticket
 export async function getEmployeeLookups(
   search?: string
 ): Promise<{ success: boolean; data: EmployeeLookupItem[] }> {
-  const qs = search ? `?search=${encodeURIComponent(search)}` : "";
-  return api.get<{ success: boolean; data: EmployeeLookupItem[] }>(`/helpdesk/employees${qs}`);
+  const qs = search ? `?q=${encodeURIComponent(search)}&search=${encodeURIComponent(search)}` : "";
+  const res = await api.get<any>(`/helpdesk/employees${qs}`);
+  const rawList = res?.data || res?.items || (Array.isArray(res) ? res : []);
+  const mapped: EmployeeLookupItem[] = (Array.isArray(rawList) ? rawList : []).map((emp: any) => ({
+    id: Number(emp.id),
+    name: emp.fullName || emp.name || emp.full_name || emp.employeeCode || `Karyawan #${emp.id}`,
+    email: emp.email || null,
+    department: emp.departmentName || emp.department || null,
+  }));
+  return { success: true, data: mapped };
 }
 
 export async function getTechnicianLookups(): Promise<{
   success: boolean;
   data: TechnicianLookupItem[];
 }> {
-  return api.get<{ success: boolean; data: TechnicianLookupItem[] }>("/helpdesk/technicians");
+  const res = await api.get<any>("/helpdesk/technicians");
+  const rawList = res?.data || res?.items || (Array.isArray(res) ? res : []);
+  const mapped: TechnicianLookupItem[] = (Array.isArray(rawList) ? rawList : []).map((tech: any) => ({
+    id: Number(tech.id),
+    name: tech.fullName || tech.name || tech.username || `Teknisi #${tech.id}`,
+    email: tech.email || null,
+    role: tech.role || "",
+  }));
+  return { success: true, data: mapped };
 }
