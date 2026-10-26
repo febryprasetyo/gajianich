@@ -20,10 +20,10 @@ Dokumen ini melacak tahapan eksekusi dan checkpoint progres refaktor arsitektur 
 - [ ] **Task 1.4**: Verifikasi (backend tests pass, frontend tests pass, zero type errors).
 
 ### Sprint 2: Pilot Feature Module - Helpdesk Ticket (`modules/ticket/`)
-- [ ] **Task 2.1**: Buat backend module `backend/src/modules/ticket/` (schema, types, service, controller, routes, index barrel).
-- [ ] **Task 2.2**: Pasang backward-compatible re-export stubs pada lokasi lama agar import konsumen tetap utuh.
-- [ ] **Task 2.3**: Buat frontend module `frontend/src/modules/ticket/` dan hubungkan `src/app/dashboard/tickets/` sebagai thin controller.
-- [ ] **Task 2.4**: Verifikasi modul tiket & commit milestone Sprint 2.
+- [x] **Task 2.1**: Buat backend module `backend/src/modules/ticket/` (schema, types, service, controller, routes, index barrel).
+- [x] **Task 2.2**: Pasang backward-compatible re-export stubs pada lokasi lama agar import konsumen tetap utuh.
+- [x] **Task 2.3**: Buat frontend module `frontend/src/modules/ticket/` dan hubungkan `src/app/dashboard/tickets/` sebagai thin controller.
+- [x] **Task 2.4**: Verifikasi modul tiket & commit milestone Sprint 2.
 
 ### Sprint 3: Modul Cuti & Perizinan (`modules/leave/`)
 - [ ] **Task 3.1**: Migrasi backend leave (skema leaves, service perhitungan saldo & kuota, controller) ke `modules/leave/`.
