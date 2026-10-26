@@ -5,7 +5,7 @@ import {
   UpdateTicketSchema,
   ALLOWED_STATUS_TRANSITIONS,
   TicketStatus
-} from "./helpdesk";
+} from "../modules/ticket/types";
 
 export function validateStatusTransition(current: TicketStatus, next: TicketStatus): void {
   if (current === next) return;

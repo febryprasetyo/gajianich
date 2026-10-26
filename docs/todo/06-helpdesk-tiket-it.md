@@ -76,8 +76,8 @@ Tiket ditutup → tersedia di laporan KPI (SLA dari reported_at)
 ## Catatan Implementasi & Verifikasi
 
 - **Arsitektur Modular (Screaming Architecture)**:
-  - Backend terisolasi di `backend/src/modules/ticket/` (`schema.ts`, `types.ts`, `service.ts`, `attachment.ts`, `stats.ts`, `controller.ts`, `routes.ts`, `index.ts`). Re-export stubs dipertahankan pada `src/db/schema/helpdesk.ts`, `src/domain/helpdesk.ts`, `src/services/helpdesk.ts`, dan `src/controllers/`.
-  - Frontend terisolasi di `frontend/src/modules/ticket/` (`types.ts`, `constants.ts`, `api.ts`, `components/`, `index.ts`). Page routes di `frontend/src/app/dashboard/tickets/` berfungsi sebagai thin controllers. Re-export stubs pada `src/lib/helpdesk/` dan `src/components/helpdesk/`.
+  - Backend terisolasi penuh di `backend/src/modules/ticket/` (`schema.ts`, `types.ts`, `service.ts`, `attachment.ts`, `stats.ts`, `controller.ts`, `routes.ts`, `index.ts`). Seluruh file dummy/shim/re-export stub telah dihapus bersih dan dependensi diimpor langsung dari module tiket.
+  - Frontend terisolasi penuh di `frontend/src/modules/ticket/` (`types.ts`, `constants.ts`, `api.ts`, `components/`, `index.ts`). Seluruh file dummy stub di `src/lib/helpdesk/` dan `src/components/helpdesk/` telah dihapus bersih.
 - **Integritas Audit Trail**: Trigger PostgreSQL `trg_protect_helpdesk_audit` aktif menolak statement UPDATE atau DELETE dengan SQLSTATE 55000.
 - **Tiga Identitas Eksplisit**: `requester_employee_id` (karyawan HR), `created_by_user_id` (staf pencatat dari JWT), `assigned_to_user_id` (petugas IT).
 - **Pengujian & Verifikasi**:

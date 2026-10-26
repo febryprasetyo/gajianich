@@ -7,7 +7,7 @@ import employeeRoutes from './routes/employeeRoutes';
 import assetRoutes from './routes/assetRoutes';
 import assetCustodianRoutes from './routes/assetCustodianRoutes';
 import ticketRoutes from './routes/ticketRoutes';
-import helpdeskRoutes from './routes/helpdeskRoutes';
+import helpdeskRoutes from './modules/ticket/routes';
 import licenseRoutes from './routes/licenseRoutes';
 import infrastructureRoutes from './routes/infrastructureRoutes';
 import hardwareAuditRoutes from './routes/hardwareAuditRoutes';

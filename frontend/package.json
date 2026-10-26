@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test next.config.test.mjs src/lib/printHtml.test.mjs src/lib/assetForm.test.mjs src/lib/assetImport.test.mjs src/lib/assetCustodian.test.mjs src/lib/employeeImportUI.test.mjs src/lib/confirmModal.test.mjs src/lib/employeeForm.test.mjs src/lib/employeeDirectory.test.mjs src/lib/employeeDetail.test.mjs src/lib/gajianichBrand.test.mjs src/lib/attendance/*.test.mjs src/lib/access/*.test.mjs src/lib/leaves/*.test.mjs src/lib/hr-activity/*.test.mjs src/lib/ga/*.test.mjs src/lib/helpdesk/*.test.mjs"
+    "test": "tsx --test next.config.test.mjs src/lib/printHtml.test.mjs src/lib/assetForm.test.mjs src/lib/assetImport.test.mjs src/lib/assetCustodian.test.mjs src/lib/employeeImportUI.test.mjs src/lib/confirmModal.test.mjs src/lib/employeeForm.test.mjs src/lib/employeeDirectory.test.mjs src/lib/employeeDetail.test.mjs src/lib/gajianichBrand.test.mjs src/lib/attendance/*.test.mjs src/lib/access/*.test.mjs src/lib/leaves/*.test.mjs src/lib/hr-activity/*.test.mjs src/lib/ga/*.test.mjs src/modules/ticket/*.test.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.27.0",

@@ -8,7 +8,7 @@ import {
   getTicketById,
   listTickets,
   getTicketAuditTrail
-} from "./helpdesk";
+} from "../modules/ticket/service";
 import { TicketActor } from "../modules/ticket/types";
 
 test("Helpdesk domain service and audit trail integration tests", async (t) => {

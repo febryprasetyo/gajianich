@@ -8,7 +8,7 @@ import {
   helpdeskTicketAudit,
   helpdeskAttachments,
   helpdeskTicketCounters
-} from "./helpdesk";
+} from "../../modules/ticket/schema";
 import { employees } from "./employees";
 import { users, roles } from "./users";
 

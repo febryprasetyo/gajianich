@@ -10,7 +10,7 @@ import * as employeesSchema from './schema/employees';
 import * as assetCustodiansSchema from './schema/assetCustodians';
 import * as assetsSchema from './schema/assets';
 import * as ticketsSchema from './schema/tickets';
-import * as helpdeskSchema from './schema/helpdesk';
+import * as helpdeskSchema from '../modules/ticket/schema';
 import * as licensesSchema from './schema/licenses';
 import * as infrastructureSchema from './schema/infrastructure';
 import * as systemSchema from './schema/system';
