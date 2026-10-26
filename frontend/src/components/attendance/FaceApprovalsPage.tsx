@@ -87,7 +87,7 @@ export default function FaceApprovalsPage() {
       <header className="space-y-1">
         <div className="flex items-center gap-2 text-slate-900">
           <ScanFace className="w-5 h-5 text-emerald-600" />
-          <h1 className="text-lg font-bold">Persetujuan Foto Wajah</h1>
+          <h1 className="text-lg font-bold">Validasi Foto Wajah</h1>
         </div>
         <p className="text-xs text-slate-500">
           Verifikasi antrean permohonan pembaruan foto profil biometrik wajah karyawan.

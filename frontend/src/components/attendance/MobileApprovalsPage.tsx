@@ -60,17 +60,14 @@ export default function MobileApprovalsPage() {
     setError('');
     setMessage('');
     try {
-      await apiFetch(
-        `/attendance/commands?action=verify&type=verify_mobile_attendance`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            logId: selected.id,
-            status: decision,
-            note: note.trim(),
-          }),
-        }
-      );
+      await apiFetch('/attendance/mobile/verify', {
+        method: 'POST',
+        body: JSON.stringify({
+          logId: selected.id,
+          status: decision,
+          note: note.trim() || undefined,
+        }),
+      });
       setMessage(`Presensi ${selected.employeeName} berhasil ${decision === 'APPROVED' ? 'disetujui' : 'ditolak'}.`);
       setSelected(null);
       await loadData();
@@ -95,7 +92,7 @@ export default function MobileApprovalsPage() {
       <header className="space-y-1">
         <div className="flex items-center gap-2 text-slate-900">
           <CalendarCheck className="w-5 h-5 text-emerald-600" />
-          <h1 className="text-lg font-bold">Persetujuan Absensi</h1>
+          <h1 className="text-lg font-bold">Review Absensi</h1>
         </div>
         <p className="text-xs text-slate-500">
           Verifikasi antrean log absensi mandiri karyawan yang memerlukan peninjauan manual HRD.

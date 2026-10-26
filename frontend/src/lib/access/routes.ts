@@ -11,8 +11,9 @@ export const IT_ROLES = ['superadmin', 'super_admin', 'itadmin', 'it_admin', 'it
 export const ADMIN_ROLES = ['superadmin', 'super_admin', 'itadmin', 'it_admin', 'admin'];
 
 export const DASHBOARD_ROUTE_RULES: RouteRule[] = [
-  { prefix: '/dashboard/attendance/approvals/photos', permission: 'attendance.mobile.verify', moduleName: 'Persetujuan Foto Wajah' },
-  { prefix: '/dashboard/attendance/approvals', permission: 'attendance.mobile.verify', moduleName: 'Persetujuan Absensi' },
+  { prefix: '/dashboard/attendance/approvals/rules', permission: 'attendance.manage', moduleName: 'Aturan Auto-Approve Shift' },
+  { prefix: '/dashboard/attendance/approvals/photos', permission: 'attendance.mobile.verify', moduleName: 'Validasi Foto Wajah' },
+  { prefix: '/dashboard/attendance/approvals', permission: 'attendance.mobile.verify', moduleName: 'Review Absensi Mobile' },
   { prefix: '/dashboard/ga/requests/new', permission: 'ga.requests.create', moduleName: 'Buat Permintaan Barang' },
   { prefix: '/dashboard/ga/requests', permission: 'ga.requests.view', moduleName: 'Permintaan Barang GA' },
   // Super App Landing & Overviews

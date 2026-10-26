@@ -155,7 +155,7 @@ export default function NotificationBell() {
                     </div>
                     <div>
                       <p className="text-xs font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
-                        Persetujuan Absensi
+                        Review Absensi
                       </p>
                       <p className="text-[11px] text-slate-500">Log kehadiran mandiri / geofence</p>
                     </div>
@@ -180,7 +180,7 @@ export default function NotificationBell() {
                     </div>
                     <div>
                       <p className="text-xs font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
-                        Persetujuan Foto Wajah
+                        Validasi Foto Wajah
                       </p>
                       <p className="text-[11px] text-slate-500">Permohonan update foto profil</p>
                     </div>
