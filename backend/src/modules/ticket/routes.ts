@@ -15,6 +15,9 @@ import {
   uploadAttachment,
   downloadAttachment
 } from "./attachment";
+import {
+  getHelpdeskStatsHandler
+} from "./stats";
 
 const router = Router();
 
@@ -23,6 +26,9 @@ router.use(authenticateToken);
 
 const viewHelpdesk = requirePermission(["helpdesk.view", "helpdesk.manage", "super_admin"]);
 const manageHelpdesk = requirePermission(["helpdesk.manage", "super_admin"]);
+
+// Statistik & KPI Helpdesk
+router.get("/stats", viewHelpdesk, getHelpdeskStatsHandler);
 
 // Lookup endpoints
 router.get("/employees", manageHelpdesk, searchEmployeesHandler);
