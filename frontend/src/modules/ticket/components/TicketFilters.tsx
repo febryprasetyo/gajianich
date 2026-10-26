@@ -3,7 +3,7 @@
 import React from "react";
 import { TicketFilterParams } from "../types";
 import { CATEGORIES, ORIGINS, PRIORITIES, STATUSES } from "../constants";
-import { Search, RotateCcw, Filter } from "lucide-react";
+import { Search, RotateCcw, X } from "lucide-react";
 
 interface TicketFiltersProps {
   filters: TicketFilterParams;
@@ -30,12 +30,13 @@ export default function TicketFilters({
       filters.priority ||
       filters.category ||
       filters.origin ||
+      filters.slaStatus ||
       (filters.isInternal && filters.isInternal !== "all")
   );
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm mb-6">
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 mb-3">
+    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs mb-6 space-y-3">
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         {/* Search */}
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -85,6 +86,24 @@ export default function TicketFilters({
           </button>
         </div>
       </div>
+
+      {/* Pill badge for active SLA filter */}
+      {filters.slaStatus && (
+        <div className="flex items-center gap-2 pt-1">
+          <span className="text-[11px] text-slate-500 font-medium">Filter SLA:</span>
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs">
+            {filters.slaStatus === "BREACHED" ? "Melewati Target Batas SLA (Breached)" : "Sesuai SLA"}
+            <button
+              type="button"
+              onClick={() => handleChange("slaStatus", undefined)}
+              className="text-rose-500 hover:text-rose-800 p-0.5 rounded-full hover:bg-rose-100 transition-colors ml-0.5"
+              title="Hapus filter SLA"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </span>
+        </div>
+      )}
 
       {/* Dropdown Filters row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2 pt-2 border-t border-slate-100 items-center">

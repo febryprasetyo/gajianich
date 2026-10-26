@@ -197,3 +197,26 @@ export function formatAuditAction(
       return action;
   }
 }
+
+export function calculateDelayDays(reportedAt?: string | null, createdAt?: string | null): number {
+  if (!reportedAt || !createdAt) return 0;
+  const repD = new Date(reportedAt);
+  const creD = new Date(createdAt);
+  if (isNaN(repD.getTime()) || isNaN(creD.getTime())) return 0;
+
+  const repStr = repD.toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
+  const creStr = creD.toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
+
+  const repMidnight = new Date(repStr + "T00:00:00Z").getTime();
+  const creMidnight = new Date(creStr + "T00:00:00Z").getTime();
+  const diffDays = Math.round((creMidnight - repMidnight) / (1000 * 60 * 60 * 24));
+  return Math.max(0, diffDays);
+}
+
+export function formatDelayDays(reportedAt?: string | null, createdAt?: string | null): string | null {
+  const days = calculateDelayDays(reportedAt, createdAt);
+  if (days <= 0) {
+    return null;
+  }
+  return `+${days} hari kemudian`;
+}

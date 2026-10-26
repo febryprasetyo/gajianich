@@ -6,7 +6,7 @@ import { TicketSummary } from "../types";
 import {
   getStatusBadgeConfig,
   getPriorityBadgeConfig,
-  formatDelayMinutes,
+  formatDelayDays,
 } from "../constants";
 import {
   Clock,
@@ -92,11 +92,7 @@ export default function TicketList({
     });
   };
 
-  const calculateDelayMinutes = (reportedAt: string, createdAt: string) => {
-    if (!reportedAt || !createdAt) return 0;
-    const diffMs = new Date(createdAt).getTime() - new Date(reportedAt).getTime();
-    return Math.max(0, Math.round(diffMs / 60000));
-  };
+
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
@@ -129,7 +125,7 @@ export default function TicketList({
             {tickets.map((t) => {
               const statusCfg = getStatusBadgeConfig(t.status);
               const priorityCfg = getPriorityBadgeConfig(t.priority);
-              const delayMins = calculateDelayMinutes(t.reportedAt, t.createdAt);
+              const delayText = formatDelayDays(t.reportedAt, t.createdAt);
 
               return (
                 <tr key={t.id} className="hover:bg-slate-50/50 transition-colors">
@@ -149,9 +145,9 @@ export default function TicketList({
                       <Calendar className="w-3 h-3 text-slate-400" />
                       <span>{formatDate(t.reportedAt)}</span>
                     </div>
-                    {delayMins > 0 && (
+                    {delayText && (
                       <div className="text-[10px] text-amber-600 font-medium mt-0.5">
-                        Dicatat: +{formatDelayMinutes(delayMins)} kemudian
+                        Dicatat: {delayText}
                       </div>
                     )}
                   </td>
@@ -252,7 +248,7 @@ export default function TicketList({
         {tickets.map((t) => {
           const statusCfg = getStatusBadgeConfig(t.status);
           const priorityCfg = getPriorityBadgeConfig(t.priority);
-          const delayMins = calculateDelayMinutes(t.reportedAt, t.createdAt);
+          const delayText = formatDelayDays(t.reportedAt, t.createdAt);
 
           return (
             <div key={t.id} className="p-4 space-y-3">
@@ -271,6 +267,11 @@ export default function TicketList({
                   <div className="text-[11px] text-slate-400 mt-0.5">
                     {formatDate(t.reportedAt)}
                   </div>
+                  {delayText && (
+                    <div className="text-[10px] text-amber-600 font-medium mt-0.5">
+                      Dicatat: {delayText}
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   <span

@@ -538,6 +538,7 @@ export interface TicketListFilters {
   endDate?: string;
   q?: string;
   cursor?: string;
+  slaStatus?: "BREACHED" | "COMPLIANT";
   limit?: number;
 }
 
@@ -562,6 +563,44 @@ export async function listTickets(filters: TicketListFilters = {}): Promise<Page
     params.push(filters.origin);
     conditions.push(`origin = $${params.length}`);
   }
+  if (filters.slaStatus === "BREACHED") {
+    conditions.push(`(
+      (status IN ('RESOLVED', 'CLOSED') AND resolved_at IS NOT NULL AND (EXTRACT(EPOCH FROM (resolved_at - reported_at)) / 60) >
+        CASE priority
+          WHEN 'CRITICAL' THEN 60
+          WHEN 'HIGH' THEN 240
+          WHEN 'MEDIUM' THEN 480
+          ELSE 1440
+        END)
+      OR
+      (status IN ('OPEN', 'IN_PROGRESS', 'PENDING') AND (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - reported_at)) / 60) >
+        CASE priority
+          WHEN 'CRITICAL' THEN 60
+          WHEN 'HIGH' THEN 240
+          WHEN 'MEDIUM' THEN 480
+          ELSE 1440
+        END)
+    )`);
+  } else if (filters.slaStatus === "COMPLIANT") {
+    conditions.push(`(
+      (status IN ('RESOLVED', 'CLOSED') AND resolved_at IS NOT NULL AND (EXTRACT(EPOCH FROM (resolved_at - reported_at)) / 60) <=
+        CASE priority
+          WHEN 'CRITICAL' THEN 60
+          WHEN 'HIGH' THEN 240
+          WHEN 'MEDIUM' THEN 480
+          ELSE 1440
+        END)
+      OR
+      (status IN ('OPEN', 'IN_PROGRESS', 'PENDING') AND (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - reported_at)) / 60) <=
+        CASE priority
+          WHEN 'CRITICAL' THEN 60
+          WHEN 'HIGH' THEN 240
+          WHEN 'MEDIUM' THEN 480
+          ELSE 1440
+        END)
+    )`);
+  }
+
   if (filters.isInternal !== undefined) {
     params.push(filters.isInternal);
     conditions.push(`is_internal = $${params.length}`);

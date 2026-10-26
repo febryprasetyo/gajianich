@@ -6,7 +6,7 @@ import { TicketDetail as ITicketDetail } from "../types";
 import {
   getStatusBadgeConfig,
   getPriorityBadgeConfig,
-  formatDelayMinutes,
+  formatDelayDays,
   FEEDBACK_SOURCE_LABEL,
 } from "../constants";
 import TicketComments from "./TicketComments";
@@ -54,13 +54,7 @@ export default function TicketDetail({ ticket, onRefresh }: TicketDetailProps) {
     });
   };
 
-  const calculateDelayMinutes = (reportedAt: string, createdAt: string) => {
-    if (!reportedAt || !createdAt) return 0;
-    const diffMs = new Date(createdAt).getTime() - new Date(reportedAt).getTime();
-    return Math.max(0, Math.round(diffMs / 60000));
-  };
-
-  const delayMins = calculateDelayMinutes(ticket.reportedAt, ticket.createdAt);
+  const delayText = formatDelayDays(ticket.reportedAt, ticket.createdAt);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !e.target.files[0]) return;
@@ -232,10 +226,10 @@ export default function TicketDetail({ ticket, onRefresh }: TicketDetailProps) {
             </span>
             <span
               className={`text-xs font-extrabold mt-0.5 block ${
-                delayMins > 0 ? "text-amber-600" : "text-emerald-600"
+                delayText ? "text-amber-600" : "text-emerald-600"
               }`}
             >
-              {delayMins > 0 ? `+${formatDelayMinutes(delayMins)} kemudian` : "Tepat Waktu"}
+              {delayText ? delayText : "Hari yang sama (Tepat Waktu)"}
             </span>
           </div>
         </div>

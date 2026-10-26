@@ -91,6 +91,12 @@ export async function listTicketsHandler(req: AuthenticatedRequest, res: Respons
     if (req.query.endDate) filters.endDate = String(req.query.endDate);
     if (req.query.q) filters.q = String(req.query.q);
     if (req.query.cursor) filters.cursor = String(req.query.cursor);
+    if (req.query.slaStatus) {
+      const s = String(req.query.slaStatus).toUpperCase();
+      if (s === "BREACHED" || s === "COMPLIANT") {
+        filters.slaStatus = s;
+      }
+    }
     if (req.query.limit) filters.limit = parseInt(String(req.query.limit), 10);
 
     const result = await listTickets(filters);

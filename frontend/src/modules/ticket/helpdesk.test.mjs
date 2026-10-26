@@ -6,6 +6,8 @@ import {
   getAllowedStatusTransitions,
   buildCreateTicketPayload,
   formatDelayMinutes,
+  calculateDelayDays,
+  formatDelayDays,
   formatAuditAction,
   FEEDBACK_SOURCE_LABEL,
   CATEGORIES,
@@ -125,4 +127,26 @@ test("formatAuditAction returns human friendly Indonesian description", () => {
 
 test("feedbackSource is strictly labeled as STAFF_RECORDED", () => {
   assert.equal(FEEDBACK_SOURCE_LABEL, "STAFF_RECORDED");
+});
+
+test("calculateDelayDays and formatDelayDays only show delay if minimal +1 hari kemudian", () => {
+  // Same day, 30 minutes apart -> no delay
+  assert.equal(calculateDelayDays("2026-10-26T08:00:00Z", "2026-10-26T08:30:00Z"), 0);
+  assert.equal(formatDelayDays("2026-10-26T08:00:00Z", "2026-10-26T08:30:00Z"), null);
+
+  // Same day, 8 hours apart (09:00 WIB to 17:00 WIB) -> no delay
+  assert.equal(calculateDelayDays("2026-10-26T02:00:00Z", "2026-10-26T10:00:00Z"), 0);
+  assert.equal(formatDelayDays("2026-10-26T02:00:00Z", "2026-10-26T10:00:00Z"), null);
+
+  // Next calendar day -> +1 hari kemudian
+  assert.equal(calculateDelayDays("2026-10-25T15:00:00Z", "2026-10-26T09:00:00Z"), 1);
+  assert.equal(formatDelayDays("2026-10-25T15:00:00Z", "2026-10-26T09:00:00Z"), "+1 hari kemudian");
+
+  // 3 calendar days later -> +3 hari kemudian
+  assert.equal(calculateDelayDays("2026-10-20T10:00:00Z", "2026-10-23T14:00:00Z"), 3);
+  assert.equal(formatDelayDays("2026-10-20T10:00:00Z", "2026-10-23T14:00:00Z"), "+3 hari kemudian");
+
+  // Invalid or null inputs
+  assert.equal(calculateDelayDays(null, null), 0);
+  assert.equal(formatDelayDays(null, null), null);
 });

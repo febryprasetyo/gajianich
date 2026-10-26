@@ -158,6 +158,7 @@ export interface TicketFilterParams {
   origin?: string;
   departmentId?: string | number;
   isInternal?: "all" | "true" | "false";
+  slaStatus?: "BREACHED" | "COMPLIANT";
   page?: number;
   limit?: number;
 }

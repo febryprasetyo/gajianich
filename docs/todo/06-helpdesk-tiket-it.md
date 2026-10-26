@@ -85,3 +85,11 @@ Tiket ditutup → tersedia di laporan KPI (SLA dari reported_at)
   - Frontend test suite: 200 passing test cases (`npm test`).
   - Frontend typecheck & lint: 0 errors (`tsc --noEmit` & `npm run lint`).
   - Production build: Next.js clean build (`npm run build` 52 pages).
+
+## Pembaruan 26 Oktober 2026 (Refinement & Polishing)
+
+- [x] Kartu KPI dijadikan filter interaktif (klik pada Tiket Terbuka, Sedang Dikerjakan, Selesai Hari Ini, Tiket Kritis, dan Kepatuhan SLA dengan query `slaStatus=BREACHED`).
+- [x] Kartu metrik "Rata-rata Delay" dihapus dari TicketStats.
+- [x] Pembersihan total data dummy pada seluruh tabel helpdesk (reset kosong bersih).
+- [x] Format keterlambatan pencatatan diperbarui: di hari kalender yang sama tidak menampilkan badge delay, hanya menampilkan label jika minimal selisih +1 hari kalender kemudian (`+N hari kemudian`).
+- [x] Automated tests & production build verification lulus (201 passing frontend unit tests, 355 passing backend integration tests, clean Next.js build).

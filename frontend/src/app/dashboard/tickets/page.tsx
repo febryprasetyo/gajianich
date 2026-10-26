@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import TicketStats from "@/modules/ticket/components/TicketStats";
+import TicketStats, { KpiFilterKey } from "@/modules/ticket/components/TicketStats";
 import TicketFilters from "@/modules/ticket/components/TicketFilters";
 import TicketList from "@/modules/ticket/components/TicketList";
 import TicketCreateForm from "@/modules/ticket/components/TicketCreateForm";
@@ -32,6 +32,9 @@ export default function TicketsPage() {
     isInternal: "all",
     page: 1,
   });
+
+  // Active KPI interactive filter state
+  const [activeKpiFilter, setActiveKpiFilter] = useState<KpiFilterKey | null>(null);
 
   // Modal create state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -80,12 +83,70 @@ export default function TicketsPage() {
     fetchTickets();
   }, [fetchTickets]);
 
+  const handleSelectKpiFilter = (key: KpiFilterKey) => {
+    if (activeKpiFilter === key) {
+      // Toggle off
+      setActiveKpiFilter(null);
+      setFilters((prev) => {
+        const next = { ...prev };
+        if (key === "open" || key === "in_progress" || key === "resolved") {
+          delete next.status;
+        } else if (key === "critical") {
+          delete next.priority;
+        } else if (key === "sla_breached") {
+          delete next.slaStatus;
+        }
+        return next;
+      });
+      setPage(1);
+      return;
+    }
+
+    // Set new active KPI filter
+    setActiveKpiFilter(key);
+    setFilters((prev) => {
+      const next = { ...prev };
+      // Clear conflicting KPI filter targets
+      delete next.status;
+      delete next.priority;
+      delete next.slaStatus;
+
+      switch (key) {
+        case "open":
+          next.status = "OPEN";
+          break;
+        case "in_progress":
+          next.status = "IN_PROGRESS";
+          break;
+        case "resolved":
+          next.status = "RESOLVED";
+          break;
+        case "critical":
+          next.priority = "CRITICAL";
+          break;
+        case "sla_breached":
+          next.slaStatus = "BREACHED";
+          break;
+      }
+      return next;
+    });
+    setPage(1);
+  };
+
   const handleFilterChange = (newFilters: TicketFilterParams) => {
+    // If the manually changed filters no longer match the active KPI filter, clear activeKpiFilter
+    if (activeKpiFilter === "open" && newFilters.status !== "OPEN") setActiveKpiFilter(null);
+    if (activeKpiFilter === "in_progress" && newFilters.status !== "IN_PROGRESS") setActiveKpiFilter(null);
+    if (activeKpiFilter === "resolved" && newFilters.status !== "RESOLVED") setActiveKpiFilter(null);
+    if (activeKpiFilter === "critical" && newFilters.priority !== "CRITICAL") setActiveKpiFilter(null);
+    if (activeKpiFilter === "sla_breached" && newFilters.slaStatus !== "BREACHED") setActiveKpiFilter(null);
+
     setFilters(newFilters);
     setPage(1);
   };
 
   const handleResetFilters = () => {
+    setActiveKpiFilter(null);
     setFilters({ isInternal: "all", page: 1 });
     setPage(1);
   };
@@ -132,8 +193,13 @@ export default function TicketsPage() {
           </div>
         </div>
 
-        {/* Stats Summary */}
-        <TicketStats stats={stats} loading={statsLoading} />
+        {/* Stats Summary with Interactive Filters */}
+        <TicketStats
+          stats={stats}
+          loading={statsLoading}
+          activeKpiFilter={activeKpiFilter}
+          onSelectKpiFilter={handleSelectKpiFilter}
+        />
 
         {/* Filters */}
         <TicketFilters

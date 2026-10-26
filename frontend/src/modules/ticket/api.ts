@@ -89,6 +89,7 @@ export async function listTickets(
   if (params?.origin) query.set("origin", params.origin);
   if (params?.departmentId) query.set("departmentId", String(params.departmentId));
   if (params?.isInternal && params.isInternal !== "all") query.set("isInternal", params.isInternal);
+  if (params?.slaStatus) query.set("slaStatus", params.slaStatus);
   if (params?.page) query.set("page", String(params.page));
   if (params?.limit) query.set("limit", String(params.limit));
 
