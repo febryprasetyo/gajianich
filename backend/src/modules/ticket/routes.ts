@@ -10,6 +10,11 @@ import {
   searchEmployeesHandler,
   searchAssigneesHandler
 } from "./controller";
+import {
+  handleAttachmentUpload,
+  uploadAttachment,
+  downloadAttachment
+} from "./attachment";
 
 const router = Router();
 
@@ -32,5 +37,9 @@ router.patch("/tickets/:id", manageHelpdesk, updateTicketHandler);
 // Komentar & Audit
 router.post("/tickets/:id/comments", manageHelpdesk, addCommentHandler);
 router.get("/tickets/:id/audit", manageHelpdesk, getTicketAuditHandler);
+
+// Lampiran File
+router.post("/tickets/:id/attachments", manageHelpdesk, handleAttachmentUpload, uploadAttachment);
+router.get("/tickets/:id/attachments/:attachmentId", viewHelpdesk, downloadAttachment);
 
 export default router;
