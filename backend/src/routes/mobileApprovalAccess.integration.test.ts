@@ -10,6 +10,7 @@ import { runMigrations } from '../db/migrate';
 import { roles, permissions, rolePermissions, users } from '../db/schema/users';
 import { employees } from '../db/schema/employees';
 import { attendanceSelfLogs } from '../db/schema/attendanceSelfLogs';
+import { attendanceFaceRequests } from '../db/schema/attendanceFaceRequests';
 import { generateToken } from '../utils/jwt';
 test('mobile API requires dedicated reviewer permission and protects employee evidence', async t => {
   const fixture = await createHrAuditTestDatabase();
@@ -32,7 +33,7 @@ test('mobile API requires dedicated reviewer permission and protects employee ev
   const url = `http://127.0.0.1:${address.port}/api/v1/attendance/mobile`;
   const get = (endpoint: string, auth?: string) => fetch(url + endpoint, { headers: auth ? { Authorization: `Bearer ${auth}` } : {} });
   const employeeToken = token(owner, employeeRole); const reviewerToken = token(reviewer, reviewRole);
-  for (const endpoint of ['/verifications','/approval-settings','/face-requests']) {
+  for (const endpoint of ['/verifications','/approval-settings','/face-requests','/badge-count']) {
     assert.equal((await get(endpoint)).status, 401);
     assert.equal((await get(endpoint, employeeToken)).status, 403);
     assert.equal((await get(endpoint, reviewerToken)).status, 200);
@@ -43,4 +44,25 @@ test('mobile API requires dedicated reviewer permission and protects employee ev
   assert.equal((await get(`/photos/${log.id}`, employeeToken)).status, 200);
   assert.equal((await get(`/photos/${log.id}`, token(outsider, employeeRole))).status, 403);
   assert.equal((await get(`/photos/${log.id}`, reviewerToken)).status, 200);
+  // Test badge-count response format and counts
+  const badgeRes = await get('/badge-count', reviewerToken);
+  assert.equal(badgeRes.status, 200);
+  const badgeBody = await badgeRes.json() as { success: boolean; data: { pendingAttendance: number; pendingPhotos: number; totalPending: number } };
+  assert.equal(badgeBody.success, true);
+  assert.equal(typeof badgeBody.data.pendingAttendance, 'number');
+  assert.equal(typeof badgeBody.data.pendingPhotos, 'number');
+  assert.equal(badgeBody.data.totalPending, badgeBody.data.pendingAttendance + badgeBody.data.pendingPhotos);
+
+  // Insert a pending face request and verify counter increments
+  await database.insert(attendanceFaceRequests).values({
+    employeeId: employee.id,
+    descriptor: '[0.1, 0.2]',
+    photoUrl: 'face-evidence',
+    status: 'PENDING',
+  });
+  const updatedBadgeRes = await get('/badge-count', reviewerToken);
+  const updatedBadgeBody = await updatedBadgeRes.json() as { success: boolean; data: { pendingAttendance: number; pendingPhotos: number; totalPending: number } };
+  assert.equal(updatedBadgeBody.data.pendingPhotos, badgeBody.data.pendingPhotos + 1);
+  assert.equal(updatedBadgeBody.data.totalPending, badgeBody.data.totalPending + 1);
 });
+

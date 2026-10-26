@@ -5,8 +5,9 @@ import { authenticateToken, requirePermission, AuthenticatedRequest } from '../m
 import { db } from '../db';
 import { attendanceShifts } from '../db/schema/attendanceWorkspace';
 import { attendanceSelfLogs } from '../db/schema/attendanceSelfLogs';
+import { attendanceFaceRequests } from '../db/schema/attendanceFaceRequests';
 import { users } from '../db/schema/users';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { correctMobileAttendance, listFaceRequests, verifyFaceRequest } from '../services/mobileAttendanceService';
 const router = Router();
 const review = requirePermission('attendance.mobile.verify');
@@ -41,4 +42,27 @@ router.get('/photos/:id', handle(async (req, res) => {
   if (user?.employeeId === log.employeeId) { await send(); return; }
   await review(req, res, () => { void send().catch(() => { res.status(404).json({ error: 'Foto tidak tersedia.' }); }); });
 }));
+router.get('/badge-count', review, handle(async (_req, res) => {
+  const [attendanceCount, photoCount] = await Promise.all([
+    db.select({ count: sql<number>`count(*)::int` })
+      .from(attendanceSelfLogs)
+      .where(eq(attendanceSelfLogs.approvalStatus, 'PENDING')),
+    db.select({ count: sql<number>`count(*)::int` })
+      .from(attendanceFaceRequests)
+      .where(eq(attendanceFaceRequests.status, 'PENDING')),
+  ]);
+
+  const pendingAttendance = Number(attendanceCount[0]?.count || 0);
+  const pendingPhotos = Number(photoCount[0]?.count || 0);
+
+  res.json({
+    success: true,
+    data: {
+      pendingAttendance,
+      pendingPhotos,
+      totalPending: pendingAttendance + pendingPhotos,
+    },
+  });
+}));
+
 export default router;
