@@ -42,32 +42,32 @@ Memecah halaman tunggal `/dashboard/attendance/approvals` menjadi halaman mandir
 ## 3. Rencana Tahapan Eksekusi (Phased Tasks)
 
 ### Fase 1: Backend API & Notification Counter
-- [ ] Buat endpoint ringan `GET /api/v1/attendance/approvals/badge-count` (memerlukan permission `attendance.mobile.verify`).
+- [x] Buat endpoint ringan `GET /api/v1/attendance/approvals/badge-count` (memerlukan permission `attendance.mobile.verify`).
   - Menghitung count `attendance_mobile_logs` dengan status `PENDING`.
   - Menghitung count `attendance_face_profiles` / `attendance_face_requests` dengan status `PENDING`.
   - Mengembalikan JSON: `{ pendingAttendance: number, pendingPhotos: number, totalPending: number }`.
-- [ ] Unit & Integration Test untuk endpoint badge counter.
+- [x] Unit & Integration Test untuk endpoint badge counter.
 
 ### Fase 2: Pemisahan Halaman Frontend (Dashboard)
-- [ ] Refactor [MobileApprovalsPage.tsx](file:///home/fastpec/code/ams-app/frontend/src/components/attendance/MobileApprovalsPage.tsx):
+- [x] Refactor [MobileApprovalsPage.tsx](file:///home/fastpec/code/ams-app/frontend/src/components/attendance/MobileApprovalsPage.tsx):
   - Ekstrak sub-komponen `AttendanceApprovalsView` untuk log absensi.
   - Ekstrak sub-komponen `FacePhotoApprovalsView` untuk verifikasi foto wajah.
   - Pindahkan tab settings ke halaman `/dashboard/attendance/settings`.
-- [ ] Buat rute baru [frontend/src/app/dashboard/attendance/approvals/photos/page.tsx](file:///home/fastpec/code/ams-app/frontend/src/app/dashboard/attendance/approvals/photos/page.tsx).
-- [ ] Perbarui rute [frontend/src/app/dashboard/attendance/settings/page.tsx](file:///home/fastpec/code/ams-app/frontend/src/app/dashboard/attendance/settings/page.tsx) agar memuat pengaturan persetujuan shift secara mandiri.
-- [ ] Sesuaikan struktur navigasi sidebar di [DashboardLayout.tsx](file:///home/fastpec/code/ams-app/frontend/src/components/layout/DashboardLayout.tsx):
+- [x] Buat rute baru [frontend/src/app/dashboard/attendance/approvals/photos/page.tsx](file:///home/fastpec/code/ams-app/frontend/src/app/dashboard/attendance/approvals/photos/page.tsx).
+- [x] Perbarui rute [frontend/src/app/dashboard/attendance/settings/page.tsx](file:///home/fastpec/code/ams-app/frontend/src/app/dashboard/attendance/settings/page.tsx) agar memuat pengaturan persetujuan shift secara mandiri.
+- [x] Sesuaikan struktur navigasi sidebar di [DashboardLayout.tsx](file:///home/fastpec/code/ams-app/frontend/src/components/layout/DashboardLayout.tsx):
   - `Persetujuan Absensi` (`/dashboard/attendance/approvals`)
   - `Persetujuan Foto Wajah` (`/dashboard/attendance/approvals/photos`)
   - `Pengaturan` (`/dashboard/attendance/settings`)
 
 ### Fase 3: Komponen Notifikasi Lonceng di Header Dashboard
-- [ ] Tambahkan komponen `NotificationBadge` di header [DashboardLayout.tsx](file:///home/fastpec/code/ams-app/frontend/src/components/layout/DashboardLayout.tsx) (di samping profile user):
+- [x] Tambahkan komponen `NotificationBadge` di header [DashboardLayout.tsx](file:///home/fastpec/code/ams-app/frontend/src/components/layout/DashboardLayout.tsx) (di samping profile user):
   - Ikon `Bell` dengan badge counter dinamis (tersembunyi jika 0).
   - Popover dropdown ringkas yang memisahkan jumlah antrean absensi dan foto wajah.
   - Polling reaktif berbasis SWR / interval timer bersih dengan cleanup saat unmount.
 
 ### Fase 4: Pengujian & Verifikasi Menyeluruh
-- [ ] Verifikasi kepatuhan Master Desain GAJIANICH / Emerald Enterprise (tanpa tombol refresh manual, token warna konsisten, modal a11y).
-- [ ] Typecheck frontend & backend (`npx tsc --noEmit`).
-- [ ] Eksekusi automated unit test suite.
-- [ ] Build Next.js (`npm run build`).
+- [x] Verifikasi kepatuhan Master Desain GAJIANICH / Emerald Enterprise (tanpa tombol refresh manual, token warna konsisten, modal a11y).
+- [x] Typecheck frontend & backend (`npx tsc --noEmit`).
+- [x] Eksekusi automated unit test suite.
+- [x] Build Next.js (`npm run build`).

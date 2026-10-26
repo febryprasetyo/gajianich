@@ -1,0 +1,12 @@
+{
+  "apiUrl": "http://AMS_BACKEND_LOCAL_IP:5000/api/v1/infrastructure/agent/signal",
+  "apiKey": "replace-with-the-same-agent-key-configured-on-ams-backend",
+  "licenseServerPort": 6688,
+  "intervalSeconds": 60,
+  "scanPaths": [
+    "D:\\AccurateData"
+  ],
+  "maxDepth": 4,
+  "logToFile": true,
+  "logFilePath": "agent.log"
+}

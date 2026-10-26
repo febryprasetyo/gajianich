@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { canManageCustodians } from '@/lib/assetCustodian';
 import { BRAND_NAME } from '@/lib/gajianichBrand';
 import { getDashboardHrefForUser, canAccessRoute } from '@/lib/access/routes';
+import NotificationBell from './NotificationBell';
 import {
   Building2,
   MapPin,
@@ -32,6 +33,7 @@ import {
   GitMerge,
   LayoutDashboard,
   CalendarCheck,
+  ScanFace,
   CalendarDays,
   Clock,
   FileInput,
@@ -73,9 +75,10 @@ export const navGroups: NavGroup[] = [
       {
         name: 'Attendance',
         icon: CalendarCheck,
-                children: [
+        children: [
           { name: 'Ringkasan HR', href: '/dashboard/attendance/overview', icon: LayoutDashboard, permission: 'attendance.view' },
-          { name: 'Approval Presensi & Foto', href: '/dashboard/attendance/approvals', icon: CalendarCheck, permission: 'attendance.mobile.verify' },
+          { name: 'Persetujuan Absensi', href: '/dashboard/attendance/approvals', icon: CalendarCheck, permission: 'attendance.mobile.verify' },
+          { name: 'Persetujuan Foto Wajah', href: '/dashboard/attendance/approvals/photos', icon: ScanFace, permission: 'attendance.mobile.verify' },
           { name: 'Data Absensi', href: '/dashboard/attendance', icon: CalendarCheck, permission: 'attendance.view' },
           { name: 'Impor Absensi', href: '/dashboard/attendance/imports', icon: FileInput, permission: 'attendance.import' },
           { name: 'Kartu Absensi', href: '/dashboard/attendance/employees', icon: ClipboardList, permission: 'attendance.view' },
@@ -100,7 +103,7 @@ export const navGroups: NavGroup[] = [
           { name: 'Departemen Absensi', href: '/dashboard/attendance/master/departments', icon: Building2, permission: 'attendance.view' },
           { name: 'Shift & Jam Kerja', href: '/dashboard/attendance/master/shifts', icon: Clock, permission: 'attendance.view' },
           { name: 'Akun Pengguna', href: '/dashboard/access', icon: UserRoundCog, permission: 'access.users.view' },
-          { name: 'Pengaturan Absensi', href: '/dashboard/attendance/settings', icon: Settings, permission: 'attendance.manage', adminOnly: true },
+          { name: 'Pengaturan', href: '/dashboard/attendance/settings', icon: Settings, permission: 'attendance.manage', adminOnly: true },
         ],
       },
     ],
@@ -622,6 +625,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
 
             <div className="flex items-center gap-3">
+              <NotificationBell />
               {/* User Profile Badge */}
               <div className="flex items-center gap-3 pl-1">
                 <div className="flex items-center gap-2.5 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl text-xs">
