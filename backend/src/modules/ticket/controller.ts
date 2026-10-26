@@ -70,7 +70,7 @@ export async function createTicketHandler(req: AuthenticatedRequest, res: Respon
     const ticket = await createTicket(actor, parsed.data);
     res.status(201).json({ data: ticket });
   } catch (err: any) {
-    const status = err.message?.includes("tidak ditemukan") || err.message?.includes("tidak boleh") ? 400 : 500;
+    const status = err.message === "Unauthorized" ? 401 : err.message?.includes("tidak ditemukan") || err.message?.includes("tidak boleh") || err.message?.includes("dilarang") ? 400 : 500;
     res.status(status).json({ error: err.message || "Gagal membuat tiket" });
   }
 }

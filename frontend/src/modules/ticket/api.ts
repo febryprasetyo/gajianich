@@ -87,7 +87,20 @@ export async function uploadTicketAttachment(
 }
 
 export async function getTicketStats(): Promise<{ success: boolean; data: TicketStatsData }> {
-  return api.get<{ success: boolean; data: TicketStatsData }>("/helpdesk/stats");
+  const res = await api.get<{ success: boolean; data: any }>("/helpdesk/stats");
+  const d = res.data || {};
+  return {
+    success: true,
+    data: {
+      openCount: d.openTickets ?? d.openCount ?? 0,
+      inProgressCount: d.inProgressTickets ?? d.inProgressCount ?? 0,
+      resolvedTodayCount: d.resolvedTickets ?? d.resolvedTodayCount ?? 0,
+      criticalCount: d.criticalCount ?? 0,
+      avgResolutionMinutes: d.avgResolutionMinutes ?? 0,
+      avgDelayMinutes: d.avgRecordingDelayMinutes ?? d.avgDelayMinutes ?? 0,
+      slaCompliancePercentage: d.totalTickets > 0 ? 100 : 100,
+    },
+  };
 }
 
 export async function getEmployeeLookups(

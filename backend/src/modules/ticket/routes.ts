@@ -33,12 +33,15 @@ router.get("/stats", viewHelpdesk, getHelpdeskStatsHandler);
 // Lookup endpoints
 router.get("/employees", manageHelpdesk, searchEmployeesHandler);
 router.get("/assignees", manageHelpdesk, searchAssigneesHandler);
+router.get("/technicians", manageHelpdesk, searchAssigneesHandler);
 
 // CRUD Tiket
 router.post("/tickets", manageHelpdesk, createTicketHandler);
 router.get("/tickets", viewHelpdesk, listTicketsHandler);
 router.get("/tickets/:id", viewHelpdesk, getTicketDetailHandler);
 router.patch("/tickets/:id", manageHelpdesk, updateTicketHandler);
+router.patch("/tickets/:id/status", manageHelpdesk, updateTicketHandler);
+router.patch("/tickets/:id/assign", manageHelpdesk, updateTicketHandler);
 
 // Komentar & Audit
 router.post("/tickets/:id/comments", manageHelpdesk, addCommentHandler);
