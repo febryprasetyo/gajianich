@@ -10,6 +10,7 @@ import * as employeesSchema from './schema/employees';
 import * as assetCustodiansSchema from './schema/assetCustodians';
 import * as assetsSchema from './schema/assets';
 import * as ticketsSchema from './schema/tickets';
+import * as helpdeskSchema from './schema/helpdesk';
 import * as licensesSchema from './schema/licenses';
 import * as infrastructureSchema from './schema/infrastructure';
 import * as systemSchema from './schema/system';
@@ -50,6 +51,7 @@ export const db = drizzle(getPool(), {
     ...assetsSchema,
     ...assetCustodiansSchema,
     ...ticketsSchema,
+    ...helpdeskSchema,
     ...licensesSchema,
     ...infrastructureSchema,
     ...systemSchema,
@@ -102,4 +104,5 @@ export {
   attendanceSelfLogsSchema,
   attendanceFaceProfilesSchema,
   attendanceFaceRequestsSchema,
+  helpdeskSchema,
 };

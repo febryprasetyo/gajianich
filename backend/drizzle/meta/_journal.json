@@ -168,6 +168,13 @@
       "when": 1792730000000,
       "tag": "0023_mobile_approvals",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1792985924195,
+      "tag": "0024_helpdesk_tickets",
+      "breakpoints": true
     }
   ],
   "version": "7"
