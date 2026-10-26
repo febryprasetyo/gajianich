@@ -6,6 +6,8 @@ import {
   getAllowedStatusTransitions,
   buildCreateTicketPayload,
   formatDelayMinutes,
+  formatAuditAction,
+  FEEDBACK_SOURCE_LABEL,
   CATEGORIES,
   ORIGINS,
   PRIORITIES,
@@ -113,4 +115,14 @@ test("formatDelayMinutes formats delay between reported_at and created_at correc
   assert.equal(formatDelayMinutes(5), "5 menit");
   assert.equal(formatDelayMinutes(125), "2 jam 5 mnt");
   assert.equal(formatDelayMinutes(1500), "1 hari 1 jam");
+});
+
+test("formatAuditAction returns human friendly Indonesian description", () => {
+  assert.equal(formatAuditAction("STATUS_CHANGE", "status", "OPEN", "IN_PROGRESS"), "Mengubah status dari OPEN ke IN_PROGRESS");
+  assert.equal(formatAuditAction("ASSIGN", "assigned_to", null, "Budi"), "Menugaskan tiket ke Budi");
+  assert.equal(formatAuditAction("COMMENT_ADDED"), "Menambahkan komentar");
+});
+
+test("feedbackSource is strictly labeled as STAFF_RECORDED", () => {
+  assert.equal(FEEDBACK_SOURCE_LABEL, "STAFF_RECORDED");
 });

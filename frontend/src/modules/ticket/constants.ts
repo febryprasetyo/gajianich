@@ -166,3 +166,34 @@ export function formatDelayMinutes(minutes: number): string {
   const remainingHours = hours % 24;
   return remainingHours > 0 ? `${days} hari ${remainingHours} jam` : `${days} hari`;
 }
+
+export const FEEDBACK_SOURCE_LABEL = "STAFF_RECORDED";
+
+export function formatAuditAction(
+  action: string,
+  field?: string | null,
+  oldVal?: string | null,
+  newVal?: string | null
+): string {
+  switch (action) {
+    case "STATUS_CHANGE":
+      return `Mengubah status dari ${oldVal || "-"} ke ${newVal || "-"}`;
+    case "ASSIGN":
+      return newVal ? `Menugaskan tiket ke ${newVal}` : "Membatalkan penugasan tiket";
+    case "COMMENT_ADDED":
+      return "Menambahkan komentar";
+    case "ATTACHMENT_ADDED":
+      return `Menambahkan lampiran ${newVal || ""}`.trim();
+    case "REOPEN":
+      return "Membuka kembali tiket";
+    case "RESOLVE":
+      return "Menyelesaikan tiket";
+    case "CLOSE":
+      return "Menutup tiket secara permanen";
+    default:
+      if (field) {
+        return `Memperbarui ${field} dari ${oldVal || "-"} ke ${newVal || "-"}`;
+      }
+      return action;
+  }
+}

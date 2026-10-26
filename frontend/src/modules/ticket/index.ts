@@ -5,3 +5,7 @@ export { default as TicketStats } from "./components/TicketStats";
 export { default as TicketFilters } from "./components/TicketFilters";
 export { default as TicketList } from "./components/TicketList";
 export { default as TicketCreateForm } from "./components/TicketCreateForm";
+export { default as TicketDetail } from "./components/TicketDetail";
+export { default as TicketComments } from "./components/TicketComments";
+export { default as TicketAuditTrail } from "./components/TicketAuditTrail";
+export { default as TicketActions } from "./components/TicketActions";
