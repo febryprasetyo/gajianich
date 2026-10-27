@@ -15,6 +15,11 @@ import {
   FileText,
   ListFilter,
   ArrowRight,
+  AlertTriangle,
+  AlertCircle,
+  RotateCcw,
+  Wrench,
+  XCircle,
 } from 'lucide-react';
 import ModalShell from '@/components/ui/ModalShell';
 import {
@@ -23,6 +28,16 @@ import {
   INITIAL_RAW_LOGS,
   calculateRecordsFromRawLogs,
 } from './attendanceMachineStore';
+
+type FailureScenario = 'TIMEOUT' | 'AUTH_FAILED' | 'REFUSED';
+
+interface ConnectionErrorDetail {
+  code: string;
+  title: string;
+  message: string;
+  troubleshooting: string[];
+  timestamp: string;
+}
 
 export default function AttendanceDevicesPage() {
   const router = useRouter();
@@ -39,6 +54,12 @@ export default function AttendanceDevicesPage() {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('dev-1');
   const [isConnecting, setIsConnecting] = useState(false);
   const [idleSecondsLeft, setIdleSecondsLeft] = useState<number | null>(null);
+
+  // Connection Simulation Failure State
+  const [simulateFailure, setSimulateFailure] = useState(false);
+  const [failureScenario, setFailureScenario] = useState<FailureScenario>('TIMEOUT');
+  const [connectionError, setConnectionError] = useState<ConnectionErrorDetail | null>(null);
+  const [isDiagnosticModalOpen, setIsDiagnosticModalOpen] = useState(false);
 
   // Modal Download Data Presensi state
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
@@ -69,12 +90,15 @@ export default function AttendanceDevicesPage() {
   const [editDeviceNumber, setEditDeviceNumber] = useState(1);
   const [editDeviceLocation, setEditDeviceLocation] = useState('');
 
+  // Toast / Warning notification
+  const [pageToast, setPageToast] = useState<string | null>(null);
+
   // Persist devices
   useEffect(() => {
     localStorage.setItem('ams_attendance_devices', JSON.stringify(devices));
   }, [devices]);
 
-  // Idle timer countdown (15 minutes = 900 seconds)
+  // Idle timeout timer: 15 menit auto-disconnect
   useEffect(() => {
     if (idleSecondsLeft === null) return;
     if (idleSecondsLeft <= 0) {
@@ -95,12 +119,72 @@ export default function AttendanceDevicesPage() {
   const handleConnect = () => {
     if (!activeDevice) return;
     setIsConnecting(true);
+    setConnectionError(null);
+
+    // Simulasi kegagalan koneksi jika mode simulasi diaktifkan
+    if (simulateFailure) {
+      setTimeout(() => {
+        setIsConnecting(false);
+        setDevices((prev) =>
+          prev.map((d) => (d.id === activeDevice.id ? { ...d, status: 'error' } : d))
+        );
+        setIdleSecondsLeft(null);
+
+        const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+        let detail: ConnectionErrorDetail;
+        if (failureScenario === 'AUTH_FAILED') {
+          detail = {
+            code: 'AUTH_FAILED (ZK Code 2005/6001)',
+            title: 'Autentikasi Kunci Komunikasi Ditolak',
+            message: `Koneksi TCP terbuka, namun mesin menolak autentikasi. Kunci komunikasi (CommKey: ${activeDevice.commKey}) tidak sesuai dengan konfigurasi pada mesin fisik.`,
+            troubleshooting: [
+              `Buka menu mesin fisik > Pengaturan Komunikasi > Kunci Komunikasi.`,
+              `Samakan angka kunci komunikasi di sistem AMS (saat ini: ${activeDevice.commKey}) dengan mesin.`,
+              `Jika mesin tidak menggunakan kata sandi komunikasi, pastikan CommKey bernilai 0.`,
+            ],
+            timestamp: now,
+          };
+        } else if (failureScenario === 'REFUSED') {
+          detail = {
+            code: 'CONN_REFUSED (ECONNREFUSED)',
+            title: 'Sambungan Socket TCP Ditolak (Port 4370)',
+            message: `Alamat IP ${activeDevice.ip} merespon, namun sambungan ke port ${activeDevice.port} ditolak atau sedang terkunci oleh sesi lain.`,
+            troubleshooting: [
+              `Pastikan tidak ada aplikasi lain (software desktop Solution / ZKTime) yang sedang membuka koneksi ke mesin.`,
+              `Restart mesin absensi (matikan 10 detik lalu nyalakan kembali) untuk mereset socket TCP.`,
+              `Pastikan nomor port komunikasi di menu mesin disetel ke ${activeDevice.port}.`,
+            ],
+            timestamp: now,
+          };
+        } else {
+          detail = {
+            code: 'TCP_TIMEOUT (ETIMEDOUT / Host Unreachable)',
+            title: 'Koneksi Waktu Habis (Mesin Tidak Merespon)',
+            message: `Tidak dapat menjangkau mesin ${activeDevice.name} di ${activeDevice.ip}:${activeDevice.port}. Paket handshake TCP tidak dibalas dalam batas waktu 5 detik.`,
+            troubleshooting: [
+              `Pastikan mesin dalam kondisi menyala dan kabel LAN/WiFi terhubung stabil.`,
+              `Pastikan alamat IP ${activeDevice.ip} berada dalam satu subnet jaringan lokal dan dapat di-ping.`,
+              `Pastikan port ${activeDevice.port} tidak diblokir oleh firewall router atau switch kantor.`,
+            ],
+            timestamp: now,
+          };
+        }
+
+        setConnectionError(detail);
+        setIsDiagnosticModalOpen(true);
+      }, 1200);
+      return;
+    }
+
+    // Koneksi normal berhasil
     setTimeout(() => {
       setDevices((prev) =>
         prev.map((d) => (d.id === activeDevice.id ? { ...d, status: 'connected' } : d))
       );
       setIsConnecting(false);
       setIdleSecondsLeft(900); // 15 mins
+      setConnectionError(null);
     }, 800);
   };
 
@@ -110,11 +194,24 @@ export default function AttendanceDevicesPage() {
       prev.map((d) => (d.id === activeDevice.id ? { ...d, status: 'disconnected' } : d))
     );
     setIdleSecondsLeft(null);
+    setConnectionError(null);
+  };
+
+  const handleOpenDownloadModal = () => {
+    if (!activeDevice) return;
+    if (activeDevice.status !== 'connected') {
+      setPageToast(`Mesin "${activeDevice.name}" belum terhubung. Silakan klik tombol "Koneksikan" terlebih dahulu.`);
+      setTimeout(() => setPageToast(null), 4000);
+      return;
+    }
+    setDownloadCompleted(false);
+    setDownloadProgress(0);
+    setIsDownloadModalOpen(true);
   };
 
   const handleStartDownload = () => {
     setIsDownloading(true);
-    setDownloadProgress(5);
+    setDownloadProgress(0);
     setDownloadCount(0);
     setDownloadCompleted(false);
 
@@ -196,11 +293,13 @@ export default function AttendanceDevicesPage() {
               commKey: editDeviceCommKey,
               deviceNumber: editDeviceNumber,
               location: editDeviceLocation,
+              status: d.status === 'error' ? 'disconnected' : d.status,
             }
           : d
       )
     );
     setIsEditModalOpen(false);
+    setConnectionError(null);
   };
 
   const handleDeleteDevice = () => {
@@ -244,7 +343,63 @@ export default function AttendanceDevicesPage() {
         )}
       </div>
 
-      {/* Toolbar Aksi Operasi (Harmonious Theme) */}
+      {/* Toast Peringatan / Informasi */}
+      {pageToast && (
+        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium flex items-center justify-between shadow-xs animate-in fade-in duration-200">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>{pageToast}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPageToast(null)}
+            className="text-amber-700 hover:text-amber-900 font-bold ml-2"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Banner Peringatan Jika Koneksi Gagal */}
+      {connectionError && (
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-950 flex flex-col sm:flex-row sm:items-start justify-between gap-3 shadow-xs animate-in fade-in duration-200">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-bold text-rose-900 text-sm">{connectionError.title}</span>
+                <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-rose-200/80 text-rose-900 font-semibold">
+                  {connectionError.code}
+                </span>
+                <span className="text-[11px] text-rose-500">Pukul {connectionError.timestamp}</span>
+              </div>
+              <p className="text-rose-800 leading-relaxed">
+                {connectionError.message}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setIsDiagnosticModalOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-white border border-rose-300 hover:bg-rose-100 text-rose-800 font-semibold text-xs transition-colors shadow-xs"
+            >
+              Lihat Detail Diagnostik
+            </button>
+            <button
+              type="button"
+              onClick={() => setConnectionError(null)}
+              className="p-1.5 rounded-lg text-rose-400 hover:text-rose-700 transition-colors"
+              title="Tutup pesan error"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Toolbar Aksi Operasi & Fitur Simulasi Gagal */}
       <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs p-3.5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2.5">
           {activeDevice?.status === 'connected' ? (
@@ -261,10 +416,22 @@ export default function AttendanceDevicesPage() {
               type="button"
               onClick={handleConnect}
               disabled={isConnecting}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-semibold text-white shadow-xs transition-colors disabled:opacity-50"
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white shadow-xs transition-colors disabled:opacity-50 ${
+                activeDevice?.status === 'error'
+                  ? 'bg-rose-600 hover:bg-rose-700'
+                  : 'bg-emerald-600 hover:bg-emerald-700'
+              }`}
             >
-              <Power className="w-4 h-4" />
-              {isConnecting ? 'Menghubungkan...' : 'Koneksikan'}
+              {activeDevice?.status === 'error' ? (
+                <RotateCcw className="w-4 h-4" />
+              ) : (
+                <Power className="w-4 h-4" />
+              )}
+              {isConnecting
+                ? 'Menghubungkan...'
+                : activeDevice?.status === 'error'
+                ? 'Coba Hubungkan Kembali'
+                : 'Koneksikan'}
             </button>
           )}
 
@@ -272,16 +439,43 @@ export default function AttendanceDevicesPage() {
 
           <button
             type="button"
-            onClick={() => {
-              setDownloadCompleted(false);
-              setDownloadProgress(0);
-              setIsDownloadModalOpen(true);
-            }}
+            onClick={handleOpenDownloadModal}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors"
           >
             <Download className="w-4 h-4 text-white" />
             Download Data Presensi
           </button>
+
+          <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block" />
+
+          {/* Kontrol Simulasi Gagal Koneksi */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50/80 border border-amber-200/90 text-amber-900 text-xs">
+            <input
+              type="checkbox"
+              id="simFailureToggle"
+              checked={simulateFailure}
+              onChange={(e) => {
+                setSimulateFailure(e.target.checked);
+                if (!e.target.checked) setConnectionError(null);
+              }}
+              className="w-4 h-4 text-amber-600 rounded border-amber-300 focus:ring-amber-500 cursor-pointer"
+            />
+            <label htmlFor="simFailureToggle" className="font-semibold cursor-pointer select-none">
+              Simulasi Gagal Hubung
+            </label>
+
+            {simulateFailure && (
+              <select
+                value={failureScenario}
+                onChange={(e) => setFailureScenario(e.target.value as FailureScenario)}
+                className="ml-1 bg-white border border-amber-300 rounded-lg text-[11px] px-2 py-0.5 text-amber-950 font-medium focus:ring-amber-500 focus:border-amber-500 cursor-pointer"
+              >
+                <option value="TIMEOUT">Mesin Offline / Kabel Putus (ETIMEDOUT)</option>
+                <option value="AUTH_FAILED">CommKey Salah (AUTH_FAILED)</option>
+                <option value="REFUSED">Port 4370 Ditolak / Sibuk (ECONNREFUSED)</option>
+              </select>
+            )}
+          </div>
         </div>
 
         {/* Tombol Manajemen Mesin */}
@@ -332,10 +526,10 @@ export default function AttendanceDevicesPage() {
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-slate-100/75 border-b border-slate-200 text-slate-700 font-semibold">
-                <th className="py-2.5 px-3 w-12 text-center">Pilih</th>
-                <th className="py-2.5 px-3">Status</th>
+                <th className="py-2.5 px-3 w-10 text-center">Pilih</th>
+                <th className="py-2.5 px-3">Status Socket</th>
                 <th className="py-2.5 px-3">Nama Mesin</th>
-                <th className="py-2.5 px-3">IP Address : Port</th>
+                <th className="py-2.5 px-3">IP : Port</th>
                 <th className="py-2.5 px-3">No. Mesin</th>
                 <th className="py-2.5 px-3">Tipe Koneksi</th>
                 <th className="py-2.5 px-3">Serial Number</th>
@@ -347,13 +541,18 @@ export default function AttendanceDevicesPage() {
               {devices.map((device) => {
                 const isSelected = device.id === selectedDeviceId;
                 const isConnected = device.status === 'connected';
+                const isError = device.status === 'error';
 
                 return (
                   <tr
                     key={device.id}
                     onClick={() => setSelectedDeviceId(device.id)}
                     className={`cursor-pointer transition-colors ${
-                      isSelected ? 'bg-emerald-50/70 font-medium' : 'hover:bg-slate-50'
+                      isSelected
+                        ? isError
+                          ? 'bg-rose-50/70 font-medium'
+                          : 'bg-emerald-50/70 font-medium'
+                        : 'hover:bg-slate-50'
                     }`}
                   >
                     <td className="py-2.5 px-3 text-center">
@@ -362,17 +561,22 @@ export default function AttendanceDevicesPage() {
                         name="selected_device"
                         checked={isSelected}
                         onChange={() => setSelectedDeviceId(device.id)}
-                        className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                        className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer"
                       />
                     </td>
                     <td className="py-2.5 px-3">
                       {isConnected ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                           Terhubung
                         </span>
+                      ) : isError ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-100 text-rose-800 border border-rose-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                          Gagal Terhubung
+                        </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
                           <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
                           Terputus
                         </span>
@@ -467,6 +671,97 @@ export default function AttendanceDevicesPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal Diagnostik Kegagalan Koneksi */}
+      <ModalShell
+        isOpen={isDiagnosticModalOpen}
+        onClose={() => setIsDiagnosticModalOpen(false)}
+        title="Detail Diagnostik Koneksi Mesin"
+        maxWidthClass="max-w-lg"
+      >
+        {connectionError && (
+          <div className="space-y-4 text-xs">
+            {/* Header Error Info */}
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-rose-900 text-sm">{connectionError.title}</span>
+                <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-rose-200 text-rose-900 font-bold">
+                  {connectionError.code}
+                </span>
+              </div>
+              <p className="text-rose-800 leading-relaxed">
+                {connectionError.message}
+              </p>
+            </div>
+
+            {/* Target Spesifikasi Mesin */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1">
+              <span className="font-bold text-slate-800 text-[11px] uppercase tracking-wider block">
+                Parameter Perangkat yang Diuji
+              </span>
+              <div className="grid grid-cols-2 gap-2 text-slate-700 font-mono text-[11px] pt-1">
+                <div>Nama Mesin: <span className="font-semibold text-slate-900">{activeDevice.name}</span></div>
+                <div>IP Address: <span className="font-semibold text-slate-900">{activeDevice.ip}</span></div>
+                <div>Port Socket: <span className="font-semibold text-slate-900">{activeDevice.port}</span></div>
+                <div>Comm Key: <span className="font-semibold text-slate-900">{activeDevice.commKey}</span></div>
+              </div>
+            </div>
+
+            {/* Panduan Penyelesaian Masalah */}
+            <div className="space-y-2">
+              <span className="font-bold text-slate-800 text-xs block">
+                Langkah Pemeriksaan & Solusi:
+              </span>
+              <ul className="space-y-1.5 text-slate-700 pl-1">
+                {connectionError.troubleshooting.map((step, idx) => (
+                  <li key={idx} className="flex items-start gap-2">
+                    <span className="w-4 h-4 rounded-full bg-slate-200 text-slate-800 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                      {idx + 1}
+                    </span>
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Tombol Aksi Diagnostik */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDiagnosticModalOpen(false);
+                  handleOpenEditModal();
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-medium"
+              >
+                <Wrench className="w-3.5 h-3.5 text-slate-500" />
+                Edit Parameter Mesin
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsDiagnosticModalOpen(false)}
+                  className="px-3.5 py-1.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium"
+                >
+                  Tutup
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDiagnosticModalOpen(false);
+                    handleConnect();
+                  }}
+                  className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold shadow-xs"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Coba Ulangi
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </ModalShell>
 
       {/* Modal Download Data Presensi */}
       <ModalShell

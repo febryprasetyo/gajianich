@@ -49,6 +49,7 @@ Dokumen ini merinci rencana teknis integrasi mesin absensi fisik (Solution/ZKTec
 
 ### Revisi UI & Copywriting (Standard Humanizer & Refined UX):
 - [x] **Download Presensi**:
+  - [x] Fitur Simulasi Gagal Hubung Mesin: Checkbox toggle pengujian di toolbar, pilihan 3 skenario kegagalan (`ETIMEDOUT`, `AUTH_FAILED`, `ECONNREFUSED`), status visual `Gagal Terhubung` (Rose/Merah) di tabel, alert banner diagnostik, dan Modal Detail Diagnostik lengkap dengan langkah troubleshooting & tombol perbaikan parameter.
   - Hapus embel-embel "(Mesin Absensi) Pattern Solution Desktop".
   - Humanisasi subtitle: *"Hubungkan mesin absensi kantor untuk menarik catatan kehadiran terbaru."*
   - Mengubah bar tombol dari latar hitam pekat (`bg-slate-900`) ke latar putih dengan border halus (`bg-white border border-slate-200/90`).
