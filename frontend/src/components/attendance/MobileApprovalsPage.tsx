@@ -8,7 +8,7 @@ import TablePagination from '@/components/ui/TablePagination';
 import AttendanceMap from './AttendanceMap';
 import AttendancePhoto from './AttendancePhoto';
 import type { MobileAttendanceEvent } from '@/lib/attendance/mobileApi';
-import { CalendarCheck, CheckCircle2, AlertCircle, Search, Loader2 } from 'lucide-react';
+import { CalendarCheck, CheckCircle2, AlertCircle, Search, Loader2, Clock, ShieldCheck, XCircle, X } from 'lucide-react';
 
 interface Log extends MobileAttendanceEvent {
   employeeName: string;
@@ -85,6 +85,10 @@ export default function MobileApprovalsPage() {
     }
   };
 
+  const pendingCount = logs.filter(l => l.approvalStatus === 'PENDING').length;
+  const approvedCount = logs.filter(l => l.approvalStatus === 'APPROVED').length;
+  const rejectedCount = logs.filter(l => l.approvalStatus === 'REJECTED').length;
+
   const visibleLogs = logs.filter(row => {
     if (status && row.approvalStatus !== status) return false;
     if (query) {
@@ -127,34 +131,167 @@ export default function MobileApprovalsPage() {
         </div>
       )}
 
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="space-y-1 text-xs font-semibold text-slate-700">
-          <span>Status Persetujuan</span>
-          <select
-            value={status}
-            onChange={e => setStatus(e.target.value)}
-            className="block min-h-11 rounded-xl border border-slate-300 bg-white px-3 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-          >
-            <option value="">Semua status</option>
-            {Object.entries(statuses).map(([val, label]) => (
-              <option key={val} value={val}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="space-y-1 text-xs font-semibold text-slate-700 flex-1 min-w-[200px]">
-          <span>Cari Karyawan</span>
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+      {/* 1. Kartu KPI Interaktif Baku Master Desain (Model Ticketing) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Total Pengajuan */}
+        <button
+          type="button"
+          onClick={() => setStatus('')}
+          className={`glass-panel p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+            status === ''
+              ? 'bg-emerald-50/50 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs'
+              : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs hover:shadow-md'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
+              Total Pengajuan
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <CalendarCheck className="w-4 h-4" />
+            </div>
+          </div>
+          <p className="text-2xl font-black font-mono text-slate-900 mt-2">{logs.length}</p>
+          <div className="flex items-center gap-1 mt-1 text-[10px] text-slate-500 font-mono">
+            {status === '' ? (
+              <span className="text-emerald-600 font-bold">● Filter Aktif</span>
+            ) : (
+              <span>Semua antrean</span>
+            )}
+          </div>
+        </button>
+
+        {/* Card 2: Menunggu Review */}
+        <button
+          type="button"
+          onClick={() => setStatus('PENDING')}
+          className={`glass-panel p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+            status === 'PENDING'
+              ? 'bg-amber-50/50 border-amber-500 ring-2 ring-amber-500/20 shadow-xs'
+              : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs hover:shadow-md'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
+              Menunggu Review
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <Clock className="w-4 h-4" />
+            </div>
+          </div>
+          <p className="text-2xl font-black font-mono text-amber-600 mt-2">{pendingCount}</p>
+          <div className="flex items-center gap-1 mt-1 text-[10px] text-slate-500 font-mono">
+            {status === 'PENDING' ? (
+              <span className="text-amber-600 font-bold">● Filter Aktif</span>
+            ) : (
+              <span>Perlu tindakan</span>
+            )}
+          </div>
+        </button>
+
+        {/* Card 3: Disetujui */}
+        <button
+          type="button"
+          onClick={() => setStatus('APPROVED')}
+          className={`glass-panel p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+            status === 'APPROVED'
+              ? 'bg-emerald-50/50 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs'
+              : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs hover:shadow-md'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
+              Telah Disetujui
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+          </div>
+          <p className="text-2xl font-black font-mono text-emerald-600 mt-2">{approvedCount}</p>
+          <div className="flex items-center gap-1 mt-1 text-[10px] text-slate-500 font-mono">
+            {status === 'APPROVED' ? (
+              <span className="text-emerald-600 font-bold">● Filter Aktif</span>
+            ) : (
+              <span>Terverifikasi</span>
+            )}
+          </div>
+        </button>
+
+        {/* Card 4: Ditolak */}
+        <button
+          type="button"
+          onClick={() => setStatus('REJECTED')}
+          className={`glass-panel p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+            status === 'REJECTED'
+              ? 'bg-rose-50/50 border-rose-500 ring-2 ring-rose-500/20 shadow-xs'
+              : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs hover:shadow-md'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
+              Ditolak
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+              <XCircle className="w-4 h-4" />
+            </div>
+          </div>
+          <p className="text-2xl font-black font-mono text-rose-600 mt-2">{rejectedCount}</p>
+          <div className="flex items-center gap-1 mt-1 text-[10px] text-slate-500 font-mono">
+            {status === 'REJECTED' ? (
+              <span className="text-rose-600 font-bold">● Filter Aktif</span>
+            ) : (
+              <span>Tidak memenuhi syarat</span>
+            )}
+          </div>
+        </button>
+      </div>
+
+      {/* 2. Toolbar Filter & Search Rapi Baku (Persis Model Ticketing) */}
+      <div className="glass-panel p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs w-full">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          {/* Search Bar */}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
+              type="text"
+              placeholder="Cari pengajuan berdasarkan nama karyawan atau NIK..."
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="Cari berdasarkan nama atau NIK..."
-              className="block w-full min-h-11 rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500 transition-colors"
             />
           </div>
-        </label>
+
+          {/* Filter Dropdowns */}
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={status}
+              onChange={e => setStatus(e.target.value)}
+              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
+            >
+              <option value="">Semua Status</option>
+              {Object.entries(statuses).map(([val, label]) => (
+                <option key={val} value={val}>
+                  {label}
+                </option>
+              ))}
+            </select>
+
+            {/* Reset Filter Button */}
+            {(status !== '' || query !== '') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setStatus('');
+                  setQuery('');
+                }}
+                className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-semibold text-xs border border-emerald-200 transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Reset</span>
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {loading ? (

@@ -5,7 +5,7 @@ import { apiFetch } from '@/lib/api';
 import ModalShell from '@/components/ui/ModalShell';
 import StatusBadge from '@/components/ui/StatusBadge';
 import TablePagination from '@/components/ui/TablePagination';
-import { ScanFace, CheckCircle2, XCircle, Search, AlertCircle, Loader2, Clock, ShieldCheck, Filter, RotateCcw } from 'lucide-react';
+import { ScanFace, CheckCircle2, XCircle, Search, AlertCircle, Loader2, Clock, ShieldCheck, X } from 'lucide-react';
 
 interface FaceRequest {
   id: number;
@@ -232,44 +232,37 @@ export default function FaceApprovalsPage() {
         </button>
       </div>
 
-      {/* 2. Toolbar Search & Filter Rapi Baku Master Desain */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs space-y-3">
-        {/* Baris 1: Pencarian Cepat */}
-        <div>
-          <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-            Pencarian Cepat
-          </label>
-          <div className="relative w-full">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+      {/* 2. Toolbar Filter & Search Rapi Baku (Persis Model Ticketing) */}
+      <div className="glass-panel p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs w-full">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          {/* Search Bar */}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
+              placeholder="Cari permohonan foto berdasarkan nama karyawan atau NIK..."
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="Cari berdasarkan nama karyawan atau NIK..."
-              className="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 transition-colors bg-white text-slate-800"
+              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500 transition-colors"
             />
           </div>
-        </div>
 
-        {/* Baris 2: Dropdown Filter Status & Tombol Reset */}
-        <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 px-2.5 py-1.5 rounded-xl">
-              <Filter className="w-3.5 h-3.5 text-slate-500" />
-              <select
-                value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value)}
-                className="bg-transparent text-xs text-slate-700 cursor-pointer focus:outline-none"
-              >
-                <option value="">Semua Status Persetujuan</option>
-                {Object.entries(statuses).map(([val, label]) => (
-                  <option key={val} value={val}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
+          {/* Filter Dropdowns */}
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
+            >
+              <option value="">Semua Status</option>
+              {Object.entries(statuses).map(([val, label]) => (
+                <option key={val} value={val}>
+                  {label}
+                </option>
+              ))}
+            </select>
 
+            {/* Reset Filter Button */}
             {(statusFilter !== '' || query !== '') && (
               <button
                 type="button"
@@ -277,16 +270,12 @@ export default function FaceApprovalsPage() {
                   setStatusFilter('');
                   setQuery('');
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition-colors cursor-pointer"
+                className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-semibold text-xs border border-emerald-200 transition-colors cursor-pointer flex items-center gap-1.5"
               >
-                <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
-                <span>Reset Filter</span>
+                <X className="w-3.5 h-3.5" />
+                <span>Reset</span>
               </button>
             )}
-          </div>
-
-          <div className="text-xs text-slate-500">
-            Ditemukan <span className="font-semibold text-slate-800">{visiblePhotos.length}</span> permohonan foto
           </div>
         </div>
       </div>
