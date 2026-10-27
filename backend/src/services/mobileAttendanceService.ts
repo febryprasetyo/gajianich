@@ -203,11 +203,14 @@ export async function recordMobileClock(userId: number, payload: MobileClockInpu
       const { shift, approvalShift } = await shiftForEmployee(employee, tx);
       const daily = getWorkingScheduleForDate(workDate, shift);
       const isReclock = todayLogs.some(l => l.eventType === payload.eventType);
+      const baseApproval = evaluateAttendanceApproval(approvalShift, payload.eventType);
       const approval = payload.isDirectOut
         ? { requiresVerification: true, approvalStatus: 'PENDING' as const, approvalNote: 'Menunggu pemeriksaan HRD (Langsung Absen Pulang).' }
         : isReclock
-        ? { requiresVerification: true, approvalStatus: 'PENDING' as const, approvalNote: 'Menunggu pemeriksaan HRD (Absensi Ulang).' }
-        : evaluateAttendanceApproval(approvalShift, payload.eventType);
+        ? baseApproval.approvalStatus === 'APPROVED'
+          ? { requiresVerification: false, approvalStatus: 'APPROVED' as const, approvalNote: 'Disetujui otomatis sesuai pengaturan shift (Last Out diperbarui).' }
+          : { requiresVerification: true, approvalStatus: 'PENDING' as const, approvalNote: 'Menunggu pemeriksaan HRD (Absensi Ulang).' }
+        : baseApproval;
       const finalNotes = payload.isDirectOut ? `[DIRECT_OUT] ${payload.notes!.trim()}` : payload.notes;
       const geo = isWithinGeofence(payload.latitude, payload.longitude, DEFAULT_OFFICE_COORDINATES.latitude, DEFAULT_OFFICE_COORDINATES.longitude, DEFAULT_OFFICE_COORDINATES.radiusMeters);
       const links = buildMapLinks(payload.latitude!, payload.longitude!);

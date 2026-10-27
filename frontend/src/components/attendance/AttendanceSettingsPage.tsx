@@ -5,7 +5,6 @@ import { Settings, BadgeCheck, AlertTriangle, CheckCircle2, ShieldAlert } from '
 import { useAuth } from '@/context/AuthContext';
 import { useAttendance } from './AttendanceWorkspace';
 import { Heading } from './shared';
-import ShiftApprovalSettingsCard from './ShiftApprovalSettingsCard';
 import { api } from '@/lib/api';
 
 export default function AttendanceSettingsPage() {
@@ -90,8 +89,6 @@ export default function AttendanceSettingsPage() {
           <p>{error}</p>
         </div>
       )}
-
-      <ShiftApprovalSettingsCard />
 
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
