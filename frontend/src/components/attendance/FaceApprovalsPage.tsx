@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import ModalShell from '@/components/ui/ModalShell';
 import StatusBadge from '@/components/ui/StatusBadge';
-import { ScanFace, CheckCircle2, XCircle, Search, AlertCircle, Loader2 } from 'lucide-react';
+import TablePagination from '@/components/ui/TablePagination';
+import { ScanFace, CheckCircle2, XCircle, Search, AlertCircle, Loader2, Clock, ShieldCheck, Filter, RotateCcw } from 'lucide-react';
 
 interface FaceRequest {
   id: number;
@@ -23,7 +24,7 @@ const statuses: Record<string, string> = {
   REJECTED: 'Ditolak',
 };
 
-const button = 'min-h-11 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 cursor-pointer';
+const button = 'px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-xs transition-all cursor-pointer disabled:opacity-50';
 
 export default function FaceApprovalsPage() {
   const [photos, setPhotos] = useState<FaceRequest[]>([]);
@@ -35,6 +36,12 @@ export default function FaceApprovalsPage() {
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
+  useEffect(() => {
+    setPage(1);
+  }, [status, query]);
 
   const loadData = useCallback(async () => {
     try {
@@ -82,6 +89,8 @@ export default function FaceApprovalsPage() {
     return true;
   });
 
+  const paginatedPhotos = visiblePhotos.slice((page - 1) * limit, page * limit);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -114,35 +123,172 @@ export default function FaceApprovalsPage() {
         </div>
       )}
 
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="space-y-1 text-xs font-semibold text-slate-700">
-          <span>Status Persetujuan</span>
-          <select
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-            className="block min-h-11 rounded-xl border border-slate-300 bg-white px-3 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-          >
-            <option value="">Semua status</option>
-            {Object.entries(statuses).map(([val, label]) => (
-              <option key={val} value={val}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
+      {/* 1. Kartu KPI Interaktif Baku Master Desain */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <button
+          type="button"
+          onClick={() => setStatusFilter('')}
+          className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+            statusFilter === ''
+              ? 'bg-emerald-50/50 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs'
+              : 'bg-white border-slate-200 hover:border-slate-300 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-500">Semua Permohonan</span>
+            <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
+              <ScanFace className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-extrabold text-slate-900 tracking-tight">{photos.length}</span>
+            {statusFilter === '' && (
+              <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider bg-emerald-100 px-1.5 py-0.5 rounded">
+                Aktif
+              </span>
+            )}
+          </div>
+        </button>
 
-        <label className="space-y-1 text-xs font-semibold text-slate-700 flex-1 min-w-[200px]">
-          <span>Cari Karyawan</span>
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        <button
+          type="button"
+          onClick={() => setStatusFilter(statusFilter === 'PENDING' ? '' : 'PENDING')}
+          className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+            statusFilter === 'PENDING'
+              ? 'bg-amber-50/50 border-amber-500 ring-2 ring-amber-500/20 shadow-xs'
+              : 'bg-white border-slate-200 hover:border-slate-300 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-amber-800">Menunggu Validasi</span>
+            <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+              <Clock className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-extrabold text-amber-900 tracking-tight">
+              {photos.filter(p => p.status === 'PENDING').length}
+            </span>
+            {statusFilter === 'PENDING' && (
+              <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider bg-amber-200/80 px-1.5 py-0.5 rounded">
+                Aktif
+              </span>
+            )}
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setStatusFilter(statusFilter === 'APPROVED' ? '' : 'APPROVED')}
+          className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+            statusFilter === 'APPROVED'
+              ? 'bg-emerald-50/50 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs'
+              : 'bg-white border-slate-200 hover:border-slate-300 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-emerald-800">Foto Disetujui</span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-extrabold text-emerald-900 tracking-tight">
+              {photos.filter(p => p.status === 'APPROVED').length}
+            </span>
+            {statusFilter === 'APPROVED' && (
+              <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider bg-emerald-100 px-1.5 py-0.5 rounded">
+                Aktif
+              </span>
+            )}
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setStatusFilter(statusFilter === 'REJECTED' ? '' : 'REJECTED')}
+          className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+            statusFilter === 'REJECTED'
+              ? 'bg-rose-50/50 border-rose-500 ring-2 ring-rose-500/20 shadow-xs'
+              : 'bg-white border-slate-200 hover:border-slate-300 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-rose-800">Foto Ditolak</span>
+            <div className="w-8 h-8 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
+              <XCircle className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-extrabold text-rose-900 tracking-tight">
+              {photos.filter(p => p.status === 'REJECTED').length}
+            </span>
+            {statusFilter === 'REJECTED' && (
+              <span className="text-[10px] font-bold text-rose-800 uppercase tracking-wider bg-rose-200 px-1.5 py-0.5 rounded">
+                Aktif
+              </span>
+            )}
+          </div>
+        </button>
+      </div>
+
+      {/* 2. Toolbar Search & Filter Rapi Baku Master Desain */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs space-y-3">
+        {/* Baris 1: Pencarian Cepat */}
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+            Pencarian Cepat
+          </label>
+          <div className="relative w-full">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
+              type="text"
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="Cari berdasarkan nama atau NIK..."
-              className="block w-full min-h-11 rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              placeholder="Cari berdasarkan nama karyawan atau NIK..."
+              className="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 transition-colors bg-white text-slate-800"
             />
           </div>
-        </label>
+        </div>
+
+        {/* Baris 2: Dropdown Filter Status & Tombol Reset */}
+        <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 px-2.5 py-1.5 rounded-xl">
+              <Filter className="w-3.5 h-3.5 text-slate-500" />
+              <select
+                value={statusFilter}
+                onChange={e => setStatusFilter(e.target.value)}
+                className="bg-transparent text-xs text-slate-700 cursor-pointer focus:outline-none"
+              >
+                <option value="">Semua Status Persetujuan</option>
+                {Object.entries(statuses).map(([val, label]) => (
+                  <option key={val} value={val}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {(statusFilter !== '' || query !== '') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter('');
+                  setQuery('');
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition-colors cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                <span>Reset Filter</span>
+              </button>
+            )}
+          </div>
+
+          <div className="text-xs text-slate-500">
+            Ditemukan <span className="font-semibold text-slate-800">{visiblePhotos.length}</span> permohonan foto
+          </div>
+        </div>
       </div>
 
       {loading ? (
@@ -155,44 +301,53 @@ export default function FaceApprovalsPage() {
           Tidak ada permohonan foto wajah yang sesuai dengan filter.
         </div>
       ) : (
-        <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white shadow-xs">
-          {visiblePhotos.map(row => (
-            <div key={row.id} className="flex flex-wrap items-center justify-between gap-4 p-4 hover:bg-slate-50/50 transition-colors">
-              <div className="flex items-center gap-4">
-                <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
-                  <img
-                    src={row.photoUrl}
-                    alt={row.employeeName}
-                    className="w-full h-full object-cover"
-                  />
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+          <div className="divide-y divide-slate-100">
+            {paginatedPhotos.map(row => (
+              <div key={row.id} className="flex flex-wrap items-center justify-between gap-4 p-4 hover:bg-slate-50/50 transition-colors">
+                <div className="flex items-center gap-4">
+                  <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
+                    <img
+                      src={row.photoUrl}
+                      alt={row.employeeName}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-bold text-slate-900">{row.employeeName}</p>
+                    <p className="text-xs text-slate-500">
+                      NIK: <span className="font-mono font-medium">{row.employeeCode}</span>
+                      {row.note && ` · "${row.note}"`}
+                    </p>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-bold text-slate-900">{row.employeeName}</p>
-                  <p className="text-xs text-slate-500">
-                    NIK: <span className="font-mono font-medium">{row.employeeCode}</span>
-                    {row.note && ` · "${row.note}"`}
-                  </p>
-                </div>
-              </div>
 
-              <div className="flex items-center gap-3">
-                <StatusBadge variant={row.status === 'APPROVED' ? 'success' : row.status === 'REJECTED' ? 'danger' : 'warning'}>
-                  {statuses[row.status] || row.status}
-                </StatusBadge>
-                <button
-                  type="button"
-                  className={button}
-                  onClick={() => {
-                    setSelected(row);
-                    setNote('');
-                    setError('');
-                  }}
-                >
-                  Tinjau Foto
-                </button>
+                <div className="flex items-center gap-3">
+                  <StatusBadge variant={row.status === 'APPROVED' ? 'success' : row.status === 'REJECTED' ? 'danger' : 'warning'}>
+                    {statuses[row.status] || row.status}
+                  </StatusBadge>
+                  <button
+                    type="button"
+                    className={button}
+                    onClick={() => {
+                      setSelected(row);
+                      setNote('');
+                      setError('');
+                    }}
+                  >
+                    Tinjau Foto
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+          <TablePagination
+            page={page}
+            limit={limit}
+            total={visiblePhotos.length}
+            onPageChange={setPage}
+            itemName="permohonan foto"
+          />
         </div>
       )}
 

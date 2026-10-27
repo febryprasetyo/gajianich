@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import ModalShell from '@/components/ui/ModalShell';
 import StatusBadge from '@/components/ui/StatusBadge';
+import TablePagination from '@/components/ui/TablePagination';
 import AttendanceMap from './AttendanceMap';
 import AttendancePhoto from './AttendancePhoto';
 import type { MobileAttendanceEvent } from '@/lib/attendance/mobileApi';
@@ -36,6 +37,12 @@ export default function MobileApprovalsPage() {
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
+  useEffect(() => {
+    setPage(1);
+  }, [status, query]);
 
   const loadData = useCallback(async () => {
     try {
@@ -86,6 +93,8 @@ export default function MobileApprovalsPage() {
     }
     return true;
   });
+
+  const paginatedLogs = visibleLogs.slice((page - 1) * limit, page * limit);
 
   return (
     <div className="space-y-6">
@@ -158,40 +167,49 @@ export default function MobileApprovalsPage() {
           Tidak ada pengajuan presensi yang sesuai dengan filter.
         </div>
       ) : (
-        <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white shadow-xs">
-          {visibleLogs.map(row => (
-            <div key={row.id} className="flex flex-wrap items-center justify-between gap-3 p-4 hover:bg-slate-50/50 transition-colors">
-              <div className="space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-bold text-slate-900">{row.employeeName}</p>
-                  {row.notes?.includes('[DIRECT_OUT]') && (
-                    <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/20">
-                      Langsung Pulang (Tanpa Masuk)
-                    </span>
-                  )}
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+          <div className="divide-y divide-slate-100">
+            {paginatedLogs.map(row => (
+              <div key={row.id} className="flex flex-wrap items-center justify-between gap-3 p-4 hover:bg-slate-50/50 transition-colors">
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-bold text-slate-900">{row.employeeName}</p>
+                    {row.notes?.includes('[DIRECT_OUT]') && (
+                      <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/20">
+                        Langsung Pulang (Tanpa Masuk)
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    <span className="font-mono font-medium">{row.employeeCode}</span> · {row.eventType === 'IN' ? 'Masuk' : 'Pulang'} · {row.workDate} {row.scanTime} {row.timeZoneLabel} · {row.shiftCode}
+                  </p>
                 </div>
-                <p className="text-xs text-slate-500">
-                  <span className="font-mono font-medium">{row.employeeCode}</span> · {row.eventType === 'IN' ? 'Masuk' : 'Pulang'} · {row.workDate} {row.scanTime} {row.timeZoneLabel} · {row.shiftCode}
-                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <StatusBadge variant={row.approvalStatus === 'APPROVED' ? 'success' : row.approvalStatus === 'REJECTED' ? 'danger' : 'warning'}>
+                    {statuses[row.approvalStatus] || row.approvalStatus}
+                  </StatusBadge>
+                  <button
+                    type="button"
+                    className={button}
+                    onClick={() => {
+                      setSelected(row);
+                      setNote('');
+                      setError('');
+                    }}
+                  >
+                    Lihat Detail
+                  </button>
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <StatusBadge variant={row.approvalStatus === 'APPROVED' ? 'success' : row.approvalStatus === 'REJECTED' ? 'danger' : 'warning'}>
-                  {statuses[row.approvalStatus] || row.approvalStatus}
-                </StatusBadge>
-                <button
-                  type="button"
-                  className={button}
-                  onClick={() => {
-                    setSelected(row);
-                    setNote('');
-                    setError('');
-                  }}
-                >
-                  Lihat Detail
-                </button>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
+          <TablePagination
+            page={page}
+            limit={limit}
+            total={visibleLogs.length}
+            onPageChange={setPage}
+            itemName="pengajuan presensi"
+          />
         </div>
       )}
 
