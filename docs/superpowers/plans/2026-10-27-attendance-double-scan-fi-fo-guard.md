@@ -71,3 +71,16 @@ docker exec ams_backend_dev npm run build
 # Frontend typecheck
 docker exec ams_frontend_dev npx tsc --noEmit
 ```
+
+### Phase 5: Aturan Cooldown 30 Menit & Resolusi Double Scan
+- [x] TDD Unit Test di `mobileAttendanceService.test.ts`:
+  - Test: Scan dalam rentang < 30 menit setelah scan masuk otomatis diperlakukan sebagai duplikat scan masuk (bukan scan pulang).
+  - Test: Scan pulang < 30 menit dari scan masuk ditolak / dialihkan ke duplikat masuk.
+  - Test: Scan pulang kedua (Last Out) memperbarui jam pulang ke waktu terbaru.
+- [x] Backend Implementation (`mobileAttendanceService.ts`):
+  - Validasi selisih waktu: Jika `inLog` berjarak < 30 menit dan payload mencoba `OUT`, cegah menjadi `OUT` (atau jika reclock, catat sebagai duplikat `IN`).
+  - Izinkan re-clock `OUT` untuk memperbarui waktu kepulangan (*Last Out*).
+- [x] Frontend Implementation (`page.tsx`, `beranda/page.tsx`, `PresensiRingButton.tsx`):
+  - Dalam rentang 30 menit dari `checkInTime`, tombol presensi tidak menampilkan "Absen Pulang" melainkan "Sudah Masuk" atau tetap mengunci checkout selama 30 menit.
+  - Jika karyawan sudah absen pulang, izinkan tap ulang untuk "Perbarui Pulang" (*Last Out*).
+- [x] Verification Loop (Unit test, typecheck, lint).

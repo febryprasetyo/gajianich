@@ -140,3 +140,17 @@ Query koreksi yang akan dijalankan:
 2. **E2E / Integration Verification:**
    - Jalankan `npm test` di backend untuk memastikan semua test lulus.
    - Verifikasi langsung data database untuk karyawan 50181.
+
+---
+
+## 8. Aturan Jeda 30 Menit (Cooldown & Double-Scan Threshold)
+
+Berdasarkan konfirmasi pengguna pada 27 Oktober 2026:
+1. **Ambang Batas (Threshold): 30 Menit** sejak scan pertama.
+2. **Skenario 1: Scan Masuk Tak Sengaja Terulang (< 30 Menit)**:
+   - Jika karyawan baru saja absen masuk (misal 08:00), lalu dalam rentang 30 menit (sampai 08:30) melakukan scan kembali:
+   - **Tindakan:** Sistem **TIDAK** mengubahnya menjadi absen pulang. Scan tersebut diperlakukan sebagai duplikat scan masuk (*duplicate Clock In*). Jam masuk utama tetap dipertahankan menggunakan scan pertama (*First In* 08:00), dan status kehadiran tetap `CHECKED_IN` (belum pulang).
+   - Absen pulang hanya dapat dilakukan jika waktu sudah berlalu **minimal 30 menit** dari scan masuk pertama.
+3. **Skenario 2: Scan Pulang Terulang**:
+   - Jika karyawan sudah absen pulang, lalu melakukan scan pulang kembali di sore/malam hari:
+   - **Tindakan:** Sistem memperbarui jam pulang menggunakan waktu scan terbaru (*Last Out*), sehingga jam pulang yang tercatat adalah jam kepulangan terakhir yang riil.

@@ -39,6 +39,9 @@ export interface MobileTodayAttendance {
   txHash: string | null;
   isLateAfternoon?: boolean;
   strictClock?: boolean;
+  isCheckoutCooldown?: boolean;
+  cooldownRemainingMinutes?: number;
+  checkInOccurredAt?: string | null;
   shiftWindow?: {
     scheduleIn: string;
     scheduleOut: string;

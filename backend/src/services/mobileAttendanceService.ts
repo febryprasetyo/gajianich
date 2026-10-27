@@ -62,16 +62,33 @@ export function resolveFirstInLastOutLogs<T extends { eventType: string; occurre
   return { inLog, outLog };
 }
 
+export const MIN_CHECKOUT_INTERVAL_MINUTES = 30;
+
 export function validateClockAllowed(
   eventType: string,
   workDate: string,
-  existingLogs: Array<{ eventType: string; workDate: string }>
+  existingLogs: Array<{ eventType: string; workDate: string; occurredAt?: Date }>,
+  now: Date = new Date(),
+  isDirectOut: boolean = false
 ): void {
   const dateLogs = existingLogs.filter(l => l.workDate === workDate);
   const hasIn = dateLogs.some(l => l.eventType === "IN");
   const hasOut = dateLogs.some(l => l.eventType === "OUT");
+
   if (eventType === "IN" && hasIn && hasOut) {
     throw new Error("Presensi hari ini sudah lengkap (sudah absen masuk dan pulang). Hubungi HRD jika memerlukan koreksi.");
+  }
+
+  if (eventType === "OUT" && !isDirectOut && hasIn) {
+    const inLogs = dateLogs
+      .filter(l => l.eventType === "IN" && l.occurredAt)
+      .sort((a, b) => a.occurredAt!.getTime() - b.occurredAt!.getTime());
+    if (inLogs.length > 0) {
+      const elapsedMinutes = Math.floor((now.getTime() - inLogs[0].occurredAt!.getTime()) / 60000);
+      if (elapsedMinutes < MIN_CHECKOUT_INTERVAL_MINUTES) {
+        throw new Error(`Absen pulang baru dapat dilakukan minimal ${MIN_CHECKOUT_INTERVAL_MINUTES} menit setelah absen masuk. Scan ini dianggap duplikasi.`);
+      }
+    }
   }
 }
 
@@ -173,7 +190,7 @@ export async function recordMobileClock(userId: number, payload: MobileClockInpu
       if (payload.eventType === 'IN' && existingRecord?.scanIn) {
         throw new Error('Presensi masuk sudah tercatat di sistem.');
       }
-      validateClockAllowed(payload.eventType, workDate, logs);
+      validateClockAllowed(payload.eventType, workDate, logs, now, payload.isDirectOut);
       const strictClock = await isMobileStrictClockEnabled(tx);
       const todayLogs = logs.filter(l => l.workDate === workDate);
       if (strictClock && todayLogs.some(l => l.eventType === payload.eventType)) throw new Error('Presensi sudah tercatat. Gunakan pengajuan koreksi jika ditolak.');
@@ -239,6 +256,9 @@ export async function getMobileTodaySummary(userId: number, targetDb = db) {
   const currentMinutes = minuteValue(currentLocal.scanTime);
   const isLateAfternoon = currentMinutes >= thresholdMinutes;
   const canDirectOut = !inLog && !outLog && isLateAfternoon;
+  const elapsedSinceIn = inLog?.occurredAt ? Math.floor((new Date().getTime() - inLog.occurredAt.getTime()) / 60000) : null;
+  const isCheckoutCooldown = elapsedSinceIn !== null && elapsedSinceIn < MIN_CHECKOUT_INTERVAL_MINUTES;
+  const cooldownRemainingMinutes = isCheckoutCooldown ? Math.max(1, MIN_CHECKOUT_INTERVAL_MINUTES - elapsedSinceIn!) : 0;
 
   return {
     employee: { ...employee, position: employee.position || 'Staff', department: employee.departmentName || '-', workLocation: employee.locationName || '', avatarInitial: employee.fullName.split(' ').slice(0,2).map(n => n[0]).join('') },
@@ -246,7 +266,7 @@ export async function getMobileTodaySummary(userId: number, targetDb = db) {
     attendance: { workDate, checkedIn: !!inLog, checkedOut: !!outLog, checkInTime: inLog?.scanTime || null, checkOutTime: outLog?.scanTime || null,
       totalHours: inLog?.approvalStatus === 'APPROVED' && outLog?.approvalStatus === 'APPROVED' ? formatDurationMinutes(Math.floor((outLog.occurredAt.getTime() - inLog.occurredAt.getTime()) / 60000)) : '--:--',
       status: outLog ? 'COMPLETED' : inLog ? 'CHECKED_IN' : 'NOT_CHECKED_IN', approvalStatus: approval.status, approvalNote: approval.note, txHash: current[0]?.txHash || null, timeZone: zone, timeZoneLabel: entry ? zoneLabels[zone] : 'waktu lokal', events: current.map(publicLog),
-      isLateAfternoon, strictClock, shiftWindow: { scheduleIn: daily.scheduleIn, scheduleOut: daily.scheduleOut, canDirectOut } },
+      isLateAfternoon, strictClock, isCheckoutCooldown, cooldownRemainingMinutes, checkInOccurredAt: inLog?.occurredAt ? inLog.occurredAt.toISOString() : null, shiftWindow: { scheduleIn: daily.scheduleIn, scheduleOut: daily.scheduleOut, canDirectOut } },
     faceEnrollment: { isFaceEnrolled: face.data.isEnrolled, faceId: face.data.isEnrolled ? `BIO-${employee.id}` : null, changeStatus: face.data.changeStatus, changeNote: face.data.changeNote },
   };
 }

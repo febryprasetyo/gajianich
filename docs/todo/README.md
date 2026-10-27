@@ -69,3 +69,17 @@ Instalasi lokal REA 6.7.0 untuk Codex selesai; doctor integrasi dan handshake MC
 - Backend service `mobileAttendanceService.ts` mengimplementasikan resolusi FI - FO (First In - Last Out) dan guard `validateClockAllowed` untuk menolak scan masuk baru jika shift sudah lengkap.
 - Frontend mobile (`/m/presensi`, `/m/beranda`, dan `PresensiRingButton`) mengunci tombol menjadi "Selesai" (disabled) ketika kehadiran hari ini sudah lengkap (`isCheckedIn && isCheckedOut`).
 - Unit test `mobileAttendanceService.test.ts` lulus 5/5, typecheck backend dan frontend lulus tanpa error.
+
+## Checkpoint Tooling Solution X900 — 27 Oktober 2026
+
+Ghidra 12.1.4 + JDK 21, Frida, TShark/capinfos, MDB Tools dan 7-Zip tersedia; uji dekompilasi, hook fixture, pembacaan PCAP sintetis, serta MCP dari konfigurasi tersimpan lulus. [Checkpoint dan batas verifikasi](../plan/2026-10-27-solution-x900-tooling-checkpoint.md). [Panduan Att.exe Windows 11](../operations/solution-x900-analysis-guide.md) dan [paket Process Monitor portable](../operations/solution-x900-windows-tools.zip) tersedia. Analisis target serta integrasi Gajianich menunggu artefak dari PC pengguna; belum dibuat commit.
+
+### Update Jeda 30 Menit (Cooldown & Last-Out Update) — 27 Oktober 2026
+- Ditambahkan aturan jeda 30 menit (`MIN_CHECKOUT_INTERVAL_MINUTES = 30`) setelah scan masuk.
+- Jika karyawan scan lagi dalam rentang < 30 menit setelah scan masuk:
+  - Tombol di UI menampilkan "Sudah Masuk" dengan info sisa jeda waktu (disabled untuk absen pulang).
+  - Backend menolak absen pulang sebelum 30 menit dan memperlakukannya sebagai duplikat masuk yang aman (tidak merusak jam masuk atau mengubah jadi pulang).
+- Jika karyawan sudah absen pulang dan scan pulang kembali di sore/malam hari:
+  - Tombol di UI beralih ke "Perbarui Pulang" (*Last Out*).
+  - Backend mencatat dan mengupdate jam pulang ke scan kepulangan terbaru.
+- Seluruh 8 unit test dan typecheck TypeScript lulus hijau.

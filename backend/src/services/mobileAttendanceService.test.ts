@@ -71,3 +71,46 @@ test("validateClockAllowed blocks new IN scan when todays shift is already compl
 
   assert.doesNotThrow(() => validateClockAllowed("IN", "2026-10-28", todayLogs));
 });
+
+test("MIN_CHECKOUT_INTERVAL_MINUTES is 30 minutes", () => {
+  const { MIN_CHECKOUT_INTERVAL_MINUTES } = require("./mobileAttendanceService");
+  assert.strictEqual(MIN_CHECKOUT_INTERVAL_MINUTES, 30);
+});
+
+test("validateClockAllowed blocks OUT scan within 30 minutes of Clock In", () => {
+  const { validateClockAllowed } = require("./mobileAttendanceService");
+
+  const recentInLogs = [
+    { eventType: "IN", workDate: "2026-10-27", occurredAt: new Date(Date.now() - 5 * 60 * 1000) }, // 5 mins ago
+  ];
+
+  // Trying to clock OUT within 5 minutes must throw
+  assert.throws(
+    () => validateClockAllowed("OUT", "2026-10-27", recentInLogs, new Date()),
+    /minimal 30 menit setelah absen masuk/
+  );
+
+  // Trying to clock OUT after 31 minutes is allowed
+  const pastInLogs = [
+    { eventType: "IN", workDate: "2026-10-27", occurredAt: new Date(Date.now() - 35 * 60 * 1000) }, // 35 mins ago
+  ];
+  assert.doesNotThrow(() => validateClockAllowed("OUT", "2026-10-27", pastInLogs, new Date()));
+});
+
+test("validateClockAllowed permits subsequent OUT scans (Last Out update) after shift is completed", () => {
+  const { validateClockAllowed } = require("./mobileAttendanceService");
+
+  const completedShiftLogs = [
+    { eventType: "IN", workDate: "2026-10-27", occurredAt: new Date("2026-10-27T08:00:00Z") },
+    { eventType: "OUT", workDate: "2026-10-27", occurredAt: new Date("2026-10-27T17:00:00Z") },
+  ];
+
+  // OUT scan at 17:30 to update Last Out is allowed
+  assert.doesNotThrow(() => validateClockAllowed("OUT", "2026-10-27", completedShiftLogs, new Date("2026-10-27T17:30:00Z")));
+
+  // But another IN scan on completed day is still blocked
+  assert.throws(
+    () => validateClockAllowed("IN", "2026-10-27", completedShiftLogs, new Date("2026-10-27T17:30:00Z")),
+    /Presensi hari ini sudah lengkap/
+  );
+});

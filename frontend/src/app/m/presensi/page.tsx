@@ -120,10 +120,15 @@ export default function MobilePresensiPage() {
 
   const isCheckedIn = summaryData?.attendance.checkedIn ?? false;
   const isCheckedOut = summaryData?.attendance.checkedOut ?? false;
+  const isCheckoutCooldown = summaryData?.attendance.isCheckoutCooldown ?? false;
+  const cooldownRemaining = summaryData?.attendance.cooldownRemainingMinutes ?? 0;
 
   const handleClockButtonClick = () => {
     if (summaryLoading || summaryError || !summaryData) return;
-    if (isCheckedIn && isCheckedOut) return;
+    if (isCheckoutCooldown) {
+      showToast(`Absen pulang baru dapat dilakukan minimal 30 menit setelah jam masuk (${summaryData.attendance.checkInTime || ""}).`);
+      return;
+    }
     if (!isCheckedIn && !isCheckedOut && summaryData.attendance.shiftWindow?.canDirectOut) {
       setIsSmartModalOpen(true);
       return;
@@ -233,9 +238,12 @@ export default function MobilePresensiPage() {
 
       {/* 2. Hero Action: Circular Face Scan Button (Shared with Beranda) */}
       <PresensiRingButton
-        status={isCheckedIn && isCheckedOut ? "COMPLETED" : isCheckedIn ? "CHECKED_IN" : "NOT_CHECKED_IN"}
+        status={isCheckedIn ? "CHECKED_IN" : "NOT_CHECKED_IN"}
         onOpenFlow={handleClockButtonClick}
-        disabled={summaryLoading || Boolean(summaryError) || !summaryData || (isCheckedIn && isCheckedOut)}
+        disabled={summaryLoading || Boolean(summaryError) || !summaryData}
+        isCheckoutCooldown={isCheckoutCooldown}
+        cooldownText={cooldownRemaining > 0 ? `Jeda Pulang ${cooldownRemaining}m` : undefined}
+        isCheckOutUpdate={isCheckedIn && isCheckedOut}
       />
 
       {/* 3. Today Summary Card: Clock In, Clock Out, Work Hours */}
@@ -395,7 +403,7 @@ export default function MobilePresensiPage() {
           setIsFaceSheetOpen(false);
           setSmartSelection(null);
         }}
-        isCheckOut={smartSelection ? smartSelection.eventType === "OUT" : Boolean(isCheckedIn || isCheckedOut)}
+        isCheckOut={smartSelection ? smartSelection.eventType === "OUT" : isCheckedIn}
         isDirectOut={smartSelection?.isDirectOut ?? false}
         notes={smartSelection?.notes}
         isOnline={true}

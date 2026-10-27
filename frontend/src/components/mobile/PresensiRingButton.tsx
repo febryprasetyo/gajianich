@@ -13,6 +13,9 @@ interface PresensiRingButtonProps {
   onResetDemo?: () => void;
   showResetDemo?: boolean;
   disabled?: boolean;
+  isCheckoutCooldown?: boolean;
+  cooldownText?: string | null;
+  isCheckOutUpdate?: boolean;
 }
 
 export default function PresensiRingButton({
@@ -21,6 +24,9 @@ export default function PresensiRingButton({
   onResetDemo,
   showResetDemo = false,
   disabled = false,
+  isCheckoutCooldown = false,
+  cooldownText = null,
+  isCheckOutUpdate = false,
 }: PresensiRingButtonProps) {
   const [currentTime, setCurrentTime] = useState('08.25');
   const location = useRealtimeLocation();
@@ -39,11 +45,17 @@ export default function PresensiRingButton({
 
   const isCheckedIn = status === 'CHECKED_IN';
   const isCompleted = status === 'COMPLETED';
-  const isButtonDisabled = disabled || isCompleted;
+  const isButtonDisabled = disabled || (isCompleted && !isCheckOutUpdate) || isCheckoutCooldown;
 
   let buttonLabel = 'Absen Masuk';
   let subLabel = 'Verifikasi Wajah';
-  if (isCheckedIn) {
+  if (isCheckoutCooldown) {
+    buttonLabel = 'Sudah Masuk';
+    subLabel = cooldownText || 'Jeda Pulang 30m';
+  } else if (isCheckOutUpdate) {
+    buttonLabel = 'Perbarui Pulang';
+    subLabel = 'Ketuk untuk Last Out';
+  } else if (isCheckedIn) {
     buttonLabel = 'Absen Pulang';
     subLabel = 'Verifikasi Wajah';
   } else if (isCompleted) {

@@ -116,8 +116,14 @@ export default function MobileBerandaPage() {
     return "NOT_CHECKED_IN";
   };
 
+  const isCheckoutCooldown = summaryData?.attendance.isCheckoutCooldown ?? false;
+  const cooldownRemaining = summaryData?.attendance.cooldownRemainingMinutes ?? 0;
+
   const handleOpenFaceFlow = () => {
-    if (attendanceState.checkedIn && attendanceState.checkedOut) return;
+    if (isCheckoutCooldown) {
+      showToast(`Absen pulang baru dapat dilakukan minimal 30 menit setelah jam masuk (${summaryData?.attendance.checkInTime || ""}).`);
+      return;
+    }
     if (!attendanceState.checkedIn && !attendanceState.checkedOut && summaryData?.attendance.shiftWindow?.canDirectOut) {
       setIsSmartModalOpen(true);
       return;
@@ -362,9 +368,12 @@ export default function MobileBerandaPage() {
 
       {/* Main Interactive Circle Action */}
       <PresensiRingButton
-        status={getRingStatus()}
+        status={attendanceState.checkedIn ? "CHECKED_IN" : "NOT_CHECKED_IN"}
         onOpenFlow={handleOpenFaceFlow}
-        disabled={attendanceState.checkedIn && attendanceState.checkedOut}
+        disabled={false}
+        isCheckoutCooldown={isCheckoutCooldown}
+        cooldownText={cooldownRemaining > 0 ? `Jeda Pulang ${cooldownRemaining}m` : undefined}
+        isCheckOutUpdate={attendanceState.checkedIn && attendanceState.checkedOut}
       />
 
       {/* 3 Metric Cards Hari Ini */}
@@ -454,7 +463,7 @@ export default function MobileBerandaPage() {
           setIsFaceSheetOpen(false);
           setSmartSelection(null);
         }}
-        isCheckOut={smartSelection ? smartSelection.eventType === "OUT" : Boolean(attendanceState.checkedIn || attendanceState.checkedOut)}
+        isCheckOut={smartSelection ? smartSelection.eventType === "OUT" : attendanceState.checkedIn}
         isDirectOut={smartSelection?.isDirectOut ?? false}
         notes={smartSelection?.notes}
         isOnline={true}
