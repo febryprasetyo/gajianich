@@ -20,6 +20,7 @@ Dokumen ini adalah **indeks utama roadmap**. Setiap item prioritas dipecah ke be
 | **10** | Smart Clock Selection (Pilihan Masuk vs Pulang) | **Selesai** | [10-smart-clock-selection.md](./10-smart-clock-selection.md) | [Spec](../superpowers/specs/2026-10-23-smart-clock-selection-design.md) \| [Plan](../superpowers/plans/2026-10-23-smart-clock-selection.md) |
 | **11** | Notifikasi HRD & Pemisahan Halaman Approval (Absensi, Foto & Pengaturan) | **Selesai** | [11-notifikasi-hrd-dan-pemisahan-halaman-approval.md](./11-notifikasi-hrd-dan-pemisahan-halaman-approval.md) | [Spec](../superpowers/specs/2026-10-26-hrd-approval-notifications-and-page-split-design.md) \| [Plan](../superpowers/plans/2026-10-26-hrd-approval-notifications-and-page-split.md) |
 | **12** | Download Presensi Mesin Absensi & Kalkulasi Shift (Solution Pattern) | **Dalam Proses** | [12-download-presensi-mesin-dan-kalkulasi-shift.md](./12-download-presensi-mesin-dan-kalkulasi-shift.md) | [Spec](../superpowers/specs/2026-10-27-attendance-machine-sync-design.md) \| [Plan](../superpowers/plans/2026-10-27-attendance-machine-sync.md) |
+| **13** | Master Desain Standar Global (Desktop & Future Pages) | **Selesai** | [13-master-desain-standar-global.md](./13-master-desain-standar-global.md) | [Spec](../superpowers/specs/2026-10-27-master-design-standard-design.md) \| [Plan](../superpowers/plans/2026-10-27-master-design-standard.md) |
 
 ---
 

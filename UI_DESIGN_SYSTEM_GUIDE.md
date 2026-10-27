@@ -1,306 +1,399 @@
 # Master Desain GAJIANICH / AMS — Emerald Enterprise
 
 > **Golden Rule**: Dilarang keras menggunakan gaya "AI Vibe" (background kartu gelap, gradient ungu/indigo/neon, glow shadow, floating glassmorphism, atau pill badge bertumpuk yang aneh).  
-> **Dasar global**: token, identitas brand, shell, dan komponen bersama aplikasi saat ini. Referensi halaman pada bagian 8 merupakan contoh sesuai konteks, bukan template wajib.
-> Seluruh halaman master data, rekapitulasi, pengaturan, dan transaksi di dashboard AMS **wajib** mengikuti struktur, warna, dan komponen di dokumen ini.
+> **Acuan Master Halaman**: Seluruh halaman desktop saat ini dan yang akan dibangun di masa mendatang **wajib** berkiblat pada standar antarmuka:
+> 1. [Asset Registry](/dashboard/assets) (`http://192.168.10.212:3000/dashboard/assets`)
+> 2. [IT Helpdesk Ticketing](/dashboard/tickets) (`http://192.168.10.212:3000/dashboard/tickets`)
+>
+> Seluruh halaman master data, rekapitulasi, pengaturan, dan transaksi di dashboard AMS **wajib** mengikuti struktur, tata letak, warna, dan komponen di dokumen ini.
 
 ---
 
+## 0. Status Master dan Aturan Mutlak untuk Agen AI & Pengembang
 
-## 0. Status master dan aturan untuk agen
+**Berlaku sejak 19 Oktober 2026 (Diperbarui 27 Oktober 2026).** Dokumen ini adalah acuan normatif tunggal untuk desain aplikasi.
 
-**Berlaku sejak 19 Oktober 2026.** Dokumen ini adalah acuan normatif tunggal untuk desain aplikasi.
-Arah desain berasal dari instruksi pengguna untuk mempertahankan tema yang sudah dipakai.
-Tidak diperlukan pemilihan arah visual baru untuk setiap fitur.
+### ⚠️ PERINGATAN WAJIB BAGI SETIAP AGEN SEBELUM MEMBUAT HALAMAN BARU:
+Setiap AI agent (Antigravity, Gemini, Claude, Codex) atau pengembang **WAJIB membuka dan membaca file ini (`UI_DESIGN_SYSTEM_GUIDE.md`)** sebelum merencanakan kode, membuat komponen baru, atau menambahkan halaman baru di `frontend/src/app/dashboard/`.
 
-Urutan acuan visual:
+**Urutan Acuan Visual:**
+1. Instruksi eksplisit pengguna untuk tugas saat ini.
+2. Master desain di dokumen ini (`UI_DESIGN_SYSTEM_GUIDE.md`).
+3. Komponen referensi baku di `frontend/src/components/ui/` (`PageHeader`, `KpiGrid`, `FilterToolbar`, `TableShell`, `TablePagination`, `RowActionButton`, `StatusBadge`, `ModalShell`, `ConfirmDeleteModal`).
+4. Halaman acuan live: `/dashboard/assets` dan `/dashboard/tickets`.
 
-1. Instruksi eksplisit pengguna untuk perubahan desain pada tugas yang sedang dikerjakan.
-2. Master ini, termasuk aturan aksesibilitas pada bagian 10.
-3. Komponen referensi pada bagian 8, sesuai jenis halaman.
-4. Catatan kebutuhan halaman atau modul yang tetap tunduk pada master.
-
-Contoh kelas dan rujukan kode menjelaskan pemakaian tema, bukan menentukan susunan semua halaman.
-Saat mengadaptasi contoh, terapkan aturan label, fokus, kontras, dan target sentuh pada bagian 10.
-Jangan menyalin logika bisnis, autentikasi, atau kekurangan aksesibilitas halaman referensi.
-
-Permintaan fitur baru tidak mengizinkan agen mengubah identitas visual. Jangan mengubah master
-atau token global agar desain buatan agen menjadi seolah-olah sesuai. Jika pola baru diperlukan,
-susun kontennya dengan token dan komponen existing. Perubahan palet/font/shell memerlukan
-permintaan eksplisit pengguna. Perbedaan pada halaman lama bukan preseden untuk gaya baru.
-
-**Cakupan:** master data, HR, IT & aset, GA, transaksi, laporan, pengaturan, dan komponen bersama.
-Dokumen cetak mempertahankan ukuran kertas dan struktur dokumen bisnisnya; jangan memaksakan
-sidebar atau kartu dashboard ke hasil cetak. Login mempertahankan layout autentikasi existing.
+---
 
 ## 1. Skema Warna Standar (Emerald Enterprise)
 
-- **Warna Utama (Brand / Primary)**: Emerald (`emerald-600`, hover `emerald-700`, active `emerald-800`).
+- **Warna Utama (Brand / Primary)**: Emerald (`emerald-600` / `#059669`, hover `emerald-700` / `#047857`, active `emerald-800` / `#065F46`).
 - **Warna Latar Permukaan (Surface / Background)**:
-  - Page Background: `bg-slate-50/50` atau default layout background.
-  - Card & Container: `bg-white border border-slate-200 shadow-sm rounded-2xl`.
-  - Input & Form Fields: `bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900`.
-- **Warna Teks**:
-  - Judul Halaman: `text-2xl font-extrabold text-slate-900 tracking-tight`.
-  - Subjudul / Helper: `text-xs text-slate-500`.
-  - Label Kolom / Metric: `text-[11px] text-slate-400 uppercase tracking-wider font-mono`.
-  - Isi Tabel / Data: `text-xs text-slate-700 font-medium`.
-- **Status Tones**:
-  - Aktif / Approved / Sukses: `bg-emerald-50 text-emerald-700 border border-emerald-200` (Dot: `bg-emerald-500`).
-  - Menunggu / Pending: `bg-amber-50 text-amber-700 border border-amber-200` (Dot: `bg-amber-500`).
-  - Nonaktif / Resign / Ditolak: `bg-slate-100 text-slate-600 border border-slate-200` atau `bg-rose-50 text-rose-700 border border-rose-200`.
+  - Page Canvas Background: `bg-[#F8FAFC]` (`bg-slate-50/50`).
+  - Card & Container: `bg-white border border-slate-200 shadow-xs sm:shadow-sm rounded-2xl`.
+  - Input & Form Fields: `bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500`.
+- **Warna & Skala Teks**:
+  - Judul Halaman (H1): `text-2xl font-extrabold text-slate-900 tracking-tight`.
+  - Subjudul / Helper: `text-xs text-slate-500 mt-1`.
+  - Label Metrik / Kolom Tabel: `text-[11px] font-semibold text-slate-600 uppercase tracking-wider font-mono`.
+  - Isi Tabel / Data Primer: `text-xs font-bold text-slate-900` atau `text-xs font-medium text-slate-700`.
+  - Keterangan Sekunder / Timestamp: `text-[11px] text-slate-400 font-normal`.
+- **Status Tones Semantik**:
+  - **Aktif / Selesai / Approved / Tersedia**: `bg-emerald-50 text-emerald-700 border border-emerald-200` (Dot: `bg-emerald-500`).
+  - **Menunggu / Dalam Proses / Maintenance**: `bg-amber-50 text-amber-700 border border-amber-200` (Dot: `bg-amber-500`).
+  - **Kritis / Terlewat / Disposed / Ditolak**: `bg-rose-50 text-rose-700 border border-rose-200` (Dot: `bg-rose-500`).
+  - **Netral / Draft / Internal**: `bg-slate-100 text-slate-700 border border-slate-200` (Dot: `bg-slate-400`).
 
 ---
 
-## 2. Struktur halaman dan hierarki informasi global
+## 2. Keseragaman Lebar Area Kerja (Unified Workspace System)
 
-Aturan global menetapkan bahasa visual dan hierarki informasi. Susunan konten dipilih
-berdasarkan pekerjaan pengguna: daftar, detail, formulir, dashboard, laporan, atau pengaturan.
-Tidak ada satu halaman existing yang menjadi template wajib untuk seluruh aplikasi.
+### ❌ Dilarang Keras: Lebar Halaman Berbeda-Beda
+Dilarang keras setiap halaman mendefinisikan pembatas lebar sendiri seperti `max-w-7xl`, `max-w-5xl`, atau `max-w-6xl` pada halaman daftar/dashboard. Hal tersebut menyebabkan layout "meloncat" dan terasa tidak konsisten saat pengguna berganti-ganti menu.
 
-- Halaman operasional menggunakan shell aplikasi yang sama. Padding, lebar konten,
-  sidebar, topbar, dan breadcrumb mengikuti shell; jangan digandakan di setiap fitur.
-- Setiap halaman memiliki judul utama yang jelas. Judul bagian berada pada hierarki
-  di bawahnya; gunakan skala tipografi global, bukan ukuran baru per departemen.
-- Deskripsi, ikon judul, breadcrumb tambahan, dan aksi header ditampilkan bila memberi
-  konteks atau fungsi. Tidak wajib ada ikon dan subjudul pada setiap halaman.
-- Kelompokkan informasi sesuai urutan kerja. Gunakan spacing, border, dan surface existing
-  untuk membedakan bagian, tanpa mewajibkan setiap bagian dibungkus kartu.
-- Pada desktop, judul dan aksi dapat berdampingan jika ruang cukup. Di layar kecil,
-  susun atau bungkus kontrol agar terbaca dan dapat digunakan.
-- Posisi aksi mengikuti objeknya: aksi halaman pada area halaman, aksi baris pada baris,
-  aksi field dekat field, dan aksi simpan di area formulir/modal yang mudah dijangkau.
-- Perubahan susunan untuk kebutuhan bisnis diperbolehkan selama tema, komponen,
-  kepadatan informasi, dan perilaku interaksi tetap konsisten.
-
-## 3. Komponen, surface, dan hierarki aksi global
-
-Gunakan kembali komponen bersama yang sesuai fungsi dan API aktualnya. Komponen halaman
-tertentu boleh menjadi referensi implementasi, tetapi tata letak dan datanya tidak otomatis
-berlaku untuk halaman lain.
-
-| Elemen | Aturan global |
-|---|---|
-| Surface/panel | Gunakan canvas slate, surface putih, border slate, radius, dan shadow sesuai token master. Jumlah panel mengikuti kelompok informasi. |
-| Aksi utama | Gunakan gaya primary emerald untuk tindakan utama pada konteks tersebut; label menyebut tindakan sebenarnya. |
-| Aksi sekunder | Gunakan surface putih/netral dan border existing; jangan bersaing dengan aksi utama. |
-| Aksi berisiko | Gunakan tone destructive untuk tindakan yang berdampak merusak; konfirmasi sesuai dampaknya. |
-| Input dan pilihan | Gunakan font, radius, border, fokus, label, dan validasi yang konsisten; pilih jenis kontrol sesuai nilai yang dimasukkan. |
-| Status dan feedback | Gunakan tone semantik yang sama antarmodul, disertai teks yang menjelaskan keadaan. |
-| Modal | Gunakan modal bersama untuk tugas yang memerlukan dialog; tugas panjang dapat memakai halaman form. |
-| Ringkasan/metrik | Tambahkan hanya jika membantu keputusan pengguna dan memiliki data nyata; jumlah, ikon, dan grid tidak ditetapkan secara global. |
-
-Jangan mewajibkan KPI, tiga/empat kartu ringkasan, tombol tambah, atau tombol muat ulang
-pada semua halaman. Jika komponen baru dibutuhkan, susun dengan token existing dan perilaku
-yang sejalan dengan komponen bersama; jangan menciptakan identitas visual baru.
-
-## 4. Pencarian, filter, dan kontrol konteks global
-
-Pencarian dan filter adalah alat untuk mengendalikan data yang sedang dilihat. Kehadirannya,
-jenis kontrol, dan penempatannya mengikuti volume data serta kebutuhan pekerjaan.
-
-- Sediakan pencarian hanya untuk objek/field yang memang dapat dicari. Label dan placeholder
-  menjelaskan cakupannya; jangan menampilkan pencarian yang tidak berfungsi.
-- Gunakan filter berdasarkan atribut domain yang relevan. Kontrol tanggal, status, kategori,
-  atau pemohon tidak wajib muncul pada setiap halaman.
-- Kelompokkan kontrol yang memengaruhi kumpulan data yang sama. Boleh memakai toolbar,
-  area di atas konten, atau panel filter sesuai kompleksitas; tidak wajib satu bilah putih.
-- Pertahankan gaya input, select, tombol, dan active state dari master. Perbedaan jenis filter
-  tidak menjadi alasan mengganti font, palet, atau bentuk kontrol.
-- Perubahan filter harus terlihat hasilnya. Tampilkan pilihan aktif dan cara mereset bila
-  diperlukan; angka hasil hanya ditampilkan jika benar dan berguna.
-- Bedakan kondisi data memang kosong, pencarian tanpa hasil, proses memuat, dan kegagalan.
-- Pada layar kecil, kontrol membungkus atau tersusun vertikal. Jangan memaksa filter penting
-  keluar layar; filter tambahan boleh ditempatkan dalam area yang dapat dibuka dengan jelas.
-
-## 5. Penyajian data dan konten global
-
-Pilih bentuk penyajian berdasarkan informasi dan tindakan pengguna. Tabel digunakan untuk
-membandingkan record dengan atribut serupa; detail, formulir, kalender, daftar, atau riwayat
-menggunakan bentuk yang sesuai tanpa harus disulap menjadi tabel.
-
-- Semua bentuk penyajian mengikuti font, surface, border, radius, spacing, dan tone semantik
-  master. Struktur konten boleh berbeda antarmodul, identitas visual tetap sama.
-- Jika memakai tabel, heading kolom jelas, selaras dengan isinya, dan memiliki struktur HTML
-  semantik. Gunakan pemisah dan hover yang konsisten dengan surface aplikasi.
-- Nama, kode, tanggal, uang, jumlah, dan status mengikuti makna datanya. Angka pembanding
-  disejajarkan konsisten; satuan dan formatnya jelas. Tidak semua teks harus monospace,
-  uppercase, berupa badge, atau memakai titik status.
-- Kolom dan aksi ditentukan kebutuhan domain. Kolom KODE/NIK, NAMA, STATUS, dan AKSI dari
-  direktori karyawan tidak menjadi struktur wajib seluruh tabel.
-- Tautan membuka tujuan yang nyata; tombol menjalankan aksi. Aksi penting tidak hanya
-  muncul saat hover sehingga tetap dapat diakses di perangkat sentuh dan keyboard.
-- Gunakan pagination, sorting, atau pilihan massal hanya jika diperlukan oleh jumlah data
-  dan proses pengguna; pertahankan perilaku yang konsisten ketika tersedia.
-- Konten lebar dapat digulir dalam panelnya. Pada ponsel, pilih scroll tabel atau susunan
-  alternatif yang tetap mempertahankan informasi serta tindakan penting.
-- Loading, kosong, error, read-only, dan sukses mengikuti kondisi nyata. Hindari mengisi
-  ruang dengan data contoh, kartu tambahan, atau visual tanpa fungsi.
-
----
-
-## 6. Aturan Input Angka (Form Numbers)
-
-Hilangkan spin buttons default browser yang mengganggu:
+### ✅ Aturan Baku:
+Shell utama `DashboardLayout` telah menetapkan lebar area kerja standar:
 ```tsx
-<input
-  type="number"
-  className="w-full pl-3.5 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none font-semibold"
-/>
+<main className="flex-1 p-4 md:p-8 md:px-10 max-w-[1600px] w-full mx-auto print:p-0 print:m-0 print:max-w-none print:w-full">
+  {children}
+</main>
+```
+Semua halaman daftar/overview/transaksi **wajib** membungkus kontennya dengan:
+```tsx
+<div className="space-y-6">
+  {/* Page Header */}
+  {/* KPI Cards (jika ada) */}
+  {/* Filter Toolbar */}
+  {/* Data Table */}
+</div>
+```
+*(Catatan: Form formulir pembuatan/pengeditan data yang panjang dapat menggunakan form grid 2-3 kolom atau modal shell `max-w-2xl` / `max-w-4xl` terpusat).*
+
+---
+
+## 3. Logo, Header, & Tombol Aksi Halaman
+
+Semua halaman modul wajib memiliki header yang konsisten dengan ikon logo modul dalam kotak emerald, judul, subjudul, dan tombol aksi yang jelas.
+
+### Cuplikan Kode Baku:
+```tsx
+<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  {/* Sisi Kiri: Logo + Judul + Sub-title */}
+  <div>
+    <div className="flex items-center gap-2">
+      <div className="p-2 bg-emerald-600 rounded-xl text-white shadow-xs">
+        <HardDrive className="w-5 h-5" /> {/* Ganti dengan ikon Lucide modul terkait */}
+      </div>
+      <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+        Daftar Inventaris Aset
+      </h1>
+    </div>
+    <p className="text-xs text-slate-500 mt-1">
+      Manajemen pencatatan hardware, penugasan pengguna (custodian), dan pemeliharaan berkala IT.
+    </p>
+  </div>
+
+  {/* Sisi Kanan: Tombol-tombol Aksi Jelas dengan Warna Jelas */}
+  <div className="flex items-center gap-2">
+    {/* Tombol Sekunder (Ekspor / Impor / Cetak) */}
+    <button
+      type="button"
+      onClick={handleExport}
+      className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer"
+    >
+      <Download className="w-3.5 h-3.5 text-slate-500" />
+      <span>Ekspor Excel</span>
+    </button>
+
+    {/* Tombol Aksi Utama (Primary CTA) */}
+    <button
+      type="button"
+      onClick={handleOpenCreateModal}
+      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+    >
+      <Plus className="w-4 h-4" />
+      <span>Tambah Aset Baru</span>
+    </button>
+  </div>
+</div>
+```
+Komponen reusable siap pakai: `<PageHeader title="..." subtitle="..." icon={...} actions={...} />`.
+
+---
+
+## 4. Kartu Metrik / KPI Interaktif (Filterable KPI Cards)
+
+Jika halaman memiliki ringkasan data atau KPI operasional, **wajib** mengikuti desain kartu di `/dashboard/tickets` yang dapat diklik langsung untuk memfilter tabel (*Interactive Quick-Filter*).
+
+### Spesifikasi:
+- **Grid responsif**: `grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6`.
+- **Card**: Tombol interaktif `<button type="button">`.
+- **Normal State**: `bg-white border border-slate-200 hover:border-emerald-300 hover:shadow-sm rounded-2xl p-4 shadow-xs transition-all flex flex-col justify-between cursor-pointer`.
+- **Active State (Sedang Dipilih sebagai Filter)**: `bg-emerald-50/50 border-2 border-emerald-500 ring-2 ring-emerald-500/20`.
+- **Badge Aktif**: Di pojok kanan bawah muncul badge pill `text-[9px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-100/90 px-1.5 py-0.5 rounded-md` bertuliskan `"Aktif"`.
+
+### Cuplikan Kode Baku:
+```tsx
+<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+  {items.map((item) => {
+    const isActive = activeKpiFilter === item.id;
+    const IconComp = item.icon;
+    return (
+      <button
+        key={item.id}
+        type="button"
+        onClick={() => onSelectFilter(item.id)}
+        aria-pressed={isActive}
+        className={`group text-left rounded-2xl p-4 shadow-xs transition-all duration-200 flex flex-col justify-between cursor-pointer focus:outline-none ${
+          isActive
+            ? "bg-emerald-50/50 border-2 border-emerald-500 ring-2 ring-emerald-500/20"
+            : "bg-white border border-slate-200 hover:border-emerald-300 hover:shadow-sm"
+        }`}
+      >
+        <div className="flex items-center justify-between w-full">
+          <span className={`text-[11px] font-mono uppercase tracking-wider font-semibold ${
+            isActive ? "text-emerald-800" : "text-slate-500 group-hover:text-slate-700"
+          }`}>
+            {item.title}
+          </span>
+          <div className={`p-1.5 rounded-lg transition-transform group-hover:scale-105 ${
+            isActive ? "bg-emerald-100" : item.bgColor
+          }`}>
+            <IconComp className={`w-4 h-4 ${isActive ? "text-emerald-700" : item.iconColor}`} />
+          </div>
+        </div>
+
+        <div className="mt-2 flex items-baseline justify-between w-full">
+          <div>
+            <div className={`text-xl font-extrabold tracking-tight ${
+              isActive ? "text-emerald-950" : "text-slate-900"
+            }`}>
+              {item.value}
+            </div>
+            <div className={`text-[10px] mt-0.5 truncate ${
+              isActive ? "text-emerald-700 font-medium" : "text-slate-400"
+            }`}>
+              {item.helper}
+            </div>
+          </div>
+          {isActive && (
+            <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-100/90 px-1.5 py-0.5 rounded-md">
+              Aktif
+            </span>
+          )}
+        </div>
+      </button>
+    );
+  })}
+</div>
+```
+Komponen reusable siap pakai: `<KpiGrid items={...} activeFilter={...} onSelectFilter={...} />`.
+
+---
+
+## 5. Toolbar Pencarian & Filter Rapi (Search & Filter Bar)
+
+Kolom pencarian dan filter wajib tertata rapi dalam container kartu putih yang terpisah secara elegan (mengacu pada `/dashboard/tickets` dan `/dashboard/assets`).
+
+### Spesifikasi:
+- **Container**: `bg-white border border-slate-200 rounded-2xl p-4 shadow-xs mb-6 space-y-3`.
+- **Baris 1**: Input pencarian responsif + tab cakupan/scope jika ada (misal: "Semua / Aduan / Internal").
+- **Baris 2**: Grid dropdown `<select>` (Kategori, Status, Lokasi, Prioritas) + Tombol **Reset Filter** yang otomatis muncul jika ada filter yang terpasang.
+
+### Cuplikan Kode Baku:
+```tsx
+<div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs mb-6 space-y-3">
+  <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+    {/* Kolom Search */}
+    <div className="relative flex-1">
+      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+      <input
+        type="text"
+        placeholder="Cari kode, nama, nomor seri..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+      />
+    </div>
+
+    {/* Scope / Switch Selector (Opsional) */}
+    {hasScopes && (
+      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl self-start md:self-auto">
+        <button
+          type="button"
+          onClick={() => setScope("all")}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            scope === "all" ? "bg-white text-slate-900 shadow-xs font-semibold" : "text-slate-600"
+          }`}
+        >
+          Semua
+        </button>
+        {/* ... scope items lainnya ... */}
+      </div>
+    )}
+  </div>
+
+  {/* Grid Dropdown Filter */}
+  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2 pt-2 border-t border-slate-100 items-center">
+    <select
+      value={category}
+      onChange={(e) => setCategory(e.target.value)}
+      className="bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+    >
+      <option value="">Semua Kategori</option>
+      {/* options */}
+    </select>
+
+    <select
+      value={status}
+      onChange={(e) => setStatus(e.target.value)}
+      className="bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+    >
+      <option value="">Semua Status</option>
+      {/* options */}
+    </select>
+
+    {/* Tombol Reset Filter */}
+    {hasActiveFilters && (
+      <button
+        type="button"
+        onClick={handleReset}
+        className="flex items-center justify-center gap-1 text-xs text-slate-500 hover:text-rose-600 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:border-rose-200 transition-all font-medium"
+      >
+        <RotateCcw className="w-3.5 h-3.5" />
+        <span>Reset Filter</span>
+      </button>
+    )}
+  </div>
+</div>
+```
+Komponen reusable siap pakai: `<FilterToolbar search={...} onSearchChange={...} dropdownFilters={...} onResetFilters={...} />`.
+
+---
+
+## 6. Tabel Data, Tagging, Action Icon, & Pagination
+
+Tabel adalah representasi utama data aplikasi. Setiap tabel wajib memiliki header terstruktur, penandaan status yang jelas (*tagging*), tombol aksi baris berbasis ikon, dan footer pagination.
+
+### A. Struktur Shell & Header Tabel
+```tsx
+<div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+  <div className="overflow-x-auto">
+    <table className="w-full text-left border-collapse">
+      <thead>
+        <tr className="bg-slate-50/75 border-b border-slate-200 text-[11px] font-semibold text-slate-600 uppercase tracking-wider font-mono">
+          <th className="py-3 px-4">Kode / ID</th>
+          <th className="py-3 px-4">Nama & Deskripsi</th>
+          <th className="py-3 px-4">Kategori / Lokasi</th>
+          <th className="py-3 px-4 text-center">Status</th>
+          <th className="py-3 px-4 text-right">Aksi</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-slate-100">
+        {/* Rows */}
+      </tbody>
+    </table>
+  </div>
+  {/* Pagination Footer */}
+</div>
 ```
 
+### B. Baris Data & Tagging
+Setiap baris data menggunakan hover efek lembut:
+`tr className="border-b border-slate-100 hover:bg-slate-50/60 transition-colors text-xs text-slate-700"`
+
+Tagging status menggunakan `StatusBadge` atau format pill dengan dot:
+```tsx
+<span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">
+  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+  Tersedia
+</span>
+```
+
+### C. Kolom Aksi Baris: Cukup Ikon yang Mewakili
+Untuk menjaga kerapian dan efisiensi ruang layar pada desktop, tombol aksi di baris tabel **cukup berupa ikon yang mewakili** tindakan, diletakkan rapat ke kanan (`flex items-center justify-end gap-1`).
+
+| Aksi | Ikon | Warna & Hover Class | Keterangan |
+|---|---|---|---|
+| **Lihat / Detail** | `<ExternalLink className="w-3.5 h-3.5" />` | `text-slate-500 hover:text-slate-900 hover:bg-slate-100 p-1.5 rounded-lg transition-colors` | Menuju halaman detail |
+| **Operasional / Assign** | `<UserCheck className="w-3.5 h-3.5" />` | `text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-lg transition-colors` | Tindakan bisnis langsung |
+| **Ubah / Edit** | `<Edit className="w-3.5 h-3.5" />` | `text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-lg transition-colors` | Membuka modal edit |
+| **Hapus / Delete** | `<Trash2 className="w-3.5 h-3.5" />` | `text-slate-500 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg transition-colors` | Membuka konfirmasi hapus |
+
+> **Wajib**: Setiap tombol aksi hanya-ikon **wajib menyertakan atribut `title="..."` dan `aria-label="..."`** agar aksesibel bagi pembaca layar dan pengguna melihat tooltip saat cursor mengarah ke ikon.
+
+### D. Footer Pagination Standar
+Footer diletakkan di bawah tabel di dalam kartu yang sama:
+```tsx
+<div className="bg-slate-50/75 border-t border-slate-200 px-4 py-3 flex items-center justify-between text-xs text-slate-600 font-mono">
+  <div>
+    Menampilkan <span className="font-semibold text-slate-900">{(page - 1) * limit + 1}</span> sampai{" "}
+    <span className="font-semibold text-slate-900">{Math.min(page * limit, total)}</span> dari{" "}
+    <span className="font-semibold text-slate-900">{total}</span> data
+  </div>
+
+  <div className="flex items-center gap-1">
+    <button
+      type="button"
+      disabled={page <= 1}
+      onClick={() => onPageChange(page - 1)}
+      className="px-3 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-slate-700 font-medium text-xs transition-all shadow-2xs cursor-pointer"
+    >
+      Sebelumnya
+    </button>
+    <span className="px-2 font-mono text-[11px] text-slate-500">
+      Hal {page} dari {totalPages}
+    </span>
+    <button
+      type="button"
+      disabled={page >= totalPages}
+      onClick={() => onPageChange(page + 1)}
+      className="px-3 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-slate-700 font-medium text-xs transition-all shadow-2xs cursor-pointer"
+    >
+      Selanjutnya
+    </button>
+  </div>
+</div>
+```
+Komponen reusable siap pakai: `<TablePagination page={...} limit={...} total={...} onPageChange={...} />`.
+
 ---
 
-## 7. Hal Yang Dilarang (DON'T)
+## 7. Larangan Keras Tombol Refresh Manual (No Manual Refresh Buttons)
 
-❌ Jangan menggunakan tema gelap terpisah (`dark:bg-slate-950`, `dark:border-slate-800`) di komponen modul jika halaman master lainnya adalah light ERP.  
-❌ Jangan gunakan background header yang tebal atau card header gelap dengan gradien.  
-❌ Jangan gunakan aksen ungu (violet), indigo, atau neon glow. Gunakan selalu keluarga **Emerald**.  
-❌ Jangan biarkan spin arrow (up/down counter) default browser muncul di input angka form cuti/kehadiran.  
-❌ Jangan membuat card yang melengkung berlebihan atau mengambang (floating) tanpa border pemisah yang jelas. Gunakan `rounded-2xl border border-slate-200 shadow-sm`.
-
-## 8. Peta sumber dan komponen wajib
-
-Semua path di bawah relatif terhadap root proyek dan menunjuk sumber yang sudah ada.
-
-| Kebutuhan | Referensi / komponen | Ketentuan |
-|---|---|---|
-| Identitas brand | `frontend/src/lib/gajianichBrand.ts` | Pakai konstanta brand, jangan mengetik brand baru di setiap modul. |
-| Token dan font global | `frontend/src/app/globals.css` | Gunakan token yang ada; jangan menimpa dari CSS modul. |
-| Shell, sidebar, topbar, breadcrumb | `frontend/src/components/layout/DashboardLayout.tsx` | Gunakan shell existing; pertahankan collapse, drawer mobile, dan izin menu. |
-| Contoh direktori data | `frontend/src/components/master/EmployeeDirectoryPage.tsx` | Contoh penerapan tema pada list karyawan; bukan template wajib untuk semua list, transaksi, atau modul. |
-| Contoh form master | `frontend/src/components/master/EmployeeFormPage.tsx`, `EmployeeFormFields.tsx` pada direktori yang sama | Referensi gaya field dan aksi; pengelompokan field mengikuti domain fitur. |
-| Contoh form transaksi | `frontend/src/components/leaves/LeaveRequestForm.tsx` | Referensi penerapan tema; struktur dan aturan cuti tidak diwajibkan pada transaksi lain. |
-| Modal umum | `frontend/src/components/ui/ModalShell.tsx` | Pakai prop aktual: `isOpen`, `onClose`, `title`, `children`, `footer`, `isLoading`; jangan membuat overlay sendiri. |
-| Konfirmasi hapus/aksi berisiko | `frontend/src/components/ui/ConfirmDeleteModal.tsx` | Tampilkan nama objek, alasan, loading/error, dan aksi spesifik; jangan gunakan `window.confirm` / `alert`. |
-| Status umum | `frontend/src/components/ui/StatusBadge.tsx` | Pakai variant semantik aktual: `success`, `warning`, `danger`, `slate`, `default`, atau `info`. |
-| HR khusus absensi | `frontend/src/components/attendance/shared.tsx`, `attendance.css` pada direktori yang sama | Reuse untuk kebutuhan absensi; jangan menjadikannya stylesheet global modul GA/IT. |
-| Proteksi navigasi | `frontend/src/lib/access/routes.ts`, `frontend/src/lib/access/permissions.ts` | Menu baru mengikuti pemeriksaan izin, rute aktif, dan landing existing. |
-
-`StatusBadge` memiliki alias kompatibilitas `purple` yang saat ini menghasilkan warna amber.
-Jangan gunakan nama alias itu untuk merancang status baru. Nama utilitas lama seperti
-`.glass-panel` atau `.text-gradient-red` juga tidak berarti izin membuat glassmorphism atau tema merah.
-Acuannya adalah token aktual dan master ini.
-
-## 9. Token yang dikunci dan struktur halaman
-
-Nilai hex berikut berasal dari `globals.css` dan `gajianichBrand.ts`. Ini mendokumentasikan
-nilai CSS variable yang sudah ada; jangan membuat set token paralel dalam setiap fitur.
-Tailwind utility dalam resep mengikuti konfigurasi Tailwind aktif; CSS variable dan utility
-bernama serupa tidak harus menghasilkan nilai hex persis sama.
-
-| Peran | Token global | Nilai CSS variable saat ini |
-|---|---|---|
-| Primary | `--color-primary` | `#059669` |
-| Mint pendamping | `--color-mint` | `#10B981` |
-| Teks di primary | `--color-on-primary` | `#FFFFFF` |
-| Secondary lembut | `--color-secondary` | `#D1FAE5` |
-| Accent/perhatian | `--color-accent` | `#F59E0B` |
-| Canvas | `--color-background` | `#F8FAFC` |
-| Teks utama | `--color-foreground` | `#0F172A` |
-| Muted surface | `--color-muted` | `#F1F5F9` |
-| Border | `--color-border` | `#E2E8F0` |
-| Destructive | `--color-destructive` | `#B91C1C` |
-
-- Font teks dan heading: **Plus Jakarta Sans**, mengikuti font global.
-- Font kode, ID, dan angka operasional yang memerlukan monospace: **JetBrains Mono**.
-- Ikon: **lucide-react** yang sudah terpasang. Ukuran aksi 16px, ikon judul 24px,
-  ikon kartu 20px. Pilih ikon berdasarkan fungsi; jangan mengganti pustaka per departemen.
-- Panel utama: `rounded-2xl`; input/tombol `rounded-xl`; aksi ikon `rounded-lg`.
-  `rounded-full` tetap untuk status/avatar, bukan semua elemen.
-- Pemisah bagian: `space-y-6`; gap umum `gap-3` / `gap-4`; padding panel `p-4`,
-  form/modal mengikuti komponen referensi. Jangan menambah whitespace ala landing page.
-- Bayangan panel `shadow-sm`; bayangan modal mengikuti `ModalShell`. Jangan menambah glow,
-  gradien dekoratif, atau efek melayang pada setiap kartu operasional.
-- Animasi hanya untuk feedback, transisi singkat, dan loading. Hormati reduced motion.
-- Light ERP adalah tema operasional aktif. Jangan menambah dark mode khusus modul.
-
-### Pemilihan pola halaman
-
-Bagian 2–5 berlaku lintas jenis halaman. Pilih struktur sesuai tugas pengguna:
-
-- Direktori/list: penelusuran dan perbandingan data, dengan filter atau tabel bila diperlukan.
-- Detail: identitas objek, informasi terkait, riwayat, dan tindakan yang relevan.
-- Form: kelompok field sesuai urutan pengisian, validasi, serta aksi simpan/ajukan.
-- Dashboard/laporan: ringkasan dan visualisasi yang menjawab kebutuhan operasional dari data nyata.
-- Pengaturan: kelompok konfigurasi dengan penjelasan dampak dan pola penyimpanan yang jelas.
-
-Gunakan shell dan ritme spacing existing. Urutan header, KPI, toolbar, dan tabel dari halaman
-tertentu tidak menjadi kewajiban global. Contoh halaman dipilih untuk mengadaptasi bagian
-relevan saja, bukan untuk menyalin keseluruhan susunannya.
-
-### Penambahan menu
-
-Gunakan `navGroups` pada `DashboardLayout` dan aturan akses existing. Tambahkan menu pada
-kelompok bisnis yang benar, dengan nama, ikon fungsional, tujuan rute nyata, dan izin yang sesuai.
-Pertahankan menu aktif berwarna emerald, accordion, breadcrumb, dan perilaku drawer mobile.
-Jangan membuat sidebar sendiri atau mengganti urutan menu lain tanpa kebutuhan tugas.
-
-## 10. Interaksi, aksesibilitas, dan responsive
-
-Aturan pada bagian ini mengoreksi kekurangan pada contoh atau komponen lama, bukan mengubah tema.
-
-- Kondisi wajib: loading, data kosong, hasil filter kosong, error dengan pemulihan,
-  disabled/submitting, sukses, dan akses ditolak/read-only jika relevan.
-- Data kosong berbeda dengan API gagal. Jangan menampilkan contoh angka sebagai data nyata.
-- Tombol simpan menampilkan proses dan mencegah submit ganda; error tidak menghapus input pengguna.
-- Setiap field punya label yang terhubung. Placeholder bukan pengganti label.
-- Tombol hanya ikon punya nama aksesibel (`aria-label`); label status harus berupa teks,
-  tidak bergantung pada warna atau titik saja.
-- Pertahankan `:focus-visible` global (outline 3px primary, offset 3px).
-  Jangan menghapus outline tanpa pengganti yang terlihat.
-- Teks normal wajib memiliki kontras minimal 4.5:1; teks besar minimal 3:1.
-  Resep lama `text-slate-400` untuk teks kecil dan teks putih pada primary harus diperiksa
-  pada warna hasil render yang sebenarnya. Jika tidak cukup, gunakan tone lebih gelap dari
-  keluarga yang sama, misalnya slate-600 atau emerald-700; jangan mengganti palet aplikasi.
-- Target sentuh minimal 40×40px, disarankan 44×44px. Ikon boleh 16px di dalam target lebih besar.
-- Verifikasi di lebar 360px, 390px, 768px, dan 1280px. Halaman tidak boleh overflow horizontal;
-  tabel lebar boleh bergulir di panel `overflow-x-auto`. Jangan mengandalkan `body overflow-x:hidden`
-  untuk menyembunyikan layout yang rusak.
-- Form satu kolom di ponsel; kolom tambahan hanya bila ruang cukup. Toolbar dan aksi membungkus.
-- Modal memakai `ModalShell`: backdrop existing, header/footer tetap, body scroll,
-  `max-h-[92dvh] sm:max-h-[88vh]`. Pastikan judul aksesibel, fokus berada di dialog,
-  Escape sesuai keadaan proses, dan fokus kembali setelah ditutup.
-- Untuk komponen konfirmasi existing, uji kebutuhan keyboard/fokus pada alur yang dipakai;
-  jangan menganggap semua komponen lama sudah lolos aksesibilitas hanya karena reusable.
-
-## 11. Penerapan untuk departemen GA
-
-Pengajuan pembelian GA wajib menjadi bagian visual dari aplikasi yang sama:
-
-- Shell dan sidebar existing; identitas GA tidak diberi warna brand atau font sendiri.
-- List pengajuan mengikuti pola direktori: header, filter, status, tabel, dan aksi.
-- Form mengikuti panel/form existing: rincian pemohon, daftar barang, estimasi harga,
-  bukti harga, dan aksi simpan/ajukan sesuai aturan bisnis yang disepakati.
-- Area paste screenshot memakai panel putih, border slate, radius existing, petunjuk singkat,
-  pratinjau, serta aksi hapus/ganti dengan pola tombol aplikasi.
-- Status Draft/Diajukan/Disetujui/Ditolak memakai tone semantik slate/amber/emerald/rose.
-- Upload, kompresi, error, dan retry tampil sebagai keadaan proses; tidak menambah gaya halaman baru.
-
-Ini adalah batas visual untuk implementasi mendatang, bukan klaim fitur GA sudah tersedia.
-
-## 12. Checklist wajib sebelum menyerahkan perubahan UI
-
-Agen mencatat rujukan pola dan bukti pemeriksaan yang benar-benar dilakukan.
-
-- [ ] Master ini dibaca; halaman/komponen referensi yang dipakai disebutkan dalam laporan.
-- [ ] Font, primary, canvas, border, radius, kepadatan, dan ikon mengikuti master.
-- [ ] Shell dan komponen bersama digunakan sesuai API aktual; tidak ada tema per modul.
-- [ ] Susunan halaman mengikuti tugas pengguna; tidak ada KPI atau dekorasi tanpa fungsi.
-- [ ] Label, keyboard, fokus, kontras, dan target sentuh diperiksa.
-- [ ] Mobile dan desktop diperiksa; tabel dan modal tidak memotong kontrol.
-- [ ] Loading, kosong, error, submitting, sukses, dan izin diperiksa sesuai alur fitur.
-- [ ] Menu baru punya rute dan izin yang benar; active state dan breadcrumb diperiksa.
-- [ ] Pemeriksaan kode yang relevan dijalankan; hasil visual hanya diklaim jika benar-benar diperiksa.
-- [ ] Perubahan tema global atau penyimpangan memiliki instruksi eksplisit pengguna sebagai dasar.
-
-Dokumen desain khusus halaman hanya boleh menambah kebutuhan domain, pemetaan komponen,
-dan layout konten yang belum tercakup. Tidak boleh membuat token atau master tema alternatif.
-
-### 4.4 Larangan Keras Tombol Refresh Manual (No Manual Refresh Buttons)
-
-> **ATURAN MUTLAK**: **Dilarang keras menyediakan tombol "Refresh", "Segarkan", "Muat Ulang", atau tombol berikon `RefreshCw`/`RotateCw` untuk reload data di header halaman, action toolbar, filter, maupun footer.**
+> **ATURAN MUTLAK**: **Dilarang keras menambahkan tombol "Refresh", "Segarkan Data", "Muat Ulang", atau tombol berikon `RefreshCw`/`RotateCw` untuk reload di header halaman, toolbar, filter bar, card header, maupun footer.**
 
 1. **Reaktif & Otomatis**: Semua data tabel, ringkasan, dan kartu KPI wajib dimuat secara reaktif (otomatis load saat komponen di-mount, saat parameter query/filter/pagination berubah, dan otomatis refetch saat aksi create/edit/delete di modal selesai).
-2. **Kenapa dilarang**: Tombol refresh manual adalah antipattern di aplikasi web modern, mengotori antarmuka (visual noise), membingungkan pengguna, dan mengganggu efisiensi navigasi.
-3. **Pengecualian terbatas**: Hanya diizinkan untuk tombol sinkronisasi integrasi eksternal eksplisit (misal trigger sync API Accurate Server) atau pembacaan sensor fisik perangkat (misal update koordinat GPS pada mobile presensi).
+2. **Pengecualian terbatas**: Hanya untuk pemicu sinkronisasi integrasi eksternal eksplisit (misal trigger sync API Accurate Server) atau sensor hardware (misal update koordinat GPS).
+
+---
+
+## 8. Peta Komponen Reusable Baku
+
+Komponen berikut telah disediakan di direktori `frontend/src/components/ui/` dan **wajib di-import** oleh halaman baru:
+
+| Komponen | Lokasi Import | Penggunaan |
+|---|---|---|
+| `PageHeader` | `@/components/ui/PageHeader` | Header seragam (Logo, Title, Subtitle, Actions) |
+| `KpiGrid` | `@/components/ui/KpiGrid` | Grid ringkasan KPI interaktif untuk filter instan |
+| `FilterToolbar` | `@/components/ui/FilterToolbar` | Search input, scope selector, dropdown grid, reset button |
+| `TableShell` | `@/components/ui/TableShell` | Container tabel responsif, skeleton loading, dan empty state |
+| `TablePagination` | `@/components/ui/TablePagination` | Navigasi pagination footer seragam |
+| `RowActionButton` | `@/components/ui/RowActionButton` | Tombol aksi baris tabel berbasis ikon yang aksesibel |
+| `StatusBadge` | `@/components/ui/StatusBadge` | Tag status dengan dot dan warna semantik |
+| `ModalShell` | `@/components/ui/ModalShell` | Modal dialog seragam |
+| `ConfirmDeleteModal`| `@/components/ui/ConfirmDeleteModal` | Konfirmasi hapus data berisiko |
+
+---
+
+## 9. Checklist Kesesuaian Desain Sebelum Pekerjaan Selesai
+
+Sebelum AI Agent menyatakan penyelesaian fitur atau pembuatan halaman baru, jalankan checklist ini:
+- [ ] File `UI_DESIGN_SYSTEM_GUIDE.md` telah dibuka dan dibaca sebelum kode dibuat.
+- [ ] Halaman dibungkus `<div className="space-y-6">` tanpa pembatas lebar sepihak (`max-w-7xl`/`max-w-5xl`).
+- [ ] Header menggunakan logo kotak emerald + judul font extrabold + subjudul font kecil (`text-xs text-slate-500`).
+- [ ] Tombol aksi jelas: Primary emerald, Secondary putih berborder.
+- [ ] Kartu KPI (jika ada) dapat diklik untuk memfilter data dan memiliki active ring & badge "Aktif".
+- [ ] Kolom search & filter tertata rapi dalam card putih, dilengkapi tombol Reset Filter.
+- [ ] Kolom aksi tabel hanya berupa icon-icon representatif dengan tooltip (`title`) dan `aria-label`.
+- [ ] Pagination footer menampilkan info record dan tombol navigasi seragam.
+- [ ] **Tidak ada tombol refresh manual** di halaman.
