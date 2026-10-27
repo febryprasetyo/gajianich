@@ -57,7 +57,10 @@ SKILL.md
 # Sensitive / local data & prompt references
 *.xlsx
 docs/WhatsApp Image*
-/docs/
+/docs/*
+!/docs/todo/
+!/docs/superpowers/
+!/docs/plan/
 /design-system/*
 /hardware-collector/*
 
@@ -67,3 +70,6 @@ docs/WhatsApp Image*
 # Local LAN Deployment Configuration
 deploy/nginx.lan.conf
 !deploy/nginx.lan.conf.example
+
+# Local attendance device diagnostics (configuration and reports)
+/backend/.attendance-diagnostics/

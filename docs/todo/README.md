@@ -19,6 +19,7 @@ Dokumen ini adalah **indeks utama roadmap**. Setiap item prioritas dipecah ke be
 | **09** | Perbaikan Hasil Audit Presensi Mobile | **Selesai** | [Checklist](#perbaikan-hasil-audit-presensi-mobile) | [Spec](../superpowers/specs/2026-10-23-mobile-attendance-audit-fixes-design.md) \| [Plan](../superpowers/plans/2026-10-23-mobile-attendance-audit-fixes.md) |
 | **10** | Smart Clock Selection (Pilihan Masuk vs Pulang) | **Selesai** | [10-smart-clock-selection.md](./10-smart-clock-selection.md) | [Spec](../superpowers/specs/2026-10-23-smart-clock-selection-design.md) \| [Plan](../superpowers/plans/2026-10-23-smart-clock-selection.md) |
 | **11** | Notifikasi HRD & Pemisahan Halaman Approval (Absensi, Foto & Pengaturan) | **Selesai** | [11-notifikasi-hrd-dan-pemisahan-halaman-approval.md](./11-notifikasi-hrd-dan-pemisahan-halaman-approval.md) | [Spec](../superpowers/specs/2026-10-26-hrd-approval-notifications-and-page-split-design.md) \| [Plan](../superpowers/plans/2026-10-26-hrd-approval-notifications-and-page-split.md) |
+| **12** | Download Presensi Mesin Absensi & Kalkulasi Shift (Solution Pattern) | **Dalam Proses** | [12-download-presensi-mesin-dan-kalkulasi-shift.md](./12-download-presensi-mesin-dan-kalkulasi-shift.md) | [Spec](../superpowers/specs/2026-10-27-attendance-machine-sync-design.md) \| [Plan](../superpowers/plans/2026-10-27-attendance-machine-sync.md) |
 
 ---
 
@@ -83,3 +84,25 @@ Ghidra 12.1.4 + JDK 21, Frida, TShark/capinfos, MDB Tools dan 7-Zip tersedia; uj
   - Tombol di UI beralih ke "Perbarui Pulang" (*Last Out*).
   - Backend mencatat dan mengupdate jam pulang ke scan kepulangan terbaru.
 - Seluruh 8 unit test dan typecheck TypeScript lulus hijau.
+
+SDK vendor Solution tersedia di PC pengguna pada drive D:, belum dapat diakses dari host ini. SDK menjadi acuan pertama pemeriksaan integrasi; dukungan X900 dan isi SDK belum diverifikasi. [Lokasi dan tindak lanjut SDK](../plan/2026-10-27-solution-x900-tooling-checkpoint.md#sdk-vendor-yang-tersedia-di-pc-pengguna).
+
+## Pemeriksaan SDK Solution X900 — 27 Oktober 2026
+
+SDK yang diunggah telah diperiksa statis: DLL Windows COM x86/x64 versi 6.3.1.55, source demo dan manual tersedia; API koneksi dan penarikan log ditemukan. [Laporan beserta batas dukungan](../operations/solution-x900-sdk-assessment.md) dan [checkpoint](../plan/2026-10-27-solution-x900-sdk-assessment-checkpoint.md). Catatan sebelumnya bahwa SDK belum dapat diakses kini bersifat historis. Uji koneksi/firmware X900 dan implementasi integrasi belum dilakukan.
+
+Konfigurasi uji SDK X900 dikonfirmasi: `192.168.10.224:4370`, communication key `0`. Att.exe terkoneksi; koneksi SDK belum diuji. [Konfigurasi mesin](../operations/solution-x900-sdk-assessment.md#konfigurasi-mesin-yang-dikonfirmasi-pengguna).
+
+[Panduan uji SDK X900 pada Windows](../operations/solution-x900-sdk-windows-test.md) siap digunakan: koneksi, identitas, log historis, perbandingan dengan Att.exe dan penanganan awal error. Panduan diverifikasi terhadap source demo dan dokumentasi runtime; pelaksanaan di PC pengguna masih menunggu hasil.
+
+Hasil uji X900 dari screenshot pengguna: koneksi, identitas dan tampilan log SDK berhasil; event realtime teramati. Versi aktif dilaporkan 6.3.1.43. [Bukti dan tindak lanjut](../operations/solution-x900-sdk-runtime-results.md): cocokkan record yang sama dengan Att.exe sebelum implementasi integrasi; kelengkapan penarikan dan ketahanan realtime belum diverifikasi.
+
+Arah integrasi X900: pengguna meminta koneksi/download langsung dari Ubuntu melalui Gajianich. Kecocokan log SDK vs Att.exe sudah dikonfirmasi pengguna. [Penelusuran kelayakan Ubuntu](../operations/solution-x900-ubuntu-feasibility.md): koneksi TCP host pengembangan ke mesin berhasil; protokol ZK Linux dan penarikan log belum diuji.
+
+## Konektor diagnostik mesin dari Ubuntu — 27 Oktober 2026
+
+CLI pengujian beberapa mesin selesai untuk cakupan koneksi/identitas. Uji langsung X900 192.168.10.224:4370 key 0 berhasil dari Ubuntu, tanpa Windows. Tes diagnostik 15/15 lulus; suite backend 357/360 lulus dengan 3 kegagalan GA/mobile yang dirinci di [checkpoint](../plan/2026-10-27-ubuntu-attendance-connection-diagnostic-checkpoint.md). [Panduan menjalankan dan menambah mesin](../../backend/scripts/attendance-devices.README.md). Pengambilan log dan integrasi UI belum diimplementasikan; ID karyawan yang sama dengan PIN mesin dicatat sebagai kebutuhan fase berikutnya. Belum dibuat commit.
+
+Konektor Ubuntu kini terverifikasi pada dua mesin fisik: 192.168.10.224 (serial WAE4242900026) dan 192.168.10.4 / MGM (serial WAE4242300038), keduanya X900 dan status ok. Kedua entri aktif pada konfigurasi lokal. [Hasil uji multi-mesin](../plan/2026-10-27-ubuntu-attendance-connection-diagnostic-checkpoint.md#uji-dua-mesin-fisik--27-oktober-2026). Tidak ada penarikan atau perubahan log.
+
+Uji lima mesin selesai dengan hasil campuran: semua TCP 4370 terjangkau; 192.168.10.4 dan .224 berhasil; 192.168.0.80, 192.168.1.199 dan .242 menolak autentikasi 2032 baik dengan key uji awal maupun kandidat pengguna. Challenge 6001 kini ditangani; 17 tes konektor lulus. Penyebab key/protokol pada tiga mesin masih belum dipastikan. [Rincian dan bukti](../plan/2026-10-27-ubuntu-attendance-connection-diagnostic-checkpoint.md#uji-lima-target-dan-challenge-6001--27-oktober-2026).
