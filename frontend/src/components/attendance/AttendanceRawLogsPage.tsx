@@ -10,6 +10,7 @@ import {
   Calculator,
   Download,
   Filter,
+  ListFilter,
   RotateCcw,
   ChevronLeft,
   ChevronRight,
@@ -109,35 +110,39 @@ export default function AttendanceRawLogsPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+    <div className="space-y-6">
       {/* Header Halaman */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900">
-            Data Presensi
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Daftar seluruh riwayat tap masuk dan pulang yang ditarik langsung dari mesin.
-          </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-emerald-600 rounded-xl text-white shadow-xs">
+            <ListFilter className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+              Data Log Presensi Mesin
+            </h1>
+            <p className="text-xs text-slate-500 mt-1">
+              Daftar seluruh riwayat tap masuk dan pulang yang ditarik langsung dari mesin absensi.
+            </p>
+          </div>
         </div>
 
-        {/* Tombol Aksi Utama */}
         <div className="flex items-center gap-2.5">
           <Link
             href="/dashboard/attendance/devices"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium transition-colors"
+            className="px-3.5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5 text-slate-500" />
-            Download dari Mesin
+            <Download className="w-4 h-4 text-emerald-600" />
+            <span>Tarik Log dari Mesin</span>
           </Link>
           <button
             type="button"
             onClick={handleCalculate}
             disabled={isCalculating || logs.length === 0}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-colors disabled:opacity-50"
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
           >
             <Calculator className="w-4 h-4" />
-            {isCalculating ? 'Mengkalkulasi...' : 'Kalkulasi ke Laporan Presensi'}
+            <span>{isCalculating ? "Mengkalkulasi..." : "Kalkulasi ke Laporan Presensi"}</span>
           </button>
         </div>
       </div>

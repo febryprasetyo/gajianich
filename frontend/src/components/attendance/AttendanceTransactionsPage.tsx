@@ -169,33 +169,38 @@ export default function AttendanceTransactionsPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+    <div className="space-y-6">
       {/* Header Halaman */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900">
-            Laporan Presensi
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Rekap kehadiran harian karyawan yang sudah disesuaikan dengan jadwal shift.
-          </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-emerald-600 rounded-xl text-white shadow-xs">
+            <FileCheck2 className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+              Laporan Presensi Mesin
+            </h1>
+            <p className="text-xs text-slate-500 mt-1">
+              Rekap kehadiran harian karyawan yang sudah disesuaikan dengan jadwal shift kerja.
+            </p>
+          </div>
         </div>
 
         {/* Toolbar kanan */}
         <div className="flex items-center gap-2.5">
           <Link
             href="/dashboard/attendance/raw-logs"
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium transition-colors"
+            className="px-3.5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all cursor-pointer"
           >
-            <span>Buka Data Presensi</span>
+            <span>Buka Data Log Presensi</span>
           </Link>
           <button
             type="button"
             onClick={handleRecalculate}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-xs transition-colors"
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-2 transition-all cursor-pointer"
           >
             <Calculator className="w-4 h-4" />
-            Kalkulasi Ulang
+            <span>Kalkulasi Ulang</span>
           </button>
         </div>
       </div>

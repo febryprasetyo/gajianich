@@ -319,28 +319,42 @@ export default function AttendanceDevicesPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+    <div className="space-y-6">
       {/* Header Halaman */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900">
-            Download Presensi
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Hubungkan mesin absensi kantor untuk menarik catatan kehadiran terbaru.
-          </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-emerald-600 rounded-xl text-white shadow-xs">
+            <Cpu className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+              Download Presensi Mesin
+            </h1>
+            <p className="text-xs text-slate-500 mt-1">
+              Hubungkan mesin absensi kantor untuk menarik catatan kehadiran terbaru secara terpadu.
+            </p>
+          </div>
         </div>
 
-        {/* Status Indikator Idle */}
-        {activeDevice?.status === 'connected' && idleSecondsLeft !== null && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Terhubung ke {activeDevice.name}</span>
-            <span className="font-mono bg-emerald-200/60 px-1.5 py-0.5 rounded text-[11px] text-emerald-900">
-              Otomatis terputus dalam {formatIdleTime(idleSecondsLeft)}
-            </span>
-          </div>
-        )}
+        {/* Status Indikator Idle & Quick Link */}
+        <div className="flex items-center gap-2.5">
+          {activeDevice?.status === 'connected' && idleSecondsLeft !== null && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Terhubung ke {activeDevice.name}</span>
+              <span className="font-mono bg-emerald-200/60 px-1.5 py-0.5 rounded text-[11px] text-emerald-900">
+                Otomatis terputus dalam {formatIdleTime(idleSecondsLeft)}
+              </span>
+            </div>
+          )}
+          <Link
+            href="/dashboard/attendance/raw-logs"
+            className="px-3.5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+          >
+            <ListFilter className="w-4 h-4 text-emerald-600" />
+            <span>Lihat Data Presensi</span>
+          </Link>
+        </div>
       </div>
 
       {/* Toast Peringatan / Informasi */}
