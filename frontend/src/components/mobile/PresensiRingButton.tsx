@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ScanFace, MapPin, RotateCw } from 'lucide-react';
+import { ScanFace, MapPin, RotateCw, CheckCircle2 } from 'lucide-react';
 import { useRealtimeLocation } from '@/hooks/useRealtimeLocation';
 
 export type AttendanceRingState = 'NOT_CHECKED_IN' | 'CHECKED_IN' | 'COMPLETED';
@@ -39,6 +39,7 @@ export default function PresensiRingButton({
 
   const isCheckedIn = status === 'CHECKED_IN';
   const isCompleted = status === 'COMPLETED';
+  const isButtonDisabled = disabled || isCompleted;
 
   let buttonLabel = 'Absen Masuk';
   let subLabel = 'Verifikasi Wajah';
@@ -55,28 +56,34 @@ export default function PresensiRingButton({
       {/* 1. Hero Circular Face Scan Button with Ambient Halo */}
       <div className="relative flex items-center justify-center">
         {/* Subtle Outer Glow Halo */}
-        <div className="absolute w-[184px] h-[184px] rounded-full bg-emerald-500/15 animate-pulse" />
+        <div className={`absolute w-[184px] h-[184px] rounded-full ${isCompleted ? 'bg-slate-300/10' : 'bg-emerald-500/15 animate-pulse'}`} />
 
         {/* Main Circular Button */}
         <button
           type="button"
           onClick={onOpenFlow}
-          disabled={disabled}
-          aria-label={buttonLabel + ' dengan verifikasi wajah'}
-          className={`relative w-[156px] h-[156px] rounded-full bg-[#059669] text-white shadow-xl shadow-emerald-700/20 border-4 border-white flex flex-col items-center justify-center gap-1.5 transition select-none ${
-            disabled
-              ? 'opacity-50 cursor-not-allowed pointer-events-none'
-              : 'hover:bg-[#047857] active:scale-95 cursor-pointer'
+          disabled={isButtonDisabled}
+          aria-label={isCompleted ? 'Presensi hari ini telah lengkap' : buttonLabel + ' dengan verifikasi wajah'}
+          className={`relative w-[156px] h-[156px] rounded-full border-4 border-white flex flex-col items-center justify-center gap-1.5 transition select-none ${
+            isCompleted
+              ? 'bg-slate-700 text-slate-100 shadow-xl shadow-slate-700/20 opacity-90 cursor-default pointer-events-none'
+              : isButtonDisabled
+              ? 'bg-[#059669] text-white shadow-xl shadow-emerald-700/20 opacity-50 cursor-not-allowed pointer-events-none'
+              : 'bg-[#059669] text-white shadow-xl shadow-emerald-700/20 hover:bg-[#047857] active:scale-95 cursor-pointer'
           }`}
         >
-          {/* Face Scan Biometric Icon */}
+          {/* Face Scan Biometric Icon / Completed Check Icon */}
           <div className="w-11 h-11 rounded-full bg-white/15 flex items-center justify-center">
-            <ScanFace className="w-6 h-6 text-white" />
+            {isCompleted ? (
+              <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+            ) : (
+              <ScanFace className="w-6 h-6 text-white" />
+            )}
           </div>
           <span className="text-base font-extrabold tracking-wide">
             {buttonLabel}
           </span>
-          <span className="text-[10px] font-semibold text-emerald-100 opacity-90">
+          <span className={`text-[10px] font-semibold opacity-90 ${isCompleted ? 'text-emerald-300' : 'text-emerald-100'}`}>
             {subLabel}
           </span>
         </button>

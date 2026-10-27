@@ -111,15 +111,13 @@ export default function MobileBerandaPage() {
   }, [router, loadSummary]);
 
   const getRingStatus = (): AttendanceRingState => {
-    const isStrict = summaryData?.attendance.strictClock === true;
-    if (attendanceState.checkedOut) {
-      return isStrict ? "COMPLETED" : "CHECKED_IN";
-    }
+    if (attendanceState.checkedOut) return "COMPLETED";
     if (attendanceState.checkedIn) return "CHECKED_IN";
     return "NOT_CHECKED_IN";
   };
 
   const handleOpenFaceFlow = () => {
+    if (attendanceState.checkedIn && attendanceState.checkedOut) return;
     if (!attendanceState.checkedIn && !attendanceState.checkedOut && summaryData?.attendance.shiftWindow?.canDirectOut) {
       setIsSmartModalOpen(true);
       return;
@@ -366,6 +364,7 @@ export default function MobileBerandaPage() {
       <PresensiRingButton
         status={getRingStatus()}
         onOpenFlow={handleOpenFaceFlow}
+        disabled={attendanceState.checkedIn && attendanceState.checkedOut}
       />
 
       {/* 3 Metric Cards Hari Ini */}
@@ -455,7 +454,7 @@ export default function MobileBerandaPage() {
           setIsFaceSheetOpen(false);
           setSmartSelection(null);
         }}
-        isCheckOut={smartSelection ? smartSelection.eventType === "OUT" : Boolean(attendanceState.checkedIn && !attendanceState.checkedOut)}
+        isCheckOut={smartSelection ? smartSelection.eventType === "OUT" : Boolean(attendanceState.checkedIn || attendanceState.checkedOut)}
         isDirectOut={smartSelection?.isDirectOut ?? false}
         notes={smartSelection?.notes}
         isOnline={true}

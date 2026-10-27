@@ -58,3 +58,14 @@ Centang setiap item hanya setelah perubahan diterapkan, tes relevan lulus dan bu
 Baseline audit: 25 tes backend terkait dan 192 tes frontend lulus; tiga regresi backend tetap berhasil direproduksi pada fixture terisolasi. Baseline hijau bukan bukti TODO di atas sudah selesai.
 
 Catatan penyimpanan: direktori `docs` saat ini diabaikan Git melalui aturan `/docs/`. Dokumen ini tersedia lokal di checkout; pengiriman melalui commit/PR perlu menyertakan berkas dokumentasi secara eksplisit tanpa mengubah aturan ignore global.
+
+## Checkpoint Tooling — 27 Oktober 2026
+
+Instalasi lokal REA 6.7.0 untuk Codex selesai; doctor integrasi dan handshake MCP lulus (207 tools). Restart Codex untuk memuat integrasi. Analisis native memerlukan provider tambahan. [Rincian verifikasi](../plan/2026-10-27-rea-installation-checkpoint.md). Belum dibuat commit.
+
+## Checkpoint Presensi FI - FO Guard & Double Scan — 27 Oktober 2026
+
+- Perbaikan database kasus 50181 (Adam Putra Jaya) tanggal 2026-10-26 selesai: `scan_in` dipulihkan ke `10:14`, `scan_out` `17:05`, dan log duplikat `17:06` ditandai `REJECTED`.
+- Backend service `mobileAttendanceService.ts` mengimplementasikan resolusi FI - FO (First In - Last Out) dan guard `validateClockAllowed` untuk menolak scan masuk baru jika shift sudah lengkap.
+- Frontend mobile (`/m/presensi`, `/m/beranda`, dan `PresensiRingButton`) mengunci tombol menjadi "Selesai" (disabled) ketika kehadiran hari ini sudah lengkap (`isCheckedIn && isCheckedOut`).
+- Unit test `mobileAttendanceService.test.ts` lulus 5/5, typecheck backend dan frontend lulus tanpa error.

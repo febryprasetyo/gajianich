@@ -123,6 +123,7 @@ export default function MobilePresensiPage() {
 
   const handleClockButtonClick = () => {
     if (summaryLoading || summaryError || !summaryData) return;
+    if (isCheckedIn && isCheckedOut) return;
     if (!isCheckedIn && !isCheckedOut && summaryData.attendance.shiftWindow?.canDirectOut) {
       setIsSmartModalOpen(true);
       return;
@@ -232,9 +233,9 @@ export default function MobilePresensiPage() {
 
       {/* 2. Hero Action: Circular Face Scan Button (Shared with Beranda) */}
       <PresensiRingButton
-        status={isCheckedOut ? (summaryData?.attendance.strictClock ? "COMPLETED" : "CHECKED_IN") : isCheckedIn ? "CHECKED_IN" : "NOT_CHECKED_IN"}
+        status={isCheckedIn && isCheckedOut ? "COMPLETED" : isCheckedIn ? "CHECKED_IN" : "NOT_CHECKED_IN"}
         onOpenFlow={handleClockButtonClick}
-        disabled={summaryLoading || Boolean(summaryError) || !summaryData}
+        disabled={summaryLoading || Boolean(summaryError) || !summaryData || (isCheckedIn && isCheckedOut)}
       />
 
       {/* 3. Today Summary Card: Clock In, Clock Out, Work Hours */}
@@ -394,7 +395,7 @@ export default function MobilePresensiPage() {
           setIsFaceSheetOpen(false);
           setSmartSelection(null);
         }}
-        isCheckOut={smartSelection ? smartSelection.eventType === "OUT" : Boolean(isCheckedIn && !isCheckedOut)}
+        isCheckOut={smartSelection ? smartSelection.eventType === "OUT" : Boolean(isCheckedIn || isCheckedOut)}
         isDirectOut={smartSelection?.isDirectOut ?? false}
         notes={smartSelection?.notes}
         isOnline={true}

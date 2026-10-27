@@ -45,6 +45,36 @@ export function getWibDateAndTimeString(date = new Date()) {
 export function parseMinutesFromTimeStr(value?: string | null) { return value?.includes(':') ? minuteValue(value) : null; }
 export function calculateLateMinutes(scan?: string | null, schedule?: string | null) { return scan && schedule ? Math.max(0, minuteValue(scan) - minuteValue(schedule)) : 0; }
 export function formatDurationMinutes(value: number) { if (value < 0 || !Number.isFinite(value)) return '--:--'; return `${String(Math.floor(value / 60)).padStart(2,'0')}h ${String(value % 60).padStart(2,'0')}m`; }
+
+export function resolveFirstInLastOutLogs<T extends { eventType: string; occurredAt: Date; id?: number | string | bigint }>(
+  logs: T[]
+): { inLog: T | null; outLog: T | null } {
+  const inLogs = logs
+    .filter(l => l.eventType === "IN")
+    .sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime() || Number(a.id || 0) - Number(b.id || 0));
+  const inLog = inLogs[0] || null;
+
+  const outLogs = logs
+    .filter(l => l.eventType === "OUT")
+    .sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime() || Number(b.id || 0) - Number(a.id || 0));
+  const outLog = outLogs[0] || null;
+
+  return { inLog, outLog };
+}
+
+export function validateClockAllowed(
+  eventType: string,
+  workDate: string,
+  existingLogs: Array<{ eventType: string; workDate: string }>
+): void {
+  const dateLogs = existingLogs.filter(l => l.workDate === workDate);
+  const hasIn = dateLogs.some(l => l.eventType === "IN");
+  const hasOut = dateLogs.some(l => l.eventType === "OUT");
+  if (eventType === "IN" && hasIn && hasOut) {
+    throw new Error("Presensi hari ini sudah lengkap (sudah absen masuk dan pulang). Hubungi HRD jika memerlukan koreksi.");
+  }
+}
+
 export async function resolveEmployeeUser(userId: number, targetDb = db) {
   const [user] = await targetDb.select().from(users).where(eq(users.id, userId)).limit(1);
   if (!user || user.status !== 'active') throw new Error('Akun pengguna tidak ditemukan atau tidak aktif.');
@@ -78,8 +108,7 @@ export async function projectApprovedLog(tx: any, log: SelfLog) {
   await checkUnlocked(tx, log.workDate);
   const all: SelfLog[] = await tx.select().from(attendanceSelfLogs).where(and(eq(attendanceSelfLogs.employeeId, log.employeeId), eq(attendanceSelfLogs.workDate, log.workDate))).orderBy(desc(attendanceSelfLogs.id));
   const approved = all.filter(l => l.approvalStatus === 'APPROVED');
-  const inLog = log.eventType === 'IN' ? log : approved.find(l => l.eventType === 'IN');
-  const outLog = log.eventType === 'OUT' ? log : approved.find(l => l.eventType === 'OUT');
+  const { inLog, outLog } = resolveFirstInLastOutLogs(approved);
   const [storedRecord] = await tx.select().from(attendanceRecords).where(and(eq(attendanceRecords.employeeId, log.employeeId), eq(attendanceRecords.workDate, log.workDate)));
   if (storedRecord?.scanIn) {
     const isMobileOwned = storedRecord.sourceBatchId === null
@@ -144,6 +173,7 @@ export async function recordMobileClock(userId: number, payload: MobileClockInpu
       if (payload.eventType === 'IN' && existingRecord?.scanIn) {
         throw new Error('Presensi masuk sudah tercatat di sistem.');
       }
+      validateClockAllowed(payload.eventType, workDate, logs);
       const strictClock = await isMobileStrictClockEnabled(tx);
       const todayLogs = logs.filter(l => l.workDate === workDate);
       if (strictClock && todayLogs.some(l => l.eventType === payload.eventType)) throw new Error('Presensi sudah tercatat. Gunakan pengajuan koreksi jika ditolak.');
@@ -197,8 +227,7 @@ export async function getMobileTodaySummary(userId: number, targetDb = db) {
   const open = entry && !logs.some(l => l.workDate === entry.workDate && l.eventType === 'OUT');
   const workDate = open ? entry.workDate : today;
   const current = logs.filter(l => l.workDate === workDate);
-  const inLog = current.find(l => l.eventType === 'IN');
-  const outLog = current.find(l => l.eventType === 'OUT');
+  const { inLog, outLog } = resolveFirstInLastOutLogs(current);
   const { shift } = await shiftForEmployee(employee, targetDb);
   const daily = getWorkingScheduleForDate(workDate, shift);
   const face = await getFaceProfile(userId, targetDb);
