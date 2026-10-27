@@ -89,15 +89,21 @@ export default function MobileApprovalsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="space-y-1">
-        <div className="flex items-center gap-2 text-slate-900">
-          <CalendarCheck className="w-5 h-5 text-emerald-600" />
-          <h1 className="text-lg font-bold">Review Absensi</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-emerald-600 rounded-xl text-white shadow-xs">
+              <CalendarCheck className="w-5 h-5" />
+            </div>
+            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+              Review Absensi
+            </h1>
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
+            Verifikasi antrean log absensi mandiri karyawan yang memerlukan peninjauan manual HRD.
+          </p>
         </div>
-        <p className="text-xs text-slate-500">
-          Verifikasi antrean log absensi mandiri karyawan yang memerlukan peninjauan manual HRD.
-        </p>
-      </header>
+      </div>
 
       {error && (
         <div role="alert" className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-800">

@@ -152,14 +152,18 @@ export default function LeaveRequestsListPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
+    <div className="space-y-6">
       {/* 1. Header (Template Standard) */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
-            <CalendarDays className="w-6 h-6 text-emerald-600" />
-            <span>Permohonan Cuti</span>
-          </h1>
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-emerald-600 rounded-xl text-white shadow-xs">
+              <CalendarDays className="w-5 h-5" />
+            </div>
+            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+              Permohonan Cuti
+            </h1>
+          </div>
           <p className="text-xs text-slate-500 mt-1">
             Kelola dan proses pengajuan cuti tahunan dan cuti khusus karyawan.
           </p>
@@ -184,7 +188,7 @@ export default function LeaveRequestsListPage() {
 
           <Link
             href="/dashboard/leaves/new"
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" /> Ajukan Cuti Baru
           </Link>

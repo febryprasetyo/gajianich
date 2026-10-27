@@ -86,14 +86,18 @@ export default function LeaveBalancesPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
-            <Users className="w-6 h-6 text-emerald-600" />
-            <span>Rekap Saldo Cuti</span>
-          </h1>
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-emerald-600 rounded-xl text-white shadow-xs">
+              <Users className="w-5 h-5" />
+            </div>
+            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+              Rekap Saldo Cuti
+            </h1>
+          </div>
           <p className="text-xs text-slate-500 mt-1">
             Rekapitulasi kuota dan penggunaan cuti karyawan untuk proses operasional.
           </p>

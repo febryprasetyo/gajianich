@@ -162,12 +162,17 @@ export default function AssetCustodiansPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Top Header */}
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="flex items-center gap-2 text-2xl font-extrabold text-slate-900">
-              <UserRoundCog className="h-6 w-6 text-emerald-600" /> Asset Custodians
-            </h1>
-            <p className="mt-1 text-xs text-slate-500">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-emerald-600 rounded-xl text-white shadow-xs">
+                <UserRoundCog className="w-5 h-5" />
+              </div>
+              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                Asset Custodians
+              </h1>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
               Manage equipment holders, track assigned assets, and review HR directory linkages.
             </p>
           </div>

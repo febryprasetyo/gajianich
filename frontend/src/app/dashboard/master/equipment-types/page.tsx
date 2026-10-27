@@ -87,22 +87,27 @@ export default function EquipmentTypesPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="flex items-center gap-2.5 text-2xl font-extrabold tracking-tight text-slate-900">
-              <Shapes className="h-6 w-6 text-emerald-600" />
-              <span>IT Equipment Types</span>
-            </h1>
-            <p className="mt-1 font-mono text-xs text-slate-500">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-emerald-600 rounded-xl text-white shadow-xs">
+                <Shapes className="w-5 h-5" />
+              </div>
+              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                IT Equipment Types
+              </h1>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
               Standard categories that dictate inventory numbering prefixes, audit specs, and default accessories.
             </p>
           </div>
           {canManage && (
             <button
+              type="button"
               onClick={openCreateModal}
-              className="flex w-fit items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 font-mono text-xs font-bold text-white shadow-sm transition-all hover:bg-emerald-700 cursor-pointer"
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer w-fit"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="w-4 h-4" />
               <span>New Equipment Type</span>
             </button>
           )}

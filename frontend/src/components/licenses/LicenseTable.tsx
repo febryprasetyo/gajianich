@@ -276,14 +276,14 @@ export default function LicenseTable({
 
                     {/* Action Buttons */}
                     <td className="py-4 px-5 whitespace-nowrap text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+                      <div className="flex items-center justify-end gap-1">
                         {/* View Detail */}
                         <Link
                           href={`/dashboard/licenses/${lic.id}`}
                           className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                           title="View License Detail"
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye className="w-3.5 h-3.5" />
                         </Link>
 
                         {/* Allocate Seat */}
@@ -297,25 +297,25 @@ export default function LicenseTable({
                           }`}
                           title={isFull ? 'No seats available' : 'Quick Allocate Seat'}
                         >
-                          <UserPlus className="w-4 h-4" />
+                          <UserPlus className="w-3.5 h-3.5" />
                         </button>
 
                         {/* Edit */}
                         <button
                           onClick={() => onEdit(lic)}
-                          className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                          className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
                           title="Edit License"
                         >
-                          <Pencil className="w-4 h-4" />
+                          <Pencil className="w-3.5 h-3.5" />
                         </button>
 
                         {/* Delete */}
                         <button
                           onClick={() => onDelete(lic)}
-                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                          className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                           title="Delete License"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>

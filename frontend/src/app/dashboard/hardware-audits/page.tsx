@@ -154,28 +154,33 @@ export default function HardwareAuditsPage() {
       <div className="space-y-6">
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
-              <Cpu className="w-6 h-6 text-emerald-600" />
-              <span>Hardware Audits & Collector Sync</span>
-              {pendingCount > 0 && (
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-mono font-bold">
-                  {pendingCount} Pending
-                </span>
-              )}
-            </h1>
-            <p className="text-xs text-slate-500 font-mono mt-1">
-              Antrean hasil scan laptop/PC dari portable tool flashdisk. Tautkan spesifikasi ke aset terdaftar, atau buat aset baru.
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-600 rounded-xl text-white shadow-xs">
+              <Cpu className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                  Hardware Audits & Collector Sync
+                </h1>
+                {pendingCount > 0 && (
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-mono font-bold">
+                    {pendingCount} Pending
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Antrean hasil scan laptop/PC dari portable tool flashdisk. Tautkan spesifikasi ke aset terdaftar, atau buat aset baru.
+              </p>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-
             <Link
               href="/dashboard/assets"
-              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-mono font-bold flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+              className="px-3.5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all cursor-pointer"
             >
-              <HardDrive className="w-4 h-4 text-slate-300" />
+              <HardDrive className="w-4 h-4 text-emerald-600" />
               <span>Kembali ke IT Inventory</span>
             </Link>
           </div>

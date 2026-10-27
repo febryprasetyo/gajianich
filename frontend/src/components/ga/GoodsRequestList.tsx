@@ -108,21 +108,25 @@ export default function GoodsRequestList() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header - Standard AMS Directory Pattern */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
-              <ClipboardList className="w-6 h-6 text-emerald-600" />
-              <span>Permintaan Barang GA</span>
-            </h1>
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-emerald-600 rounded-xl text-white shadow-xs">
+                <ClipboardList className="w-5 h-5" />
+              </div>
+              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                Permintaan Barang GA
+              </h1>
+            </div>
             <p className="text-xs text-slate-500 mt-1">
               Direktori pengajuan pengadaan barang dengan alur pengesahan fisik (tanda tangan basah).
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2">
             {hasPermission('ga.requests.create') && (
               <Link
                 href={`${GA_BASE_PATH}/new`}
-                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition-all"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-all"
               >
                 <Plus className="w-4 h-4" /> Buat Pengajuan
               </Link>

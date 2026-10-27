@@ -79,19 +79,24 @@ export default function DepartmentsPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
-              <Building2 className="w-6 h-6 text-emerald-600" />
-              <span>Departments & Divisions</span>
-            </h1>
-            <p className="text-xs text-slate-500 font-mono mt-1">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-emerald-600 rounded-xl text-white shadow-xs">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                Departments & Divisions
+              </h1>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
               Corporate organizational units, cost centers, and branch functional divisions.
             </p>
           </div>
           <button
+            type="button"
             onClick={openCreateModal}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-mono font-bold flex items-center gap-2 shadow-sm transition-all cursor-pointer w-fit"
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer w-fit"
           >
             <Plus className="w-4 h-4" />
             <span>New Department</span>

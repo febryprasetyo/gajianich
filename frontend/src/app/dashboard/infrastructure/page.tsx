@@ -123,7 +123,7 @@ export default function InfrastructurePage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 pb-16">
+      <div className="space-y-6">
         {/* Toast notification */}
         {toast && (
           <div
@@ -136,25 +136,25 @@ export default function InfrastructurePage() {
         )}
 
         {/* Header */}
-        <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="absolute inset-y-0 left-0 w-2 bg-emerald-600" />
-          <div className="flex flex-col gap-5 pl-2 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-600 rounded-xl text-white shadow-xs">
+              <Server className="w-6 h-6" />
+            </div>
             <div>
-              <h1 className="flex items-center gap-3 text-2xl font-extrabold tracking-tight text-slate-900 md:text-3xl">
-                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-600 text-white">
-                  <Server className="h-5 w-5" />
-                </span>
-                Accurate Database
+              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                Accurate Database & Server Monitoring
               </h1>
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="text-xs text-slate-500 mt-1">
                 Telemetry server, Firebird database, dan lisensi Accurate dari agent yang terdaftar otomatis.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                <Clock className="mr-1.5 inline h-4 w-4" />
-                Sync lisensi terakhir: <strong>{formatDate(lastSyncedAt)}</strong>
-              </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 shadow-xs">
+              <Clock className="mr-1.5 inline h-4 w-4 text-emerald-600" />
+              Sync lisensi terakhir: <strong>{formatDate(lastSyncedAt)}</strong>
+            </div>
               <button
                 type="button"
                 onClick={() => handleSync('all')}
@@ -165,8 +165,7 @@ export default function InfrastructurePage() {
                 Sync Semua Lisensi
               </button>
             </div>
-          </div>
-        </header>
+        </div>
 
         {/* Error banner */}
         {error && (

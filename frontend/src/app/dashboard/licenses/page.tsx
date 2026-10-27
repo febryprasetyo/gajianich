@@ -135,26 +135,28 @@ export default function LicensesPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8 pb-12">
+      <div className="space-y-6">
         {/* Page Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-700 text-white flex items-center justify-center shadow-lg shadow-emerald-600/20">
-                <Key className="w-5.5 h-5.5" />
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-emerald-600 rounded-xl text-white shadow-xs">
+                <Key className="w-5 h-5" />
               </div>
-              <span>Software License Catalog</span>
-            </h1>
-            <p className="text-sm text-slate-500 font-sans mt-1">
+              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                Software License Catalog
+              </h1>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
               Manage software keys, CD/Dongle hardware keys, OEM OS bundles, subscriptions, and seat allocations.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-
+          <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={openCreateModal}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold font-sans rounded-xl shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all cursor-pointer"
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Add Software License</span>

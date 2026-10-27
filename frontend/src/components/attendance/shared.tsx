@@ -2,20 +2,34 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, Clock, type LucideIcon } from 'lucide-react';
 import ModalShell from '@/components/ui/ModalShell';
 import { durationLabel, statusLabels } from '@/lib/attendance/domain';
 import type { AttendanceStatus, Employee } from '@/lib/attendance/types';
 
-export function Heading({ title, description, children }: { title: string; description: string; children?: React.ReactNode }) {
+export function Heading({ 
+  title, 
+  description, 
+  icon: Icon = Clock,
+  children 
+}: { 
+  title: string; 
+  description: string; 
+  icon?: LucideIcon;
+  children?: React.ReactNode 
+}) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-4 pb-3 border-b border-slate-200/70">
-      <div>
-        <p className="mb-1 text-xs font-semibold text-red-700 tracking-wider font-mono uppercase">HR / Absensi</p>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
-        <p className="mt-1.5 max-w-2xl text-xs leading-relaxed text-slate-500">{description}</p>
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex items-center gap-3">
+        <div className="p-2 bg-emerald-600 rounded-xl text-white shadow-xs">
+          <Icon className="w-6 h-6" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">{title}</h1>
+          <p className="text-xs text-slate-500 mt-1">{description}</p>
+        </div>
       </div>
-      <div className="flex flex-wrap items-center gap-2.5">{children}</div>
+      {children && <div className="flex flex-wrap items-center gap-2.5">{children}</div>}
     </div>
   );
 }
