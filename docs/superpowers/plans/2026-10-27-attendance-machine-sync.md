@@ -6,23 +6,25 @@
 
 ---
 
-## 1. Phase 1: Frontend UI Refactor — Solution Pattern (Sedang Berjalan)
+## 1. Phase 1: Frontend UI Architecture — Pemisahan Tiga Halaman Mandiri
 
-- [x] Tambahkan submenu navigasi "Download Presensi" di `DashboardLayout.tsx`.
-- [x] Ubah antarmuka kartu mesin menjadi **Tabel Ringkas (*Compact Data Table*)** dengan Radio Button (1 mesin per baris, single selection).
-- [x] Implementasikan **Toolbar Operasi Aksi Cepat**:
-  - `[▶ Koneksikan]` (Play)
-  - `[⏹ Putuskan]` (Stop)
-  - `[📥 Download Data Presensi]` (Membuka modal download)
-  - `[+ Tambah Mesin]` & `[🗑 Hapus Mesin]` (terproteksi hak akses Superadmin / IT Admin)
-- [x] Buat **Modal "Download Data Presensi"** interaktif:
-  - Input Tanggal Mulai & Tanggal Selesai (tombol shortcut Hari Ini, 7 Hari Terakhir, Bulan Ini).
-  - Progress bar dinamis yang menampilkan persentase dan jumlah baris data log yang ditarik: `Mengunduh log transaksi: 95 / 142 baris data...`.
-- [x] Implementasikan **Dual-View Tabs** hasil di bawah tabel mesin:
-  - **Tab 1: `Laporan Presensi`** (Data Final hasil kalkulasi: Jam Masuk Tap 1, Jam Pulang Tap Akhir, Shift, Terlambat, Hadir).
-  - **Tab 2: `Data Presensi`** (Log Mentah fisik mesin yang dicache di browser `localStorage`, memuat setiap detik tap, jam siang, dll).
-  - **Tab 3: `⚠️ Tidak Ada Shift`** (Mendeteksi karyawan yang punya log di mesin tapi belum ada shift, mencegah data hilang saat laporan).
-- [x] Implementasikan logika pembersih data **First-In, Last-Out** (FIFO Guard) dan simulasi kalkulasi shift.
+- [x] Daftarkan 3 submenu mandiri di `DashboardLayout.tsx`:
+  - **Download Presensi** (`/dashboard/attendance/devices`)
+  - **Data Presensi** (`/dashboard/attendance/raw-logs`)
+  - **Laporan Presensi** (`/dashboard/attendance/transactions`)
+- [x] **Halaman 1: Download Presensi Mesin** (`/dashboard/attendance/devices`):
+  - Tabel ringkas mesin absensi (*Compact Data Table*) dengan Radio Button (single select).
+  - Toolbar aksi operasi: `[▶ Koneksikan]`, `[⏹ Putuskan]`, `[📥 Download Data Presensi]`, `[+ Tambah Mesin]` (Modal), `[🗑 Hapus Mesin]`.
+  - Modal "Download Data Presensi" dengan date picker & dynamic progress bar.
+  - Kartu ringkasan ringkas dan tautan langsung ke Data Presensi & Laporan Presensi (bebas dari penumpukan tabel besar di bawahnya).
+- [x] **Halaman 2: Data Presensi (Log Mentah Mesin)** (`/dashboard/attendance/raw-logs`):
+  - Tabel log mentah fisik mesin (waktu presensi riil per detik, NIK/PIN, nama, departemen, mesin, tipe verifikasi, tag Masuk/Pulang/Antara).
+  - Filter tanggal, filter mesin, dan pencarian NIK/Nama.
+  - Tombol aksi utama `[🧮 Kalkulasi ke Laporan Presensi]` dengan transisi mulus ke halaman Laporan Presensi.
+- [x] **Halaman 3: Laporan Presensi (Data Final Terkalkulasi)** (`/dashboard/attendance/transactions`):
+  - Tabel hasil kalkulasi shift menggunakan aturan *First-In, Last-Out* (jam masuk tap 1, jam pulang tap akhir, jam kerja, keterlambatan).
+  - Tab / Filter khusus **"⚠️ Karyawan Tanpa Shift"** dengan tombol langsung **"Tetapkan Shift Default"** dan **"Kalkulasi Ulang"** agar tidak ada data absensi yang terlewat.
+- [x] Verifikasi build Next.js dan penyimpanan browser `localStorage` (`ams_attendance_raw_logs` & `ams_attendance_processed_records`).
 
 ---
 

@@ -47,7 +47,31 @@ Di lapangan saat menggunakan software Solution desktop dan sistem absensi lama, 
 
 ---
 
-## 4. Spesifikasi Komponen UI (GAJIANICH / Emerald Enterprise)
+## 4. Pemisahan Halaman & Arsitektur Navigasi (Tiga Halaman Mandiri)
+
+Untuk memastikan tampilan tidak sesak (*crowded*), alur operasional dipecah menjadi 3 halaman mandiri yang saling terhubung:
+
+1. **Halaman 1: Download Presensi Mesin** (`/dashboard/attendance/devices`):
+   - **Tujuan**: Khusus manajemen perangkat mesin absensi fisik (Solution X900, MGM, dll) dan pemantik proses penarikan data (*trigger sync*).
+   - **Tabel Ringkas Mesin**: Radio button (1 mesin per baris), status koneksi (indikator countdown idle timeout 15 menit), IP:Port, Serial Number, status terakhir sync.
+   - **Toolbar Aksi**: `[▶ Koneksikan]`, `[⏹ Putuskan]`, `[📥 Download Data Presensi]`, `[+ Tambah Mesin]` (Modal), `[🗑 Hapus Mesin]`.
+   - **Modal Download Data Presensi**: Input rentang tanggal (shortcut Hari Ini, 7 Hari, Bulan Ini), progress bar live jumlah log yang terbaca (`95 / 142 baris`).
+   - **Aksi Cepat Pasca Download**: Tautan langsung menuju *"Buka Data Presensi (Log Mentah) ➔"* atau *"Kalkulasi ke Laporan Presensi ➔"*.
+
+2. **Halaman 2: Data Presensi (Log Mentah Mesin)** (`/dashboard/attendance/raw-logs`):
+   - **Tujuan**: Audit otentik seluruh rekaman tap fisik mesin yang ditarik (tersimpan di browser cache `localStorage` & database audit).
+   - **Fitur & Filter**: Filter periode tanggal, filter lokasi mesin, filter tipe scan (Semua, Masuk, Pulang, Scan Antara), pencarian NIK/Nama karyawan.
+   - **Tabel Log Mentah**: Waktu Fisik Riil (sampai detik), No. PIN/NIK, Nama Karyawan, Departemen, Mesin/Lokasi, Tipe Verifikasi (Wajah/Sidik Jari/PIN), Status Tap.
+   - **Toolbar Utama**: Tombol terkemuka `[🧮 Kalkulasi ke Laporan Presensi]` untuk memproses log mentah menjadi laporan terhitung.
+
+3. **Halaman 3: Laporan Presensi (Data Final Terkalkulasi)** (`/dashboard/attendance/transactions`):
+   - **Tujuan**: Menampilkan data kehadiran siap saji setelah dikalkulasi dengan aturan *First-In, Last-Out* dan jadwal shift kerja karyawan.
+   - **Tabel Laporan Final**: NIK, Nama, Tanggal, Jadwal Shift, Jam Masuk Terjadwal, Jam Pulang Terjadwal, Scan Masuk (Tap Pertama), Scan Pulang (Tap Terakhir), Menit Terlambat, Pulang Cepat, Status Kehadiran.
+   - **Tab / Filter Khusus "⚠️ Karyawan Tanpa Shift"**: Menampilkan rekaman tap karyawan yang belum memiliki pengaturan shift aktif, dilengkapi tombol aksi langsung **"Tetapkan Shift Default"** dan **"Kalkulasi Ulang"** agar tidak ada absensi yang hilang/terlewat.
+
+---
+
+## 5. Spesifikasi Komponen UI (GAJIANICH / Emerald Enterprise)
 
 1. **Top Toolbar**:
    - `[▶ Koneksikan]` (Emerald) — Aktif saat mesin dipilih & belum terhubung.

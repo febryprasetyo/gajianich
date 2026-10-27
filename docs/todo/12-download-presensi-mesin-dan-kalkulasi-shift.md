@@ -30,17 +30,21 @@ Dokumen ini merinci rencana teknis integrasi mesin absensi fisik (Solution/ZKTec
 
 ## 3. Rencana Tahapan Eksekusi (Phased Tasks)
 
-### Fase 1: Frontend UI Refactor — Solution Pattern (Sedang Berjalan)
-- [x] Submenu navigasi "Download Presensi" di `DashboardLayout.tsx`.
-- [x] Rute halaman `/dashboard/attendance/devices`.
-- [x] Tabel ringkas mesin absensi (*Compact Data Table*) dengan Radio Button (single select).
-- [x] Toolbar aksi operasi: `[▶ Koneksikan]`, `[⏹ Putuskan]`, `[📥 Download Data Presensi]`, `[+ Tambah Mesin]`, `[🗑 Hapus Mesin]` (Role-gated Superadmin/IT Admin).
-- [x] Modal interaktif "Download Data Presensi" dengan pilihan rentang tanggal & animated progress bar (`Mengunduh log transaksi: X / Y baris data`).
-- [x] Dual-view tabs:
-  - Tab 1: **Laporan Presensi** (Data Final Terkalkulasi).
-  - Tab 2: **Data Presensi** (Log Mentah tersimpan di `localStorage` & audit).
-  - Tab 3: **⚠️ Tidak Ada Shift** (Deteksi anomali absensi tanpa jadwal kerja).
-- [x] Pembersih tap ganda *First-In, Last-Out* (FIFO Guard) & simulasi kalkulasi shift.
+### Fase 1: Frontend UI Architecture — Pemisahan Tiga Halaman Mandiri
+- [x] Daftarkan 3 submenu mandiri di `DashboardLayout.tsx`:
+  - **Download Presensi** (`/dashboard/attendance/devices`)
+  - **Data Presensi** (`/dashboard/attendance/raw-logs`)
+  - **Laporan Presensi** (`/dashboard/attendance/transactions`)
+- [x] **Halaman 1: Download Presensi Mesin** (`/dashboard/attendance/devices`):
+  - Khusus mesin absensi: tabel ringkas (radio button), status koneksi (idle 15m), modal Tambah Mesin, modal Download Data Presensi.
+  - Tampilan bersih, lega, bebas dari penumpukan tabel log/laporan di bawahnya.
+- [x] **Halaman 2: Data Presensi (Log Mentah Mesin)** (`/dashboard/attendance/raw-logs`):
+  - Khusus log mentah fisik mesin per detik (waktu riil, NIK/PIN, nama, lokasi mesin, metode verifikasi, tag Masuk/Pulang/Antara).
+  - Filter tanggal, filter mesin, search karyawan, dan tombol `[🧮 Kalkulasi ke Laporan Presensi]`.
+- [x] **Halaman 3: Laporan Presensi (Data Final Terkalkulasi)** (`/dashboard/attendance/transactions`):
+  - Khusus data presensi final hasil kalkulasi shift (*First-In, Last-Out*, jam kerja, keterlambatan).
+  - Tab khusus **"⚠️ Karyawan Tanpa Shift"** dengan tombol langsung **"Tetapkan Shift Default"** dan **"Kalkulasi Ulang"**.
+- [x] Integrasi sinkronisasi data antar halaman via browser cache (`ams_attendance_raw_logs` & `ams_attendance_processed_records`).
 
 ### Fase 2: Database Schema & Migration
 - [ ] Skema Drizzle `attendance_devices` (IP, port, commKey, deviceNumber, status, lastSyncAt).
