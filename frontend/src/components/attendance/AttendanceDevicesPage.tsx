@@ -5,19 +5,16 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Cpu,
-  Wifi,
   Power,
   PowerOff,
   Download,
   Plus,
   Trash2,
-  Clock,
+  Edit3,
   CheckCircle2,
-  AlertCircle,
   FileText,
   ListFilter,
   ArrowRight,
-  ShieldAlert,
 } from 'lucide-react';
 import ModalShell from '@/components/ui/ModalShell';
 import {
@@ -62,6 +59,15 @@ export default function AttendanceDevicesPage() {
   const [newDeviceCommKey, setNewDeviceCommKey] = useState(0);
   const [newDeviceNumber, setNewDeviceNumber] = useState(1);
   const [newDeviceLocation, setNewDeviceLocation] = useState('');
+
+  // Modal Edit Mesin state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editDeviceName, setEditDeviceName] = useState('');
+  const [editDeviceIp, setEditDeviceIp] = useState('');
+  const [editDevicePort, setEditDevicePort] = useState(4370);
+  const [editDeviceCommKey, setEditDeviceCommKey] = useState(0);
+  const [editDeviceNumber, setEditDeviceNumber] = useState(1);
+  const [editDeviceLocation, setEditDeviceLocation] = useState('');
 
   // Persist devices
   useEffect(() => {
@@ -126,13 +132,11 @@ export default function AttendanceDevicesPage() {
         setIsDownloading(false);
         setDownloadCompleted(true);
 
-        // Update last sync
         const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
         setDevices((prev) =>
           prev.map((d) => (d.id === activeDevice.id ? { ...d, lastSyncAt: nowStr } : d))
         );
 
-        // Save raw logs & processed records to localStorage
         localStorage.setItem('ams_attendance_raw_logs', JSON.stringify(INITIAL_RAW_LOGS));
         const { processed, unassigned } = calculateRecordsFromRawLogs(INITIAL_RAW_LOGS);
         localStorage.setItem('ams_attendance_processed_records', JSON.stringify(processed));
@@ -167,6 +171,38 @@ export default function AttendanceDevicesPage() {
     setNewDeviceIp('');
   };
 
+  const handleOpenEditModal = () => {
+    if (!activeDevice) return;
+    setEditDeviceName(activeDevice.name);
+    setEditDeviceIp(activeDevice.ip);
+    setEditDevicePort(activeDevice.port);
+    setEditDeviceCommKey(activeDevice.commKey);
+    setEditDeviceNumber(activeDevice.deviceNumber);
+    setEditDeviceLocation(activeDevice.location);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEditDevice = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeDevice) return;
+    setDevices((prev) =>
+      prev.map((d) =>
+        d.id === activeDevice.id
+          ? {
+              ...d,
+              name: editDeviceName,
+              ip: editDeviceIp,
+              port: editDevicePort,
+              commKey: editDeviceCommKey,
+              deviceNumber: editDeviceNumber,
+              location: editDeviceLocation,
+            }
+          : d
+      )
+    );
+    setIsEditModalOpen(false);
+  };
+
   const handleDeleteDevice = () => {
     if (!activeDevice) return;
     if (confirm(`Yakin ingin menghapus mesin ${activeDevice.name} (${activeDevice.ip})?`)) {
@@ -188,16 +224,11 @@ export default function AttendanceDevicesPage() {
       {/* Header Halaman */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">
-              Download Presensi (Mesin Absensi)
-            </h1>
-            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
-              Pattern Solution Desktop
-            </span>
-          </div>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900">
+            Download Presensi
+          </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Koneksikan mesin absensi fisik (Solution/ZKTeco), kelola status socket, dan unduh data transaksi presensi.
+            Hubungkan mesin absensi kantor untuk menarik catatan kehadiran terbaru.
           </p>
         </div>
 
@@ -207,15 +238,15 @@ export default function AttendanceDevicesPage() {
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>Terhubung ke {activeDevice.name}</span>
             <span className="font-mono bg-emerald-200/60 px-1.5 py-0.5 rounded text-[11px] text-emerald-900">
-              Auto-disconnect in {formatIdleTime(idleSecondsLeft)}
+              Otomatis terputus dalam {formatIdleTime(idleSecondsLeft)}
             </span>
           </div>
         )}
       </div>
 
-      {/* Toolbar Aksi Operasi Cepat (Pattern Solution Desktop) */}
-      <div className="bg-slate-900 text-white p-3 rounded-2xl shadow-sm flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
+      {/* Toolbar Aksi Operasi (Harmonious Theme) */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs p-3.5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           {activeDevice?.status === 'connected' ? (
             <button
               type="button"
@@ -230,14 +261,14 @@ export default function AttendanceDevicesPage() {
               type="button"
               onClick={handleConnect}
               disabled={isConnecting}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white shadow-xs transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-semibold text-white shadow-xs transition-colors disabled:opacity-50"
             >
               <Power className="w-4 h-4" />
               {isConnecting ? 'Menghubungkan...' : 'Koneksikan'}
             </button>
           )}
 
-          <div className="h-6 w-px bg-slate-700 mx-1 hidden sm:block" />
+          <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block" />
 
           <button
             type="button"
@@ -246,28 +277,36 @@ export default function AttendanceDevicesPage() {
               setDownloadProgress(0);
               setIsDownloadModalOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors"
           >
-            <Download className="w-4 h-4 text-slate-950" />
+            <Download className="w-4 h-4 text-white" />
             Download Data Presensi
           </button>
         </div>
 
-        {/* Tombol Admin: Tambah & Hapus */}
+        {/* Tombol Manajemen Mesin */}
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 transition-colors"
+            onClick={handleOpenEditModal}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-xs font-medium text-slate-700 transition-colors"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Edit3 className="w-3.5 h-3.5 text-slate-500" />
+            Edit Mesin
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsAddModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-xs font-medium text-slate-700 transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5 text-slate-500" />
             Tambah Mesin
           </button>
           <button
             type="button"
             onClick={handleDeleteDevice}
             disabled={devices.length <= 1}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-rose-900/60 text-xs font-medium text-rose-300 transition-colors disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-xs font-medium text-rose-700 transition-colors disabled:opacity-40"
           >
             <Trash2 className="w-3.5 h-3.5" />
             Hapus Mesin
@@ -281,7 +320,7 @@ export default function AttendanceDevicesPage() {
           <div className="flex items-center gap-2">
             <Cpu className="w-4 h-4 text-emerald-700" />
             <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-              Daftar Perangkat Mesin Absensi (Single Selection)
+              Daftar Mesin Absensi
             </h2>
           </div>
           <span className="text-xs text-slate-500">
@@ -368,24 +407,24 @@ export default function AttendanceDevicesPage() {
         </div>
       </div>
 
-      {/* 3 Navigasi Card Terpisah Agar Halaman Bersih & Tidak Sesak */}
+      {/* Navigasi Card Menuju Halaman Lain */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Card 1: Menuju Halaman Data Presensi (Log Mentah) */}
+        {/* Card 1: Data Presensi */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:border-emerald-300 transition-all flex flex-col justify-between">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="p-2.5 rounded-xl bg-slate-100 text-slate-800">
                 <ListFilter className="w-5 h-5 text-emerald-700" />
               </span>
-              <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                Data Mentah Mesin
+              <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                Riwayat Tap
               </span>
             </div>
             <h3 className="text-sm font-bold text-slate-900">
-              Data Presensi (Log Mentah Mesin)
+              Data Presensi
             </h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Lihat seluruh bukti otentik rekaman tap fisik karyawan per detik dari mesin absensi, termasuk tap masuk berulang dan scan siang hari.
+              Daftar seluruh riwayat tap masuk dan pulang yang ditarik langsung dari mesin.
             </p>
           </div>
           <div className="pt-4 mt-2 border-t border-slate-100">
@@ -399,22 +438,22 @@ export default function AttendanceDevicesPage() {
           </div>
         </div>
 
-        {/* Card 2: Menuju Halaman Laporan Presensi (Data Final Terkalkulasi) */}
+        {/* Card 2: Laporan Presensi */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:border-emerald-300 transition-all flex flex-col justify-between">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="p-2.5 rounded-xl bg-slate-100 text-slate-800">
                 <FileText className="w-5 h-5 text-emerald-700" />
               </span>
-              <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                Hasil Terkalkulasi
+              <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                Rekap Shift
               </span>
             </div>
             <h3 className="text-sm font-bold text-slate-900">
-              Laporan Presensi (Data Final)
+              Laporan Presensi
             </h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Tinjau hasil kalkulasi shift (First-In, Last-Out), jam kerja efektif, keterlambatan, serta periksa tab karyawan tanpa shift.
+              Rekap kehadiran harian karyawan yang sudah disesuaikan dengan jadwal shift.
             </p>
           </div>
           <div className="pt-4 mt-2 border-t border-slate-100">
@@ -433,7 +472,7 @@ export default function AttendanceDevicesPage() {
       <ModalShell
         isOpen={isDownloadModalOpen}
         onClose={() => !isDownloading && setIsDownloadModalOpen(false)}
-        title="Download Data Presensi dari Mesin"
+        title="Download Data Presensi"
         maxWidthClass="max-w-lg"
       >
         <div className="space-y-4">
@@ -443,7 +482,7 @@ export default function AttendanceDevicesPage() {
               <span className="font-bold">Mesin Terpilih: </span>
               {activeDevice?.name} ({activeDevice?.ip}:{activeDevice?.port})
               <div className="text-[11px] text-emerald-800 mt-0.5">
-                Pastikan mesin dalam keadaan terhubung sebelum memulai penarikan transaksi.
+                Pastikan mesin sudah terhubung sebelum memulai penarikan data.
               </div>
             </div>
           </div>
@@ -459,8 +498,9 @@ export default function AttendanceDevicesPage() {
                   type="date"
                   value={startDate}
                   disabled={isDownloading}
+                  onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs focus:ring-emerald-500 focus:border-emerald-500"
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs cursor-pointer focus:ring-emerald-500 focus:border-emerald-500"
                 />
               </div>
               <div>
@@ -469,8 +509,9 @@ export default function AttendanceDevicesPage() {
                   type="date"
                   value={endDate}
                   disabled={isDownloading}
+                  onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs focus:ring-emerald-500 focus:border-emerald-500"
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs cursor-pointer focus:ring-emerald-500 focus:border-emerald-500"
                 />
               </div>
             </div>
@@ -529,7 +570,7 @@ export default function AttendanceDevicesPage() {
                 onChange={(e) => setOverwriteExisting(e.target.checked)}
                 className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
               />
-              <span>Timpa jam scan jika data absensi tanggal tersebut sudah ada</span>
+              <span>Perbarui data kehadiran jika sudah ada rekaman pada tanggal tersebut</span>
             </label>
           </div>
 
@@ -539,8 +580,8 @@ export default function AttendanceDevicesPage() {
               <div className="flex justify-between text-xs text-slate-700 font-medium">
                 <span>
                   {downloadCompleted
-                    ? '✓ Penarikan Data Selesai'
-                    : `Mengunduh log transaksi: ${downloadCount} / ${downloadTotal} baris data...`}
+                    ? '✓ Penarikan data selesai'
+                    : `Mengunduh catatan presensi: ${downloadCount} / ${downloadTotal} data...`}
                 </span>
                 <span className="font-mono">{downloadProgress}%</span>
               </div>
@@ -557,11 +598,8 @@ export default function AttendanceDevicesPage() {
             <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
               <div className="flex items-center gap-2 text-xs font-semibold text-emerald-900">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>Berhasil mengunduh {downloadTotal} baris log presensi!</span>
+                <span>Berhasil mengunduh {downloadTotal} catatan kehadiran.</span>
               </div>
-              <p className="text-[11px] text-emerald-800">
-                Data mentah telah disimpan di cache browser. Anda dapat langsung membuka halaman Data Presensi atau Laporan Presensi.
-              </p>
               <div className="flex gap-2 pt-1">
                 <button
                   type="button"
@@ -571,7 +609,7 @@ export default function AttendanceDevicesPage() {
                   }}
                   className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs"
                 >
-                  Buka Data Presensi (Log Mentah)
+                  Buka Data Presensi
                 </button>
                 <button
                   type="button"
@@ -602,7 +640,7 @@ export default function AttendanceDevicesPage() {
                 type="button"
                 disabled={isDownloading}
                 onClick={handleStartDownload}
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs disabled:opacity-50"
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs disabled:opacity-50"
               >
                 {isDownloading ? 'Sedang Mengunduh...' : 'Mulai Download'}
               </button>
@@ -615,7 +653,7 @@ export default function AttendanceDevicesPage() {
       <ModalShell
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        title="Tambah Perangkat Mesin Absensi Baru"
+        title="Tambah Mesin Absensi Baru"
         maxWidthClass="max-w-lg"
       >
         <form onSubmit={handleAddDevice} className="space-y-4">
@@ -664,7 +702,7 @@ export default function AttendanceDevicesPage() {
                 onChange={(e) => setNewDeviceCommKey(Number(e.target.value))}
                 className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:ring-emerald-500 focus:border-emerald-500"
               />
-              <span className="text-[10px] text-slate-400">Default 0 jika tanpa password</span>
+              <span className="text-[10px] text-slate-400">Default 0 jika tanpa kata sandi</span>
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">Nomor Mesin (ID)</label>
@@ -678,7 +716,7 @@ export default function AttendanceDevicesPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Lokasi Fisik</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Lokasi Mesin</label>
             <input
               type="text"
               placeholder="Contoh: Gedung A Lantai 1"
@@ -698,9 +736,100 @@ export default function AttendanceDevicesPage() {
             </button>
             <button
               type="submit"
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs"
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs"
             >
               Simpan Mesin
+            </button>
+          </div>
+        </form>
+      </ModalShell>
+
+      {/* Modal Edit Mesin */}
+      <ModalShell
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Data Mesin Absensi"
+        maxWidthClass="max-w-lg"
+      >
+        <form onSubmit={handleSaveEditDevice} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Nama Mesin</label>
+            <input
+              type="text"
+              required
+              value={editDeviceName}
+              onChange={(e) => setEditDeviceName(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-emerald-500 focus:border-emerald-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">IP Address</label>
+              <input
+                type="text"
+                required
+                value={editDeviceIp}
+                onChange={(e) => setEditDeviceIp(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Port TCP</label>
+              <input
+                type="number"
+                required
+                value={editDevicePort}
+                onChange={(e) => setEditDevicePort(Number(e.target.value))}
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Comm Key</label>
+              <input
+                type="number"
+                value={editDeviceCommKey}
+                onChange={(e) => setEditDeviceCommKey(Number(e.target.value))}
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Nomor Mesin (ID)</label>
+              <input
+                type="number"
+                value={editDeviceNumber}
+                onChange={(e) => setEditDeviceNumber(Number(e.target.value))}
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Lokasi Mesin</label>
+            <input
+              type="text"
+              value={editDeviceLocation}
+              onChange={(e) => setEditDeviceLocation(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-emerald-500 focus:border-emerald-500"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(false)}
+              className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-medium"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs"
+            >
+              Simpan Perubahan
             </button>
           </div>
         </form>

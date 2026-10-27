@@ -15,6 +15,9 @@ import {
   Building2,
   Clock,
   ArrowRight,
+  RotateCcw,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import {
   ProcessedAttendanceRecord,
@@ -57,9 +60,14 @@ export default function AttendanceTransactionsPage() {
   });
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDate, setSelectedDate] = useState('2026-10-27');
+  const [startDate, setStartDate] = useState('2026-10-27');
+  const [endDate, setEndDate] = useState('2026-10-27');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Persist updates
   useEffect(() => {
@@ -72,7 +80,8 @@ export default function AttendanceTransactionsPage() {
 
   const filteredProcessed = useMemo(() => {
     return processedRecords.filter((rec) => {
-      if (selectedDate && rec.workDate !== selectedDate) return false;
+      if (startDate && rec.workDate < startDate) return false;
+      if (endDate && rec.workDate > endDate) return false;
       if (selectedStatus !== 'all' && rec.status !== selectedStatus) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -83,7 +92,21 @@ export default function AttendanceTransactionsPage() {
       }
       return true;
     });
-  }, [processedRecords, selectedDate, selectedStatus, searchQuery]);
+  }, [processedRecords, startDate, endDate, selectedStatus, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredProcessed.length / pageSize));
+  const paginatedProcessed = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredProcessed.slice(start, start + pageSize);
+  }, [filteredProcessed, currentPage, pageSize]);
+
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setStartDate('');
+    setEndDate('');
+    setSelectedStatus('all');
+    setCurrentPage(1);
+  };
 
   const handleRecalculate = () => {
     const rawSaved = localStorage.getItem('ams_attendance_raw_logs');
@@ -91,6 +114,7 @@ export default function AttendanceTransactionsPage() {
     const { processed, unassigned } = calculateRecordsFromRawLogs(rawLogs, KNOWN_SHIFTS);
     setProcessedRecords(processed);
     setUnassignedRecords(unassigned);
+    setCurrentPage(1);
     setToastMessage('Kalkulasi ulang berhasil diperbarui!');
     setTimeout(() => setToastMessage(null), 3000);
   };
@@ -99,7 +123,7 @@ export default function AttendanceTransactionsPage() {
     const target = unassignedRecords.find((r) => r.employeeCode === employeeCode);
     if (!target) return;
 
-    const newShift = { shiftName: 'Reguler Pagi (08:00 - 17:00)', shiftIn: '08:00', shiftOut: '17:00' };
+    const newShift = { shiftName: 'Reguler Pagi (08:00 - 17:00)', shiftCode: 'PAGI', shiftIn: '08:00', shiftOut: '17:00' };
     KNOWN_SHIFTS[employeeCode] = newShift;
 
     // Remove from unassigned
@@ -128,6 +152,7 @@ export default function AttendanceTransactionsPage() {
       department: target.department,
       workDate: target.workDate,
       shiftName: newShift.shiftName,
+      shiftCode: newShift.shiftCode,
       shiftIn: newShift.shiftIn,
       shiftOut: newShift.shiftOut,
       scanIn: target.scanIn,
@@ -148,16 +173,11 @@ export default function AttendanceTransactionsPage() {
       {/* Header Halaman */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">
-              Laporan Presensi (Data Final Terkalkulasi)
-            </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
-              {processedRecords.length} Data Terkalkulasi
-            </span>
-          </div>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900">
+            Laporan Presensi
+          </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Data absensi final hasil kalkulasi jadwal shift karyawan dengan aturan First-In, Last-Out (scan pertama = masuk, scan terakhir = pulang).
+            Rekap kehadiran harian karyawan yang sudah disesuaikan dengan jadwal shift.
           </p>
         </div>
 
@@ -167,7 +187,7 @@ export default function AttendanceTransactionsPage() {
             href="/dashboard/attendance/raw-logs"
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium transition-colors"
           >
-            <span>Buka Data Presensi (Mentah)</span>
+            <span>Buka Data Presensi</span>
           </Link>
           <button
             type="button"
@@ -180,109 +200,141 @@ export default function AttendanceTransactionsPage() {
         </div>
       </div>
 
-      {/* Toast Notifikasi */}
+      {/* Toast Notification */}
       {toastMessage && (
-        <div className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-medium">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+        <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-medium flex items-center justify-between shadow-xs">
           <span>{toastMessage}</span>
+          <button
+            type="button"
+            onClick={() => setToastMessage(null)}
+            className="text-emerald-700 hover:text-emerald-900 font-bold ml-2"
+          >
+            ✕
+          </button>
         </div>
       )}
 
-      {/* Tab Navigasi: Laporan Presensi vs Tidak Ada Shift */}
-      <div className="flex border-b border-slate-200">
+      {/* Tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-200">
         <button
           type="button"
           onClick={() => setActiveTab('laporan')}
-          className={`py-2.5 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-2 ${
+          className={`pb-2.5 px-3 text-xs font-semibold border-b-2 transition-colors flex items-center gap-2 ${
             activeTab === 'laporan'
               ? 'border-emerald-600 text-emerald-800'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
           <FileCheck2 className="w-4 h-4" />
-          <span>Laporan Presensi Final</span>
-          <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] bg-slate-100 text-slate-700">
-            {processedRecords.length}
-          </span>
+          <span>Laporan Presensi Sesuai Shift ({processedRecords.length})</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('tanpa_shift')}
-          className={`py-2.5 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-2 ${
+          className={`pb-2.5 px-3 text-xs font-semibold border-b-2 transition-colors flex items-center gap-2 ${
             activeTab === 'tanpa_shift'
               ? 'border-amber-600 text-amber-800'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          <AlertTriangle className="w-4 h-4 text-amber-600" />
-          <span>⚠️ Karyawan Tanpa Shift</span>
+          <AlertTriangle className="w-4 h-4 text-amber-500" />
+          <span>Perlu Ditetapkan Shift ({unassignedRecords.length})</span>
           {unassignedRecords.length > 0 && (
-            <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] bg-amber-100 text-amber-800 font-bold border border-amber-200">
-              {unassignedRecords.length}
+            <span className="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">
+              Action Required
             </span>
           )}
         </button>
       </div>
 
-      {/* Tab 1: Laporan Presensi Final */}
+      {/* Tab 1: Laporan Presensi */}
       {activeTab === 'laporan' && (
         <div className="space-y-4">
-          {/* Toolbar Filter */}
-          <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2.5 flex-1">
-              <div className="relative min-w-[200px] max-w-xs">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          {/* Card Pencarian & Filter Terpisah */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs space-y-3">
+            {/* Bagian 1: Pencarian Cepat */}
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                Pencarian Cepat
+              </label>
+              <div className="relative w-full">
+                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Cari NIK, Nama, Departemen..."
+                  placeholder="Cari berdasarkan nama karyawan, NIK, atau departemen..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-300 focus:ring-emerald-500 focus:border-emerald-500"
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-slate-300 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                 />
-              </div>
-
-              <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 focus:ring-emerald-500 focus:border-emerald-500"
-                />
-                {selectedDate && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDate('')}
-                    className="text-[11px] text-slate-400 hover:text-slate-600"
-                  >
-                    Reset
-                  </button>
-                )}
-              </div>
-
-              <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                <Filter className="w-3.5 h-3.5 text-slate-400" />
-                <select
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 focus:ring-emerald-500 focus:border-emerald-500"
-                >
-                  <option value="all">Semua Status</option>
-                  <option value="Hadir Tepat Waktu">Hadir Tepat Waktu</option>
-                  <option value="Terlambat">Terlambat</option>
-                  <option value="Pulang Cepat">Pulang Cepat</option>
-                  <option value="Belum Scan Pulang">Belum Scan Pulang</option>
-                </select>
               </div>
             </div>
 
-            <div className="text-xs text-slate-500">
-              Menampilkan <span className="font-semibold text-slate-800">{filteredProcessed.length}</span> data
+            {/* Bagian 2: Filter Data & Tombol Reset */}
+            <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Rentang Tanggal */}
+                <div className="flex items-center gap-1 bg-slate-50 border border-slate-300 px-2.5 py-1.5 rounded-xl">
+                  <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                  <input
+                    type="date"
+                    value={startDate}
+                    onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                    onChange={(e) => {
+                      setStartDate(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="bg-transparent text-xs text-slate-700 cursor-pointer focus:outline-none"
+                  />
+                  <span className="text-slate-400 text-xs px-1">s/d</span>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                    onChange={(e) => {
+                      setEndDate(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="bg-transparent text-xs text-slate-700 cursor-pointer focus:outline-none"
+                  />
+                </div>
+
+                {/* Filter Status */}
+                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 px-2.5 py-1.5 rounded-xl">
+                  <Filter className="w-3.5 h-3.5 text-slate-500" />
+                  <select
+                    value={selectedStatus}
+                    onChange={(e) => {
+                      setSelectedStatus(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="bg-transparent text-xs text-slate-700 cursor-pointer focus:outline-none"
+                  >
+                    <option value="all">Semua Status</option>
+                    <option value="Hadir Tepat Waktu">Hadir Tepat Waktu</option>
+                    <option value="Terlambat">Terlambat</option>
+                    <option value="Pulang Cepat">Pulang Cepat</option>
+                    <option value="Belum Scan Pulang">Belum Scan Pulang</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Tombol Reset Filter - Tampil Jelas */}
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors border border-slate-200"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                Reset Filter
+              </button>
             </div>
           </div>
 
-          {/* Tabel Laporan Presensi Final */}
+          {/* Tabel Presensi Final */}
           <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
@@ -292,19 +344,18 @@ export default function AttendanceTransactionsPage() {
                     <th className="py-2.5 px-3">Nama Karyawan</th>
                     <th className="py-2.5 px-3">Departemen</th>
                     <th className="py-2.5 px-3">Tanggal</th>
-                    <th className="py-2.5 px-3">Shift Kerja</th>
+                    <th className="py-2.5 px-3">Shift</th>
                     <th className="py-2.5 px-3">Jadwal Masuk</th>
-                    <th className="py-2.5 px-3">Scan Masuk (Tap 1)</th>
+                    <th className="py-2.5 px-3">Scan Masuk</th>
                     <th className="py-2.5 px-3">Jadwal Pulang</th>
-                    <th className="py-2.5 px-3">Scan Pulang (Tap Akhir)</th>
-                    <th className="py-2.5 px-3">Terlambat</th>
+                    <th className="py-2.5 px-3">Scan Pulang</th>
+                    <th className="py-2.5 px-3">Keterlambatan</th>
                     <th className="py-2.5 px-3">Status</th>
-                    <th className="py-2.5 px-3 text-center">Jml Tap</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredProcessed.length > 0 ? (
-                    filteredProcessed.map((rec) => (
+                  {paginatedProcessed.length > 0 ? (
+                    paginatedProcessed.map((rec) => (
                       <tr key={rec.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-2.5 px-3 font-mono font-medium text-emerald-800">
                           {rec.employeeCode}
@@ -318,8 +369,10 @@ export default function AttendanceTransactionsPage() {
                         <td className="py-2.5 px-3 text-slate-700 font-mono">
                           {rec.workDate}
                         </td>
-                        <td className="py-2.5 px-3 text-slate-700">
-                          {rec.shiftName}
+                        <td className="py-2.5 px-3">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                            {rec.shiftCode || 'PAGI'}
+                          </span>
                         </td>
                         <td className="py-2.5 px-3 font-mono text-slate-600">
                           {rec.shiftIn}
@@ -362,20 +415,62 @@ export default function AttendanceTransactionsPage() {
                             </span>
                           )}
                         </td>
-                        <td className="py-2.5 px-3 text-center text-slate-500 font-mono">
-                          {rec.rawPunchesCount}x
-                        </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={12} className="py-10 text-center text-slate-400 text-xs">
+                      <td colSpan={11} className="py-10 text-center text-slate-400 text-xs">
                         Belum ada laporan presensi final yang cocok. Klik tombol "Kalkulasi Ulang" atau buka halaman Data Presensi.
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
+            </div>
+
+            {/* Kontrol Pagination */}
+            <div className="px-4 py-3 bg-slate-50/80 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
+              <div className="flex items-center gap-2">
+                <span>Baris per halaman:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="px-2 py-1 bg-white border border-slate-300 rounded-lg text-xs"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+                <span>
+                  Menampilkan {filteredProcessed.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} -{' '}
+                  {Math.min(currentPage * pageSize, filteredProcessed.length)} dari {filteredProcessed.length} data
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="p-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-40 transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="px-3 py-1 font-medium text-slate-700">
+                  Halaman {currentPage} dari {totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="p-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-40 transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>

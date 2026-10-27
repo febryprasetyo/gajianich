@@ -34,6 +34,7 @@ export interface ProcessedAttendanceRecord {
   department: string;
   workDate: string;
   shiftName: string;
+  shiftCode: string;
   shiftIn: string;
   shiftOut: string;
   scanIn: string | null;
@@ -112,16 +113,16 @@ export const INITIAL_RAW_LOGS: RawAttendanceLog[] = [
   { id: 'raw-9', deviceIp: '192.168.10.224', deviceName: 'Solution X900 Utama', pin: '1004', employeeCode: 'EMP004', employeeName: 'Doni Pratama (Magang)', department: 'Operasional', timestamp: '2026-10-27 16:55:00', verifyMode: 'Fingerprint', inOutState: 'Pulang', workDate: '2026-10-27' },
 ];
 
-export const KNOWN_SHIFTS: Record<string, { shiftName: string; shiftIn: string; shiftOut: string }> = {
-  EMP001: { shiftName: 'Reguler Pagi (08:00 - 17:00)', shiftIn: '08:00', shiftOut: '17:00' },
-  EMP002: { shiftName: 'Reguler Pagi (08:00 - 17:00)', shiftIn: '08:00', shiftOut: '17:00' },
-  EMP003: { shiftName: 'Shift Siang (09:00 - 18:00)', shiftIn: '09:00', shiftOut: '18:00' },
+export const KNOWN_SHIFTS: Record<string, { shiftName: string; shiftCode: string; shiftIn: string; shiftOut: string }> = {
+  EMP001: { shiftName: 'Reguler Pagi (08:00 - 17:00)', shiftCode: 'PAGI', shiftIn: '08:00', shiftOut: '17:00' },
+  EMP002: { shiftName: 'Reguler Pagi (08:00 - 17:00)', shiftCode: 'PAGI', shiftIn: '08:00', shiftOut: '17:00' },
+  EMP003: { shiftName: 'Shift Siang (09:00 - 18:00)', shiftCode: 'SIANG', shiftIn: '09:00', shiftOut: '18:00' },
   // EMP004 intentionally missing to demonstrate unassigned shift handling
 };
 
 export function calculateRecordsFromRawLogs(
   logs: RawAttendanceLog[],
-  shiftAssignments: Record<string, { shiftName: string; shiftIn: string; shiftOut: string }> = KNOWN_SHIFTS
+  shiftAssignments: Record<string, { shiftName: string; shiftCode: string; shiftIn: string; shiftOut: string }> = KNOWN_SHIFTS
 ): { processed: ProcessedAttendanceRecord[]; unassigned: UnassignedShiftRecord[] } {
   const groups: Record<string, RawAttendanceLog[]> = {};
   logs.forEach((log) => {
@@ -178,6 +179,7 @@ export function calculateRecordsFromRawLogs(
       department: firstPunch.department,
       workDate: firstPunch.workDate,
       shiftName: shift.shiftName,
+      shiftCode: shift.shiftCode || 'PAGI',
       shiftIn: shift.shiftIn,
       shiftOut: shift.shiftOut,
       scanIn: scanInTime,

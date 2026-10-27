@@ -46,6 +46,30 @@ Dokumen ini merinci rencana teknis integrasi mesin absensi fisik (Solution/ZKTec
   - Tab khusus **"⚠️ Karyawan Tanpa Shift"** dengan tombol langsung **"Tetapkan Shift Default"** dan **"Kalkulasi Ulang"**.
 - [x] Integrasi sinkronisasi data antar halaman via browser cache (`ams_attendance_raw_logs` & `ams_attendance_processed_records`).
 
+
+### Revisi UI & Copywriting (Standard Humanizer & Refined UX):
+- [x] **Download Presensi**:
+  - Hapus embel-embel "(Mesin Absensi) Pattern Solution Desktop".
+  - Humanisasi subtitle: *"Hubungkan mesin absensi kantor untuk menarik catatan kehadiran terbaru."*
+  - Mengubah bar tombol dari latar hitam pekat (`bg-slate-900`) ke latar putih dengan border halus (`bg-white border border-slate-200/90`).
+  - Penambahan fitur & modal **Edit Mesin** (nama, IP, port, comm key, keterangan).
+- [x] **Data Presensi**:
+  - Hapus badge "(Log Mentah Mesin) Total Rekaman Mentah".
+  - Humanisasi subtitle: *"Daftar seluruh riwayat tap masuk dan pulang yang ditarik langsung dari mesin."*
+  - Pemisahan visual: Baris 1 (Pencarian Cepat), Baris 2 (Filter Rentang Tanggal, Mesin, Status, dan Tombol Reset).
+  - Date picker langsung terbuka saat klik area kotak tanggal (`showPicker()`).
+  - Tombol **Reset Filter** dengan icon `RotateCcw` tampil menonjol dan jelas.
+  - Penambahan pagination lengkap (pilihan 10/25/50 baris, counter, prev/next).
+- [x] **Laporan Presensi**:
+  - Hapus badge "(Data Final Terkalkulasi) Data Terkalkulasi".
+  - Tagline subtitle lebih umum: *"Rekap kehadiran harian karyawan yang sudah disesuaikan dengan jadwal shift."*
+  - Pemisahan baris pencarian dan filter data.
+  - Date picker filter range langsung aktif pada klik kotak (`showPicker()`).
+  - Tombol **Reset Filter** tampil menonjol dan jelas.
+  - Penambahan pagination lengkap (10/25/50 baris, counter, prev/next).
+  - Kolom **Jml Tap** dihapus dari tabel laporan.
+  - Kolom **Shift** hanya menampilkan kode shift (misal `PAGI`, `SIANG`) tanpa jam kerja.
+
 ### Fase 2: Database Schema & Migration
 - [ ] Skema Drizzle `attendance_devices` (IP, port, commKey, deviceNumber, status, lastSyncAt).
 - [ ] Skema Drizzle `attendance_device_sync_logs` & `attendance_device_raw_logs` untuk audit trail.
