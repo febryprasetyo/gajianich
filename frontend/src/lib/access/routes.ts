@@ -11,6 +11,9 @@ export const IT_ROLES = ['superadmin', 'super_admin', 'itadmin', 'it_admin', 'it
 export const ADMIN_ROLES = ['superadmin', 'super_admin', 'itadmin', 'it_admin', 'admin'];
 
 export const DASHBOARD_ROUTE_RULES: RouteRule[] = [
+  { prefix: '/dashboard/attendance/devices', permission: 'attendance.import', moduleName: 'Download Presensi Mesin' },
+  { prefix: '/dashboard/attendance/raw-logs', permission: 'attendance.import', moduleName: 'Data Presensi Log Mentah' },
+  { prefix: '/dashboard/attendance/transactions', permission: 'attendance.view', moduleName: 'Laporan Presensi Final' },
   { prefix: '/dashboard/attendance/approvals/rules', permission: 'attendance.manage', moduleName: 'Aturan Auto-Approve Shift' },
   { prefix: '/dashboard/attendance/approvals/photos', permission: 'attendance.mobile.verify', moduleName: 'Validasi Foto Wajah' },
   { prefix: '/dashboard/attendance/approvals', permission: 'attendance.mobile.verify', moduleName: 'Review Absensi Mobile' },

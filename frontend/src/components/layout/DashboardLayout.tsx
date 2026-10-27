@@ -80,14 +80,20 @@ export const navGroups: NavGroup[] = [
         icon: CalendarCheck,
         children: [
           { name: 'Ringkasan HR', href: '/dashboard/attendance/overview', icon: LayoutDashboard, permission: 'attendance.view' },
-          { name: 'Download Presensi', href: '/dashboard/attendance/devices', icon: Cpu, permission: 'attendance.import' },
-          { name: 'Data Presensi', href: '/dashboard/attendance/raw-logs', icon: ListFilter, permission: 'attendance.import' },
-          { name: 'Laporan Presensi', href: '/dashboard/attendance/transactions', icon: FileCheck2, permission: 'attendance.view' },
           { name: 'Data Absensi', href: '/dashboard/attendance', icon: CalendarCheck, permission: 'attendance.view' },
           { name: 'Impor Absensi', href: '/dashboard/attendance/imports', icon: FileInput, permission: 'attendance.import' },
           { name: 'Kartu Absensi', href: '/dashboard/attendance/employees', icon: ClipboardList, permission: 'attendance.view' },
           { name: 'Laporan Absensi', href: '/dashboard/attendance/reports', icon: FileBarChart, permission: 'attendance.view' },
           { name: 'Riwayat Aktivitas HR', href: '/dashboard/attendance/activity', icon: History, permission: 'attendance.view' },
+        ],
+      },
+      {
+        name: 'Mesin Presensi',
+        icon: Cpu,
+        children: [
+          { name: 'Download Presensi', href: '/dashboard/attendance/devices', icon: Cpu, permission: 'attendance.import' },
+          { name: 'Data Presensi', href: '/dashboard/attendance/raw-logs', icon: ListFilter, permission: 'attendance.import' },
+          { name: 'Laporan Presensi', href: '/dashboard/attendance/transactions', icon: FileCheck2, permission: 'attendance.view' },
         ],
       },
       {
