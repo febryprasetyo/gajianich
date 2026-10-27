@@ -22,6 +22,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import ModalShell from '@/components/ui/ModalShell';
+import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
 import {
   AttendanceDevice,
   DEFAULT_DEVICES,
@@ -74,6 +75,8 @@ export default function AttendanceDevicesPage() {
 
   // Modal Tambah Mesin state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deletingDevice, setDeletingDevice] = useState<AttendanceDevice | null>(null);
   const [newDeviceName, setNewDeviceName] = useState('');
   const [newDeviceIp, setNewDeviceIp] = useState('');
   const [newDevicePort, setNewDevicePort] = useState(4370);
@@ -302,14 +305,31 @@ export default function AttendanceDevicesPage() {
     setConnectionError(null);
   };
 
-  const handleDeleteDevice = () => {
+  const handleOpenDeleteModal = () => {
     if (!activeDevice) return;
-    if (confirm(`Yakin ingin menghapus mesin ${activeDevice.name} (${activeDevice.ip})?`)) {
-      setDevices((prev) => prev.filter((d) => d.id !== activeDevice.id));
-      if (devices.length > 1) {
-        setSelectedDeviceId(devices.find((d) => d.id !== activeDevice.id)?.id || '');
+    setDeletingDevice(activeDevice);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!deletingDevice) return;
+    const targetId = deletingDevice.id;
+    const targetName = deletingDevice.name;
+    setDevices((prev) => {
+      const next = prev.filter((d) => d.id !== targetId);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('ams_attendance_devices', JSON.stringify(next));
       }
+      return next;
+    });
+    if (devices.length > 1) {
+      const fallback = devices.find((d) => d.id !== targetId);
+      setSelectedDeviceId(fallback?.id || '');
     }
+    setIsDeleteModalOpen(false);
+    setDeletingDevice(null);
+    setPageToast(`Mesin ${targetName} berhasil dihapus dari daftar presensi.`);
+    setTimeout(() => setPageToast(null), 4000);
   };
 
   const formatIdleTime = (secs: number) => {
@@ -512,7 +532,7 @@ export default function AttendanceDevicesPage() {
           </button>
           <button
             type="button"
-            onClick={handleDeleteDevice}
+            onClick={handleOpenDeleteModal}
             disabled={devices.length <= 1}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-xs font-medium text-rose-700 transition-colors disabled:opacity-40"
           >
@@ -1143,6 +1163,32 @@ export default function AttendanceDevicesPage() {
           </div>
         </form>
       </ModalShell>
+      {/* Modal Konfirmasi Hapus Mesin Baku Master Desain */}
+      <ConfirmDeleteModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setDeletingDevice(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        title="Hapus Mesin Presensi"
+        description="Apakah Anda yakin ingin menghapus mesin presensi ini? Mesin yang dihapus tidak dapat lagi ditarik log-nya secara otomatis hingga didaftarkan kembali."
+        itemName={deletingDevice ? `${deletingDevice.name} (${deletingDevice.ip}:${deletingDevice.port})` : null}
+        itemDetails={
+          deletingDevice
+            ? [
+                { label: "Nama Mesin", value: deletingDevice.name },
+                { label: "Alamat IP : Port", value: `${deletingDevice.ip}:${deletingDevice.port}` },
+                { label: "Nomor Mesin", value: `#${deletingDevice.deviceNumber}` },
+                { label: "Lokasi", value: deletingDevice.location || "-" },
+                { label: "Serial Number", value: deletingDevice.serialNumber || "-" },
+              ]
+            : undefined
+        }
+        confirmText="Hapus Mesin"
+        cancelText="Batal"
+        variant="danger"
+      />
     </div>
   );
 }
