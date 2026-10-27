@@ -9,20 +9,20 @@
 ## 1. Phase 1: Frontend UI Refactor — Solution Pattern (Sedang Berjalan)
 
 - [x] Tambahkan submenu navigasi "Download Presensi" di `DashboardLayout.tsx`.
-- [ ] Ubah antarmuka kartu mesin menjadi **Tabel Ringkas (*Compact Data Table*)** dengan Radio Button (1 mesin per baris, single selection).
-- [ ] Implementasikan **Toolbar Operasi Aksi Cepat**:
+- [x] Ubah antarmuka kartu mesin menjadi **Tabel Ringkas (*Compact Data Table*)** dengan Radio Button (1 mesin per baris, single selection).
+- [x] Implementasikan **Toolbar Operasi Aksi Cepat**:
   - `[▶ Koneksikan]` (Play)
   - `[⏹ Putuskan]` (Stop)
   - `[📥 Download Data Presensi]` (Membuka modal download)
   - `[+ Tambah Mesin]` & `[🗑 Hapus Mesin]` (terproteksi hak akses Superadmin / IT Admin)
-- [ ] Buat **Modal "Download Data Presensi"** interaktif:
+- [x] Buat **Modal "Download Data Presensi"** interaktif:
   - Input Tanggal Mulai & Tanggal Selesai (tombol shortcut Hari Ini, 7 Hari Terakhir, Bulan Ini).
   - Progress bar dinamis yang menampilkan persentase dan jumlah baris data log yang ditarik: `Mengunduh log transaksi: 95 / 142 baris data...`.
-- [ ] Implementasikan **Dual-View Tabs** hasil di bawah tabel mesin:
+- [x] Implementasikan **Dual-View Tabs** hasil di bawah tabel mesin:
   - **Tab 1: `Laporan Presensi`** (Data Final hasil kalkulasi: Jam Masuk Tap 1, Jam Pulang Tap Akhir, Shift, Terlambat, Hadir).
   - **Tab 2: `Data Presensi`** (Log Mentah fisik mesin yang dicache di browser `localStorage`, memuat setiap detik tap, jam siang, dll).
   - **Tab 3: `⚠️ Tidak Ada Shift`** (Mendeteksi karyawan yang punya log di mesin tapi belum ada shift, mencegah data hilang saat laporan).
-- [ ] Implementasikan logika pembersih data **First-In, Last-Out** (FIFO Guard) dan simulasi kalkulasi shift.
+- [x] Implementasikan logika pembersih data **First-In, Last-Out** (FIFO Guard) dan simulasi kalkulasi shift.
 
 ---
 

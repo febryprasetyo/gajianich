@@ -33,14 +33,14 @@ Dokumen ini merinci rencana teknis integrasi mesin absensi fisik (Solution/ZKTec
 ### Fase 1: Frontend UI Refactor — Solution Pattern (Sedang Berjalan)
 - [x] Submenu navigasi "Download Presensi" di `DashboardLayout.tsx`.
 - [x] Rute halaman `/dashboard/attendance/devices`.
-- [ ] Tabel ringkas mesin absensi (*Compact Data Table*) dengan Radio Button (single select).
-- [ ] Toolbar aksi operasi: `[▶ Koneksikan]`, `[⏹ Putuskan]`, `[📥 Download Data Presensi]`, `[+ Tambah Mesin]`, `[🗑 Hapus Mesin]` (Role-gated Superadmin/IT Admin).
-- [ ] Modal interaktif "Download Data Presensi" dengan pilihan rentang tanggal & animated progress bar (`Mengunduh log transaksi: X / Y baris data`).
-- [ ] Dual-view tabs:
+- [x] Tabel ringkas mesin absensi (*Compact Data Table*) dengan Radio Button (single select).
+- [x] Toolbar aksi operasi: `[▶ Koneksikan]`, `[⏹ Putuskan]`, `[📥 Download Data Presensi]`, `[+ Tambah Mesin]`, `[🗑 Hapus Mesin]` (Role-gated Superadmin/IT Admin).
+- [x] Modal interaktif "Download Data Presensi" dengan pilihan rentang tanggal & animated progress bar (`Mengunduh log transaksi: X / Y baris data`).
+- [x] Dual-view tabs:
   - Tab 1: **Laporan Presensi** (Data Final Terkalkulasi).
   - Tab 2: **Data Presensi** (Log Mentah tersimpan di `localStorage` & audit).
   - Tab 3: **⚠️ Tidak Ada Shift** (Deteksi anomali absensi tanpa jadwal kerja).
-- [ ] Pembersih tap ganda *First-In, Last-Out* (FIFO Guard) & simulasi kalkulasi shift.
+- [x] Pembersih tap ganda *First-In, Last-Out* (FIFO Guard) & simulasi kalkulasi shift.
 
 ### Fase 2: Database Schema & Migration
 - [ ] Skema Drizzle `attendance_devices` (IP, port, commKey, deviceNumber, status, lastSyncAt).
