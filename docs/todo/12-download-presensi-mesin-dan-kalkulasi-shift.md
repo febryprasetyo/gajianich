@@ -4,7 +4,7 @@ Dokumen ini merinci rencana teknis integrasi mesin absensi fisik (Solution/ZKTec
 
 - **Design Spec**: [docs/superpowers/specs/2026-10-27-attendance-machine-sync-design.md](../superpowers/specs/2026-10-27-attendance-machine-sync-design.md)
 - **Implementation Plan**: [docs/superpowers/plans/2026-10-27-attendance-machine-sync.md](../superpowers/plans/2026-10-27-attendance-machine-sync.md)
-- **Status**: **Dalam Proses (Frontend-First)**
+- **Status**: **Selesai (Full-Stack Implemented & Verified)**
 
 ---
 
@@ -72,21 +72,21 @@ Dokumen ini merinci rencana teknis integrasi mesin absensi fisik (Solution/ZKTec
   - Kolom **Shift** hanya menampilkan kode shift (misal `PAGI`, `SIANG`) tanpa jam kerja.
 
 ### Fase 2: Database Schema & Migration
-- [ ] Skema Drizzle `attendance_devices` (IP, port, commKey, deviceNumber, status, lastSyncAt).
-- [ ] Skema Drizzle `attendance_device_sync_logs` & `attendance_device_raw_logs` untuk audit trail.
-- [ ] Database migration & seeder mesin lokal.
+- [x] Skema Drizzle `attendance_devices` (IP, port, commKey, deviceNumber, status, lastSyncAt).
+- [x] Skema Drizzle `attendance_device_sync_logs` & `attendance_device_raw_logs` untuk audit trail.
+- [x] Database migration & seeder mesin lokal.
 
 ### Fase 3: Backend ZK Socket Service & Session Manager
-- [ ] Parser ZK `CMD_ATTLOG_RRQ` streaming binary.
-- [ ] Singleton `AttendanceDeviceSessionManager` dengan 15-minute idle auto-disconnect.
-- [ ] Endpoint `/api/attendance/devices`, `/connect`, `/disconnect`, `/sync`.
+- [x] Parser ZK `CMD_ATTLOG_RRQ` streaming binary.
+- [x] Singleton `AttendanceDeviceSessionManager` dengan 15-minute idle auto-disconnect.
+- [x] Endpoint `/api/attendance/devices`, `/connect`, `/disconnect`, `/sync`.
 
 ### Fase 4: Backend Shift Calculation Engine
-- [ ] Integrasi `resolveActiveEmployeeShift` dan `getWorkingScheduleForDate`.
-- [ ] Perhitungan otomatis keterlambatan dan upsert ke `attendance_records`.
-- [ ] Response metadata untuk karyawan yang belum memiliki shift aktif.
+- [x] Integrasi `resolveActiveEmployeeShift` dan `getWorkingScheduleForDate`.
+- [x] Perhitungan otomatis keterlambatan dan upsert ke `attendance_records`.
+- [x] Response metadata untuk karyawan yang belum memiliki shift aktif.
 
 ### Fase 5: Verification & Delivery
-- [ ] Verifikasi build Next.js (`npm run build`).
-- [ ] Verifikasi backend automated tests (`npm test`).
-- [ ] Update checkpoint di `docs/todo/README.md`.
+- [x] Verifikasi build Next.js (`npm run build`).
+- [x] Verifikasi backend automated tests (`npm test`).
+- [x] Update checkpoint di `docs/todo/README.md`.

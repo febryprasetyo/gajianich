@@ -9,7 +9,9 @@
     "seed": "tsx src/db/seed.ts",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:generate": "drizzle-kit generate",
-    "test": "NODE_OPTIONS=\"--no-deprecation\" tsx --test --test-concurrency=1 src/**/*.test.ts src/db/schema/*.test.ts"
+    "test": "NODE_OPTIONS=\"--no-deprecation\" tsx --test --test-concurrency=1 src/**/*.test.ts src/db/schema/*.test.ts",
+    "attendance:devices:test": "node scripts/attendance-device-test.mjs",
+    "test:attendance-devices": "node --test scripts/attendance-device-test.test.mjs"
   },
   "dependencies": {
     "@tensorflow/tfjs": "^4.22.0",

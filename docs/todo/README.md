@@ -107,3 +107,24 @@ CLI pengujian beberapa mesin selesai untuk cakupan koneksi/identitas. Uji langsu
 Konektor Ubuntu kini terverifikasi pada dua mesin fisik: 192.168.10.224 (serial WAE4242900026) dan 192.168.10.4 / MGM (serial WAE4242300038), keduanya X900 dan status ok. Kedua entri aktif pada konfigurasi lokal. [Hasil uji multi-mesin](../plan/2026-10-27-ubuntu-attendance-connection-diagnostic-checkpoint.md#uji-dua-mesin-fisik--27-oktober-2026). Tidak ada penarikan atau perubahan log.
 
 Uji lima mesin selesai dengan hasil campuran: semua TCP 4370 terjangkau; 192.168.10.4 dan .224 berhasil; 192.168.0.80, 192.168.1.199 dan .242 menolak autentikasi 2032 baik dengan key uji awal maupun kandidat pengguna. Challenge 6001 kini ditangani; 17 tes konektor lulus. Penyebab key/protokol pada tiga mesin masih belum dipastikan. [Rincian dan bukti](../plan/2026-10-27-ubuntu-attendance-connection-diagnostic-checkpoint.md#uji-lima-target-dan-challenge-6001--27-oktober-2026).
+
+## Checkpoint Download Presensi Mesin & Kalkulasi Transaksi (Solution Pattern) — 28 Oktober 2026
+
+- **Frontend Tiga Halaman Mandiri**:
+  - Halaman 1: Download Presensi Mesin (`/dashboard/attendance/devices`) dengan compact table, radio button, status koneksi idle 15 menit, modal download & simulation toggle.
+  - Halaman 2: Data Presensi Mentah (`/dashboard/attendance/raw-logs`) dengan filter tanggal, mesin, search, dan pagination.
+  - Halaman 3: Laporan Presensi Final (`/dashboard/attendance/transactions`) dengan kalkulasi FIFO (*First-In, Last-Out*), dan tab khusus **"⚠️ Karyawan Tanpa Shift"** untuk menetapkan shift default langsung.
+- **Skema & Migrasi Database Drizzle**:
+  - Skema tabel `attendance_devices`, `attendance_device_sync_logs`, dan `attendance_device_raw_logs` di `backend/src/db/schema/attendanceDevices.ts`.
+  - Migrasi `0025_married_blazing_skull.sql` diterapkan ke database PostgreSQL dengan sukses.
+  - Seed perangkat default lokal (Solution X900 Utama & MGM) terintegrasi di `backend/src/db/seed.ts`.
+- **Backend ZK Socket Service & Session Manager**:
+  - `zkProtocol.ts`: encoding ZK frame, checksum, decoding/encoding packed timestamp, parser streaming 40-byte attendance log records.
+  - `zkSessionManager.ts`: singleton `AttendanceDeviceSessionManager` dengan 15-minute auto-disconnect idle timer dan socket lifecycle.
+  - `attendanceDeviceRoutes.ts` & `attendanceDeviceController.ts`: REST API lengkap untuk CRUD mesin, connect, disconnect, download/sync log, dan query raw logs.
+- **Backend Shift Calculation Engine**:
+  - `attendanceCalculationService.ts`: kalkulasi otomatis aturan First-In Last-Out, penghitungan keterlambatan/pulang cepat, perutean eksplisit karyawan tanpa shift ke `unassignedShiftRecords`, dan upsert ke `attendance_records`.
+- **Verifikasi**:
+  - Backend automated unit tests 17/17 lulus (`attendanceDevices.test.ts`, `zkProtocol.test.ts`, `zkSessionManager.test.ts`, `attendanceCalculationService.test.ts`, `attendanceDeviceRoutes.test.ts`).
+  - Backend `tsc --noEmit` lulus tanpa error (exit code 0).
+  - Frontend production build (`npm run build`) dengan Node 24 lulus tanpa error (57/57 static pages).

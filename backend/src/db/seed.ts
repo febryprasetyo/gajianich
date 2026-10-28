@@ -6,6 +6,7 @@ import { employees } from './schema/employees';
 import { assetCategories, assets } from './schema/assets';
 import { ticketCategories, slaPolicies, itTickets, ticketComments } from './schema/tickets';
 import { softwareLicenses, licenseAllocations } from './schema/licenses';
+import { attendanceDevices } from './schema/attendanceDevices';
 import bcrypt from 'bcrypt';
 import { eq } from 'drizzle-orm';
 import { DEFAULT_IT_EQUIPMENT_TYPES, shouldSeedDefaultEquipmentTypes } from '../domain/equipmentTypes';
@@ -267,6 +268,53 @@ async function seed() {
   });
   for (const sla of insertedSlaPolicies) {
     console.log(`  ✓ Inserted SLA policy: ${sla.priority}`);
+  }
+
+  
+  // 4e. Seed Attendance Devices
+  const defaultAttendanceDevices = [
+    {
+      code: "dev-1",
+      name: "Solution X900 Utama",
+      ip: "192.168.10.224",
+      port: 4370,
+      commKey: 0,
+      deviceNumber: 1,
+      serialNumber: "WAE4242900026",
+      model: "Solution X900",
+      platform: "ZAM180_TFT",
+      firmware: "Ver 6.60 Aug 19 2021",
+      location: "Lobby Kantor Pusat",
+      connectionType: "Ethernet",
+      status: "DISCONNECTED",
+      isEnabled: true,
+      timeoutMs: 5000,
+    },
+    {
+      code: "dev-2",
+      name: "Solution X900 MGM",
+      ip: "192.168.10.4",
+      port: 4370,
+      commKey: 0,
+      deviceNumber: 2,
+      serialNumber: "WAE4242300038",
+      model: "Solution X900",
+      platform: "ZAM180_TFT",
+      firmware: "Ver 6.60",
+      location: "Gedung Operasional MGM",
+      connectionType: "Ethernet",
+      status: "DISCONNECTED",
+      isEnabled: true,
+      timeoutMs: 5000,
+    },
+  ];
+
+  for (const dev of defaultAttendanceDevices) {
+    const existing = await db.select().from(attendanceDevices).where(eq(attendanceDevices.code, dev.code));
+    if (existing.length === 0) {
+      await db.insert(attendanceDevices).values(dev);
+      console.log(`  ✓ Inserted attendance device: ${dev.name} (${dev.ip})`);
+    }
   }
 
   console.log('✅ Database Seed Procedure Completed Successfully!');

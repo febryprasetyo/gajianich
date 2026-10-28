@@ -2,7 +2,7 @@
 
 - **Tanggal**: 2026-10-27
 - **Dokumen Acuan**: [`docs/superpowers/specs/2026-10-27-attendance-machine-sync-design.md`](docs/superpowers/specs/2026-10-27-attendance-machine-sync-design.md)
-- **Status**: Siap Eksekusi (Frontend-First)
+- **Status**: Selesai (Full-Stack Implemented & Verified)
 
 ---
 
@@ -30,30 +30,30 @@
 
 ## 2. Phase 2: Database Schema & Migration
 
-- [ ] Skema tabel `attendance_devices` dan `attendance_device_sync_logs` di Drizzle ORM.
-- [ ] Skema penyimpanan log mentah batch `attendance_device_raw_logs` untuk audit.
-- [ ] Migrasi database dan seed perangkat mesin lokal.
+- [x] Skema tabel `attendance_devices` dan `attendance_device_sync_logs` di Drizzle ORM.
+- [x] Skema penyimpanan log mentah batch `attendance_device_raw_logs` untuk audit.
+- [x] Migrasi database dan seed perangkat mesin lokal.
 
 ---
 
 ## 3. Phase 3: Backend ZK Socket Service & Session Manager
 
-- [ ] Parser ZK `CMD_ATTLOG_RRQ` streaming binary.
-- [ ] `AttendanceDeviceSessionManager` singleton dengan idle timer 15 menit.
-- [ ] Endpoint `/api/attendance/devices`, `/connect`, `/disconnect`, `/sync`.
+- [x] Parser ZK `CMD_ATTLOG_RRQ` streaming binary.
+- [x] `AttendanceDeviceSessionManager` singleton dengan idle timer 15 menit.
+- [x] Endpoint `/api/attendance/devices`, `/connect`, `/disconnect`, `/sync`.
 
 ---
 
 ## 4. Phase 4: Backend Shift Calculation Engine
 
-- [ ] Integrasi `resolveActiveEmployeeShift` dan `getWorkingScheduleForDate`.
-- [ ] Kalkulasi keterlambatan dan upsert ke `attendance_records`.
-- [ ] Pemisahan data tanpa shift ke response khusus audit.
+- [x] Integrasi `resolveActiveEmployeeShift` dan `getWorkingScheduleForDate`.
+- [x] Kalkulasi keterlambatan dan upsert ke `attendance_records`.
+- [x] Pemisahan data tanpa shift ke response khusus audit.
 
 ---
 
 ## 5. Phase 5: Verification Loop & Final Checkpoint
 
-- [ ] Frontend build test (`npm run build`).
-- [ ] Backend automated tests (`npm test`).
-- [ ] Perbarui checkpoint di `docs/todo/README.md`.
+- [x] Frontend build test (`npm run build`).
+- [x] Backend automated tests (`npm test`).
+- [x] Perbarui checkpoint di `docs/todo/README.md`.

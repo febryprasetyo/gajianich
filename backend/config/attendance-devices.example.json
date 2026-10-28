@@ -1,0 +1,22 @@
+{
+  "devices": [
+    {
+      "id": "solution-x900-utama",
+      "name": "Solution X900 Utama",
+      "ip": "192.168.10.224",
+      "port": 4370,
+      "commKey": 0,
+      "timeoutMs": 5000,
+      "enabled": true
+    },
+    {
+      "id": "mesin-produksi",
+      "name": "Produksi 1",
+      "ip": "192.168.10.4",
+      "port": 4370,
+      "commKey": 1234,
+      "timeoutMs": 5000,
+      "enabled": false
+    }
+  ]
+}

@@ -16,6 +16,7 @@ import userRoutes from './routes/userRoutes';
 import leaveRoutes from './routes/leaveRoutes';
 import systemSettingRoutes from './routes/systemSettingRoutes';
 import attendanceRoutes from './routes/attendanceRoutes';
+import attendanceDeviceRoutes from './routes/attendanceDeviceRoutes';
 import mobileAttendanceRoutes from './routes/mobileAttendanceRoutes';
 import hrActivityRoutes from './routes/hrActivityRoutes';
 import goodsRequestRoutes from './routes/goodsRequestRoutes';
@@ -102,6 +103,8 @@ export function createApp(options: AppOptions = {}): express.Express {
   app.use('/api/v1/settings', systemSettingRoutes);
   app.use('/api/v1/attendance/mobile', mobileAttendanceRoutes);
   app.use('/api/attendance/mobile', mobileAttendanceRoutes);
+  app.use('/api/v1/attendance/devices', attendanceDeviceRoutes);
+  app.use('/api/attendance/devices', attendanceDeviceRoutes);
   app.use('/api/v1/attendance', attendanceRoutes);
   app.use('/api/attendance', attendanceRoutes);
   app.use('/api/v1/hr/activities', hrActivityRoutes);
