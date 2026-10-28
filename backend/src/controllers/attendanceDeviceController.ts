@@ -244,33 +244,34 @@ export async function syncAttendanceDeviceHandler(req: Request, res: Response) {
       })
       .returning();
 
-    // 2. Fetch logs from physical device or simulation
+    // 2. Fetch logs from physical device (auto-connect if not already connected)
     let fetchedPunches = [];
     try {
+      const session = attendanceDeviceSessionManager.getSessionInfo(device.id);
+      if (session.status !== "CONNECTED") {
+        await attendanceDeviceSessionManager.connect({
+          id: device.id,
+          ip: device.ip,
+          port: device.port,
+          commKey: device.commKey,
+          deviceNumber: device.deviceNumber,
+        });
+      }
       fetchedPunches = await attendanceDeviceSessionManager.fetchAttendanceLogs(device.id);
-    } catch {
-      // If physical machine has 0 records or is simulated in test
-      const today = startDate || new Date().toISOString().slice(0, 10);
-      fetchedPunches = [
-        {
-          pin: "50181",
-          timestamp: `${today} 07:58:20`,
-          workDate: today,
-          verifyMode: "Face" as const,
-          inOutState: "Masuk" as const,
-          rawStatus: 0,
-          rawVerify: 15,
-        },
-        {
-          pin: "50181",
-          timestamp: `${today} 17:05:42`,
-          workDate: today,
-          verifyMode: "Face" as const,
-          inOutState: "Pulang" as const,
-          rawStatus: 1,
-          rawVerify: 15,
-        },
-      ];
+    } catch (fetchErr: any) {
+      await db
+        .update(attendanceDeviceSyncLogs)
+        .set({
+          status: "FAILED",
+          errorMessage: fetchErr.message || "Gagal menghubungi mesin presensi",
+          completedAt: new Date(),
+        })
+        .where(eq(attendanceDeviceSyncLogs.id, syncLog.id));
+
+      return res.status(500).json({
+        success: false,
+        message: `Gagal menarik data dari mesin ${device.name}: ${fetchErr.message}`,
+      });
     }
 
     // 3. Match PIN to Employees
@@ -301,7 +302,11 @@ export async function syncAttendanceDeviceHandler(req: Request, res: Response) {
     }
 
     if (rawInserts.length > 0) {
-      await db.insert(attendanceDeviceRawLogs).values(rawInserts);
+      const CHUNK_SIZE = 500;
+      for (let i = 0; i < rawInserts.length; i += CHUNK_SIZE) {
+        const chunk = rawInserts.slice(i, i + CHUNK_SIZE);
+        await db.insert(attendanceDeviceRawLogs).values(chunk);
+      }
     }
 
     // 5. Update Sync Log & Device Stats

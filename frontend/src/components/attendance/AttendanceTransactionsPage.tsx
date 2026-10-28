@@ -49,15 +49,8 @@ export default function AttendanceTransactionsPage() {
   const [isRecalculating, setIsRecalculating] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [startDate, setStartDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 7);
-    return d.toISOString().split('T')[0];
-  });
-  const [endDate, setEndDate] = useState(() => {
-    const d = new Date();
-    return d.toISOString().split('T')[0];
-  });
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
