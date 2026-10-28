@@ -61,6 +61,7 @@ export default function AttendanceDevicesPage() {
   const [downloadCount, setDownloadCount] = useState(0);
   const [downloadTotal, setDownloadTotal] = useState(0);
   const [downloadCompleted, setDownloadCompleted] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   // Modal Tambah Mesin state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -252,6 +253,7 @@ export default function AttendanceDevicesPage() {
     }
     setDownloadCompleted(false);
     setDownloadProgress(0);
+    setDownloadError(null);
     setIsDownloadModalOpen(true);
   };
 
@@ -279,11 +281,16 @@ export default function AttendanceDevicesPage() {
 
       const nowStr = new Date().toISOString().replace("T", " ").substring(0, 19);
       setDevices((prev) =>
-        prev.map((d) => (d.id === activeDevice.id ? { ...d, lastSyncAt: nowStr, totalLogs: (d.totalLogs || 0) + total } : d))
+        prev.map((d) => (d.id === activeDevice.id ? { ...d, lastSyncAt: nowStr, totalLogs: (d.totalLogs || 0) + total, status: "ONLINE" } : d))
       );
     } catch (err: any) {
-      setPageToast(`Gagal mengunduh log: ${err.message || "Kesalahan jaringan"}`);
-      setTimeout(() => setPageToast(null), 4000);
+      const errMsg = err.message || "Mesin tidak merespons (Koneksi Putus / Offline)";
+      setDownloadError(errMsg);
+      setPageToast(`Gagal mengunduh log: ${errMsg}`);
+      setTimeout(() => setPageToast(null), 5000);
+      setDevices((prev) =>
+        prev.map((d) => (d.id === activeDevice.id ? { ...d, status: "OFFLINE" } : d))
+      );
     } finally {
       setIsDownloading(false);
     }
@@ -730,6 +737,17 @@ export default function AttendanceDevicesPage() {
                   style={{ width: `${downloadProgress}%` }}
                 />
               </div>
+            </div>
+          )}
+
+          {/* Download Error Info */}
+          {downloadError && (
+            <div className="p-3.5 bg-rose-50 rounded-xl border border-rose-200 text-xs text-rose-900 space-y-1 animate-in fade-in duration-200">
+              <div className="flex items-center gap-2 font-bold text-rose-800">
+                <AlertCircle className="w-4 h-4 text-rose-600" />
+                <span>Koneksi ke Mesin Gagal</span>
+              </div>
+              <p className="text-xs text-rose-700 leading-relaxed">{downloadError}</p>
             </div>
           )}
 

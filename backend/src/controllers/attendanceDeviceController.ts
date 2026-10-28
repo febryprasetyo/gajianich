@@ -268,9 +268,16 @@ export async function syncAttendanceDeviceHandler(req: Request, res: Response) {
         })
         .where(eq(attendanceDeviceSyncLogs.id, syncLog.id));
 
+      await db
+        .update(attendanceDevices)
+        .set({
+          status: "OFFLINE",
+        })
+        .where(eq(attendanceDevices.id, device.id));
+
       return res.status(500).json({
         success: false,
-        message: `Gagal menarik data dari mesin ${device.name}: ${fetchErr.message}`,
+        message: `Gagal menarik data dari mesin ${device.name} (${device.ip}): ${fetchErr.message}. Mesin dalam kondisi offline / koneksi putus.`,
       });
     }
 
