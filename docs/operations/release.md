@@ -32,7 +32,7 @@ Configure under **Settings > Environments > production**:
    git push origin v1.0.0
    ```
 3. **Workflow Execution:**
-   - GitHub Actions automatically runs `build-and-publish`, building Docker images and publishing them to GHCR (`ghcr.io/<owner>/gajianich-backend:v1.0.0` and `ghcr.io/<owner>/gajianich-frontend:v1.0.0`).
+   - GitHub Actions automatically runs `build-and-publish`, building Docker images and publishing them to GHCR (`ghcr.io/febryprasetyo/gajianich-backend:v1.0.0` and `ghcr.io/febryprasetyo/gajianich-frontend:v1.0.0`).
    - The workflow enters the `production` environment and waits for manual approval.
 4. **Approve Release:**
    - Designated approvers review the release in GitHub Actions UI and approve the deployment.

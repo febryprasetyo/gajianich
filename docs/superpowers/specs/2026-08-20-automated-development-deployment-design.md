@@ -57,8 +57,8 @@ production environment, and release history. GitHub Container Registry stores tw
 immutable release images:
 
 ```text
-ghcr.io/<owner>/gajianich-frontend:<version>
-ghcr.io/<owner>/gajianich-backend:<version>
+ghcr.io/febryprasetyo/gajianich-frontend:<version>
+ghcr.io/febryprasetyo/gajianich-backend:<version>
 ```
 
 Production deployment always references an explicit semantic version such as

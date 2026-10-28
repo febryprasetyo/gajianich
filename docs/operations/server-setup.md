@@ -65,7 +65,7 @@ sudo chown -R postgres:postgres /var/backups/gajianich/postgres
 sudo chmod 700 /var/backups/gajianich/postgres
 
 # Clone repository into /opt/gajianich
-sudo -u gajianich-deploy git clone https://github.com/<owner>/gajianich.git /opt/gajianich
+sudo -u gajianich-deploy git clone https://github.com/febryprasetyo/gajianich.git /opt/gajianich
 ```
 
 ### 2.3 Production Environment Configuration

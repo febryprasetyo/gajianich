@@ -21,7 +21,7 @@ services:
         max-file: "3"
 
   backend:
-    image: ghcr.io/${GHCR_OWNER:-fastpec}/gajianich-backend:${APP_VERSION:?Release version required}
+    image: ghcr.io/${GHCR_OWNER:-febryprasetyo}/gajianich-backend:${APP_VERSION:?Release version required}
     container_name: gajianich_backend_prod
     restart: unless-stopped
     extra_hosts:
@@ -49,7 +49,7 @@ services:
         max-file: "3"
 
   frontend:
-    image: ghcr.io/${GHCR_OWNER:-fastpec}/gajianich-frontend:${APP_VERSION:?Release version required}
+    image: ghcr.io/${GHCR_OWNER:-febryprasetyo}/gajianich-frontend:${APP_VERSION:?Release version required}
     container_name: gajianich_frontend_prod
     restart: unless-stopped
     environment:

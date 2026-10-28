@@ -28,7 +28,7 @@ The fastest way to run the entire GAJIANICH stack locally or on the development 
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/<owner>/gajianich.git
+git clone https://github.com/febryprasetyo/gajianich.git
 cd gajianich
 
 # 2. Setup environment files
