@@ -25,6 +25,15 @@ Dokumen ini adalah **indeks utama roadmap**. Setiap item prioritas dipecah ke be
 
 ---
 
+## Checkpoint Verifikasi Suite Pengujian — 28 Oktober 2026
+
+- **Frontend**: Perbaikan default import `xlsx` pada parser absensi (`frontend/src/lib/attendance/biff.ts`) dan penambahan regresi parsing tanggal serial berbentuk teks. Verifikasi: 206/206 tes lulus, typecheck lulus, ESLint lulus.
+- **Backend**:
+  - Penambahan toleransi nama database `gajianich_hr_audit_test` dan `ams_hr_audit_test` pada `hrAuditDatabase.ts`.
+  - Penanganan error listener pada connection pool di `backend/src/db/index.ts` untuk mencegah unhandled error saat disposable test database dihapus.
+  - Penyelarasan pengujian multi-clocking pada `mobileClock.integration.test.ts` untuk memvalidasi alur approval pending (saat `autoApproveOut: false`) dan auto-approve (saat `autoApproveOut: true`).
+  - Verifikasi: 382/382 tes lulus (100% lulus, 0 fail).
+
 ## Petunjuk Penggunaan (Token-Efficient Workflow)
 
 1. **Melihat status global**: Cukup buka file indeks ini ([README.md](./README.md)).

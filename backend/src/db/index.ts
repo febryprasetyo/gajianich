@@ -32,6 +32,7 @@ export function getPool(): Pool {
     poolInstance = new Pool({
       connectionString: env.databaseUrl,
     });
+    poolInstance.on('error', () => {});
   }
   return poolInstance;
 }

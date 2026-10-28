@@ -22,6 +22,11 @@ test('machine BIFF preserves leading zeros, schedules and source durations', () 
   assert.equal(row.externalNoId, '001'); assert.equal(row.workDate, '2025-10-14');
   assert.equal(row.lateMinutes, 15); assert.equal(row.overtimeMinutes, 60); assert.equal(row.scheduleOut, '16:00');
 });
+test('machine BIFF converts a serial date stored as text', () => {
+  const row = parseAttendanceBiff(fixture({ Tanggal: '46285' }))[0];
+  assert.equal(row.workDate, '2026-09-20');
+  assert.equal(row.reviewStatus, 'READY');
+});
 test('missing single scan uses schedule and zeros only its associated duration', () => {
   const row = parseAttendanceBiff(fixture({ 'Scan Masuk': '', Terlambat: '00:30', 'Plg. Cepat': '00:10', Lembur: '25:00' }))[0];
   assert.equal(row.rawScanIn, null); assert.equal(row.scanIn, '08:00'); assert.equal(row.normalized, true);

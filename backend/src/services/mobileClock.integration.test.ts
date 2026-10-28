@@ -216,18 +216,18 @@ test('Multi-clocking in default mode: multiple OUT clocks are allowed as PENDING
   const [user] = await database.insert(users).values({ username: 'multi-tester', passwordHash: 'test-only', employeeId: employee.id }).returning();
   const [hrUser] = await database.insert(users).values({ username: 'hr-multi', passwordHash: 'test-only' }).returning();
   await database.insert(attendanceFaceProfiles).values({ employeeId: employee.id, isEnrolled: true, samplePhotoUrl: photoUrl, faceDescriptorHash: JSON.stringify(descriptor), descriptorVersion: FACE_DESCRIPTOR_VERSION });
-  const [shift] = await database.insert(attendanceShifts).values({ code: 'OFFICE-MUL', name: 'Office Multi', scheduleIn: '08:00', scheduleOut: '17:00', autoApproveIn: true, autoApproveOut: true }).returning();
+  const [shift] = await database.insert(attendanceShifts).values({ code: 'OFFICE-MUL', name: 'Office Multi', scheduleIn: '08:00', scheduleOut: '17:00', autoApproveIn: true, autoApproveOut: false }).returning();
   await database.insert(attendanceShiftAssignments).values({ shiftId: shift.id, employeeId: employee.id });
 
   // 1. Clock IN
   await recordMobileClock(user.id, { eventType: 'IN', latitude: -6.2, longitude: 106.8, photoBase64: photoUrl }, database as any, async () => ({ descriptor, photoUrl }));
   await database.update(attendanceSelfLogs).set({ occurredAt: new Date(Date.now() - 3600000) }).where(eq(attendanceSelfLogs.employeeId, employee.id));
 
-  // 2. First OUT (e.g. at regular time 17:00)
+  // 2. First OUT (e.g. at regular time 17:00 - autoApproveOut is false so status is PENDING)
   const out1 = await recordMobileClock(user.id, { eventType: 'OUT', latitude: -6.2, longitude: 106.8, photoBase64: photoUrl }, database as any, async () => ({ descriptor, photoUrl }));
-  assert.equal(out1.data.approvalStatus, 'APPROVED');
+  assert.equal(out1.data.approvalStatus, 'PENDING');
 
-  // 3. Second OUT (e.g. overtime at 19:00 - should be recorded as PENDING)
+  // 3. Second OUT (e.g. overtime at 19:00 - also recorded as PENDING)
   const out2 = await recordMobileClock(user.id, { eventType: 'OUT', latitude: -6.2, longitude: 106.8, photoBase64: photoUrl }, database as any, async () => ({ descriptor, photoUrl }));
   assert.equal(out2.data.approvalStatus, 'PENDING');
 
@@ -236,6 +236,36 @@ test('Multi-clocking in default mode: multiple OUT clocks are allowed as PENDING
 
   // 4. When HR approves the second OUT (out2), projectApprovedLog updates scanOut to out2 time
   await verifyAttendanceRecord(hrUser.id, { logId: out2.data.id, status: 'APPROVED' }, database as any);
+
+  const [record] = await database.select().from(attendanceRecords).where(eq(attendanceRecords.employeeId, employee.id));
+  assert.equal(record.scanOut, out2.data.scanTime);
+});
+
+test('Multi-clocking with autoApproveOut enabled: multiple OUT clocks are auto-approved and update Last Out immediately', async t => {
+  const photoDir = await mkdtemp(path.join(os.tmpdir(), 'gajianich-clock-auto-out-'));
+  process.env.ATTENDANCE_PHOTO_DIR = photoDir;
+  t.after(() => rm(photoDir, { recursive: true, force: true }));
+  const { recordMobileClock } = await import('./mobileAttendanceService');
+  const fixture = await createHrAuditTestDatabase(); t.after(() => fixture.cleanup());
+  await runMigrations(fixture.ownerUrl, undefined, fixture.runtimeRole);
+  const database = drizzle(fixture.owner);
+  const [employee] = await database.insert(employees).values({ employeeCode: 'MULTI-AUTO-01', fullName: 'Multi Auto Tester' }).returning();
+  const [user] = await database.insert(users).values({ username: 'multi-auto-tester', passwordHash: 'test-only', employeeId: employee.id }).returning();
+  await database.insert(attendanceFaceProfiles).values({ employeeId: employee.id, isEnrolled: true, samplePhotoUrl: photoUrl, faceDescriptorHash: JSON.stringify(descriptor), descriptorVersion: FACE_DESCRIPTOR_VERSION });
+  const [shift] = await database.insert(attendanceShifts).values({ code: 'OFFICE-AUTO', name: 'Office Auto', scheduleIn: '08:00', scheduleOut: '17:00', autoApproveIn: true, autoApproveOut: true }).returning();
+  await database.insert(attendanceShiftAssignments).values({ shiftId: shift.id, employeeId: employee.id });
+
+  // 1. Clock IN
+  await recordMobileClock(user.id, { eventType: 'IN', latitude: -6.2, longitude: 106.8, photoBase64: photoUrl }, database as any, async () => ({ descriptor, photoUrl }));
+  await database.update(attendanceSelfLogs).set({ occurredAt: new Date(Date.now() - 3600000) }).where(eq(attendanceSelfLogs.employeeId, employee.id));
+
+  // 2. First OUT
+  const out1 = await recordMobileClock(user.id, { eventType: 'OUT', latitude: -6.2, longitude: 106.8, photoBase64: photoUrl }, database as any, async () => ({ descriptor, photoUrl }));
+  assert.equal(out1.data.approvalStatus, 'APPROVED');
+
+  // 3. Second OUT (auto-approved and updates Last Out)
+  const out2 = await recordMobileClock(user.id, { eventType: 'OUT', latitude: -6.2, longitude: 106.8, photoBase64: photoUrl }, database as any, async () => ({ descriptor, photoUrl }));
+  assert.equal(out2.data.approvalStatus, 'APPROVED');
 
   const [record] = await database.select().from(attendanceRecords).where(eq(attendanceRecords.employeeId, employee.id));
   assert.equal(record.scanOut, out2.data.scanTime);
