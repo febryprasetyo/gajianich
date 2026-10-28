@@ -128,3 +128,27 @@ Uji lima mesin selesai dengan hasil campuran: semua TCP 4370 terjangkau; 192.168
   - Backend automated unit tests 17/17 lulus (`attendanceDevices.test.ts`, `zkProtocol.test.ts`, `zkSessionManager.test.ts`, `attendanceCalculationService.test.ts`, `attendanceDeviceRoutes.test.ts`).
   - Backend `tsc --noEmit` lulus tanpa error (exit code 0).
   - Frontend production build (`npm run build`) dengan Node 24 lulus tanpa error (57/57 static pages).
+
+## Checkpoint Integrasi Data Riil Solution X900 & Koreksi Offset Timestamp — 28 Oktober 2026
+
+- **Koreksi Offset Binary Framing ZK TCP**:
+  - Memperbaiki parsing timestamp 40-byte record Solution X900 TFT ke byte 27 (sebelumnya bergeser 1 byte di byte 28) sehingga timestamp tahun 2026 terbaca 100% akurat dan identik hingga ke detik dengan software resmi Solution.
+  - Verifikasi mode dipetakan ke byte 26 ( = 15 = Face Scan,  = 1 = Fingerprint).
+  - Mengeliminasi seluruh mock data dan membersihkan 4 baris data tiruan Adam Putra Jaya dari database.
+- **Penarikan & Sinkronisasi Data Riil Mesin Fisik (192.168.10.4:4370)**:
+  - Berhasil menarik 61.127 rekaman log riil dari memori perangkat keras Solution X900 MGM.
+  - Memfilter dan mengimpor 137 rekaman data riil presensi tanggal 26–28 Oktober 2026 langsung ke  dan memetakan PIN ke master karyawan AMS.
+- **Engine Kalkulasi Shift & Laporan Presensi**:
+  - Endpoint kalkulasi shift  memproses 137 log mentah menjadi 115 transaksi presensi kerja lengkap dengan scan masuk, scan pulang, keterlambatan, dan jam kerja.
+  - Menangani mesin offline secara anggun: jika perangkat tidak merespons (seperti 192.168.10.224), status otomatis ditandai  dan pesan kesalahan ditampilkan dengan informatif di modal UI.
+- **Verifikasi**:
+  - Unit test  (6/6 lulus) termasuk pengujian biner frame X900 TFT.
+  - Backend unit test suite (367/369 lulus).
+  - Frontend typecheck dan build Next.js lulus tanpa error.
+
+## Checkpoint Integrasi Data Riil Solution X900 & Koreksi Offset Timestamp — 28 Oktober 2026
+
+- Memperbaiki parsing timestamp 40-byte record Solution X900 TFT ke byte 27 (sebelumnya bergeser 1 byte di byte 28).
+- Penarikan 61.127 log riil dan impor 137 rekaman 26-28 Oktober 2026 ke attendance_device_raw_logs.
+- Perhitungan shift FIFO First-In Last-Out menghasilkan 115 transaksi presensi kerja lengkap.
+- Penanganan status mesin offline secara anggun dan elegan.
