@@ -34,3 +34,18 @@ test("hardware audit routes expose ingest, batch-sync, list, link, and create-as
   assert.ok(routeMap.has("/:id"), "Missing /:id route");
   assert.ok(routeMap.get("/:id")!.includes("delete"));
 });
+
+test('hardware registration hides SQL details when a database uniqueness race rejects the insert', async (t) => {
+  const { db } = await import('../db');
+  const { createAssetFromHardwareAudit } = await import('./hardwareAuditController');
+  const failure = new Error('Failed query: insert into assets params: private notes', { cause: { code: '23505' } });
+  const mocked = t.mock.method(db, 'select', () => { throw failure; });
+  let status = 0;
+  let body: any;
+  const response = { status(code: number) { status = code; return this; }, json(value: unknown) { body = value; return this; } };
+  await createAssetFromHardwareAudit({ params: { id: '91' }, body: { categoryId: 3, status: 'Assigned', custodianId: 81 } } as any, response as any);
+  assert.equal(status, 409);
+  assert.match(body.error, /Tautkan Spesifikasi/);
+  assert.doesNotMatch(body.error, /Failed query|insert into|private notes/);
+  mocked.mock.restore();
+});

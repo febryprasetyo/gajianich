@@ -20,14 +20,11 @@ import ModalShell from '@/components/ui/ModalShell';
 import { useAttendance } from '../AttendanceWorkspace';
 import { Heading } from '../shared';
 import type { WorkShift, ShiftAssignment } from '@/lib/attendance/scheduleShift';
-import { DEFAULT_OFFICE_SHIFT, DEFAULT_PRODUCTION_SHIFT } from '@/lib/attendance/scheduleShift';
 
 export default function ShiftManagementPage() {
   const { data, execute, canWrite } = useAttendance();
 
-  const shifts: WorkShift[] = (data.shifts && data.shifts.length > 0)
-    ? data.shifts
-    : [DEFAULT_OFFICE_SHIFT, DEFAULT_PRODUCTION_SHIFT];
+  const shifts: WorkShift[] = data.shifts || [];
 
   const assignments: ShiftAssignment[] = data.shiftAssignments || [];
 
@@ -120,7 +117,7 @@ export default function ShiftManagementPage() {
             saturdayScheduleIn: formWorkDays === 6 ? formSatIn : null,
             saturdayScheduleOut: formWorkDays === 6 ? formSatOut : null,
             description: formDesc.trim() || undefined,
-            isDefault: false,
+            isDefault: shifts.length === 0,
             isActive: true,
           },
         });
@@ -405,13 +402,14 @@ export default function ShiftManagementPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
               {data.departments.map(d => {
                 const assigned = assignments.find(a => a.departmentId === d.id && !a.employeeId);
-                const currentShiftId = assigned ? assigned.shiftId : (shifts.find(s => s.isDefault)?.id || 1);
+                const currentShiftId = assigned?.shiftId ?? '';
 
                 return (
                   <div key={d.id} className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 flex items-center justify-between gap-4">
                     <div>
                       <span className="font-bold text-xs text-slate-900 block">{d.name}</span>
                       <span className="text-[11px] text-slate-500 block">Kode: {d.code}</span>
+                      <span className="text-[11px] text-slate-500 block">{assigned ? 'Penugasan tersimpan' : 'Mengikuti default global; belum ada penugasan departemen'}</span>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
@@ -419,10 +417,11 @@ export default function ShiftManagementPage() {
                         aria-label={`Pilih shift untuk ${d.name}`}
                         className="hr-input text-xs font-semibold"
                         value={currentShiftId}
-                        disabled={!canWrite}
+                        disabled={!canWrite || shifts.length === 0}
                         onChange={e => handleAssignDepartment(d.id, Number(e.target.value))}
                       >
-                        {shifts.map(s => (
+                        <option value="" disabled>{shifts.length ? 'Default global (belum ditetapkan)' : 'Belum ada shift tersimpan'}</option>
+                        {shifts.filter(s => s.isActive).map(s => (
                           <option key={s.id} value={s.id}>
                             {s.name} ({s.scheduleIn}-{s.scheduleOut})
                           </option>

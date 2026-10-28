@@ -28,7 +28,11 @@ export function filterRecords(data: AttendanceDataset, filter: RecordFilter): At
   const ids = new Set(filterEmployees(data, filter).map(e => e.id));
   return data.records.filter(r => ids.has(r.employeeId) && r.workDate >= filter.startDate && r.workDate <= filter.endDate);
 }
-export function summarizeEmployees(data: AttendanceDataset, filter: RecordFilter): EmployeeReport[] {
+export function isRecordedAbsence(record: AttendanceRecord | null, today = getJakartaToday()): boolean {
+  return record?.attendanceStatus === 'ALPHA' && !record.isDayOff && record.workDate <= today;
+}
+export function summarizeEmployees(data: AttendanceDataset, filter: RecordFilter, today = getJakartaToday()): EmployeeReport[] {
+  const absentDates = new Map<number, Set<string>>();
   const totals = new Map<number, {
     recordCount: number;
     lateMinutes: number;
@@ -36,6 +40,7 @@ export function summarizeEmployees(data: AttendanceDataset, filter: RecordFilter
     sakitCount: number;
     izinCount: number;
     cutiCount: number;
+    absentCount: number;
   }>();
 
   for (const r of filterRecords(data, filter)) {
@@ -46,8 +51,15 @@ export function summarizeEmployees(data: AttendanceDataset, filter: RecordFilter
       sakitCount: 0,
       izinCount: 0,
       cutiCount: 0,
+      absentCount: 0,
     };
-    if (!r.isDayOff) row.recordCount++;
+    if (isRecordedAbsence(r, today)) {
+      const dates = absentDates.get(r.employeeId) ?? new Set<string>();
+      dates.add(r.workDate);
+      absentDates.set(r.employeeId, dates);
+      row.absentCount = dates.size;
+    }
+    if (!r.isDayOff && (r.attendanceStatus === 'PRESENT' || r.attendanceStatus === 'DINAS_LUAR')) row.recordCount++;
     if (!r.isDayOff) row.lateMinutes += r.lateMinutes || 0;
     row.overtimeMinutes += r.overtimeMinutes || 0;
     if (r.attendanceStatus === 'SAKIT') row.sakitCount++;
@@ -64,6 +76,7 @@ export function summarizeEmployees(data: AttendanceDataset, filter: RecordFilter
       sakitCount: 0,
       izinCount: 0,
       cutiCount: 0,
+      absentCount: 0,
     }),
   }));
 }
@@ -73,10 +86,10 @@ function csvCell(value: string | number) {
   return `"${safe.replaceAll('"', '""')}"`;
 }
 export function reportCsv(rows: EmployeeReport[], filter: RecordFilter, anonymous = false): string {
-  const headers = anonymous ? ['Dari', 'Sampai', 'Keterlambatan (menit)', 'Lembur (menit)'] : ['Dari', 'Sampai', 'ID karyawan', 'Nama', 'Catatan final', 'Keterlambatan (menit)', 'Lembur (menit)'];
+  const headers = anonymous ? ['Dari', 'Sampai', 'Keterlambatan (menit)', 'Lembur (menit)', 'Izin', 'Cuti', 'Sakit', 'Tidak Hadir'] : ['Dari', 'Sampai', 'ID karyawan', 'Nama', 'Hari Hadir', 'Keterlambatan (menit)', 'Lembur (menit)', 'Izin', 'Cuti', 'Sakit', 'Tidak Hadir'];
   const values = anonymous
-    ? [[filter.startDate, filter.endDate, rows.reduce((v, r) => v + r.lateMinutes, 0), rows.reduce((v, r) => v + r.overtimeMinutes, 0)]]
-    : rows.map(r => [filter.startDate, filter.endDate, r.employee.employeeCode, r.employee.fullName, r.recordCount, r.recordCount ? r.lateMinutes : '', r.recordCount ? r.overtimeMinutes : '']);
+    ? [[filter.startDate, filter.endDate, rows.reduce((v, r) => v + r.lateMinutes, 0), rows.reduce((v, r) => v + r.overtimeMinutes, 0), rows.reduce((v, r) => v + (r.izinCount || 0), 0), rows.reduce((v, r) => v + (r.cutiCount || 0), 0), rows.reduce((v, r) => v + (r.sakitCount || 0), 0), rows.reduce((v, r) => v + (r.absentCount || 0), 0)]]
+    : rows.map(r => [filter.startDate, filter.endDate, r.employee.employeeCode, r.employee.fullName, r.recordCount, r.recordCount ? r.lateMinutes : '', r.recordCount ? r.overtimeMinutes : '', r.izinCount || 0, r.cutiCount || 0, r.sakitCount || 0, r.absentCount || 0]);
   return '\uFEFF' + [headers, ...values].map(row => row.map(csvCell).join(',')).join('\r\n');
 }
 export function downloadText(text: string, filename: string, type = 'text/csv;charset=utf-8') {

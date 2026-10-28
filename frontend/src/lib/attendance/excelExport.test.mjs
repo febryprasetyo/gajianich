@@ -12,6 +12,7 @@ const dummyRows = [
     izinCount: 1,
     sakitCount: 2,
     cutiCount: 0,
+    absentCount: 3,
   },
   {
     employee: { id: 2, employeeCode: "EMP-002", fullName: "Siti Rahma", departmentId: 20, email: "siti@test.com", isActive: true },
@@ -21,6 +22,7 @@ const dummyRows = [
     izinCount: 0,
     sakitCount: 0,
     cutiCount: 3,
+    absentCount: 0,
   },
 ];
 
@@ -166,4 +168,27 @@ test('daily export labels dinas luar in Indonesian', () => {
   }] });
   const rows = XLSX.utils.sheet_to_json(wb.Sheets['Rincian Harian']);
   assert.equal(rows[0].Status, 'DINAS LUAR');
+});
+
+
+test('exports numeric Tidak Hadir per employee, including zero and anonymous total', () => {
+  const normal = createAttendanceReportWorkbook(dummyRows, dummyFilter);
+  const rows = XLSX.utils.sheet_to_json(normal.Sheets['Rekap Absensi']);
+  assert.equal(rows[0]['Tidak Hadir'], 3);
+  assert.equal(rows[1]['Tidak Hadir'], 0);
+  const anonymous = createAttendanceReportWorkbook(dummyRows, dummyFilter, { anonymous: true });
+  const summary = XLSX.utils.sheet_to_json(anonymous.Sheets['Ringkasan Laporan']);
+  assert.equal(summary[0]['Total Tidak Hadir'], 3);
+});
+
+
+test('daily export marks only recorded Alpha, not missing calendar days or dayoff', () => {
+  const base = { employeeId: 1, workDate: '2026-09-22', attendanceStatus: 'ALPHA', isDayOff: false };
+  const wb = createAttendanceReportWorkbook(dummyRows.slice(0, 1), dummyFilter, { calendarRows: [
+    { date: '2026-09-22', isDayOff: false, record: base },
+    { date: '2026-09-23', isDayOff: false, record: null },
+    { date: '2026-09-26', isDayOff: true, record: { ...base, workDate: '2026-09-26', isDayOff: true } },
+  ] });
+  const daily = XLSX.utils.sheet_to_json(wb.Sheets['Rincian Harian']);
+  assert.deepEqual(daily.map(row => row['Tidak Hadir']), [1, 0, 0]);
 });

@@ -162,6 +162,7 @@ export function Totals({
   sakit = 0,
   izin = 0,
   cuti = 0,
+  absent = 0,
 }: {
   late: number;
   overtime: number;
@@ -169,19 +170,21 @@ export function Totals({
   sakit?: number;
   izin?: number;
   cuti?: number;
+  absent?: number;
 }) {
   const items = [
-    { label: 'Tepat waktu / Hadir', value: String(count) },
+    { label: 'Hadir', value: String(count) },
     { label: 'Keterlambatan', value: durationLabel(late) },
     { label: 'Lembur', value: durationLabel(overtime) },
     { label: 'Izin', value: String(izin) },
-    { label: 'Sakit', value: String(sakit) },
     { label: 'Cuti', value: String(cuti) },
+    { label: 'Sakit', value: String(sakit) },
+    { label: 'Tidak Hadir', value: String(absent) },
   ];
 
   return (
     <div className="hr-panel overflow-x-auto">
-      <div className="grid min-w-[700px] grid-cols-6 divide-x divide-slate-200">
+      <div className="grid min-w-[800px] grid-cols-7 divide-x divide-slate-200">
         {items.map(item => (
           <div className="px-4 py-3.5 text-left" key={item.label}>
             <span className="block text-base font-bold tabular-nums text-slate-900">

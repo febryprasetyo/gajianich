@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { getJakartaToday, isRecordedAbsence } from "./domain";
 function durationLabel(minutes: number): string {
   if (!minutes) return "0 m";
   const h = Math.floor(minutes / 60);
@@ -41,8 +42,9 @@ export function createAttendanceReportWorkbook(
         "Total Keterlambatan (Menit)": rows.reduce((v, r) => v + r.lateMinutes, 0),
         "Total Lembur (Menit)": rows.reduce((v, r) => v + r.overtimeMinutes, 0),
         "Total Izin": rows.reduce((v, r) => v + (r.izinCount || 0), 0),
-        "Total Sakit": rows.reduce((v, r) => v + (r.sakitCount || 0), 0),
         "Total Cuti": rows.reduce((v, r) => v + (r.cutiCount || 0), 0),
+        "Total Sakit": rows.reduce((v, r) => v + (r.sakitCount || 0), 0),
+        "Total Tidak Hadir": rows.reduce((v, r) => v + (r.absentCount || 0), 0),
       },
     ];
     const ws = XLSX.utils.json_to_sheet(summaryData);
@@ -57,6 +59,7 @@ export function createAttendanceReportWorkbook(
       { wch: 14 },
       { wch: 14 },
     ];
+    ws["!cols"]!.push({ wch: 20 });
     XLSX.utils.book_append_sheet(workbook, ws, "Ringkasan Laporan");
     return workbook;
   }
@@ -75,8 +78,9 @@ export function createAttendanceReportWorkbook(
     "Lembur (Menit)": r.recordCount ? r.overtimeMinutes : 0,
     "Durasi Lembur": r.recordCount ? durationLabel(r.overtimeMinutes) : "0 m",
     "Izin": r.izinCount || 0,
-    "Sakit": r.sakitCount || 0,
     "Cuti": r.cutiCount || 0,
+    "Sakit": r.sakitCount || 0,
+    "Tidak Hadir": r.absentCount || 0,
   }));
 
   const wsSummary = XLSX.utils.json_to_sheet(reportData);
@@ -96,10 +100,12 @@ export function createAttendanceReportWorkbook(
     { wch: 10 },
     { wch: 10 },
   ];
+  wsSummary["!cols"]!.push({ wch: 16 });
   XLSX.utils.book_append_sheet(workbook, wsSummary, "Rekap Absensi");
 
   const calendarRows = options?.calendarRows;
   const dailyRecords = options?.dailyRecords;
+  const today = getJakartaToday();
   if ((calendarRows && calendarRows.length > 0) || (dailyRecords && dailyRecords.length > 0)) {
     const dailyData = calendarRows?.length
       ? calendarRows.map((row, idx) => {
@@ -118,6 +124,7 @@ export function createAttendanceReportWorkbook(
           "Pulang Cepat (Menit)": row.isDayOff ? 0 : (r?.earlyMinutes || 0),
           "Lembur (Menit)": r?.overtimeMinutes || 0,
           "Durasi Lembur": durationLabel(r?.overtimeMinutes || 0),
+          "Tidak Hadir": !row.isDayOff && isRecordedAbsence(r, today) ? 1 : 0,
         };
       })
       : dailyRecords!.map((r, idx) => ({
@@ -134,6 +141,7 @@ export function createAttendanceReportWorkbook(
       "Pulang Cepat (Menit)": r.isDayOff ? 0 : r.earlyMinutes,
       "Lembur (Menit)": r.overtimeMinutes,
       "Durasi Lembur": durationLabel(r.overtimeMinutes),
+      "Tidak Hadir": isRecordedAbsence(r, today) ? 1 : 0,
     }));
     const wsDaily = XLSX.utils.json_to_sheet(dailyData);
     wsDaily["!cols"] = [
@@ -151,6 +159,7 @@ export function createAttendanceReportWorkbook(
       { wch: 16 },
       { wch: 16 },
     ];
+    wsDaily["!cols"]!.push({ wch: 16 });
     XLSX.utils.book_append_sheet(workbook, wsDaily, "Rincian Harian");
   }
 

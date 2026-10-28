@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import ModalShell from '@/components/ui/ModalShell';
+import CustodianPicker from '@/components/assets/CustodianPicker';
+import { useAuth } from '@/context/AuthContext';
+import { canManageCustodians, type CustodianPickerValue, type CustodianSummary } from '@/lib/assetCustodian';
 import { api } from '@/lib/api';
 import {
   HardwareAuditItem,
@@ -28,16 +31,20 @@ export default function CreateAssetFromAuditModal({
   locations,
   onSuccess,
 }: CreateAssetFromAuditModalProps) {
+  const { user } = useAuth();
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [locationId, setLocationId] = useState<number | null>(null);
   const [assetName, setAssetName] = useState('');
-  const [custodianName, setCustodianName] = useState('');
+  const [custodian, setCustodian] = useState<CustodianPickerValue>({ kind: 'none' });
+  const custodianName = custodian.kind === 'custodian'
+    ? custodian.custodian.displayName
+    : custodian.kind === 'manual' ? custodian.newCustodian.displayName : '';
   const [status, setStatus] = useState<'Assigned' | 'Available'>('Assigned');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (audit) {
+    if (isOpen && audit) {
       const defaultCat =
         categories.find((c) => c.name.toLowerCase().trim() === 'laptop') ||
         categories.find((c) => c.name.toLowerCase().includes('laptop')) ||
@@ -49,13 +56,13 @@ export default function CreateAssetFromAuditModal({
         categories[0];
 
       setCategoryId(defaultCat ? defaultCat.id : categories[0]?.id || null);
-      setLocationId(locations[0]?.id || null);
+      setLocationId(null);
       setAssetName([audit.manufacturer, audit.model].filter(Boolean).join(' ') || 'Laptop');
-      setCustodianName(audit.custodianName || '');
+      setCustodian({ kind: 'none' });
       setStatus('Assigned');
       setError(null);
     }
-  }, [audit, categories, locations]);
+  }, [isOpen, audit, categories, locations]);
 
   if (!isOpen || !audit) return null;
 
@@ -73,14 +80,27 @@ export default function CreateAssetFromAuditModal({
       return;
     }
 
+    if (status === 'Assigned' && custodian.kind === 'none') {
+      setError('Pilih custodian terlebih dahulu.');
+      return;
+    }
+
     try {
       setSubmitting(true);
       setError(null);
-      const res: any = await api.post(`/hardware-audits/${audit.id}/create-asset`, {
+      let selectedCustodian: CustodianSummary | null = null;
+      if (status === 'Assigned' && custodian.kind === 'manual') {
+        selectedCustodian = await api.post<CustodianSummary>('/asset-custodians', custodian.newCustodian);
+        // Retain the created holder if asset registration fails and the user retries.
+        setCustodian({ kind: 'custodian', custodian: selectedCustodian });
+      } else if (status === 'Assigned' && custodian.kind === 'custodian') {
+        selectedCustodian = custodian.custodian;
+      }
+      const res: { message?: string; assetCode?: string } = await api.post(`/hardware-audits/${audit.id}/create-asset`, {
         name: assetName.trim(),
         categoryId,
         locationId,
-        custodianName: custodianName.trim(),
+        custodianId: selectedCustodian?.id ?? null,
         status,
         notes: `Created from Hardware Audit (${custodianName.trim() || audit.custodianName})`,
       });
@@ -175,15 +195,19 @@ export default function CreateAssetFromAuditModal({
               )}
             </div>
             <div>
-              <label className="text-slate-700 font-bold block mb-1">Pengguna (Custodian) *</label>
-              <input
-                type="text"
-                required
-                value={custodianName}
-                onChange={(e) => setCustodianName(e.target.value)}
-                placeholder="Nama Pengguna"
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-red-600 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 shadow-2xs"
+              <CustodianPicker
+                label="Target Custodian"
+                value={custodian}
+                onChange={setCustodian}
+                locations={locations}
+                allowManual={canManageCustodians(user?.roleName)}
+                disabled={submitting}
+                required={status === 'Assigned'}
+                accent="blue"
               />
+              <p className="mt-1 text-[10px] text-slate-500">
+                Nama dari collector: {audit.custodianName || '—'}. Pilih custodian yang sudah divalidasi.
+              </p>
             </div>
           </div>
 
@@ -216,7 +240,7 @@ export default function CreateAssetFromAuditModal({
                   onChange={() => setStatus('Assigned')}
                   className="text-red-600 focus:ring-emerald-500 cursor-pointer"
                 />
-                <span>Assigned (Diberikan ke {custodianName || audit.custodianName})</span>
+                <span>Assigned (Diberikan ke {custodianName || 'custodian terpilih'})</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -271,7 +295,7 @@ export default function CreateAssetFromAuditModal({
           </button>
           <button
             type="submit"
-            disabled={!categoryId || submitting}
+            disabled={!categoryId || submitting || (status === 'Assigned' && custodian.kind === 'none')}
             className="px-5 py-2.5 text-xs font-mono font-bold bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl transition flex items-center gap-2 shadow-md shadow-emerald-600/20 cursor-pointer"
           >
             {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}

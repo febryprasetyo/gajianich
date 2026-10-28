@@ -504,6 +504,24 @@ export async function createAssetFromAudit(
     throw new Error('Category not found');
   }
 
+  // Migrated inventory can already contain this collector device. Reject before
+  // allocating a new code or creating any custodian/assignment records.
+  const realSerialNumber = !isGenericOrPlaceholderSerial(audit.serialNumber)
+    ? audit.serialNumber!.trim()
+    : null;
+  if (realSerialNumber) {
+    const [existingAsset] = await runner
+      .select({ id: assets.id, assetCode: assets.assetCode })
+      .from(assets)
+      .where(sql`lower(trim(${assets.serialNumber})) = lower(${realSerialNumber})`)
+      .limit(1);
+    if (existingAsset) {
+      throw new Error(
+        `Serial number "${realSerialNumber}" sudah terdaftar pada aset "${existingAsset.assetCode}". Gunakan Tautkan Spesifikasi ke aset tersebut, lalu Assign Asset Custody untuk menentukan pengguna.`,
+      );
+    }
+  }
+
   // Generate asset code
   const year = new Date().getFullYear();
   const pattern = `${category.codePrefix}-${year}-%`;
@@ -519,13 +537,13 @@ export async function createAssetFromAudit(
   let matchedCustodian: { id: number; displayName: string } | null = null;
   const rawTargetName = (input.custodianName || audit.custodianName || '').trim();
 
-  if (input.custodianId) {
+  if (input.status === 'Assigned' && input.custodianId) {
     const [c] = await runner
       .select({ id: assetCustodians.id, displayName: assetCustodians.displayName })
       .from(assetCustodians)
       .where(eq(assetCustodians.id, input.custodianId));
     if (c) matchedCustodian = c;
-  } else if (rawTargetName) {
+  } else if (input.status === 'Assigned' && rawTargetName) {
     const normName = rawTargetName.replace(/\s+/gu, ' ').toLowerCase();
     const [existingCust] = await runner
       .select({ id: assetCustodians.id, displayName: assetCustodians.displayName })
@@ -561,10 +579,6 @@ export async function createAssetFromAudit(
 
   const brandName = (input.name && input.name.trim()) || [audit.manufacturer, audit.model].filter(Boolean).join(' ').trim() || category.name;
   const effectiveStatus = matchedCustodian ? 'Assigned' : input.status;
-
-  const realSerialNumber = !isGenericOrPlaceholderSerial(audit.serialNumber)
-    ? audit.serialNumber!.trim()
-    : null;
 
   let initialNotes = input.notes || audit.notes || `Created via Hardware Audit for ${audit.custodianName}`;
   if (audit.serialNumber && isGenericOrPlaceholderSerial(audit.serialNumber)) {

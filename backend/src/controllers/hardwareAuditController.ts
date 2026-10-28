@@ -99,6 +99,16 @@ export async function createAssetFromHardwareAudit(req: Request, res: Response) 
     if (err.name === 'ZodError') {
       return res.status(400).json({ error: 'Validation failed', details: err.errors });
     }
+    const databaseError = err.cause || err;
+    if (databaseError.code === '23505') {
+      return res.status(409).json({
+        error: 'Serial number atau kode aset sudah terdaftar. Muat ulang daftar aset dan gunakan Tautkan Spesifikasi untuk perangkat yang sudah ada.',
+      });
+    }
+    if (err.cause || databaseError.code) {
+      console.error('Hardware audit asset registration database error:', databaseError.code || 'unknown');
+      return res.status(500).json({ error: 'Gagal menyimpan aset. Silakan coba kembali atau hubungi administrator.' });
+    }
     return res.status(400).json({ error: err.message || 'Failed to create asset from hardware audit' });
   }
 }

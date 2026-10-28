@@ -11,6 +11,8 @@ import { TalentaKpiStrip } from './TalentaKpiStrip';
 import { TalentaAttendanceTable } from './TalentaAttendanceTable';
 import {
   dateLabel,
+  getJakartaToday,
+  isRecordedAbsence,
   durationLabel,
   summarizeEmployees,
   filterRecords,
@@ -102,7 +104,8 @@ export default function AttendanceReportsPage({ employeeId }: { employeeId?: num
   }
 
   const filter = { startDate, endDate, q: anonymous ? '' : q, departmentId: anonymous || employeeId ? 0 : departmentId, employeeId };
-  const reports = error ? [] : summarizeEmployees(data, filter);
+  const today = getJakartaToday();
+  const reports = error ? [] : summarizeEmployees(data, filter, today);
   const records = error || !employeeId ? [] : sortRecordsDescending(filterRecords(data, filter));
 
   // Generate full calendar grid (30/31 days) for employee view
@@ -111,16 +114,19 @@ export default function AttendanceReportsPage({ employeeId }: { employeeId?: num
     return generateFullCalendarGrid(startDate, endDate, employeeShift, records);
   }, [employeeId, error, startDate, endDate, employeeShift, records]);
 
+  const recordedAbsences = reports[0]?.absentCount || 0;
+
   // Statistics for employee card header (Talenta 3-segment KPI Strip)
   const talentaKpi = useMemo(() => {
     if (!employeeId || calendarRows.length === 0) return null;
-    return calculateTalentaKpi(calendarRows);
-  }, [employeeId, calendarRows]);
+    return { ...calculateTalentaKpi(calendarRows, today), absent: recordedAbsences };
+  }, [employeeId, calendarRows, today, recordedAbsences]);
 
   // Filter calendar rows based on active KPI card filter
   const displayedCalendarRows = useMemo(() => {
-    return filterTalentaRows(calendarRows, kpiFilter);
-  }, [calendarRows, kpiFilter]);
+    if (kpiFilter === 'ABSENT') return calendarRows.filter(row => isRecordedAbsence(row.record, today));
+    return filterTalentaRows(calendarRows, kpiFilter, today);
+  }, [calendarRows, kpiFilter, today]);
 
   const count = employeeId ? calendarRows.length : reports.length;
   const pageSize = 10;
@@ -290,6 +296,7 @@ export default function AttendanceReportsPage({ employeeId }: { employeeId?: num
               sakit={reports.reduce((n, r) => n + (r.sakitCount || 0), 0)}
               izin={reports.reduce((n, r) => n + (r.izinCount || 0), 0)}
               cuti={reports.reduce((n, r) => n + (r.cutiCount || 0), 0)}
+              absent={reports.reduce((n, r) => n + (r.absentCount || 0), 0)}
             />
           )}
 
@@ -297,7 +304,7 @@ export default function AttendanceReportsPage({ employeeId }: { employeeId?: num
           {!employee && (
             <div className="flex flex-wrap justify-between gap-2 text-[11px] text-slate-500">
               <p>
-                Periode: <strong className="font-semibold text-slate-800">{dateLabel(startDate)} – {dateLabel(endDate)}</strong> (Cut-Off 21 – 20) · {reports.length} karyawan terdata.
+                Periode: <strong className="font-semibold text-slate-800">{dateLabel(startDate)} – {dateLabel(endDate)}</strong> (Cut-Off 21 – 20) · {reports.length} karyawan terdata. Tidak Hadir hanya menghitung catatan ALPHA.
               </p>
             </div>
           )}
@@ -327,8 +334,9 @@ export default function AttendanceReportsPage({ employeeId }: { employeeId?: num
                       <th>Terlambat</th>
                       <th>Lembur</th>
                       <th className="text-center">Izin</th>
-                      <th className="text-center">Sakit</th>
                       <th className="text-center">Cuti</th>
+                      <th className="text-center">Sakit</th>
+                      <th className="text-center">Tidak Hadir</th>
                       <th className="text-right">Aksi</th>
                     </tr>
                   </thead>
@@ -345,8 +353,9 @@ export default function AttendanceReportsPage({ employeeId }: { employeeId?: num
                           {r.recordCount ? (r.overtimeMinutes ? durationLabel(r.overtimeMinutes) : '—') : '—'}
                         </td>
                         <td className="text-center tabular-nums">{r.izinCount || <span className="text-slate-400">0</span>}</td>
-                        <td className="text-center tabular-nums">{r.sakitCount || <span className="text-slate-400">0</span>}</td>
                         <td className="text-center tabular-nums">{r.cutiCount || <span className="text-slate-400">0</span>}</td>
+                        <td className="text-center tabular-nums">{r.sakitCount || <span className="text-slate-400">0</span>}</td>
+                        <td className="text-center tabular-nums">{r.absentCount || <span className="text-slate-400">0</span>}</td>
                         <td className="text-right">
                           <Link className="hr-btn text-xs" href={`/dashboard/attendance/employees/${r.employee.id}`}>
                             Kartu

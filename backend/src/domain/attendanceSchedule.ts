@@ -106,3 +106,15 @@ function _legacyResolveShift(
 
   return activeShifts[0] || DEFAULT_OFFICE_SHIFT;
 }
+
+/** Snapshot configured working hours without changing source attendance measurements. */
+export function getAttendanceSchedule(
+  employee: { id?: number; departmentId?: number | null },
+  workDate: string,
+  shifts: WorkShift[],
+  assignments: ShiftAssignment[],
+  shiftId?: number,
+) {
+  const shift = shifts.find(s => s.id === shiftId && s.isActive) ?? resolveEmployeeShift(employee, shifts, assignments);
+  return { shift: shift.name, ...getWorkingScheduleForDate(workDate, shift) };
+}

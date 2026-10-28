@@ -23,6 +23,7 @@ import {
   loadAttendanceWorkspace,
   executeAttendanceCommand,
 } from "./attendanceWorkspace";
+import { repairOfficeShiftConfiguration } from "../scripts/repairOfficeShiftConfiguration";
 import type { AuditContext } from "../domain/hrAudit";
 import type { ServerAttendanceCommand } from "../domain/attendanceCommands";
 
@@ -436,4 +437,94 @@ test("Attendance Workspace & Commands Integration Tests", async (t) => {
     const allAuditEvents = await adminDb.select().from(hrAuditEvents);
     assert.ok(allAuditEvents.length >= 8, "All HR audit events must persist after draft deletion");
   });
+  await t.test("import resolves master ID and source identity without client employeeId; commit is atomic", async () => {
+    const execute = (command: ServerAttendanceCommand) => db.transaction(tx =>
+      executeAttendanceCommand(tx, { ...context, operationId: randomUUID() }, command));
+    const row = { id: 0, externalNoId: emp.employeeCode, employeeId: null, workDate: "2026-11-01", scanIn: "08:30", scanOut: "17:30", lateMinutes: 0, earlyMinutes: 0, overtimeMinutes: 0, reviewStatus: "READY" as const, note: "" };
+    const imported = await execute({ type: "import", filename: "server-mapping.xls", rows: [row, { ...row, externalNoId: "1001", workDate: "2026-11-02" }, { ...row, externalNoId: "UNKNOWN", employeeId: emp.id, workDate: "2026-11-03" }] });
+    const batch = imported.data.batches.find(b => b.filename === "server-mapping.xls")!;
+    assert.equal(batch.rows[0].employeeId, emp.id);
+    assert.equal(batch.rows[1].employeeId, emp.id);
+    assert.equal(batch.rows[2].employeeId, null);
+    assert.equal(batch.rows[2].reviewStatus, "BLOCKED");
+    await assert.rejects(() => execute({ type: "batch", batchId: batch.id, action: "commit" }), /pemetaan|karyawan|review/i);
+    const workspace = await db.transaction(tx => loadAttendanceWorkspace(tx, context));
+    assert.equal(workspace.batches.find(b => b.id === batch.id)?.status, "DRAFT");
+    assert.equal(workspace.records.filter(r => r.sourceBatchId === batch.id).length, 0);
+    await execute({ type: "review", batchId: batch.id, rowId: batch.rows[2].id, skipped: true, reason: "Unknown employee" });
+    const committed = await execute({ type: "batch", batchId: batch.id, action: "commit" });
+    assert.equal(committed.data.records.filter(r => r.sourceBatchId === batch.id).length, 2);
+    await assert.rejects(() => execute({ type: "batch", batchId: batch.id, action: "commit" }), /draft|DRAFT/i);
+  });
+
+  await t.test("HR can review and commit a corrected import with historical parser issues", async () => {
+    const execute = (command: ServerAttendanceCommand) => db.transaction(tx =>
+      executeAttendanceCommand(tx, { ...context, operationId: randomUUID() }, command));
+    const imported = await execute({ type: "import", filename: "corrected-validation.xls", rows: [{ id: 0, externalNoId: emp.employeeCode, employeeId: null, workDate: "2026-11-04", scanIn: "08:30", scanOut: "17:30", lateMinutes: 0, earlyMinutes: 0, overtimeMinutes: 0, reviewStatus: "READY", note: "", issues: ["Scan belum lengkap"] }] });
+    const batch = imported.data.batches.find(b => b.filename === "corrected-validation.xls")!;
+    assert.equal(batch.rows[0].reviewStatus, "BLOCKED");
+    await assert.rejects(() => execute({ type: "batch", batchId: batch.id, action: "commit" }), /review/i);
+    await execute({ type: "review", batchId: batch.id, rowId: batch.rows[0].id, employeeId: emp.id, skipped: false, values: { scanIn: "08:30", scanOut: "17:30" }, reason: "Jam diverifikasi dari sumber" });
+    const committed = await execute({ type: "batch", batchId: batch.id, action: "commit" });
+    assert.equal(committed.data.records.filter(r => r.sourceBatchId === batch.id).length, 1);
+  });
+
+  await t.test("import and manual attendance persist department schedules with Saturday hours and employee overrides", async () => {
+    const execute = (command: ServerAttendanceCommand) => db.transaction(tx => executeAttendanceCommand(tx, { ...context, operationId: randomUUID() }, command));
+    const created = await execute({ type: "shift", action: "create", shift: { id: 0, code: "PROD_TEST", name: "Produksi Test", scheduleIn: "08:00", scheduleOut: "16:00", workDays: 6, saturdayScheduleIn: "08:00", saturdayScheduleOut: "14:00", isDefault: false, isActive: true } });
+    const prod = created.data.shifts.find(s => s.code === "PROD_TEST")!;
+    await execute({ type: "assign_shift", assignment: { id: 0, shiftId: prod.id, departmentId: dept.id } });
+    const [worker] = await adminDb.insert(employees).values({ employeeCode: "SHIFT-WORKER", fullName: "Shift Worker", departmentId: dept.id }).returning();
+    const imported = await execute({ type: "import", filename: "shift-saturday.xls", rows: [{ id: 0, externalNoId: worker.employeeCode, employeeId: null, workDate: "2026-11-07", scanIn: "07:55", scanOut: "14:05", lateMinutes: 0, earlyMinutes: 0, overtimeMinutes: 5, reviewStatus: "READY", note: "" }] });
+    const batch = imported.data.batches.find(b => b.filename === "shift-saturday.xls")!;
+    const committed = await execute({ type: "batch", batchId: batch.id, action: "commit" });
+    const record = committed.data.records.find(r => r.sourceBatchId === batch.id)!;
+    assert.equal(record.shift, prod.name);
+    assert.equal(record.scheduleIn, "08:00");
+    assert.equal(record.scheduleOut, "14:00");
+    assert.equal(record.scanIn, "07:55");
+    assert.equal(record.scanOut, "14:05");
+    assert.equal(record.overtimeMinutes, 5);
+    const manual = await execute({ type: "record_attendance", employeeId: worker.id, workDate: "2026-11-09", attendanceStatus: "PRESENT", scanIn: "07:50", scanOut: "16:05" });
+    const saved = manual.data.records.find(r => r.employeeId === worker.id && r.workDate === "2026-11-09")!;
+    assert.equal(saved.shift, prod.name);
+    assert.equal(saved.scheduleOut, "16:00");
+    assert.equal(saved.scanIn, "07:50");
+    const override = await execute({ type: "record_attendance", employeeId: emp.id, workDate: "2026-11-09", attendanceStatus: "PRESENT", scanIn: "08:30", scanOut: "17:30" });
+    assert.equal(override.data.records.find(r => r.employeeId === emp.id && r.workDate === "2026-11-09")?.shift, "Office Reguler");
+    await assert.rejects(() => execute({ type: "assign_shift", assignment: { id: 0, shiftId: 999999, departmentId: dept.id } }), /shift.*aktif|shift.*ditemukan/i);
+  });
+
+  await t.test("Office recovery persists department assignments, fills only missing schedules and is idempotent", async () => {
+    const [worker] = await adminDb.select().from(employees).where(eq(employees.employeeCode, "SHIFT-WORKER"));
+    const [missing] = await adminDb.insert(attendanceRecords).values({ employeeId: worker.id, workDate: "2026-12-01", scanIn: "08:03", scanOut: "17:04", lateMinutes: 3, overtimeMinutes: 4, attendanceStatus: "PRESENT" }).returning();
+    const [historical] = await adminDb.insert(attendanceRecords).values({ employeeId: worker.id, workDate: "2026-12-02", shift: "Historical schedule", scheduleIn: "09:00", scheduleOut: "18:00", scanIn: "09:00", scanOut: "18:00" }).returning();
+    const [locked] = await adminDb.insert(attendanceRecords).values({ employeeId: worker.id, workDate: "2026-12-03", scanIn: "08:00", scanOut: "17:00" }).returning();
+    await adminDb.insert(attendanceLocks).values({ workDate: locked.workDate, reason: "Locked test", actorId: user.id });
+    const preview = await db.transaction(tx => repairOfficeShiftConfiguration(tx, { ...context, operationId: randomUUID() }, false));
+    assert.ok(preview.scheduleChanges > 0);
+    const [unchanged] = await adminDb.select().from(attendanceRecords).where(eq(attendanceRecords.id, missing.id));
+    assert.equal(unchanged.shift, null);
+    const applied = await db.transaction(tx => repairOfficeShiftConfiguration(tx, { ...context, operationId: randomUUID() }, true));
+    assert.ok(applied.scheduleChanges > 0);
+    const [saved] = await adminDb.select().from(attendanceRecords).where(eq(attendanceRecords.id, missing.id));
+    assert.equal(saved.shift, "Office Reguler (Default)");
+    assert.equal(saved.scheduleIn, "08:00");
+    assert.equal(saved.scheduleOut, "17:00");
+    assert.equal(saved.scanIn, missing.scanIn);
+    assert.equal(saved.scanOut, missing.scanOut);
+    assert.equal(saved.lateMinutes, 3);
+    assert.equal(saved.overtimeMinutes, 4);
+    const [old] = await adminDb.select().from(attendanceRecords).where(eq(attendanceRecords.id, historical.id));
+    assert.deepEqual(old, historical);
+    const [stillLocked] = await adminDb.select().from(attendanceRecords).where(eq(attendanceRecords.id, locked.id));
+    assert.deepEqual(stillLocked, locked);
+    const again = await db.transaction(tx => repairOfficeShiftConfiguration(tx, { ...context, operationId: randomUUID() }, false));
+    assert.equal(again.scheduleChanges, 0);
+    assert.equal(again.departmentChanges, 0);
+    const ws = await db.transaction(tx => loadAttendanceWorkspace(tx, context));
+    assert.ok(ws.shifts.some(s => s.code === "OFFICE"));
+    assert.equal(ws.shiftAssignments.find(a => a.departmentId === dept.id)?.shiftId, ws.shifts.find(s => s.code === "OFFICE")!.id);
+  });
+
 });

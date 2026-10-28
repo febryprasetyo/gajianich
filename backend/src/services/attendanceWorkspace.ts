@@ -35,18 +35,21 @@ import type {
   AttendanceLock,
 } from "../domain/attendanceTypes";
 import type { ServerAttendanceCommand } from "../domain/attendanceCommands";
-import { getWorkingScheduleForDate, resolveEmployeeShift } from "../domain/attendanceSchedule";
+import { getAttendanceSchedule } from "../domain/attendanceSchedule";
 
-async function fieldDutyValues(tx: AuditTx, employeeId: number, workDate: string, shiftId?: number) {
+import { resolveImportEmployee } from "../domain/attendanceImportMapping";
+
+async function employeeScheduleValues(tx: AuditTx, employeeId: number, workDate: string, shiftId?: number) {
   const [employee] = await tx.select().from(employees).where(eq(employees.id, employeeId));
   if (!employee) throw new ValidationError("Karyawan tidak ditemukan");
   const shifts = await tx.select().from(attendanceShifts);
   const assignments = await tx.select().from(attendanceShiftAssignments);
-  const shift = shifts.find(s => s.id === shiftId && s.isActive)
-    ?? resolveEmployeeShift(employee, shifts as WorkShift[], assignments);
-  const schedule = getWorkingScheduleForDate(workDate, shift as WorkShift);
+  return getAttendanceSchedule(employee, workDate, shifts as WorkShift[], assignments, shiftId);
+}
+
+async function fieldDutyValues(tx: AuditTx, employeeId: number, workDate: string, shiftId?: number) {
+  const schedule = await employeeScheduleValues(tx, employeeId, workDate, shiftId);
   return {
-    shift: shift.name,
     ...schedule,
     scanIn: schedule.scheduleIn,
     scanOut: schedule.scheduleOut,
@@ -608,6 +611,8 @@ export async function executeAttendanceCommand(
     }
 
     case "assign_shift": {
+      const [shift] = await tx.select().from(attendanceShifts).where(eq(attendanceShifts.id, command.assignment.shiftId));
+      if (!shift?.isActive) throw new ValidationError("Shift aktif tidak ditemukan. Simpan master shift terlebih dahulu.");
       let targetId: number;
       if (command.assignment.employeeId) {
         const [existing] = await tx
@@ -737,6 +742,15 @@ export async function executeAttendanceCommand(
         throw err;
       }
 
+      const employeeRows = await tx.select().from(employees);
+      const identities = await tx.select().from(attendanceIdentities);
+      const resolvedRows = command.rows.map(row => {
+        const employeeId = resolveImportEmployee(row.externalNoId, command.sourceId ?? 1, employeeRows, identities);
+        if (row.reviewStatus === "SKIPPED") return { ...row, employeeId };
+        if (!employeeId) return { ...row, employeeId: null, reviewStatus: "BLOCKED" as const, note: "Karyawan tidak ditemukan atau ID ambigu. Periksa pemetaan karyawan." };
+        if (row.issues?.length) return { ...row, employeeId, reviewStatus: "BLOCKED" as const, note: row.issues[0] };
+        return { ...row, employeeId };
+      });
       const [batch] = await tx
         .insert(attendanceBatches)
         .values({
@@ -745,8 +759,8 @@ export async function executeAttendanceCommand(
           fileHash: command.fileHash || null,
           status: "DRAFT",
           totalRows: command.rows.length,
-          validRows: command.rows.filter((r) => r.reviewStatus === "READY").length,
-          skippedRows: command.rows.filter((r) => r.reviewStatus === "SKIPPED").length,
+          validRows: resolvedRows.filter((r) => r.reviewStatus === "READY").length,
+          skippedRows: resolvedRows.filter((r) => r.reviewStatus === "SKIPPED").length,
           createdById: Number(context.actor.id),
           strictIntegrity: false,
           revision: 1,
@@ -754,7 +768,7 @@ export async function executeAttendanceCommand(
         .returning();
 
       for (let i = 0; i < command.rows.length; i++) {
-        const r = command.rows[i];
+        const r = resolvedRows[i];
         await tx.insert(attendanceImportRows).values({
           batchId: batch.id,
           rowNumber: i + 1,
@@ -864,12 +878,17 @@ export async function executeAttendanceCommand(
       }
 
       if (command.action === "commit") {
+        if (lockedBatch.status !== "DRAFT") throw new ValidationError("Hanya batch DRAFT yang dapat disimpan.");
         const rows = await tx
           .select()
           .from(attendanceImportRows)
           .where(eq(attendanceImportRows.batchId, command.batchId));
 
         const activeRows = rows.filter((r) => r.reviewStatus !== "SKIPPED");
+        if (!activeRows.length) throw new ValidationError("Tidak ada baris aktif untuk disimpan.");
+        if (activeRows.some(r => !r.employeeId || r.reviewStatus !== "READY")) {
+          throw new ValidationError("Selesaikan review dan pemetaan karyawan pada seluruh baris aktif sebelum menyimpan.");
+        }
         const workDates = activeRows.map((r) => r.workDate);
 
         // Check locks and lock workDates
@@ -878,9 +897,15 @@ export async function executeAttendanceCommand(
         }
         await lockWorkDates(tx, workDates);
 
+        const employeeRows = await tx.select().from(employees);
+        const shifts = await tx.select().from(attendanceShifts);
+        const assignments = await tx.select().from(attendanceShiftAssignments);
         // Commit active rows into attendanceRecords
         for (const r of activeRows) {
           if (!r.employeeId) continue;
+          const employee = employeeRows.find(e => e.id === r.employeeId);
+          if (!employee) throw new ValidationError("Karyawan tidak ditemukan");
+          const schedule = getAttendanceSchedule(employee, r.workDate, shifts as WorkShift[], assignments);
           const [existingRec] = await tx
             .select()
             .from(attendanceRecords)
@@ -902,6 +927,7 @@ export async function executeAttendanceCommand(
                 overtimeMinutes: r.overtimeMinutes,
                 attendanceStatus: r.attendanceStatus || "PRESENT",
                 sourceBatchId: command.batchId,
+                ...schedule,
                 revision: existingRec.revision + 1,
                 updatedAt: new Date(),
               })
@@ -919,6 +945,7 @@ export async function executeAttendanceCommand(
               overtimeMinutes: r.overtimeMinutes,
               attendanceStatus: r.attendanceStatus || "PRESENT",
               sourceBatchId: command.batchId,
+              ...schedule,
               revision: 1,
             });
           }
@@ -1067,7 +1094,7 @@ export async function executeAttendanceCommand(
 
       const dutyValues = command.attendanceStatus === "DINAS_LUAR"
         ? await fieldDutyValues(tx, command.employeeId, command.workDate, command.shiftId)
-        : {};
+        : await employeeScheduleValues(tx, command.employeeId, command.workDate, command.shiftId);
       let recordId: number;
       if (existing) {
         const [updated] = await tx

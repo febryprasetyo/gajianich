@@ -181,7 +181,7 @@ test('summarizeEmployees computes accurate counts for SAKIT, IZIN, and CUTI', ()
     { ...base, id: 105, employeeId: 1, workDate: '2026-09-25', attendanceStatus: 'SAKIT', lateMinutes: 0, overtimeMinutes: 0 },
   ];
   const report = summarizeEmployees(data, { startDate: '2026-09-21', endDate: '2026-09-25' }).find(row => row.employee.id === 1);
-  assert.equal(report.recordCount, 5);
+  assert.equal(report.recordCount, 1);
   assert.equal(report.sakitCount, 2);
   assert.equal(report.izinCount, 1);
   assert.equal(report.cutiCount, 1);
@@ -424,4 +424,31 @@ test('new dinas luar on a scheduled day creates schedule-based effective scans w
   assert.equal(record.rawScanIn, null);
   assert.equal(record.rawScanOut, null);
   assert.equal(record.isDayOff, false);
+});
+
+test('Tidak Hadir counts recorded Alpha only, excluding missing days, time off and future dates', () => {
+  const data = fixture();
+  const base = data.records[0];
+  data.records = [
+    ['2026-09-21', 'PRESENT'], ['2026-09-22', 'ALPHA'], ['2026-09-23', 'IZIN'],
+    ['2026-09-24', 'SAKIT'], ['2026-09-25', 'CUTI'], ['2026-09-28', 'DINAS_LUAR'],
+    ['2026-10-01', 'ALPHA'],
+  ].map(([workDate, attendanceStatus], i) => ({ ...base, id: i + 1, workDate, attendanceStatus }));
+  const period = { startDate: '2026-09-21', endDate: '2026-10-02' };
+  const rows = summarizeEmployees(data, period, '2026-09-30');
+  assert.equal(rows[0].absentCount, 1); // Only recorded Alpha on Sep 22; missing Sep 29/30 are not Alpha.
+  assert.match(reportCsv(rows, period), /Tidak Hadir/);
+  assert.match(reportCsv(rows, period, true), /Tidak Hadir/);
+});
+
+test('Tidak Hadir excludes dayoff and missing records, and counts each recorded date once', () => {
+  const data = fixture();
+  data.employees.push({ ...data.employees[0], id: 2, employeeCode: 'EMP-002', fullName: 'Tanpa Catatan' });
+  data.records = [{ ...data.records[0], workDate: '2026-09-25', attendanceStatus: 'ALPHA' }];
+  data.records.push({ ...data.records[0], id: 2 });
+  data.records.push({ ...data.records[0], id: 3, workDate: '2026-09-26', isDayOff: true });
+  const rows = summarizeEmployees(data, { startDate: '2026-09-25', endDate: '2026-09-27' }, '2026-09-30');
+  assert.equal(rows[0].absentCount, 1);
+  assert.equal(rows[1].absentCount, 0);
+  assert.equal(summarizeEmployees(data, { startDate: '2026-10-01', endDate: '2026-10-02' }, '2026-09-30')[0].absentCount, 0);
 });

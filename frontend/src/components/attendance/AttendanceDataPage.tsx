@@ -11,6 +11,7 @@ import { CorrectionDialog, RecordDetails } from './RecordDialogs';
 import { RecordAttendanceDialog } from './RecordAttendanceDialog';
 import { dateLabel, durationLabel, filterEmployees, filterRecords, summarizeEmployees, validDate, getJakartaToday } from '@/lib/attendance/domain';
 import { exportAttendanceReportToExcel } from '@/lib/attendance/excelExport';
+import { resolveEmployeeShift, getWorkingScheduleForDate } from '@/lib/attendance/scheduleShift';
 import type { AttendanceRecord, Employee } from '@/lib/attendance/types';
 
 export default function AttendanceDataPage() {
@@ -279,6 +280,10 @@ export default function AttendanceDataPage() {
             <tbody>
               {visible.map(employee => {
                 const r = lookup.get(employee.id);
+                const plannedShift = !r && data.shifts?.some(s => s.isActive)
+                  ? resolveEmployeeShift(employee, data.shifts, data.shiftAssignments)
+                  : null;
+                const plannedSchedule = plannedShift && date ? getWorkingScheduleForDate(date, plannedShift) : null;
                 const dept = data.departments.find(d => d.id === employee.departmentId)?.name;
                 return (
                   <tr key={employee.id}>
@@ -300,9 +305,9 @@ export default function AttendanceDataPage() {
                       </div>
                     </td>
                     <td>{date ? dateLabel(date) : '—'}</td>
-                    <td>{r?.shift ?? '—'}</td>
-                    <td className="text-slate-500">{r?.scheduleIn ?? '—'}</td>
-                    <td className="text-slate-500">{r?.scheduleOut ?? '—'}</td>
+                    <td>{r?.shift ?? plannedShift?.name ?? '—'}</td>
+                    <td className="text-slate-500">{r?.scheduleIn ?? plannedSchedule?.scheduleIn ?? '—'}</td>
+                    <td className="text-slate-500">{r?.scheduleOut ?? plannedSchedule?.scheduleOut ?? '—'}</td>
                     <td className={r?.lateMinutes && !r.isDayOff ? 'font-semibold text-amber-700' : 'text-emerald-700'}>
                       {r?.scanIn ?? '—'}
                       {r?.normalized && !r.rawScanIn && (
