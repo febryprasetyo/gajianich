@@ -11,7 +11,7 @@
 
 **Tech Stack:** Next.js 15 (App Router), React 19, TypeScript, Drizzle ORM, PostgreSQL, TailwindCSS, Lucide Icons, Node.js Test Runner (`tsx --test`).
 
-**Spec:** [docs/superpowers/specs/2026-10-14-master-cuti-settings-design.md](file:///home/fastpec/code/ams-app/docs/superpowers/specs/2026-10-14-master-cuti-settings-design.md)
+**Spec:** [docs/superpowers/specs/2026-10-14-master-cuti-settings-design.md](file:///home/fastpec/code/gajianich/docs/superpowers/specs/2026-10-14-master-cuti-settings-design.md)
 
 ## Global Constraints
 - Bahasa Indonesia baku yang konsisten untuk seluruh UI label, pesan sukses, pesan kesalahan, dan konfirmasi.

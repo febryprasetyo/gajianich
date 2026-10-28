@@ -3,7 +3,7 @@
 # AMS Enterprise UI Design System Guide
 
 > **Golden Rule**: Dilarang keras menggunakan gaya "AI Vibe" (background kartu gelap, gradient ungu/indigo/neon, glow shadow, floating glassmorphism, atau pill badge bertumpuk yang aneh).  
-> **Source of Truth**: [`frontend/src/components/master/EmployeeDirectoryPage.tsx`](file:///home/fastpec/code/ams-app/frontend/src/components/master/EmployeeDirectoryPage.tsx) (Halaman Data Karyawan).  
+> **Source of Truth**: [`frontend/src/components/master/EmployeeDirectoryPage.tsx`](file:///home/fastpec/code/gajianich/frontend/src/components/master/EmployeeDirectoryPage.tsx) (Halaman Data Karyawan).  
 > Seluruh halaman master data, rekapitulasi, pengaturan, dan transaksi di dashboard AMS **wajib** mengikuti struktur, warna, dan komponen di dokumen ini.
 
 ---

@@ -389,7 +389,7 @@ git commit -m "ci: validate AMS builds migrations and containers"
 - Produces: `backup-postgres.sh` printing the verified backup path on stdout.
 - Produces: `restore-postgres.sh BACKUP_FILE TARGET_DATABASE` refusing the configured active DB.
 - Produces: `verify-postgres-backup.sh` using a temporary database with cleanup trap.
-- Consumes: `/opt/ams-app/.env` and `BACKUP_DIR`.
+- Consumes: `/opt/gajianich/.env` and `BACKUP_DIR`.
 
 - [ ] **Step 1: Write failing backup/restore shell tests**
 
@@ -430,8 +430,8 @@ database name that does not start with `ams_restore_verify_`.
 
 - [ ] **Step 6: Add systemd backup and verification schedules**
 
-The backup service runs `/opt/ams-app/deploy/scripts/backup-postgres.sh` as the
-restricted backup identity with `EnvironmentFile=/opt/ams-app/.env`. Its timer uses
+The backup service runs `/opt/gajianich/deploy/scripts/backup-postgres.sh` as the
+restricted backup identity with `EnvironmentFile=/opt/gajianich/.env`. Its timer uses
 `OnCalendar=daily`, `Persistent=true`, and randomized delay. A separate service and
 timer run `verify-postgres-backup.sh` weekly; both scripts use the same explicit
 `flock` file to prevent overlap.
@@ -458,9 +458,9 @@ git commit -m "feat(ops): add verified PostgreSQL backup and restore"
 - Create: `deploy/tests/deploy.bats`
 
 **Interfaces:**
-- Consumes: `deploy/compose.prod.yml`, `/opt/ams-app/.env`, GHCR login, and backup script.
+- Consumes: `deploy/compose.prod.yml`, `/opt/gajianich/.env`, GHCR login, and backup script.
 - Produces: `deploy.sh VERSION` and `rollback.sh VERSION`.
-- Produces: `/opt/ams-app/current-version` only after successful health checks.
+- Produces: `/opt/gajianich/current-version` only after successful health checks.
 
 - [ ] **Step 1: Write failing deployment state-machine tests**
 
@@ -580,7 +580,7 @@ Explicitly state that development source must be committed/pushed regularly.
 
 Provide exact Ubuntu 22.04 commands for Docker repository setup, Compose plugin,
 native PostgreSQL 16 production role/database, firewall bindings, `ams-deploy` account,
-`/opt/ams-app` permissions, GHCR login, self-hosted runner labels, systemd timer
+`/opt/gajianich` permissions, GHCR login, self-hosted runner labels, systemd timer
 installation, and pinned SSH host key acquisition.
 
 - [ ] **Step 3: Write GitHub and release runbook**

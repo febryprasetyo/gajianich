@@ -10,7 +10,7 @@
 
 **Spec:** [Spesifikasi migrasi](../specs/2026-09-25-ams-attendance-migration-design.md).
 
-**Status:** Rencana implementasi. Path file baru di bawah adalah target yang belum dibuat. Semua path relatif terhadap root `ams-app` kecuali disebut sumber Gajianich.
+**Status:** Rencana implementasi. Path file baru di bawah adalah target yang belum dibuat. Semua path relatif terhadap root `gajianich` kecuali disebut sumber Gajianich.
 
 **Penajaman kebutuhan 25 September 2026:** pengguna menetapkan attendance tanpa potongan akibat ketidakhadiran. Dua hasil rekap utama adalah total durasi keterlambatan dan total durasi lembur per karyawan/periode. Referensi gambar Data Absensi menjadi arah susunan halaman. Sebelum task implementasi halaman, selaraskan desain halaman utama, sumber jadwal/shift, dan penguncian periode ke schema/API/route; rincian tersebut belum ditetapkan oleh gambar. Plan ini belum menyatakan fitur-fitur tersebut siap dieksekusi.
 

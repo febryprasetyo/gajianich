@@ -13,7 +13,7 @@ The AMS development environment is hosted entirely on the Ubuntu development ser
    ```bash
    ssh <username>@<dev-server-ip>
    ```
-3. Open the workspace directory at `/srv/ams-app/workspace` (or your clone location).
+3. Open the workspace directory at `/srv/gajianich/workspace` (or your clone location).
 
 ---
 

@@ -49,19 +49,19 @@ Memecah halaman tunggal `/dashboard/attendance/approvals` menjadi halaman mandir
 - [x] Unit & Integration Test untuk endpoint badge counter.
 
 ### Fase 2: Pemisahan Halaman Frontend (Dashboard)
-- [x] Refactor [MobileApprovalsPage.tsx](file:///home/fastpec/code/ams-app/frontend/src/components/attendance/MobileApprovalsPage.tsx):
+- [x] Refactor [MobileApprovalsPage.tsx](file:///home/fastpec/code/gajianich/frontend/src/components/attendance/MobileApprovalsPage.tsx):
   - Ekstrak sub-komponen `AttendanceApprovalsView` untuk log absensi.
   - Ekstrak sub-komponen `FacePhotoApprovalsView` untuk verifikasi foto wajah.
   - Pindahkan tab settings ke halaman `/dashboard/attendance/settings`.
-- [x] Buat rute baru [frontend/src/app/dashboard/attendance/approvals/photos/page.tsx](file:///home/fastpec/code/ams-app/frontend/src/app/dashboard/attendance/approvals/photos/page.tsx).
-- [x] Perbarui rute [frontend/src/app/dashboard/attendance/settings/page.tsx](file:///home/fastpec/code/ams-app/frontend/src/app/dashboard/attendance/settings/page.tsx) agar memuat pengaturan persetujuan shift secara mandiri.
-- [x] Sesuaikan struktur navigasi sidebar di [DashboardLayout.tsx](file:///home/fastpec/code/ams-app/frontend/src/components/layout/DashboardLayout.tsx):
+- [x] Buat rute baru [frontend/src/app/dashboard/attendance/approvals/photos/page.tsx](file:///home/fastpec/code/gajianich/frontend/src/app/dashboard/attendance/approvals/photos/page.tsx).
+- [x] Perbarui rute [frontend/src/app/dashboard/attendance/settings/page.tsx](file:///home/fastpec/code/gajianich/frontend/src/app/dashboard/attendance/settings/page.tsx) agar memuat pengaturan persetujuan shift secara mandiri.
+- [x] Sesuaikan struktur navigasi sidebar di [DashboardLayout.tsx](file:///home/fastpec/code/gajianich/frontend/src/components/layout/DashboardLayout.tsx):
   - `Persetujuan Absensi` (`/dashboard/attendance/approvals`)
   - `Persetujuan Foto Wajah` (`/dashboard/attendance/approvals/photos`)
   - `Pengaturan` (`/dashboard/attendance/settings`)
 
 ### Fase 3: Komponen Notifikasi Lonceng di Header Dashboard
-- [x] Tambahkan komponen `NotificationBadge` di header [DashboardLayout.tsx](file:///home/fastpec/code/ams-app/frontend/src/components/layout/DashboardLayout.tsx) (di samping profile user):
+- [x] Tambahkan komponen `NotificationBadge` di header [DashboardLayout.tsx](file:///home/fastpec/code/gajianich/frontend/src/components/layout/DashboardLayout.tsx) (di samping profile user):
   - Ikon `Bell` dengan badge counter dinamis (tersembunyi jika 0).
   - Popover dropdown ringkas yang memisahkan jumlah antrean absensi dan foto wajah.
   - Polling reaktif berbasis SWR / interval timer bersih dengan cleanup saat unmount.

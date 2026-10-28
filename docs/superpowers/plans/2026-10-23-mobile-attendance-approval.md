@@ -32,7 +32,7 @@
 - [x] Test backend/frontend, build, dan verifikasi UI yang tersedia.
 
 ## Ledger
-- Terminal sandbox gagal inisialisasi; eskalasi disetujui otomatis. Lokasi fisik checkout /mnt/Data/code/ams-app.
+- Terminal sandbox gagal inisialisasi; eskalasi disetujui otomatis. Lokasi fisik checkout /mnt/Data/code/gajianich.
 - Perubahan existing dipertahankan; tidak ada deployment atau migrasi database live tanpa kebutuhan pengujian terisolasi.
 
 - Review independen menemukan regresi zona meridian, legacy pending recap, legacy enrollment kosong, dan starvation antrean. Semua diperbaiki dengan tes regresi.

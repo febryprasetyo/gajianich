@@ -6,7 +6,7 @@ Requires=postgresql.service
 [Service]
 Type=oneshot
 User=postgres
-ExecStart=/opt/ams-app/deploy/scripts/backup-postgres.sh /var/backups/ams-app/postgres ams_prod_db
+ExecStart=/opt/gajianich/deploy/scripts/backup-postgres.sh /var/backups/gajianich/postgres ams_prod_db
 StandardOutput=journal
 StandardError=journal
 

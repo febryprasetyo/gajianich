@@ -2,7 +2,7 @@
 
 setup() {
   export TEST_TMPDIR="$(mktemp -d)"
-  export APP_DIR="$TEST_TMPDIR/opt/ams-app"
+  export APP_DIR="$TEST_TMPDIR/opt/gajianich"
   export BACKUP_DIR="$TEST_TMPDIR/var/backups"
   export MOCK_BIN="$TEST_TMPDIR/bin"
   mkdir -p "$APP_DIR" "$BACKUP_DIR" "$MOCK_BIN"

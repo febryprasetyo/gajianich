@@ -21,7 +21,7 @@ Pengguna modul General Affair (GA) membutuhkan alur kerja yang lebih ringkas dan
 - [x] Menambahkan tombol/opsi aksi **"Simpan & Cetak"** pada form pengajuan permintaan barang yang setelah submit berhasil akan langsung membuka dialog cetak (`window.print()`).
 - [x] Menyediakan endpoint backend `PUT /api/v1/ga/requests/:id` untuk memperbarui data pengajuan (dengan validasi guard: hanya status sebelum `approved`).
 - [x] Menyediakan endpoint backend `DELETE /api/v1/ga/requests/:id` untuk menghapus pengajuan (dengan validasi guard: hanya status sebelum `approved`).
-- [x] Menambahkan tombol **Edit** dan **Hapus** pada halaman detail ([GoodsRequestDetail.tsx](file:///home/fastpec/code/ams-app/frontend/src/components/ga/GoodsRequestDetail.tsx)) dan daftar ([GoodsRequestList.tsx](file:///home/fastpec/code/ams-app/frontend/src/components/ga/GoodsRequestList.tsx)) hanya jika pengajuan belum disetujui.
+- [x] Menambahkan tombol **Edit** dan **Hapus** pada halaman detail ([GoodsRequestDetail.tsx](file:///home/fastpec/code/gajianich/frontend/src/components/ga/GoodsRequestDetail.tsx)) dan daftar ([GoodsRequestList.tsx](file:///home/fastpec/code/gajianich/frontend/src/components/ga/GoodsRequestList.tsx)) hanya jika pengajuan belum disetujui.
 - [x] Menolak operasi edit/delete di backend dengan status 403 / 400 jika pengajuan sudah berstatus `approved` atau setelahnya.
 - [x] Menyediakan modal konfirmasi (`ConfirmModal`) sebelum penghapusan data untuk mencegah kesalahan klik.
 
@@ -75,17 +75,17 @@ Fungsi helper `isRequestEditable(status: string): boolean`:
 
 ## 5. Frontend UI/UX Architecture
 
-1. **Form Pengajuan ([GoodsRequestForm.tsx](file:///home/fastpec/code/ams-app/frontend/src/components/ga/GoodsRequestForm.tsx))**:
+1. **Form Pengajuan ([GoodsRequestForm.tsx](file:///home/fastpec/code/gajianich/frontend/src/components/ga/GoodsRequestForm.tsx))**:
    - Dukungan **Mode Buat (Create)** dan **Mode Edit (Edit)** melalui prop `initialData?: GoodsRequest`.
    - Tombol Aksi:
      - **Simpan & Cetak** (Tombol Utama): Menyimpan form dan redirect ke `/dashboard/ga/requests/[id]?autoPrint=true`.
      - **Simpan Draft** (Tombol Sekunder): Menyimpan tanpa langsung membuka print preview.
-2. **Detail View ([GoodsRequestDetail.tsx](file:///home/fastpec/code/ams-app/frontend/src/components/ga/GoodsRequestDetail.tsx))**:
+2. **Detail View ([GoodsRequestDetail.tsx](file:///home/fastpec/code/gajianich/frontend/src/components/ga/GoodsRequestDetail.tsx))**:
    - Jika `autoPrint=true` ada di query URL, otomatis panggil `window.print()` segera setelah gambar ter-decode.
    - Header Bar menambahkan tombol:
      - **Edit** (Icon `Pencil`): Hanya muncul jika `isRequestEditable(request.status)`. Navigasi ke `/dashboard/ga/requests/[id]/edit`.
      - **Hapus** (Icon `Trash2`, varian danger): Hanya muncul jika `isRequestEditable(request.status)`. Membuka modal konfirmasi.
-3. **List View ([GoodsRequestList.tsx](file:///home/fastpec/code/ams-app/frontend/src/components/ga/GoodsRequestList.tsx))**:
+3. **List View ([GoodsRequestList.tsx](file:///home/fastpec/code/gajianich/frontend/src/components/ga/GoodsRequestList.tsx))**:
    - Kolom aksi baris menambahkan opsi **Edit** dan **Hapus** (khusus baris yang belum `approved`).
 
 ---

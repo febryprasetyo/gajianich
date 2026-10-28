@@ -12,7 +12,7 @@ fi
 
 TARGET_VERSION="$1"
 CONFIRM_FLAG="${2:-}"
-APP_DIR="${3:-/opt/ams-app}"
+APP_DIR="${3:-/opt/gajianich}"
 
 if [[ "$CONFIRM_FLAG" != "--yes" && -t 0 ]]; then
   read -r -p "Are you sure you want to rollback to $TARGET_VERSION? (y/N): " response

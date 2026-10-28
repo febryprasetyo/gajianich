@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib.sh"
 
 TARGET_VERSION="${1:-}"
-ENV_FILE="${2:-/opt/ams-app/.env}"
+ENV_FILE="${2:-/opt/gajianich/.env}"
 
 if [[ -z "$TARGET_VERSION" ]]; then
   die "Usage: $0 <version-tag> [env-file]"

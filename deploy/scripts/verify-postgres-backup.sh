@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=deploy/scripts/lib.sh
 source "$SCRIPT_DIR/lib.sh"
 
-BACKUP_DIR="${1:-/var/backups/ams-app/postgres}"
+BACKUP_DIR="${1:-/var/backups/gajianich/postgres}"
 DB_USER="${PGUSER:-postgres}"
 DB_HOST="${PGHOST:-localhost}"
 DB_PORT="${PGPORT:-5432}"

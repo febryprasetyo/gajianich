@@ -30,14 +30,14 @@ export interface ApprovalBadgeCountResponse {
 - [x] **Task 1.3**: Jalankan test suite backend untuk memvalidasi endpoint.
 
 ### Fase 2: Pemisahan Halaman Approval Absensi & Approval Foto Wajah
-- [x] **Task 2.1**: Refactor [MobileApprovalsPage.tsx](file:///home/fastpec/code/ams-app/frontend/src/components/attendance/MobileApprovalsPage.tsx):
+- [x] **Task 2.1**: Refactor [MobileApprovalsPage.tsx](file:///home/fastpec/code/gajianich/frontend/src/components/attendance/MobileApprovalsPage.tsx):
   - Ekstrak antarmuka persetujuan log absensi menjadi komponen yang fokus untuk halaman `/dashboard/attendance/approvals`.
   - Ekstrak antarmuka persetujuan foto wajah menjadi komponen mandiri `FaceApprovalsPage.tsx`.
-- [x] **Task 2.2**: Buat rute halaman baru [frontend/src/app/dashboard/attendance/approvals/photos/page.tsx](file:///home/fastpec/code/ams-app/frontend/src/app/dashboard/attendance/approvals/photos/page.tsx) yang memuat `FaceApprovalsPage`.
-- [x] **Task 2.3**: Pindahkan tab pengaturan auto-approve shift ke halaman pengaturan [frontend/src/app/dashboard/attendance/settings/page.tsx](file:///home/fastpec/code/ams-app/frontend/src/app/dashboard/attendance/settings/page.tsx).
+- [x] **Task 2.2**: Buat rute halaman baru [frontend/src/app/dashboard/attendance/approvals/photos/page.tsx](file:///home/fastpec/code/gajianich/frontend/src/app/dashboard/attendance/approvals/photos/page.tsx) yang memuat `FaceApprovalsPage`.
+- [x] **Task 2.3**: Pindahkan tab pengaturan auto-approve shift ke halaman pengaturan [frontend/src/app/dashboard/attendance/settings/page.tsx](file:///home/fastpec/code/gajianich/frontend/src/app/dashboard/attendance/settings/page.tsx).
 
 ### Fase 3: Pembaruan Navigasi Sidebar Dashboard
-- [x] **Task 3.1**: Perbarui struktur menu navigasi di [DashboardLayout.tsx](file:///home/fastpec/code/ams-app/frontend/src/components/layout/DashboardLayout.tsx):
+- [x] **Task 3.1**: Perbarui struktur menu navigasi di [DashboardLayout.tsx](file:///home/fastpec/code/gajianich/frontend/src/components/layout/DashboardLayout.tsx):
   - Ganti label `Approval Presensi & Foto` menjadi `Persetujuan Absensi` (`/dashboard/attendance/approvals`).
   - Tambahkan item menu baru `Persetujuan Foto Wajah` (`/dashboard/attendance/approvals/photos`) dengan ikon `ScanFace`.
   - Pastikan menu `Pengaturan` di `/dashboard/attendance/settings` sudah mencakup pengaturan persetujuan shift.
@@ -47,7 +47,7 @@ export interface ApprovalBadgeCountResponse {
   - Ikon lonceng dengan badge counter angka berwarna merah (hanya tampil jika `totalPending > 0`).
   - Popover dropdown interaktif dengan tautan langsung ke *Persetujuan Absensi* dan *Persetujuan Foto Wajah*.
   - Mekanisme polling interval 60 detik yang otomatis jeda saat tab tidak aktif (`document.hidden`).
-- [x] **Task 4.2**: Pasang `NotificationBell` di header [DashboardLayout.tsx](file:///home/fastpec/code/ams-app/frontend/src/components/layout/DashboardLayout.tsx) (di samping profile dropdown) hanya bagi user yang memiliki permission `attendance.mobile.verify`.
+- [x] **Task 4.2**: Pasang `NotificationBell` di header [DashboardLayout.tsx](file:///home/fastpec/code/gajianich/frontend/src/components/layout/DashboardLayout.tsx) (di samping profile dropdown) hanya bagi user yang memiliki permission `attendance.mobile.verify`.
 
 ### Fase 5: Verifikasi Menyeluruh & Testing Loop
 - [x] **Task 5.1**: Jalankan TypeScript check frontend: `npx tsc --noEmit` di `frontend/`.

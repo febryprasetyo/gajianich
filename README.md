@@ -28,8 +28,8 @@ The fastest way to run the entire AMS stack locally or on the development server
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/<owner>/ams-app.git
-cd ams-app
+git clone https://github.com/<owner>/gajianich.git
+cd gajianich
 
 # 2. Setup environment files
 cp .env.example .env

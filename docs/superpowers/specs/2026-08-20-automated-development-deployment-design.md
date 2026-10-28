@@ -40,7 +40,7 @@ and application processes all execute remotely.
 
 The Ubuntu 22.04.5 LTS development server hosts:
 
-- the Git working tree at `/srv/ams-app/workspace`;
+- the Git working tree at `/srv/gajianich/workspace`;
 - Docker Engine and Docker Compose;
 - development frontend and backend containers with bind mounts and hot reload;
 - a PostgreSQL development container with a named persistent volume; and
@@ -71,9 +71,9 @@ The Ubuntu 22.04.5 LTS production server hosts:
 - frontend and backend Docker containers;
 - a reverse proxy that routes `/` to the frontend and `/api/v1` to the backend;
 - native PostgreSQL managed by systemd;
-- deployment configuration under `/opt/ams-app`;
-- restricted production secrets under `/opt/ams-app/.env`; and
-- PostgreSQL backups under `/var/backups/ams-app/postgres`.
+- deployment configuration under `/opt/gajianich`;
+- restricted production secrets under `/opt/gajianich/.env`; and
+- PostgreSQL backups under `/var/backups/gajianich/postgres`.
 
 Production does not accept connections from the public internet. The self-hosted
 runner reaches it over the local network using a dedicated SSH deployment account.
@@ -104,7 +104,7 @@ Build-time configuration is separated from runtime secrets. Public frontend API
 configuration points to the same-origin `/api/v1` route in production, avoiding a
 hard-coded server address and unnecessary cross-origin exposure.
 
-Production runtime secrets remain in `/opt/ams-app/.env`, owned by the deployment
+Production runtime secrets remain in `/opt/gajianich/.env`, owned by the deployment
 administrator with mode `600`. They include the PostgreSQL connection string, JWT
 secrets, and environment-specific application settings. GitHub stores only the
 credentials needed to orchestrate deployment, including the production SSH key and

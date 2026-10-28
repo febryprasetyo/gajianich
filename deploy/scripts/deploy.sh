@@ -11,8 +11,8 @@ if [[ "$#" -lt 1 ]]; then
 fi
 
 TARGET_VERSION="$1"
-APP_DIR="${2:-/opt/ams-app}"
-BACKUP_DIR="${3:-/var/backups/ams-app/postgres}"
+APP_DIR="${2:-/opt/gajianich}"
+BACKUP_DIR="${3:-/var/backups/gajianich/postgres}"
 COMPOSE_FILE="$APP_DIR/deploy/compose.prod.yml"
 STATE_FILE="$APP_DIR/current-version"
 ENV_FILE="$APP_DIR/.env"

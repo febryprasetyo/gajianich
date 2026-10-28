@@ -2,7 +2,7 @@
 
 ## Overview
 
-AMS uses native PostgreSQL custom-format backups (`.dump`) with SHA256 checksums. Backups are stored in `/var/backups/ams-app/postgres`.
+AMS uses native PostgreSQL custom-format backups (`.dump`) with SHA256 checksums. Backups are stored in `/var/backups/gajianich/postgres`.
 
 > [!CAUTION]
 > **Strict Policy:** Automated blind restore into the active production database (`ams_prod_db`) is strictly prohibited. Database recovery must always restore into an isolated verification or recovery database first.
@@ -13,18 +13,18 @@ AMS uses native PostgreSQL custom-format backups (`.dump`) with SHA256 checksums
 
 List all available verified backups and checksums:
 ```bash
-ls -lh /var/backups/ams-app/postgres
+ls -lh /var/backups/gajianich/postgres
 ```
 
 Verify the SHA256 checksum of a selected backup:
 ```bash
-cd /var/backups/ams-app/postgres
+cd /var/backups/gajianich/postgres
 sha256sum -c ams_prod_db_20260820_020000.dump.sha256
 ```
 
 Verify dump table of contents:
 ```bash
-pg_restore --list /var/backups/ams-app/postgres/ams_prod_db_20260820_020000.dump
+pg_restore --list /var/backups/gajianich/postgres/ams_prod_db_20260820_020000.dump
 ```
 
 ---
@@ -37,7 +37,7 @@ pg_restore --list /var/backups/ams-app/postgres/ams_prod_db_20260820_020000.dump
    ```
 2. **Restore backup into the recovery database:**
    ```bash
-   /opt/ams-app/deploy/scripts/restore-postgres.sh /var/backups/ams-app/postgres/ams_prod_db_20260820_020000.dump ams_recovery_test
+   /opt/gajianich/deploy/scripts/restore-postgres.sh /var/backups/gajianich/postgres/ams_prod_db_20260820_020000.dump ams_recovery_test
    ```
 3. **Validate data integrity:**
    ```bash
@@ -55,5 +55,5 @@ pg_restore --list /var/backups/ams-app/postgres/ams_prod_db_20260820_020000.dump
 In the event of total data corruption where full restoration over the active production database is required and approved by operations management:
 
 ```bash
-/opt/ams-app/deploy/scripts/restore-postgres.sh /var/backups/ams-app/postgres/<backup-file>.dump ams_prod_db --force-production-overwrite
+/opt/gajianich/deploy/scripts/restore-postgres.sh /var/backups/gajianich/postgres/<backup-file>.dump ams_prod_db --force-production-overwrite
 ```

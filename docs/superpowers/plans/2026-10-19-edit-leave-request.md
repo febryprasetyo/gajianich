@@ -1,7 +1,7 @@
 # Implementation Plan: Fitur Edit Permohonan Cuti Belum Disetujui (Status PENDING)
 
 - **Tanggal**: 2026-10-19
-- **Design Spec**: [docs/superpowers/specs/2026-10-19-edit-leave-request-design.md](file:///home/fastpec/code/ams-app/docs/superpowers/specs/2026-10-19-edit-leave-request-design.md)
+- **Design Spec**: [docs/superpowers/specs/2026-10-19-edit-leave-request-design.md](file:///home/fastpec/code/gajianich/docs/superpowers/specs/2026-10-19-edit-leave-request-design.md)
 - **Status**: COMPLETED (Verified & Committed)
 
 ---

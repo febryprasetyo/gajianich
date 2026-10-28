@@ -76,7 +76,7 @@ jobs:
           PROD_HOST: ${{ secrets.PROD_HOST }}
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          ssh -i "$HOME/.ssh/ams_deploy_key" "ams-deploy@$PROD_HOST" "/opt/ams-app/deploy/scripts/deploy.sh $RELEASE_TAG"
+          ssh -i "$HOME/.ssh/ams_deploy_key" "ams-deploy@$PROD_HOST" "/opt/gajianich/deploy/scripts/deploy.sh $RELEASE_TAG"
 
       - name: Cleanup SSH Keys
         if: always()

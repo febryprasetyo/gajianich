@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript, Node.js (Express), Drizzle ORM (PostgreSQL), Sharp, Next.js 16 (App Router / React 19), Tailwind CSS, Node native test runner (`tsx --test`).
 
-**Spec:** [docs/superpowers/specs/2026-10-20-ga-approvals-design.md](file:///home/fastpec/code/ams-app/docs/superpowers/specs/2026-10-20-ga-approvals-design.md)
+**Spec:** [docs/superpowers/specs/2026-10-20-ga-approvals-design.md](file:///home/fastpec/code/gajianich/docs/superpowers/specs/2026-10-20-ga-approvals-design.md)
 
 ## Global Constraints
 

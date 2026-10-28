@@ -59,22 +59,22 @@ sudo systemctl enable --now postgresql
 Create the unprivileged `ams-deploy` user and deployment directory:
 ```bash
 sudo useradd -m -s /bin/bash -G docker ams-deploy
-sudo mkdir -p /opt/ams-app /var/backups/ams-app/postgres
-sudo chown -R ams-deploy:ams-deploy /opt/ams-app
-sudo chown -R postgres:postgres /var/backups/ams-app/postgres
-sudo chmod 700 /var/backups/ams-app/postgres
+sudo mkdir -p /opt/gajianich /var/backups/gajianich/postgres
+sudo chown -R ams-deploy:ams-deploy /opt/gajianich
+sudo chown -R postgres:postgres /var/backups/gajianich/postgres
+sudo chmod 700 /var/backups/gajianich/postgres
 
-# Clone repository into /opt/ams-app
-sudo -u ams-deploy git clone https://github.com/<owner>/ams-app.git /opt/ams-app
+# Clone repository into /opt/gajianich
+sudo -u ams-deploy git clone https://github.com/<owner>/gajianich.git /opt/gajianich
 ```
 
 ### 2.3 Production Environment Configuration
-Create `/opt/ams-app/.env` owned by `ams-deploy` with mode `600`:
+Create `/opt/gajianich/.env` owned by `ams-deploy` with mode `600`:
 ```bash
-sudo -u ams-deploy cp /opt/ams-app/deploy/.env.example /opt/ams-app/.env
-sudo chmod 600 /opt/ams-app/.env
+sudo -u ams-deploy cp /opt/gajianich/deploy/.env.example /opt/gajianich/.env
+sudo chmod 600 /opt/gajianich/.env
 ```
-Edit `/opt/ams-app/.env` to configure production secrets:
+Edit `/opt/gajianich/.env` to configure production secrets:
 - `DATABASE_URL=postgresql://ams_app:<STRONG_PASSWORD>@host.docker.internal:5432/ams_prod_db`
 - `JWT_SECRET=<STRONG_RANDOM_SECRET_MIN_32_CHARS>`
 - `JWT_REFRESH_SECRET=<STRONG_RANDOM_REFRESH_SECRET_MIN_32_CHARS>`
@@ -82,8 +82,8 @@ Edit `/opt/ams-app/.env` to configure production secrets:
 ### 2.4 Systemd Scheduled Backups & Integrity Verification
 Install backup and verification systemd units:
 ```bash
-sudo cp /opt/ams-app/deploy/systemd/ams-postgres-backup.* /etc/systemd/system/
-sudo cp /opt/ams-app/deploy/systemd/ams-postgres-verify.* /etc/systemd/system/
+sudo cp /opt/gajianich/deploy/systemd/ams-postgres-backup.* /etc/systemd/system/
+sudo cp /opt/gajianich/deploy/systemd/ams-postgres-verify.* /etc/systemd/system/
 
 sudo systemctl daemon-reload
 sudo systemctl enable --now ams-postgres-backup.timer

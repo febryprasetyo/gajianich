@@ -93,7 +93,7 @@ Tidak ada perubahan skema database (Zero Migration Diffs). Fitur ini memanfaatka
 ## 5. Frontend & UI/UX Specifications
 
 ### 5.1 Komponen `NotificationBell` di Header Dashboard
-- Diletakkan di header [DashboardLayout.tsx](file:///home/fastpec/code/ams-app/frontend/src/components/layout/DashboardLayout.tsx) tepat sebelum avatar/nama pengguna.
+- Diletakkan di header [DashboardLayout.tsx](file:///home/fastpec/code/gajianich/frontend/src/components/layout/DashboardLayout.tsx) tepat sebelum avatar/nama pengguna.
 - Menampilkan ikon `Bell` (`lucide-react`) berukuran `w-5 h-5 text-slate-600 hover:text-slate-900`.
 - Jika `totalPending > 0`: Menampilkan badge bulat merah/rose (`bg-rose-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ring-2 ring-white`).
 - Polling: Dipanggil setiap 60 detik jika tab browser aktif (`document.visibilityState === 'visible'`) dan dibersihkan saat unmount.

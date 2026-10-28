@@ -139,7 +139,7 @@ export interface FullLeaveDocumentData {
 
 ### Phase 3: Frontend UI Components & F4 Full Page Print Layout
 - [x] 3.1 Buat komponen cetak F4 `frontend/src/components/leaves/LeaveFormF4Document.tsx`:
-  - Mereplikasi layout [docs/FORM_CUTI_2024_(Office).xlsx](file:///home/fastpec/code/ams-app/docs/FORM_CUTI_2024_(Office).xlsx) secara pixel-perfect:
+  - Mereplikasi layout [docs/FORM_CUTI_2024_(Office).xlsx](file:///home/fastpec/code/gajianich/docs/FORM_CUTI_2024_(Office).xlsx) secara pixel-perfect:
     - Header: Logo PT Cahaya Mas Cemerlang, Form Number: 001, REV. 170208-1-W, Judul Dokumen `PERMOHONAN CUTI KARYAWAN`.
     - Seksi 1: DATA KARYAWAN (Nama, NIP, Dept, Jabatan, Tanggal Join).
     - Seksi 2: HAK DAN SISA CUTI KARYAWAN (12 - Cuti Bersama = Hak Bersih, 5 Slot Riwayat, Sisa Kuota, Cuti Diambil, Sisa Akhir).

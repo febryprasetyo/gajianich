@@ -9,7 +9,7 @@
 
 ## 1. Background & Executive Summary
 
-Saat ini monorepo AMS (`ams-app`) menggunakan arsitektur berbasis layer teknis konvensional:
+Saat ini monorepo AMS (`gajianich`) menggunakan arsitektur berbasis layer teknis konvensional:
 - **Backend:** `backend/src/` terbagi menjadi `controllers/` (38 file), `services/` (32 file), `domain/` (44 file), `routes/` (27 file), dan `db/schema/` (24 file).
 - **Frontend:** `frontend/src/` terbagi menjadi `app/` (69 file), `components/` (128 file), dan `lib/` (83 file).
 - **Total:** ~980 file (termasuk 500+ file tes) dengan 83.000+ baris kode.

@@ -44,7 +44,7 @@ Configure under **Settings > Environments > production**:
    - Runs database migrations once.
    - Replaces containers.
    - Verifies health on `/healthz` and `/health/ready`.
-   - Atomically records `v1.0.0` into `/opt/ams-app/current-version`.
+   - Atomically records `v1.0.0` into `/opt/gajianich/current-version`.
 
 ---
 
@@ -57,6 +57,6 @@ If application health checks fail after container startup, `deploy.sh` automatic
 To explicitly roll back to a specific previous release tag:
 ```bash
 ssh ams-deploy@<PROD_HOST>
-/opt/ams-app/deploy/scripts/rollback.sh v1.0.0 --yes
+/opt/gajianich/deploy/scripts/rollback.sh v1.0.0 --yes
 ```
 This pulls `v1.0.0`, starts containers, verifies health, and atomically updates `current-version`.

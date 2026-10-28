@@ -31,7 +31,7 @@ Saat ini di AMS App:
    - Di bagian paling atas sidebar ditambahkan item menu utama tunggal berlabel **"Dashboard"** (icon `LayoutDashboard`).
    - Link menu ini otomatis mengarah ke rute overview milik role yang sedang login. Dengan demikian, setiap role merasa aplikasi dibuat eksklusif untuk peran mereka (*tailored workspace*).
 3. **Dedicated Asset Management Dashboard (`/dashboard/assets/overview`)**:
-   - Mengacu pada dokumen acuan [docs/dashboard-asset-management.md](file:///home/fastpec/code/ams-app/docs/dashboard-asset-management.md) dengan penyesuaian data operasional riil:
+   - Mengacu pada dokumen acuan [docs/dashboard-asset-management.md](file:///home/fastpec/code/gajianich/docs/dashboard-asset-management.md) dengan penyesuaian data operasional riil:
      - **4 Top KPI Cards**: Total Aset, Aset Terpakai (Assigned), Aset Tersedia (Available), Aset Perbaikan/Rusak (Under Maintenance & Damaged).
      - **Tren Pengadaan Aset (Acquisition/Purchase Trend)**: Grafik bar/line bulanan berdasarkan riwayat pengadaan.
      - **Distribusi Aset per Departemen (Assets by Department)**: Bar distribusi persentase & jumlah kepemilikan aset di tiap departemen (IT, HR, Finance, Ops, dll).

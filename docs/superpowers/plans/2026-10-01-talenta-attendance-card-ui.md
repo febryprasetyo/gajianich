@@ -92,11 +92,11 @@ export interface TalentaCalendarRow {
 
 ```bash
 # 1. Typecheck
-cd /home/fastpec/code/ams-app/frontend && npx tsc --noEmit
+cd /home/fastpec/code/gajianich/frontend && npx tsc --noEmit
 
 # 2. Unit Tests
-cd /home/fastpec/code/ams-app/frontend && npm test
+cd /home/fastpec/code/gajianich/frontend && npm test
 
 # 3. Linter
-cd /home/fastpec/code/ams-app/frontend && npm run lint
+cd /home/fastpec/code/gajianich/frontend && npm run lint
 ```
