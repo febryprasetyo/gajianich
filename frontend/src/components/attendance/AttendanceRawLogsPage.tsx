@@ -139,8 +139,8 @@ export default function AttendanceRawLogsPage() {
       const res = await apiFetch<{ success: boolean; message: string; data: any }>("/attendance/devices/calculate", {
         method: "POST",
         body: JSON.stringify({
-          startDate,
-          endDate,
+          startDate: startDate || undefined,
+          endDate: endDate || undefined,
           deviceId: selectedDevice !== "all" ? parseInt(selectedDevice, 10) : undefined,
           saveToDatabase: true,
         }),
