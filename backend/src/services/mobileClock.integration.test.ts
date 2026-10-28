@@ -39,6 +39,7 @@ test('clock validates identity and uses server instant in GPS zone; OUT retains 
   assert.equal(input.data.timeZoneLabel, 'WIT'); assert.notEqual(input.data.workDate, '2000-01-01');
   assert.equal(input.data.scanTime, localAttendanceTime(new Date(), 'Asia/Jayapura').scanTime);
   assert.equal(input.data.approvalStatus, 'APPROVED');
+  await database.update(attendanceSelfLogs).set({ occurredAt: new Date(Date.now() - 3600000) }).where(eq(attendanceSelfLogs.employeeId, employee.id));
   const attempts = await Promise.allSettled([1,2].map(() => recordMobileClock(user.id, { ...payload, eventType: 'OUT', latitude: -8.65, longitude: 115.22 }, database as any, async () => ({ descriptor, photoUrl }))));
   assert.equal(attempts.filter(r => r.status === 'fulfilled').length, 1);
   const logs = await database.select().from(attendanceSelfLogs);
@@ -220,6 +221,7 @@ test('Multi-clocking in default mode: multiple OUT clocks are allowed as PENDING
 
   // 1. Clock IN
   await recordMobileClock(user.id, { eventType: 'IN', latitude: -6.2, longitude: 106.8, photoBase64: photoUrl }, database as any, async () => ({ descriptor, photoUrl }));
+  await database.update(attendanceSelfLogs).set({ occurredAt: new Date(Date.now() - 3600000) }).where(eq(attendanceSelfLogs.employeeId, employee.id));
 
   // 2. First OUT (e.g. at regular time 17:00)
   const out1 = await recordMobileClock(user.id, { eventType: 'OUT', latitude: -6.2, longitude: 106.8, photoBase64: photoUrl }, database as any, async () => ({ descriptor, photoUrl }));

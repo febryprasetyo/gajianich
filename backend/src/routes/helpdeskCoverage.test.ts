@@ -20,23 +20,34 @@ async function createCoverageServer() {
 test("Coverage: Append-Only Trigger on helpdesk_ticket_audit rejects UPDATE and DELETE (ERRCODE 55000)", async () => {
   const client = await pool.connect();
   try {
+    const userRes = await client.query(
+      "INSERT INTO users (username, email, password_hash) VALUES ('cov_' || md5(random()::text), 'cov_' || md5(random()::text) || '@test.com', 'hash') RETURNING id"
+    );
+    const userId = Number(userRes.rows[0].id);
+
+    const empRes = await client.query(
+      "INSERT INTO employees (employee_number, full_name, status) VALUES ('EMP-COV-' || md5(random()::text), 'Coverage Employee', 'Active') RETURNING id"
+    );
+    const employeeId = Number(empRes.rows[0].id);
+
     const tckIns = await client.query(
       "INSERT INTO helpdesk_tickets (" +
        "ticket_number, requester_employee_id, requester_name_snapshot, requester_department_snapshot, " +
        "created_by_user_id, created_by_name_snapshot, reported_at, " +
        "category, origin, priority, status, title, description" +
       ") VALUES (" +
-      "'TCK-COV-" + Date.now() + "', 1, 'Admin', 'IT', 1, 'Admin', NOW(), " +
+      "'TCK-COV-" + Date.now() + "', $1, 'Admin', 'IT', $2, 'Admin', NOW(), " +
       "'HARDWARE', 'WHATSAPP', 'LOW', 'OPEN', 'Coverage Test', 'Test description'" +
-      ") RETURNING id"
+      ") RETURNING id",
+      [employeeId, userId]
     );
     const ticketId = tckIns.rows[0].id;
 
     const ins = await client.query(
       "INSERT INTO helpdesk_ticket_audit (" +
       "ticket_id, actor_user_id, actor_name_snapshot, action, note" +
-      ") VALUES ($1, 1, 'Admin', 'STATUS_CHANGE', 'Test audit') RETURNING id",
-      [ticketId]
+      ") VALUES ($1, $2, 'Admin', 'STATUS_CHANGE', 'Test audit') RETURNING id",
+      [ticketId, userId]
     );
     const auditId = ins.rows[0].id;
     assert.ok(auditId, "Audit row inserted successfully");
@@ -72,11 +83,28 @@ test("Coverage: Append-Only Trigger on helpdesk_ticket_audit rejects UPDATE and 
 });
 
 test("Coverage: Endpoints & Validation Rules", async () => {
+  const initClient = await pool.connect();
+  let employeeId: number;
+  let userId: number;
+  try {
+    const userRes = await initClient.query(
+      "INSERT INTO users (username, email, password_hash) VALUES ('cov_' || md5(random()::text), 'cov_' || md5(random()::text) || '@test.com', 'hash') RETURNING id"
+    );
+    userId = Number(userRes.rows[0].id);
+
+    const empRes = await initClient.query(
+      "INSERT INTO employees (employee_number, full_name, status) VALUES ('EMP-COV-' || md5(random()::text), 'Coverage Employee', 'Active') RETURNING id"
+    );
+    employeeId = Number(empRes.rows[0].id);
+  } finally {
+    initClient.release();
+  }
+
   const { baseUrl, close } = await createCoverageServer();
 
   try {
     const itUserToken = generateToken({
-      userId: 1,
+      userId,
       username: "it_admin",
       roleId: 1,
       roleName: "IT_ADMIN",
@@ -92,7 +120,7 @@ test("Coverage: Endpoints & Validation Rules", async () => {
         Authorization: "Bearer " + itUserToken,
       },
       body: JSON.stringify({
-        requesterEmployeeId: 1,
+        requesterEmployeeId: employeeId,
         reportedAt: futureDate,
         category: "HARDWARE",
         origin: "WHATSAPP",
@@ -111,7 +139,7 @@ test("Coverage: Endpoints & Validation Rules", async () => {
         Authorization: "Bearer " + itUserToken,
       },
       body: JSON.stringify({
-        requesterEmployeeId: 1,
+        requesterEmployeeId: employeeId,
         category: "SOFTWARE",
         origin: "PHONE",
         priority: "MEDIUM",
@@ -130,7 +158,7 @@ test("Coverage: Endpoints & Validation Rules", async () => {
         Authorization: "Bearer " + itUserToken,
       },
       body: JSON.stringify({
-        requesterEmployeeId: 1,
+        requesterEmployeeId: employeeId,
         category: "SOFTWARE",
         origin: "PHONE",
         priority: "MEDIUM",
@@ -140,7 +168,7 @@ test("Coverage: Endpoints & Validation Rules", async () => {
     });
     assert.equal(createRes.status, 201);
     const createData = await createRes.json();
-    assert.equal(createData.data.createdBy.userId, 1, "createdById must come from JWT, not payload");
+    assert.equal(createData.data.createdBy.userId, userId, "createdById must come from JWT, not payload");
     const ticketId = createData.data.id;
 
     // 4. Invalid status transition: OPEN -> RESOLVED directly without in_progress (400)
