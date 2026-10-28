@@ -51,6 +51,7 @@ export default function AttendanceTransactionsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
+    d.setDate(d.getDate() - 7);
     return d.toISOString().split('T')[0];
   });
   const [endDate, setEndDate] = useState(() => {
@@ -152,7 +153,7 @@ export default function AttendanceTransactionsPage() {
 
   useEffect(() => {
     setIsLoading(true);
-    fetchCalculation().finally(() => setIsLoading(false));
+    fetchCalculation({ assignDefault: true }).finally(() => setIsLoading(false));
   }, [fetchCalculation]);
 
   const filteredProcessed = useMemo(() => {
@@ -189,7 +190,7 @@ export default function AttendanceTransactionsPage() {
   const handleRecalculate = async () => {
     setIsRecalculating(true);
     try {
-      const res = await fetchCalculation();
+      const res = await fetchCalculation({ assignDefault: true });
       if (res) {
         setToastMessage(`Kalkulasi ulang berhasil: ${res.processed.length} presensi terhitung.`);
       }

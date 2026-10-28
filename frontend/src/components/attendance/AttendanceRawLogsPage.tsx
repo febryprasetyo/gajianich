@@ -27,7 +27,11 @@ export default function AttendanceRawLogsPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d.toISOString().slice(0, 10);
+  });
   const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [selectedDevice, setSelectedDevice] = useState("all");
   const [selectedState, setSelectedState] = useState<"all" | "Masuk" | "Pulang" | "Scan Antara">("all");
