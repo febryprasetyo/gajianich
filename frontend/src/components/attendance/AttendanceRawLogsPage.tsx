@@ -238,23 +238,42 @@ export default function AttendanceRawLogsPage() {
         <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2.5">
             {/* Rentang Tanggal */}
-            <div className="flex items-center gap-1 bg-slate-50 border border-slate-300 px-2.5 py-1.5 rounded-xl">
-              <Calendar className="w-3.5 h-3.5 text-slate-500" />
+            <div
+              className="flex items-center gap-1 bg-slate-50 border border-slate-300 px-2.5 py-1.5 rounded-xl cursor-pointer hover:border-emerald-500 transition-colors"
+              onClick={(e) => {
+                const input = e.currentTarget.querySelector('input[type="date"]') as HTMLInputElement | null;
+                if (input && e.target !== input) {
+                  input.focus();
+                  try {
+                    input.showPicker?.();
+                  } catch {}
+                }
+              }}
+            >
+              <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0 pointer-events-none" />
               <input
                 type="date"
                 value={startDate}
-                onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                onClick={(e) => {
+                  try {
+                    (e.currentTarget as HTMLInputElement).showPicker?.();
+                  } catch {}
+                }}
                 onChange={(e) => {
                   setStartDate(e.target.value);
                   setCurrentPage(1);
                 }}
                 className="bg-transparent text-xs text-slate-700 cursor-pointer focus:outline-none"
               />
-              <span className="text-slate-400 text-xs px-1">s/d</span>
+              <span className="text-slate-400 text-xs px-1 pointer-events-none">s/d</span>
               <input
                 type="date"
                 value={endDate}
-                onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                onClick={(e) => {
+                  try {
+                    (e.currentTarget as HTMLInputElement).showPicker?.();
+                  } catch {}
+                }}
                 onChange={(e) => {
                   setEndDate(e.target.value);
                   setCurrentPage(1);

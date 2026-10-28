@@ -81,11 +81,15 @@
   cursor: not-allowed;
 }
 
+input[type="time"],
+input[type="date"],
 .hr-input[type="time"],
 .hr-input[type="date"] {
   cursor: pointer;
 }
 
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator,
 .hr-input[type="time"]::-webkit-calendar-picker-indicator,
 .hr-input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;

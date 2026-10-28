@@ -94,3 +94,13 @@ code, kbd, samp, pre, .font-mono {
     max-width: 100% !important;
   }
 }
+
+/* Global Date & Time Picker Pointer Styling */
+input[type="date"],
+input[type="time"] {
+  cursor: pointer;
+}
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+}

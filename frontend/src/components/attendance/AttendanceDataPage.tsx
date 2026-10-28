@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Download, HelpCircle, LockKeyhole, UnlockKeyhole, Upload, ChevronDown } from 'lucide-react';
+import { Download, HelpCircle, LockKeyhole, UnlockKeyhole, Upload, ChevronDown, Calendar } from 'lucide-react';
 import ModalShell from '@/components/ui/ModalShell';
 import { useAttendance } from './AttendanceWorkspace';
 import { Heading, SearchInput, EmployeeName, Status, Pagination, FormDialog, Empty } from './shared';
@@ -113,12 +113,29 @@ export default function AttendanceDataPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <label>
+          <label
+            className="relative flex items-center bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 cursor-pointer shadow-2xs hover:border-emerald-500 transition-colors"
+            onClick={(e) => {
+              const input = e.currentTarget.querySelector('input[type="date"]') as HTMLInputElement | null;
+              if (input && e.target !== input) {
+                input.focus();
+                try {
+                  input.showPicker?.();
+                } catch {}
+              }
+            }}
+          >
+            <Calendar className="w-4 h-4 text-slate-500 mr-2 shrink-0 pointer-events-none" />
             <span className="sr-only">Tanggal absensi</span>
             <input
-              className="hr-input"
+              className="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer"
               type="date"
               value={date}
+              onClick={(e) => {
+                try {
+                  e.currentTarget.showPicker?.();
+                } catch {}
+              }}
               onChange={e => {
                 setDate(e.target.value);
                 resetPage();
@@ -252,7 +269,7 @@ export default function AttendanceDataPage() {
                   'Scan masuk',
                   'Scan pulang',
                   'Kehadiran',
-                  'Lembur',
+                  'Telat',
                   'Aksi',
                 ].map(h => (
                   <th key={h}>{h}</th>
@@ -309,7 +326,19 @@ export default function AttendanceDataPage() {
                         <span className="text-slate-500">Belum ada data</span>
                       )}
                     </td>
-                    <td>{r ? durationLabel(r.overtimeMinutes) : '—'}</td>
+                    <td>
+                      {r ? (
+                        r.lateMinutes > 0 ? (
+                          <span className="font-semibold text-rose-600">
+                            {durationLabel(r.lateMinutes)}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">0 menit</span>
+                        )
+                      ) : (
+                        '—'
+                      )}
+                    </td>
                     <td>
                       {r ? (
                         <details>

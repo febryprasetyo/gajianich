@@ -57,11 +57,27 @@ export default function HrHeroGreeting({
         {/* Right Side: Date Selector & RBAC Quick Actions */}
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           {onDateChange && (
-            <label className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 shadow-2xs cursor-pointer hover:border-emerald-300 transition-colors">
-              <span className="text-xs font-semibold text-slate-600">Tanggal:</span>
+            <label
+              className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 shadow-2xs cursor-pointer hover:border-emerald-300 transition-colors"
+              onClick={(e) => {
+                const input = e.currentTarget.querySelector('input[type="date"]') as HTMLInputElement | null;
+                if (input && e.target !== input) {
+                  input.focus();
+                  try {
+                    input.showPicker?.();
+                  } catch {}
+                }
+              }}
+            >
+              <span className="text-xs font-semibold text-slate-600 pointer-events-none">Tanggal:</span>
               <input
                 type="date"
                 value={targetDate}
+                onClick={(e) => {
+                  try {
+                    e.currentTarget.showPicker?.();
+                  } catch {}
+                }}
                 onChange={e => onDateChange(e.target.value)}
                 className="text-xs font-semibold text-slate-800 focus:outline-none bg-transparent cursor-pointer"
               />
