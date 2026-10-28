@@ -147,15 +147,15 @@ export function parse40ByteAttendanceRecord(buffer: Buffer): RawDevicePunch | nu
     }
   }
 
-  // Format A: Solution X900 TFT framing (User ID binary at 0..1, PIN string at 2..26, rawStatus at 26, rawVerify at 27, rawTime at 28)
+  // Format A: Solution X900 TFT framing (User ID binary at 0..1, PIN string at 2..26, rawVerify at 26, rawTime at 27..30, rawStatus at 31)
   if (buffer[2] >= 32 && buffer[2] <= 126) {
     let nullPos = buffer.indexOf(0, 2);
     if (nullPos === -1 || nullPos > 26) nullPos = 26;
     const pinA = buffer.toString("ascii", 2, nullPos).trim();
     if (pinA && /^[\w\d\-]+$/.test(pinA)) {
-      const rawStatus = buffer[26];
-      const rawVerify = buffer[27];
-      const rawTimeA = buffer.readUInt32LE(28);
+      const rawVerify = buffer[26];
+      const rawTimeA = buffer.readUInt32LE(27);
+      const rawStatus = buffer[31];
       const timestamp = decodeZkTime(rawTimeA);
       return {
         pin: pinA,

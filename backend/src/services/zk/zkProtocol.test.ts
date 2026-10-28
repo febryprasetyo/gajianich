@@ -77,3 +77,16 @@ test("parseAttendanceRecordsBuffer extracts multiple records from a batch", () =
   assert.strictEqual(punches[1].pin, "102");
   assert.strictEqual(punches[1].inOutState, "Pulang");
 });
+
+test("parse40ByteAttendanceRecord parses Solution X900 TFT frame correctly", () => {
+  // Hex from physical machine record 61127 (PIN 332, 2026-10-28 08:05:54, Face)
+  const hex = "c7ee3333320000000000000000000000000000000000000000000fe2086333000000000000000000";
+  const buf = Buffer.from(hex, "hex");
+  const punch = parse40ByteAttendanceRecord(buf);
+  assert.ok(punch);
+  assert.strictEqual(punch.pin, "332");
+  assert.strictEqual(punch.timestamp, "2026-10-28 08:05:54");
+  assert.strictEqual(punch.workDate, "2026-10-28");
+  assert.strictEqual(punch.verifyMode, "Face");
+  assert.strictEqual(punch.inOutState, "Masuk");
+});
