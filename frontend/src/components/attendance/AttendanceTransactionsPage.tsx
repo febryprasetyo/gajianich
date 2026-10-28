@@ -225,7 +225,7 @@ export default function AttendanceTransactionsPage() {
       setSyncProgress(50);
       setSyncStepLabel('Mencocokkan shift kerja aktif dan menghitung keterlambatan...');
 
-      const res = await fetchCalculation({ saveToDb: true });
+      const res = await fetchCalculation({ saveToDb: true, assignDefault: true });
       setSyncProgress(85);
       setSyncStepLabel('Menyimpan catatan kehadiran ke Data Absensi resmi...');
 
@@ -249,6 +249,11 @@ export default function AttendanceTransactionsPage() {
         setIsSyncModalOpen(false);
         setSyncError(null);
         setSyncSuccess(true);
+        try {
+          localStorage.setItem("ams:attendance-workspace:v2", Date.now().toString());
+          window.dispatchEvent(new Event("storage"));
+          window.dispatchEvent(new CustomEvent("ams:attendance-updated"));
+        } catch {}
         const nowStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) + ' ' +
           new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
         setLastSyncedTime(nowStr);
@@ -414,7 +419,7 @@ export default function AttendanceTransactionsPage() {
           </div>
           <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
             <Link
-              href={`/dashboard/attendance?date=${startDate}`}
+              href={startDate ? `/dashboard/attendance?date=${startDate}` : (endDate ? `/dashboard/attendance?date=${endDate}` : "/dashboard/attendance")}
               className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
             >
               <span>Buka di Data Absensi</span>

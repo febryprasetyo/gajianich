@@ -431,7 +431,7 @@ export async function getRawAttendanceLogsHandler(req: Request, res: Response) {
 
 export async function calculateAttendanceHandler(req: Request, res: Response) {
   try {
-    const { startDate, endDate, deviceId, assignDefaultShiftIfUnassigned = false, saveToDatabase = true } = req.body;
+    const { startDate, endDate, deviceId, assignDefaultShiftIfUnassigned = true, saveToDatabase = true } = req.body;
 
     const conditions = [];
     if (startDate) conditions.push(gte(attendanceDeviceRawLogs.workDate, String(startDate)));

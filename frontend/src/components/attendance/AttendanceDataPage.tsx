@@ -14,7 +14,7 @@ import { exportAttendanceReportToExcel } from '@/lib/attendance/excelExport';
 import type { AttendanceRecord, Employee } from '@/lib/attendance/types';
 
 export default function AttendanceDataPage() {
-  const { data, execute, canWrite } = useAttendance();
+  const { data, execute, canWrite, refresh } = useAttendance();
   const searchParams = useSearchParams();
 
   const defaultDate = useMemo(() => {
@@ -28,6 +28,9 @@ export default function AttendanceDataPage() {
   }, [data, searchParams]);
 
   const [date, setDate] = useState(defaultDate);
+  useEffect(() => { refresh().catch(() => {}); }, [refresh]);
+  useEffect(() => { if (defaultDate && !searchParams?.get("date")) { setDate(defaultDate); } }, [defaultDate, searchParams]);
+
   const [q, setQ] = useState('');
   const [departmentId, setDepartment] = useState(0);
   const initialCondition = searchParams?.get('condition') || 'all';

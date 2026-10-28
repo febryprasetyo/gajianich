@@ -35,14 +35,22 @@ function Provider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'ams:attendance-workspace:v2') {
-        setReload(v => v + 1);
+    const handleStorage = (e: StorageEvent | Event) => {
+      const storageEvt = e as StorageEvent;
+      if (!storageEvt.key || storageEvt.key === 'ams:attendance-workspace:v2') {
+        repository.reset().then((fresh) => {
+          setData(fresh);
+          setError('');
+        }).catch(() => {});
       }
     };
     window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, []);
+    window.addEventListener('ams:attendance-updated', handleStorage);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('ams:attendance-updated', handleStorage);
+    };
+  }, [repository]);
 
   useEffect(() => {
     const controller = new AbortController();
