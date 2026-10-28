@@ -320,22 +320,25 @@ export default function AttendanceDevicesPage() {
     }
   };
 
-  const handleOpenEditModal = () => {
-    if (!activeDevice) return;
-    setEditDeviceName(activeDevice.name);
-    setEditDeviceIp(activeDevice.ip);
-    setEditDevicePort(activeDevice.port);
-    setEditDeviceCommKey(activeDevice.commKey);
-    setEditDeviceNumber(activeDevice.deviceNumber);
-    setEditDeviceLocation(activeDevice.location);
+  const handleOpenEditModal = (deviceToEdit?: AttendanceDevice) => {
+    const target = deviceToEdit || activeDevice;
+    if (!target) return;
+    setSelectedDeviceId(target.id);
+    setEditDeviceName(target.name);
+    setEditDeviceIp(target.ip);
+    setEditDevicePort(target.port);
+    setEditDeviceCommKey(target.commKey);
+    setEditDeviceNumber(target.deviceNumber);
+    setEditDeviceLocation(target.location);
     setIsEditModalOpen(true);
   };
 
   const handleSaveEditDevice = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeDevice) return;
+    const target = devices.find((d) => String(d.id) === String(selectedDeviceId)) || activeDevice;
+    if (!target) return;
     try {
-      const res = await apiFetch<{ success: boolean; data: AttendanceDevice }>(`/attendance/devices/${activeDevice.id}`, {
+      const res = await apiFetch<{ success: boolean; data: AttendanceDevice }>(`/attendance/devices/${target.id}`, {
         method: "PUT",
         body: JSON.stringify({
           name: editDeviceName,
@@ -412,23 +415,16 @@ export default function AttendanceDevicesPage() {
           </div>
         </div>
 
-        {/* Tautan Cepat Menuju Data Presensi & Laporan */}
+        {/* Tombol Tambah Mesin */}
         <div className="flex items-center gap-2">
-          <Link
-            href="/dashboard/attendance/raw-logs"
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors shadow-xs"
+          <button
+            type="button"
+            onClick={() => setIsAddModalOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-xs cursor-pointer"
           >
-            <ListFilter className="w-4 h-4 text-slate-500" />
-            <span>Buka Data Presensi</span>
-          </Link>
-          <Link
-            href="/dashboard/attendance/transactions"
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors shadow-xs"
-          >
-            <FileText className="w-4 h-4 text-emerald-600" />
-            <span>Laporan Presensi</span>
-            <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
-          </Link>
+            <Plus className="w-4 h-4" />
+            <span>Tambah Mesin</span>
+          </button>
         </div>
       </div>
 
@@ -476,7 +472,7 @@ export default function AttendanceDevicesPage() {
           {activeDevice?.status === "connected" ? (
             <button
               onClick={handleDisconnect}
-              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl bg-slate-100 text-slate-700 border border-slate-300 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl bg-slate-100 text-slate-700 border border-slate-300 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 transition-colors cursor-pointer"
             >
               <PowerOff className="w-3.5 h-3.5" />
               <span>Putuskan</span>
@@ -485,7 +481,7 @@ export default function AttendanceDevicesPage() {
             <button
               onClick={handleConnect}
               disabled={isConnecting || !activeDevice}
-              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 shadow-xs"
+              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 shadow-xs cursor-pointer"
             >
               <Power className="w-3.5 h-3.5" />
               <span>{isConnecting ? "Menghubungkan..." : "Koneksikan"}</span>
@@ -493,49 +489,17 @@ export default function AttendanceDevicesPage() {
           )}
 
           <button
-            onClick={handleOpenDownloadModal}
+            onClick={() => handleOpenDownloadModal()}
             disabled={activeDevice?.status !== "connected"}
-            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
+            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-xs cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Download Data Presensi</span>
           </button>
-
-          <button
-            onClick={handleOpenEditModal}
-            disabled={!activeDevice}
-            className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
-            title="Edit Mesin Terpilih"
-          >
-            <Edit3 className="w-3.5 h-3.5 text-slate-500" />
-            <span>Edit Mesin</span>
-          </button>
-
-          <button
-            onClick={() => {
-              if (activeDevice) {
-                setDeletingDevice(activeDevice);
-                setIsDeleteModalOpen(true);
-              }
-            }}
-            disabled={!activeDevice}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-xl text-slate-600 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-            title="Hapus Mesin Terpilih"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Hapus</span>
-          </button>
         </div>
 
-        {/* Tambah Mesin */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors shadow-xs"
-          >
-            <Plus className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Tambah Mesin</span>
-          </button>
+        <div className="text-xs text-slate-500">
+          Perangkat aktif: <strong className="text-slate-800">{activeDevice ? `${activeDevice.name} (${activeDevice.ip})` : 'Pilih dari tabel'}</strong>
         </div>
       </div>
 
@@ -580,6 +544,7 @@ export default function AttendanceDevicesPage() {
                   <th className="py-2.5 px-4">Serial Number</th>
                   <th className="py-2.5 px-4">Lokasi</th>
                   <th className="py-2.5 px-4">Terakhir Tarik Data</th>
+                  <th className="py-2.5 px-4 text-center w-24">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -649,6 +614,35 @@ export default function AttendanceDevicesPage() {
                         ) : (
                           <span className="italic text-slate-400">Belum pernah</span>
                         )}
+                      </td>
+                      <td className="py-3 px-4 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenEditModal(device);
+                            }}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
+                            title={`Edit Konfigurasi ${device.name}`}
+                            aria-label={`Edit ${device.name}`}
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeletingDevice(device);
+                              setIsDeleteModalOpen(true);
+                            }}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                            title={`Hapus Mesin ${device.name}`}
+                            aria-label={`Hapus ${device.name}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
