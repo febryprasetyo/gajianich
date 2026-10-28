@@ -281,7 +281,7 @@ export default function AttendanceDevicesPage() {
 
       const nowStr = new Date().toISOString().replace("T", " ").substring(0, 19);
       setDevices((prev) =>
-        prev.map((d) => (d.id === activeDevice.id ? { ...d, lastSyncAt: nowStr, totalLogs: (d.totalLogs || 0) + total, status: "ONLINE" } : d))
+        prev.map((d) => (d.id === activeDevice.id ? { ...d, lastSyncAt: nowStr, totalLogs: (d.totalLogs || 0) + total, status: "connected" } : d))
       );
     } catch (err: any) {
       const errMsg = err.message || "Mesin tidak merespons (Koneksi Putus / Offline)";
@@ -289,7 +289,7 @@ export default function AttendanceDevicesPage() {
       setPageToast(`Gagal mengunduh log: ${errMsg}`);
       setTimeout(() => setPageToast(null), 5000);
       setDevices((prev) =>
-        prev.map((d) => (d.id === activeDevice.id ? { ...d, status: "OFFLINE" } : d))
+        prev.map((d) => (d.id === activeDevice.id ? { ...d, status: "error" } : d))
       );
     } finally {
       setIsDownloading(false);

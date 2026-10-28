@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { eq, desc, and, gte, lte, ilike, or } from "drizzle-orm";
+import { eq, desc, and, gte, lte, ilike, or, sql } from "drizzle-orm";
 import { db } from "../db";
 import {
   attendanceDevices,
@@ -254,7 +254,7 @@ export async function syncAttendanceDeviceHandler(req: Request, res: Response) {
           ip: device.ip,
           port: device.port,
           commKey: device.commKey,
-          deviceNumber: device.deviceNumber,
+          timeoutMs: device.timeoutMs || 30000,
         });
       }
       fetchedPunches = await attendanceDeviceSessionManager.fetchAttendanceLogs(device.id);
@@ -290,6 +290,42 @@ export async function syncAttendanceDeviceHandler(req: Request, res: Response) {
     }
 
     // 4. Save Raw Logs into Database (filtered by date range if provided)
+    if (overwriteExisting) {
+      if (startDate && endDate) {
+        await db
+          .delete(attendanceDeviceRawLogs)
+          .where(
+            and(
+              eq(attendanceDeviceRawLogs.deviceId, device.id),
+              gte(attendanceDeviceRawLogs.workDate, startDate),
+              lte(attendanceDeviceRawLogs.workDate, endDate)
+            )
+          );
+      } else if (startDate) {
+        await db
+          .delete(attendanceDeviceRawLogs)
+          .where(
+            and(
+              eq(attendanceDeviceRawLogs.deviceId, device.id),
+              gte(attendanceDeviceRawLogs.workDate, startDate)
+            )
+          );
+      } else if (endDate) {
+        await db
+          .delete(attendanceDeviceRawLogs)
+          .where(
+            and(
+              eq(attendanceDeviceRawLogs.deviceId, device.id),
+              lte(attendanceDeviceRawLogs.workDate, endDate)
+            )
+          );
+      } else {
+        await db
+          .delete(attendanceDeviceRawLogs)
+          .where(eq(attendanceDeviceRawLogs.deviceId, device.id));
+      }
+    }
+
     const rawInserts = [];
     for (const punch of fetchedPunches) {
       if (startDate && punch.workDate < startDate) continue;
@@ -368,7 +404,7 @@ export async function getRawAttendanceLogsHandler(req: Request, res: Response) {
       .select({
         id: attendanceDeviceRawLogs.id,
         pin: attendanceDeviceRawLogs.pin,
-        timestamp: attendanceDeviceRawLogs.timestamp,
+        timestamp: sql<string>`to_char(${attendanceDeviceRawLogs.timestamp}, \'YYYY-MM-DD HH24:MI:SS\')`.as("timestamp"),
         workDate: attendanceDeviceRawLogs.workDate,
         verifyMode: attendanceDeviceRawLogs.verifyMode,
         inOutState: attendanceDeviceRawLogs.inOutState,
@@ -409,7 +445,7 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
         id: attendanceDeviceRawLogs.id,
         pin: attendanceDeviceRawLogs.pin,
         employeeId: attendanceDeviceRawLogs.employeeId,
-        timestamp: attendanceDeviceRawLogs.timestamp,
+        timestamp: sql<string>`to_char(${attendanceDeviceRawLogs.timestamp}, \'YYYY-MM-DD HH24:MI:SS\')`.as("timestamp"),
         workDate: attendanceDeviceRawLogs.workDate,
         verifyMode: attendanceDeviceRawLogs.verifyMode,
         inOutState: attendanceDeviceRawLogs.inOutState,
@@ -421,22 +457,17 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
       .where(whereClause);
 
     // Format raw rows to RawPunchInput
-    const rawPunches: RawPunchInput[] = rawRows.map((r) => {
-      const pad = (n: number) => String(n).padStart(2, "0");
-      const d = new Date(r.timestamp);
-      const timeStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-      return {
-        id: r.id,
-        pin: r.pin,
-        employeeId: r.employeeId,
-        employeeCode: r.employeeNik || r.pin,
-        employeeName: r.employeeName || undefined,
-        timestamp: timeStr,
-        workDate: r.workDate,
-        verifyMode: r.verifyMode,
-        inOutState: r.inOutState,
-      };
-    });
+    const rawPunches: RawPunchInput[] = rawRows.map((r) => ({
+      id: r.id,
+      pin: r.pin,
+      employeeId: r.employeeId,
+      employeeCode: r.employeeNik || r.pin,
+      employeeName: r.employeeName || undefined,
+      timestamp: String(r.timestamp),
+      workDate: r.workDate,
+      verifyMode: r.verifyMode,
+      inOutState: r.inOutState,
+    }));
 
     // Query employees, shifts, assignments
     const allEmployees = await db.select().from(employees);

@@ -90,3 +90,27 @@ test("parse40ByteAttendanceRecord parses Solution X900 TFT frame correctly", () 
   assert.strictEqual(punch.verifyMode, "Face");
   assert.strictEqual(punch.inOutState, "Masuk");
 });
+
+test("parse40ByteAttendanceRecord parses Solution X900 TFT frame when User ID low-byte is ASCII (e.g. 0x62 b for PIN 30000)", () => {
+  // Hex from physical machine record (PIN 30000, 2026-10-27 08:22:06, Face, Masuk)
+  const hex = "62343330303030000000000000000000000000000000000000000f2ebb6133000000000000000000";
+  const buf = Buffer.from(hex, "hex");
+  const punch = parse40ByteAttendanceRecord(buf);
+  assert.ok(punch);
+  assert.strictEqual(punch.pin, "30000");
+  assert.strictEqual(punch.timestamp, "2026-10-27 08:22:06");
+  assert.strictEqual(punch.workDate, "2026-10-27");
+  assert.strictEqual(punch.verifyMode, "Face");
+  assert.strictEqual(punch.inOutState, "Masuk");
+
+  // Hex for 2026-10-27 17:00:30 (Pulang)
+  const hexOut = "7a343330303030000000000000000000000000000000000000000fae346233010000000000000000";
+  const bufOut = Buffer.from(hexOut, "hex");
+  const punchOut = parse40ByteAttendanceRecord(bufOut);
+  assert.ok(punchOut);
+  assert.strictEqual(punchOut.pin, "30000");
+  assert.strictEqual(punchOut.timestamp, "2026-10-27 17:00:30");
+  assert.strictEqual(punchOut.workDate, "2026-10-27");
+  assert.strictEqual(punchOut.verifyMode, "Face");
+  assert.strictEqual(punchOut.inOutState, "Pulang");
+});

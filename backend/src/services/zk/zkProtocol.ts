@@ -119,7 +119,36 @@ export function mapInOutState(stateNum: number): "Masuk" | "Pulang" | "Scan Anta
 export function parse40ByteAttendanceRecord(buffer: Buffer): RawDevicePunch | null {
   if (buffer.length < 40) return null;
 
-  // Format B: Standard 40-byte framing (PIN at 0..24, rawStatus at 24, rawVerify at 25, rawTime at 26)
+  // Format A: Solution X900 TFT framing (User ID binary at 0..1, PIN string at 2..26, rawVerify at 26, rawTime at 27..30, rawStatus at 31)
+  if (
+    buffer[2] >= 32 &&
+    buffer[2] <= 126 &&
+    (buffer[26] === 0 || buffer[26] === 1 || buffer[26] === 2 || buffer[26] === 15 || buffer[26] === 20) &&
+    buffer[30] !== 0 &&
+    buffer[31] <= 5 &&
+    buffer[32] === 0
+  ) {
+    let nullPos = buffer.indexOf(0, 2);
+    if (nullPos === -1 || nullPos > 26) nullPos = 26;
+    const pinA = buffer.toString("ascii", 2, nullPos).trim();
+    if (pinA && /^[\w\d\-]+$/.test(pinA)) {
+      const rawVerify = buffer[26];
+      const rawTimeA = buffer.readUInt32LE(27);
+      const rawStatus = buffer[31];
+      const timestamp = decodeZkTime(rawTimeA);
+      return {
+        pin: pinA,
+        timestamp,
+        workDate: timestamp.slice(0, 10),
+        verifyMode: mapVerifyMode(rawVerify),
+        inOutState: mapInOutState(rawStatus),
+        rawStatus,
+        rawVerify,
+      };
+    }
+  }
+
+  // Format B: Standard fallback 40-byte framing (PIN at 0..24, rawStatus at 24, rawVerify at 25, rawTime at 26..29)
   if (
     buffer[0] >= 32 &&
     buffer[0] <= 126 &&
@@ -137,28 +166,6 @@ export function parse40ByteAttendanceRecord(buffer: Buffer): RawDevicePunch | nu
       const timestamp = decodeZkTime(rawTime);
       return {
         pin: pinB,
-        timestamp,
-        workDate: timestamp.slice(0, 10),
-        verifyMode: mapVerifyMode(rawVerify),
-        inOutState: mapInOutState(rawStatus),
-        rawStatus,
-        rawVerify,
-      };
-    }
-  }
-
-  // Format A: Solution X900 TFT framing (User ID binary at 0..1, PIN string at 2..26, rawVerify at 26, rawTime at 27..30, rawStatus at 31)
-  if (buffer[2] >= 32 && buffer[2] <= 126) {
-    let nullPos = buffer.indexOf(0, 2);
-    if (nullPos === -1 || nullPos > 26) nullPos = 26;
-    const pinA = buffer.toString("ascii", 2, nullPos).trim();
-    if (pinA && /^[\w\d\-]+$/.test(pinA)) {
-      const rawVerify = buffer[26];
-      const rawTimeA = buffer.readUInt32LE(27);
-      const rawStatus = buffer[31];
-      const timestamp = decodeZkTime(rawTimeA);
-      return {
-        pin: pinA,
         timestamp,
         workDate: timestamp.slice(0, 10),
         verifyMode: mapVerifyMode(rawVerify),

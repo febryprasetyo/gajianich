@@ -56,14 +56,19 @@ export default function AttendanceRawLogsPage() {
       if (startDate) params.set("startDate", startDate);
       if (endDate) params.set("endDate", endDate);
       if (selectedDevice !== "all") params.set("deviceId", selectedDevice);
-      params.set("limit", "200");
+      params.set("limit", "1000");
 
       const res = await apiFetch<{ success: boolean; data: any[] }>(`/attendance/devices/raw-logs/query?${params.toString()}`);
       if (res.success && res.data) {
         const formatted: RawAttendanceLog[] = res.data.map((r) => {
-          const d = new Date(r.timestamp);
-          const pad = (n: number) => String(n).padStart(2, "0");
-          const timeStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+          let timeStr = "";
+          if (typeof r.timestamp === "string") {
+            timeStr = r.timestamp.replace("T", " ").replace(/\.\d+Z?$/, "").replace("Z", "");
+          } else if (r.timestamp) {
+            const d = new Date(r.timestamp);
+            const pad = (n: number) => String(n).padStart(2, "0");
+            timeStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+          }
           return {
             id: r.id,
             deviceIp: r.deviceId ? String(r.deviceId) : "-",
