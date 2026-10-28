@@ -281,9 +281,11 @@ export async function syncAttendanceDeviceHandler(req: Request, res: Response) {
       empByPin.set(String(emp.id), emp);
     }
 
-    // 4. Save Raw Logs into Database
+    // 4. Save Raw Logs into Database (filtered by date range if provided)
     const rawInserts = [];
     for (const punch of fetchedPunches) {
+      if (startDate && punch.workDate < startDate) continue;
+      if (endDate && punch.workDate > endDate) continue;
       const emp = empByPin.get(punch.pin);
       rawInserts.push({
         syncLogId: syncLog.id,

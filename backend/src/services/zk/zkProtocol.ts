@@ -119,22 +119,43 @@ export function mapInOutState(stateNum: number): "Masuk" | "Pulang" | "Scan Anta
 export function parse40ByteAttendanceRecord(buffer: Buffer): RawDevicePunch | null {
   if (buffer.length < 40) return null;
 
+  // Format A: Solution X900 TFT framing (User ID binary at 0..1, PIN string at 2..26, rawStatus at 26, rawVerify at 27, rawTime at 28)
+  if ((buffer[0] < 32 || buffer[1] < 32) && (buffer[2] >= 32 && buffer[2] <= 126)) {
+    let nullPos = buffer.indexOf(0, 2);
+    if (nullPos === -1 || nullPos > 26) nullPos = 26;
+    const pinA = buffer.toString("ascii", 2, nullPos).trim();
+    if (pinA) {
+      const rawStatus = buffer[26];
+      const rawVerify = buffer[27];
+      const rawTimeA = buffer.readUInt32LE(28);
+      const timestamp = decodeZkTime(rawTimeA);
+      return {
+        pin: pinA,
+        timestamp,
+        workDate: timestamp.slice(0, 10),
+        verifyMode: mapVerifyMode(rawVerify),
+        inOutState: mapInOutState(rawStatus),
+        rawStatus,
+        rawVerify,
+      };
+    }
+  }
+
+  // Format B: Standard 40-byte framing (PIN at 0..24, rawStatus at 24, rawVerify at 25, rawTime at 26)
   let nullPos = buffer.indexOf(0, 0);
   if (nullPos === -1 || nullPos > 24) nullPos = 24;
-  const pin = buffer.toString("ascii", 0, nullPos).trim();
-  if (!pin) return null;
+  const pinB = buffer.toString("ascii", 0, nullPos).trim();
+  if (!pinB) return null;
 
   const rawStatus = buffer[24];
   const rawVerify = buffer[25];
   const rawTime = buffer.readUInt32LE(26);
-
   const timestamp = decodeZkTime(rawTime);
-  const workDate = timestamp.slice(0, 10);
 
   return {
-    pin,
+    pin: pinB,
     timestamp,
-    workDate,
+    workDate: timestamp.slice(0, 10),
     verifyMode: mapVerifyMode(rawVerify),
     inOutState: mapInOutState(rawStatus),
     rawStatus,
@@ -146,7 +167,17 @@ export function parseAttendanceRecordsBuffer(buffer: Buffer): RawDevicePunch[] {
   const records: RawDevicePunch[] = [];
   const RECORD_SIZE = 40;
 
-  for (let offset = 0; offset + RECORD_SIZE <= buffer.length; offset += RECORD_SIZE) {
+  // Auto-detect stream start offset (e.g. skip PREPARE_DATA header if present)
+  let startOffset = 0;
+  for (let i = 0; i < Math.min(64, buffer.length); i++) {
+    const candidate = buffer.subarray(i, i + RECORD_SIZE);
+    if (candidate.length === RECORD_SIZE && parse40ByteAttendanceRecord(candidate) !== null) {
+      startOffset = i;
+      break;
+    }
+  }
+
+  for (let offset = startOffset; offset + RECORD_SIZE <= buffer.length; offset += RECORD_SIZE) {
     const chunk = buffer.subarray(offset, offset + RECORD_SIZE);
     const parsed = parse40ByteAttendanceRecord(chunk);
     if (parsed) {
