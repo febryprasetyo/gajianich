@@ -1,8 +1,8 @@
-# AMS Database Recovery Runbook
+# GAJIANICH Database Recovery Runbook
 
 ## Overview
 
-AMS uses native PostgreSQL custom-format backups (`.dump`) with SHA256 checksums. Backups are stored in `/var/backups/gajianich/postgres`.
+GAJIANICH uses native PostgreSQL custom-format backups (`.dump`) with SHA256 checksums. Backups are stored in `/var/backups/gajianich/postgres`.
 
 > [!CAUTION]
 > **Strict Policy:** Automated blind restore into the active production database (`ams_prod_db`) is strictly prohibited. Database recovery must always restore into an isolated verification or recovery database first.

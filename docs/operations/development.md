@@ -1,8 +1,8 @@
-# AMS Development Environment Runbook
+# GAJIANICH Development Environment Runbook
 
 ## Overview
 
-The AMS development environment is hosted entirely on the Ubuntu development server (`ams-dev`). The developer laptop acts solely as an SSH IDE client (VS Code / Antigravity / Cursor over SSH) and stores no local project code or secrets.
+The GAJIANICH development environment is hosted entirely on the Ubuntu development server (`ams-dev`). The developer laptop acts solely as an SSH IDE client (VS Code / Antigravity / Cursor over SSH) and stores no local project code or secrets.
 
 ---
 
@@ -67,7 +67,7 @@ npm run dev:up
 
 ## 5. Database Schema & Migration Workflow
 
-AMS strictly uses journal-based Drizzle migrations. Direct push (`db:push`) is prohibited.
+GAJIANICH strictly uses journal-based Drizzle migrations. Direct push (`db:push`) is prohibited.
 
 1. **Modify Schema:**
    Edit schema files in `backend/src/db/schema/*.ts`.

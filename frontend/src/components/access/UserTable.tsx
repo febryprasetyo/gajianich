@@ -181,7 +181,7 @@ export default function UserTable({
                                 </span>
                               )}
                             </div>
-                            <p className="text-[11px] text-slate-400 truncate">{u.email && !u.email.endsWith("@ams.internal") ? u.email : (u.employeeCode ? `NIK: ${u.employeeCode}` : "Akun Sistem")}</p>
+                            <p className="text-[11px] text-slate-400 truncate">{u.email && !u.email.endsWith("@gajianich.internal") ? u.email : (u.employeeCode ? `NIK: ${u.employeeCode}` : "Akun Sistem")}</p>
                           </div>
                         </div>
                       </td>

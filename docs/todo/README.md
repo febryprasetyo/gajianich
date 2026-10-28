@@ -1,4 +1,4 @@
-# Roadmap & Todo Pengembangan Fitur AMS
+# Roadmap & Todo Pengembangan Fitur GAJIANICH
 
 Dokumen ini adalah **indeks utama roadmap**. Setiap item prioritas dipecah ke berkas terpisah untuk efisiensi konteks dan token. Rincian arsitektur teknis merujuk langsung ke dokumen [Design Spec](../superpowers/specs/) dan [Implementation Plan](../superpowers/plans/).
 

@@ -18,7 +18,7 @@ export async function downloadEmployeeTemplate(_req: Request, res: Response) {
   try {
     const buffer = await buildEmployeeImportTemplate();
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="ams-employee-import-template.xlsx"');
+    res.setHeader('Content-Disposition', 'attachment; filename="gajianich-employee-import-template.xlsx"');
     return res.status(200).send(buffer);
   } catch (err: any) {
     return res.status(500).json({ error: err.message || 'Failed to generate template' });

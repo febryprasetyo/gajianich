@@ -303,16 +303,16 @@ test("grant creation, update, and deletion operate cleanly", () => {
   // Create grant
   data = applyCommand(data, {
     type: "grant",
-    value: { id: 0, principalKey: "hr.specialist@ams.id", displayName: "HR Specialist", role: "HR_STAFF", isActive: true }
+    value: { id: 0, principalKey: "hr.specialist@gajianich.id", displayName: "HR Specialist", role: "HR_STAFF", isActive: true }
   });
   assert.equal(data.grants.length, 1);
-  assert.equal(data.grants[0].principalKey, "hr.specialist@ams.id");
+  assert.equal(data.grants[0].principalKey, "hr.specialist@gajianich.id");
 
   // Update grant
   const grantId = data.grants[0].id;
   data = applyCommand(data, {
     type: "grant",
-    value: { id: grantId, principalKey: "hr.specialist@ams.id", displayName: "HR Lead", role: "HR_ADMIN", isActive: true }
+    value: { id: grantId, principalKey: "hr.specialist@gajianich.id", displayName: "HR Lead", role: "HR_ADMIN", isActive: true }
   });
   assert.equal(data.grants[0].displayName, "HR Lead");
   assert.equal(data.grants[0].role, "HR_ADMIN");
@@ -324,7 +324,7 @@ test("grant creation, update, and deletion operate cleanly", () => {
   // Re-add and delete using grant action delete
   data = applyCommand(data, {
     type: "grant",
-    value: { id: 0, principalKey: "hr.viewer@ams.id", displayName: "Viewer", role: "REPORT_VIEWER", isActive: true }
+    value: { id: 0, principalKey: "hr.viewer@gajianich.id", displayName: "Viewer", role: "REPORT_VIEWER", isActive: true }
   });
   assert.equal(data.grants.length, 1);
   data = applyCommand(data, {

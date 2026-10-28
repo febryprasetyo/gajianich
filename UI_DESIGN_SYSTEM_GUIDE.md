@@ -1,11 +1,11 @@
-# Master Desain GAJIANICH / AMS — Emerald Enterprise
+# Master Desain GAJIANICH — Emerald Enterprise
 
 > **Golden Rule**: Dilarang keras menggunakan gaya "AI Vibe" (background kartu gelap, gradient ungu/indigo/neon, glow shadow, floating glassmorphism, atau pill badge bertumpuk yang aneh).  
 > **Acuan Master Halaman**: Seluruh halaman desktop saat ini dan yang akan dibangun di masa mendatang **wajib** berkiblat pada standar antarmuka:
 > 1. [Asset Registry](/dashboard/assets) (`http://192.168.10.212:3000/dashboard/assets`)
 > 2. [IT Helpdesk Ticketing](/dashboard/tickets) (`http://192.168.10.212:3000/dashboard/tickets`)
 >
-> Seluruh halaman master data, rekapitulasi, pengaturan, dan transaksi di dashboard AMS **wajib** mengikuti struktur, tata letak, warna, dan komponen di dokumen ini.
+> Seluruh halaman master data, rekapitulasi, pengaturan, dan transaksi di dashboard GAJIANICH **wajib** mengikuti struktur, tata letak, warna, dan komponen di dokumen ini.
 
 ---
 

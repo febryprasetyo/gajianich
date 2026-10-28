@@ -80,7 +80,7 @@ export default function TemporaryPasswordModal({
             </p>
           </div>
 
-          {data.email && !data.email.endsWith("@ams.internal") && (
+          {data.email && !data.email.endsWith("@gajianich.internal") && (
             <div>
               <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-semibold block mb-0.5">
                 Email

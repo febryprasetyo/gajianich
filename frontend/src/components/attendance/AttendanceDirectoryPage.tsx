@@ -13,7 +13,7 @@ import type { AttendanceGrant, Employee, Identity, MasterItem } from '@/lib/atte
 
 type Mode = 'employees' | 'departments' | 'locations' | 'identities' | 'sources' | 'access' | 'cards';
 const titles: Record<Mode, string> = { employees: 'Master Karyawan Absensi', departments: 'Departemen Absensi', locations: 'Lokasi Absensi', identities: 'Pemetaan Identitas', sources: 'Sumber Absensi', access: 'Akses Absensi', cards: 'Kartu Absensi' };
-const descriptions: Record<Mode, string> = { employees: 'Master karyawan HR dengan sinkronisasi master data AMS & Talenta.', departments: 'Kelola departemen yang digunakan oleh karyawan absensi.', locations: 'Kelola lokasi kerja absensi. Lokasi yang tidak tersedia pada file sumber tetap kosong.', identities: 'Hubungkan nomor mesin ke karyawan. Angka nol di depan nomor tetap dipertahankan.', sources: 'Sumber file menjadi pembeda nomor identitas mesin.', access: 'Simulasi grant modul HR. Perubahan di sini tidak mengubah akun atau hak akses login AMS.', cards: 'Pilih karyawan untuk melihat catatan harian, total durasi, dan riwayat koreksi.' };
+const descriptions: Record<Mode, string> = { employees: 'Master karyawan HR dengan sinkronisasi master data GAJIANICH & Talenta.', departments: 'Kelola departemen yang digunakan oleh karyawan absensi.', locations: 'Kelola lokasi kerja absensi. Lokasi yang tidak tersedia pada file sumber tetap kosong.', identities: 'Hubungkan nomor mesin ke karyawan. Angka nol di depan nomor tetap dipertahankan.', sources: 'Sumber file menjadi pembeda nomor identitas mesin.', access: 'Simulasi grant modul HR. Perubahan di sini tidak mengubah akun atau hak akses login GAJIANICH.', cards: 'Pilih karyawan untuk melihat catatan harian, total durasi, dan riwayat koreksi.' };
 type Entry = Employee | MasterItem | Identity | AttendanceGrant;
 export default function AttendanceDirectoryPage({ mode }: { mode: Mode }) {
   const { data, execute, canWrite, refresh } = useAttendance();
@@ -54,7 +54,7 @@ export default function AttendanceDirectoryPage({ mode }: { mode: Mode }) {
     { name: 'employeeId', label: 'Karyawan absensi', type: 'select', value: existingIdentity?.employeeId ?? '', required: true, options: [{ value: '', label: 'Pilih karyawan' }, ...data.employees.map(e => ({ value: e.id, label: `${e.employeeCode || 'Tanpa kode'} · ${e.fullName}` }))] },
   ];
   else if (mode === 'access') fields = [
-    { name: 'principalKey', label: 'Identitas akun', value: existingGrant?.principalKey, required: true, hint: 'Contoh: email atau username. Grant ini tidak membuat akun login AMS.' },
+    { name: 'principalKey', label: 'Identitas akun', value: existingGrant?.principalKey, required: true, hint: 'Contoh: email atau username. Grant ini tidak membuat akun login GAJIANICH.' },
     { name: 'displayName', label: 'Nama tampilan', value: existingGrant?.displayName, required: true },
     { name: 'role', label: 'Peran absensi', type: 'select', value: existingGrant?.role ?? 'HR_STAFF', options: Object.entries(roleLabels).map(([value, label]) => ({ value, label })) }, activeField,
   ];
@@ -169,7 +169,7 @@ export default function AttendanceDirectoryPage({ mode }: { mode: Mode }) {
     } else if (mode === 'employees') {
       setNotice({
         type: 'error',
-        text: 'Pengelolaan master karyawan dilakukan melalui menu Data Karyawan AMS atau import Talenta.',
+        text: 'Pengelolaan master karyawan dilakukan melalui menu Data Karyawan GAJIANICH atau import Talenta.',
       });
     }
   };

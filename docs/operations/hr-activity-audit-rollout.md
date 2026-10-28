@@ -1,6 +1,6 @@
 # Panduan Operasional & Rollout: HR Activity Audit
 
-Dokumen ini menjelaskan prosedur migrasi, rollout bertahap, konfigurasi hak akses, dan mitigasi rollback untuk fitur **Pencatatan Riwayat Aktivitas HR (Server-Side Append-Only Audit)** pada aplikasi AMS.
+Dokumen ini menjelaskan prosedur migrasi, rollout bertahap, konfigurasi hak akses, dan mitigasi rollback untuk fitur **Pencatatan Riwayat Aktivitas HR (Server-Side Append-Only Audit)** pada aplikasi GAJIANICH.
 
 ---
 

@@ -172,7 +172,7 @@ function getScalarNumber(cell: ExcelJS.Cell, sheetName: string): number | null {
 
 export async function buildAssetImportTemplate(): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'AMS ITSM';
+  workbook.creator = 'GAJIANICH ITSM';
   workbook.created = new Date();
 
   // 1. Petunjuk Sheet

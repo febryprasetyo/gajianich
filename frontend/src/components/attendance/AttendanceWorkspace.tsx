@@ -37,7 +37,7 @@ function Provider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const handleStorage = (e: StorageEvent | Event) => {
       const storageEvt = e as StorageEvent;
-      if (!storageEvt.key || storageEvt.key === 'ams:attendance-workspace:v2') {
+      if (!storageEvt.key || storageEvt.key === 'gajianich:attendance-workspace:v2') {
         repository.reset().then((fresh) => {
           setData(fresh);
           setError('');
@@ -45,10 +45,10 @@ function Provider({ children }: { children: React.ReactNode }) {
       }
     };
     window.addEventListener('storage', handleStorage);
-    window.addEventListener('ams:attendance-updated', handleStorage);
+    window.addEventListener('gajianich:attendance-updated', handleStorage);
     return () => {
       window.removeEventListener('storage', handleStorage);
-      window.removeEventListener('ams:attendance-updated', handleStorage);
+      window.removeEventListener('gajianich:attendance-updated', handleStorage);
     };
   }, [repository]);
 

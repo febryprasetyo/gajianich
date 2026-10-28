@@ -1,4 +1,4 @@
-# Runbook migrasi data dan cutover Absensi AMS
+# Runbook migrasi data dan cutover Absensi GAJIANICH
 
 Status: prosedur target, 25 September 2026. CLI exporter/migrator di bawah **belum tersedia**; perintahnya merupakan kontrak implementasi Task 8, bukan perintah yang sudah dapat dijalankan pada baseline.
 

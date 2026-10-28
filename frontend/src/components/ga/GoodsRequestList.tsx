@@ -107,7 +107,7 @@ export default function GoodsRequestList() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header - Standard AMS Directory Pattern */}
+        {/* Header - Standard GAJIANICH Directory Pattern */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
@@ -177,7 +177,7 @@ export default function GoodsRequestList() {
           </div>
         </div>
 
-        {/* Table Container - Standard AMS Data Table */}
+        {/* Table Container - Standard GAJIANICH Data Table */}
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
           {loading ? (
             <p role="status" className="flex items-center justify-center gap-2 p-12 text-xs text-slate-500">

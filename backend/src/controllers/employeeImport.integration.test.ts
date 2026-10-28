@@ -34,7 +34,7 @@ test('downloadEmployeeTemplate sets XLSX headers and sends binary buffer', async
   await downloadEmployeeTemplate(req, res);
   assert.strictEqual(statusCode, 200);
   assert.ok(headers['content-type'].includes('spreadsheetml'));
-  assert.ok(headers['content-disposition'].includes('ams-employee-import-template.xlsx'));
+  assert.ok(headers['content-disposition'].includes('gajianich-employee-import-template.xlsx'));
   assert.ok(Buffer.isBuffer(sentData));
 });
 

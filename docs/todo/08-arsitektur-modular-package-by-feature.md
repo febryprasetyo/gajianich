@@ -1,6 +1,6 @@
 # Todo 08: Arsitektur Modular Package-by-Feature (Screaming Architecture) & Drizzle Full-Stack Next.js
 
-Dokumen ini melacak tahapan eksekusi dan checkpoint progres refaktor arsitektur modular berbasis fitur (`src/modules/`) untuk proyek AMS Monorepo "gajianich".
+Dokumen ini melacak tahapan eksekusi dan checkpoint progres refaktor arsitektur modular berbasis fitur (`src/modules/`) untuk proyek monorepo "GAJIANICH".
 
 ---
 

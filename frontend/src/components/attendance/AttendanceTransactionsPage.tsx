@@ -250,9 +250,9 @@ export default function AttendanceTransactionsPage() {
         setSyncError(null);
         setSyncSuccess(true);
         try {
-          localStorage.setItem("ams:attendance-workspace:v2", Date.now().toString());
+          localStorage.setItem("gajianich:attendance-workspace:v2", Date.now().toString());
           window.dispatchEvent(new Event("storage"));
-          window.dispatchEvent(new CustomEvent("ams:attendance-updated"));
+          window.dispatchEvent(new CustomEvent("gajianich:attendance-updated"));
         } catch {}
         const nowStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) + ' ' +
           new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
@@ -830,7 +830,7 @@ export default function AttendanceTransactionsPage() {
                   {unassignedRecords.length} Karyawan Belum Memiliki Penugasan Shift Kerja
                 </strong>
                 <p className="text-amber-800 mt-0.5 leading-relaxed">
-                  Log tap mesin berhasil dicatat, namun karyawan belum terdaftar pada jadwal shift harian AMS. Sistem memerlukan penentuan shift agar toleransi jam kerja dan keterlambatan dapat dikalkulasi secara presisi.
+                  Log tap mesin berhasil dicatat, namun karyawan belum terdaftar pada jadwal shift harian GAJIANICH. Sistem memerlukan penentuan shift agar toleransi jam kerja dan keterlambatan dapat dikalkulasi secara presisi.
                 </p>
               </div>
             </div>

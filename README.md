@@ -1,6 +1,6 @@
-# AMS ITSM App
+# GAJIANICH App
 
-A comprehensive Asset Management System (AMS) and IT Service Management (ITSM) platform built with modern full-stack technologies. This application provides enterprise-grade asset tracking, infrastructure management, ticket handling, license management, and employee administration.
+A comprehensive Asset Management System and IT Service Management (ITSM) platform built with modern full-stack technologies under the **GAJIANICH** brand. This application provides enterprise-grade asset tracking, infrastructure management, ticket handling, license management, and employee administration.
 
 ## Stack
 
@@ -24,7 +24,7 @@ are stored outside this repository. Internal documentation is kept locally.
 
 ## Quick Start (Development)
 
-The fastest way to run the entire AMS stack locally or on the development server:
+The fastest way to run the entire GAJIANICH stack locally or on the development server:
 
 ```bash
 # 1. Clone repository
@@ -80,7 +80,7 @@ migrations are not automatically reversed during an application rollback.
 ## Design Master
 
 Before adding menus, pages, features, or styles, read [DESIGN.md](DESIGN.md) and the
-[GAJIANICH / AMS UI design master](UI_DESIGN_SYSTEM_GUIDE.md). New modules follow the
+[GAJIANICH UI design master](UI_DESIGN_SYSTEM_GUIDE.md). New modules follow the
 existing Emerald Enterprise theme and shared components. Page-specific notes cannot
 replace the application's visual identity.
 

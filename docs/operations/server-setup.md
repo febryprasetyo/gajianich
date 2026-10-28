@@ -1,6 +1,6 @@
-# AMS Server Setup Runbook (Ubuntu 22.04 LTS)
+# GAJIANICH Server Setup Runbook (Ubuntu 22.04 LTS)
 
-This guide documents the exact server preparation steps for the AMS Development Server (`ams-dev`) and Production Server (`ams-prod`).
+This guide documents the exact server preparation steps for the GAJIANICH Development Server (`ams-dev`) and Production Server (`ams-prod`).
 
 ---
 

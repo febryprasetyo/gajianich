@@ -88,7 +88,7 @@ export async function downloadAssetImportTemplate(_req: Request, res: Response) 
   try {
     const buffer = await buildAssetImportTemplate();
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="ams-asset-import-template.xlsx"');
+    res.setHeader('Content-Disposition', 'attachment; filename="gajianich-asset-import-template.xlsx"');
     return res.status(200).send(buffer);
   } catch (err: any) {
     return res.status(500).json({ error: err.message || 'Failed to generate template' });

@@ -1,8 +1,8 @@
-# AMS Release and Deployment Runbook
+# GAJIANICH Release and Deployment Runbook
 
 ## Overview
 
-AMS production releases are automated via GitHub Actions (`.github/workflows/release.yml`) and deploy exclusively over the local network (LAN) using SSH with pinned host key authentication.
+GAJIANICH production releases are automated via GitHub Actions (`.github/workflows/release.yml`) and deploy exclusively over the local network (LAN) using SSH with pinned host key authentication.
 
 ---
 

@@ -87,6 +87,6 @@ test('exportEmployeesToExcel sets attachment headers', async () => {
   await exportEmployeesToExcel(req, res);
   assert.strictEqual(statusCode, 200);
   assert.ok(headers['content-type'].includes('spreadsheetml'));
-  assert.ok(headers['content-disposition'].includes('ams-karyawan-aktif'));
+  assert.ok(headers['content-disposition'].includes('gajianich-karyawan-aktif'));
   assert.ok(Buffer.isBuffer(sentData));
 });

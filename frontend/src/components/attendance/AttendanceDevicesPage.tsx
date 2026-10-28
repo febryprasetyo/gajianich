@@ -153,7 +153,7 @@ export default function AttendanceDevicesPage() {
             message: `Koneksi TCP terbuka, namun mesin menolak autentikasi. Kunci komunikasi (CommKey: ${activeDevice.commKey}) tidak sesuai dengan konfigurasi pada mesin fisik.`,
             troubleshooting: [
               `Buka menu mesin fisik > Pengaturan Komunikasi > Kunci Komunikasi.`,
-              `Samakan angka kunci komunikasi di sistem AMS (saat ini: ${activeDevice.commKey}) dengan mesin.`,
+              `Samakan angka kunci komunikasi di sistem GAJIANICH (saat ini: ${activeDevice.commKey}) dengan mesin.`,
               `Jika mesin tidak menggunakan kata sandi komunikasi, pastikan CommKey bernilai 0.`,
             ],
             timestamp: now,

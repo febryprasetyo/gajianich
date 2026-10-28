@@ -88,7 +88,7 @@ export default function LinkAuditToAssetModal({
               Tautkan Spesifikasi ke Aset Terdaftar
             </h3>
             <p className="text-xs text-slate-500 font-mono">
-              Pilih aset di database AMS untuk diisikan spesifikasi hardware hasil scan ini.
+              Pilih aset di database GAJIANICH untuk diisikan spesifikasi hardware hasil scan ini.
             </p>
           </div>
         </div>

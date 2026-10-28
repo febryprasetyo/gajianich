@@ -125,7 +125,7 @@ export default function EmployeeImportModal({
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'ams-employee-import-template.xlsx';
+      a.download = 'gajianich-employee-import-template.xlsx';
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

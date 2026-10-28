@@ -96,7 +96,7 @@ export async function createUser(req: AuthenticatedRequest, res: Response) {
     const parsed = createUserSchema.parse(req.body);
     const cleanUsername = parsed.username.trim();
 
-    // Determine email (fallback to employee email or @ams.internal)
+    // Determine email (fallback to employee email or @gajianich.internal)
     let finalEmail = parsed.email?.trim() || "";
     if (!finalEmail) {
       if (parsed.employeeId) {
@@ -106,7 +106,7 @@ export async function createUser(req: AuthenticatedRequest, res: Response) {
         }
       }
       if (!finalEmail) {
-        finalEmail = `${cleanUsername.toLowerCase()}@ams.internal`;
+        finalEmail = `${cleanUsername.toLowerCase()}@gajianich.internal`;
       }
     }
 
@@ -114,7 +114,7 @@ export async function createUser(req: AuthenticatedRequest, res: Response) {
     let existingEmail = await db.select().from(users).where(eq(users.email, finalEmail)).limit(1);
     if (existingEmail.length > 0) {
       if (!parsed.email?.trim()) {
-        finalEmail = `${cleanUsername.toLowerCase()}.${Date.now()}@ams.internal`;
+        finalEmail = `${cleanUsername.toLowerCase()}.${Date.now()}@gajianich.internal`;
       } else {
         return res.status(400).json({ error: 'User with this email already exists' });
       }
@@ -232,7 +232,7 @@ export async function updateUser(req: AuthenticatedRequest, res: Response) {
         }
       }
       if (!finalEmail) {
-        finalEmail = `${cleanUsername.toLowerCase()}@ams.internal`;
+        finalEmail = `${cleanUsername.toLowerCase()}@gajianich.internal`;
       }
     }
 
@@ -244,7 +244,7 @@ export async function updateUser(req: AuthenticatedRequest, res: Response) {
       .limit(1);
     if (duplicateEmail.length > 0) {
       if (!parsed.email?.trim()) {
-        finalEmail = `${cleanUsername.toLowerCase()}.${Date.now()}@ams.internal`;
+        finalEmail = `${cleanUsername.toLowerCase()}.${Date.now()}@gajianich.internal`;
       } else {
         return res.status(400).json({ error: 'Email is already used by another user' });
       }

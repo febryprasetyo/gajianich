@@ -130,7 +130,7 @@ export async function exportEmployeesToExcel(req: Request, res: Response) {
 
     const buffer = await generateEmployeesWorkbook(list);
     const dateStr = new Date().toISOString().split('T')[0];
-    const filename = `ams-karyawan-aktif-${dateStr}.xlsx`;
+    const filename = `gajianich-karyawan-aktif-${dateStr}.xlsx`;
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);

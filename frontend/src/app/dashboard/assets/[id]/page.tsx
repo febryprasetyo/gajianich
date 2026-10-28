@@ -200,7 +200,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
           <div className="glass-panel p-6 rounded-3xl bg-gradient-to-br from-white via-slate-50 to-emerald-50/20 border border-slate-200 flex flex-col justify-between items-center text-center">
             <div className="w-full border-b border-slate-200 pb-3 flex items-center justify-between">
               <span className="text-xs font-bold font-mono text-slate-900 uppercase">
-                AMS Property Tag
+                GAJIANICH Property Tag
               </span>
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
             </div>

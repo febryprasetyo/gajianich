@@ -1,6 +1,6 @@
 # Todo 12: Download Presensi Mesin Absensi & Kalkulasi Shift (Solution Pattern)
 
-Dokumen ini merinci rencana teknis integrasi mesin absensi fisik (Solution/ZKTeco) ke dalam sistem AMS, penarikan data transaksi (*Download Data Presensi*), pemisahan antara **Data Presensi (Log Mentah)** dan **Laporan Presensi (Data Final Terkalkulasi)**, penanganan tap ganda (*First-In, Last-Out*), integrasi jadwal shift karyawan, serta pencegahan kehilangan data absensi via tab **⚠️ Tidak Ada Shift**.
+Dokumen ini merinci rencana teknis integrasi mesin absensi fisik (Solution/ZKTeco) ke dalam sistem GAJIANICH, penarikan data transaksi (*Download Data Presensi*), pemisahan antara **Data Presensi (Log Mentah)** dan **Laporan Presensi (Data Final Terkalkulasi)**, penanganan tap ganda (*First-In, Last-Out*), integrasi jadwal shift karyawan, serta pencegahan kehilangan data absensi via tab **⚠️ Tidak Ada Shift**.
 
 - **Design Spec**: [docs/superpowers/specs/2026-10-27-attendance-machine-sync-design.md](../superpowers/specs/2026-10-27-attendance-machine-sync-design.md)
 - **Implementation Plan**: [docs/superpowers/plans/2026-10-27-attendance-machine-sync.md](../superpowers/plans/2026-10-27-attendance-machine-sync.md)

@@ -1,4 +1,4 @@
-# Acuan Master Desain Aplikasi AMS
+# Acuan Master Desain Aplikasi GAJIANICH
 
 Master desain yang berlaku adalah **[UI_DESIGN_SYSTEM_GUIDE.md](UI_DESIGN_SYSTEM_GUIDE.md)**.
 **Setiap AI agent dan pengembang WAJIB membuka dan membaca dokumen tersebut sebelum merencanakan atau membuat halaman baru, menu, fitur, komponen, atau CSS.**

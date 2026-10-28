@@ -175,7 +175,7 @@ export default function AssetsPage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'ams-asset-import-template.xlsx';
+      a.download = 'gajianich-asset-import-template.xlsx';
       document.body.appendChild(a);
       a.click();
       a.remove();
