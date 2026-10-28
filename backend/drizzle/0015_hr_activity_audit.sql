@@ -73,7 +73,7 @@ ALTER TABLE public.hr_audit_targets ENABLE ALWAYS TRIGGER hr_audit_targets_appen
 -- Provision the runtime login outside migrations. Never grant it ownership of audit tables.
 DO $$
 DECLARE
-  runtime_name text := nullif(current_setting('ams.hr_audit_runtime_role', true), '');
+  runtime_name text := nullif(current_setting('gajianich.hr_audit_runtime_role', true), '');
   runtime_oid oid;
   relation_name text;
 BEGIN

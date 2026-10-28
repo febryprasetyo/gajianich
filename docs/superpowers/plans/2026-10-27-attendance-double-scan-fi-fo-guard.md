@@ -63,13 +63,13 @@ interface AttendanceErrorResponse {
 
 ```bash
 # Backend test
-docker exec ams_backend_dev npm test src/services/mobileClock.integration.test.ts
+docker exec gajianich_backend_dev npm test src/services/mobileClock.integration.test.ts
 
 # Backend build check
-docker exec ams_backend_dev npm run build
+docker exec gajianich_backend_dev npm run build
 
 # Frontend typecheck
-docker exec ams_frontend_dev npx tsc --noEmit
+docker exec gajianich_frontend_dev npx tsc --noEmit
 ```
 
 ### Phase 5: Aturan Cooldown 30 Menit & Resolusi Double Scan

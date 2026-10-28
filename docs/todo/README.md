@@ -21,6 +21,7 @@ Dokumen ini adalah **indeks utama roadmap**. Setiap item prioritas dipecah ke be
 | **11** | Notifikasi HRD & Pemisahan Halaman Approval (Absensi, Foto & Pengaturan) | **Selesai** | [11-notifikasi-hrd-dan-pemisahan-halaman-approval.md](./11-notifikasi-hrd-dan-pemisahan-halaman-approval.md) | [Spec](../superpowers/specs/2026-10-26-hrd-approval-notifications-and-page-split-design.md) \| [Plan](../superpowers/plans/2026-10-26-hrd-approval-notifications-and-page-split.md) |
 | **12** | Download Presensi Mesin Absensi & Kalkulasi Shift (Solution Pattern) | **Dalam Proses** | [12-download-presensi-mesin-dan-kalkulasi-shift.md](./12-download-presensi-mesin-dan-kalkulasi-shift.md) | [Spec](../superpowers/specs/2026-10-27-attendance-machine-sync-design.md) \| [Plan](../superpowers/plans/2026-10-27-attendance-machine-sync.md) |
 | **13** | Master Desain Standar Global (Desktop & Future Pages) | **Selesai** | [13-master-desain-standar-global.md](./13-master-desain-standar-global.md) | [Spec](../superpowers/specs/2026-10-27-master-design-standard-design.md) \| [Plan](../superpowers/plans/2026-10-27-master-design-standard.md) |
+| **14** | Rebranding Total: Penggantian Kata ams & ams-app ke gajianich | **Selesai** | [14-rebrand-ams-ke-gajianich.md](./14-rebrand-ams-ke-gajianich.md) | [Spec](../superpowers/specs/2026-10-28-replace-ams-with-gajianich-design.md) \| [Plan](../superpowers/plans/2026-10-28-replace-ams-with-gajianich.md) |
 
 ---
 
@@ -137,7 +138,7 @@ Uji lima mesin selesai dengan hasil campuran: semua TCP 4370 terjangkau; 192.168
   - Mengeliminasi seluruh mock data dan membersihkan 4 baris data tiruan Adam Putra Jaya dari database.
 - **Penarikan & Sinkronisasi Data Riil Mesin Fisik (192.168.10.4:4370)**:
   - Berhasil menarik 61.127 rekaman log riil dari memori perangkat keras Solution X900 MGM.
-  - Memfilter dan mengimpor 137 rekaman data riil presensi tanggal 26–28 Oktober 2026 langsung ke  dan memetakan PIN ke master karyawan AMS.
+  - Memfilter dan mengimpor 137 rekaman data riil presensi tanggal 26–28 Oktober 2026 langsung ke  dan memetakan PIN ke master karyawan GAJIANICH.
 - **Engine Kalkulasi Shift & Laporan Presensi**:
   - Endpoint kalkulasi shift  memproses 137 log mentah menjadi 115 transaksi presensi kerja lengkap dengan scan masuk, scan pulang, keterlambatan, dan jam kerja.
   - Menangani mesin offline secara anggun: jika perangkat tidak merespons (seperti 192.168.10.224), status otomatis ditandai  dan pesan kesalahan ditampilkan dengan informatif di modal UI.

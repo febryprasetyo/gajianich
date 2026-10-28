@@ -24,6 +24,6 @@
 - [ ] Task 3.4: Verify frontend tests and build (`npm test` and `npm run build`).
 
 ## Phase 4: Verification & Docker Dev Hot-Reload
-- [ ] Task 4.1: Verify in Docker containers (`ams_backend_dev` & `ams_frontend_dev`).
+- [ ] Task 4.1: Verify in Docker containers (`gajianich_backend_dev` & `gajianich_frontend_dev`).
 - [ ] Task 4.2: Verify curl endpoints with HR role auth.
 - [ ] Task 4.3: Git commit with conventional commit message.

@@ -1,7 +1,7 @@
 # Design Spec: Master Cuti, Pengaturan Cuti Bersama Tahunan & Rekap Saldo Cuti Karyawan
 
 ## 1. Ringkasan & Latar Belakang Masalah
-Perusahaan memerlukan pengelolaan cuti yang tersentralisasi dan otomatis dengan antarmuka berbahasa Indonesia yang seragam dengan modul-modul lain di sistem AMS. Setiap awal tahun kalender, HR menetapkan konfigurasi hak cuti dasar tahunan (default 12 hari) dan jumlah Cuti Bersama tahunan (misal 4 atau 5 hari). Jumlah cuti bersama ini secara regulasi memotong jatah hak cuti tahunan karyawan.
+Perusahaan memerlukan pengelolaan cuti yang tersentralisasi dan otomatis dengan antarmuka berbahasa Indonesia yang seragam dengan modul-modul lain di sistem GAJIANICH. Setiap awal tahun kalender, HR menetapkan konfigurasi hak cuti dasar tahunan (default 12 hari) dan jumlah Cuti Bersama tahunan (misal 4 atau 5 hari). Jumlah cuti bersama ini secara regulasi memotong jatah hak cuti tahunan karyawan.
 
 Selain itu, perusahaan membutuhkan fitur pembawaan sisa cuti tahun lalu (carry-forward) yang dapat diaktifkan atau dinonaktifkan secara global, dengan proteksi koreksi manual (manual override) agar perlakuan khusus pada karyawan tertentu tidak tertimpa saat sinkronisasi massal dijalankan ulang.
 

@@ -8,7 +8,7 @@
 
 ## Objective
 
-AMS must permanently store the computer specifications supplied by employees and allow administrators to migrate prepared legacy inventory from an XLSX workbook. Imported values are already normalized before upload, so AMS stores only canonical values and does not preserve raw alternatives or attempt data normalization.
+GAJIANICH must permanently store the computer specifications supplied by employees and allow administrators to migrate prepared legacy inventory from an XLSX workbook. Imported values are already normalized before upload, so GAJIANICH stores only canonical values and does not preserve raw alternatives or attempt data normalization.
 
 This phase covers:
 
@@ -174,7 +174,7 @@ The exact ordered headers are:
 9. `Assigned Date`
 10. `Notes`
 
-Each row represents one durable physical device, such as a Printer, Scanner, Monitor, UPS, External HDD, or Docking Station. Equipment Type must match an AMS equipment type. At least one of Brand or Model is required. Assignment Type is required. `EMPLOYEE` requires Employee Code. `SHARED` requires Location Code. Assigned Date is required. A shared device from the legacy combined sheet must be converted into one `SHARED` asset row rather than duplicated for every employee who uses it.
+Each row represents one durable physical device, such as a Printer, Scanner, Monitor, UPS, External HDD, or Docking Station. Equipment Type must match an GAJIANICH equipment type. At least one of Brand or Model is required. Assignment Type is required. `EMPLOYEE` requires Employee Code. `SHARED` requires Location Code. Assigned Date is required. A shared device from the legacy combined sheet must be converted into one `SHARED` asset row rather than duplicated for every employee who uses it.
 
 ### Sheet: Accessories
 
@@ -218,7 +218,7 @@ The response contains per-sheet valid counts, warning counts, error counts, and 
 
 ### `POST /api/v1/assets/import/commit`
 
-Accepts the same workbook again. The frontend retains the selected file after preview and re-uploads it on confirmation. No uploaded workbook or parsed raw row is stored by AMS.
+Accepts the same workbook again. The frontend retains the selected file after preview and re-uploads it on confirmation. No uploaded workbook or parsed raw row is stored by GAJIANICH.
 
 The endpoint repeats all validation to avoid trusting client preview state. When validation succeeds, one database transaction:
 
@@ -348,4 +348,4 @@ Laptop/PC detail pages display a Computer Specifications card and an Accessories
 - Admins can create and edit the same specification fields outside import.
 - Non-computer assets cannot retain computer specifications.
 - Existing inventory behavior and unrelated local changes remain intact.
-- AMS stores only canonical imported values and does not retain raw alternatives or normalize user data.
+- GAJIANICH stores only canonical imported values and does not retain raw alternatives or normalize user data.

@@ -40,7 +40,7 @@ require_var() {
 
 # Acquire file lock using flock
 acquire_lock() {
-  local lock_file="${1:-/tmp/ams_deploy.lock}"
+  local lock_file="${1:-/tmp/gajianich_deploy.lock}"
   exec 200>"$lock_file"
   if ! flock -n 200; then
     die "Another deployment or maintenance process holds the lock ($lock_file). Exiting."

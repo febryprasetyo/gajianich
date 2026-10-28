@@ -46,7 +46,7 @@ Pada tanggal 26 Oktober 2026, karyawan dengan nomor ID `50181` (Adam Putra Jaya)
 | **Mobile Web UI** | `frontend/src/app/m/presensi/page.tsx` | Status button terkunci `"COMPLETED"`, mencegah trigger `FaceAttendanceSheet`. |
 | **Ring Button UI** | `frontend/src/components/mobile/PresensiRingButton.tsx` | Memastikan state disabled dan label "Selesai" konsisten dengan master design. |
 | **Backend Service** | `backend/src/services/mobileAttendanceService.ts` | 1) Guard penolakan clock `IN` saat shift sudah lengkap.<br>2) Logika `inLog` menggunakan `First In` (sort ascending by occurredAt).<br>3) Logika `outLog` menggunakan `Last Out` (sort descending by occurredAt). |
-| **Data Recovery** | Database `ams_dev_db` | Update record 50181 tanggal 2026-10-26 dan update self_log id 10. |
+| **Data Recovery** | Database `gajianich_dev_db` | Update record 50181 tanggal 2026-10-26 dan update self_log id 10. |
 
 ---
 

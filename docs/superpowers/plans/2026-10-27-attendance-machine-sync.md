@@ -24,7 +24,7 @@
 - [x] **Halaman 3: Laporan Presensi (Data Final Terkalkulasi)** (`/dashboard/attendance/transactions`):
   - Tabel hasil kalkulasi shift menggunakan aturan *First-In, Last-Out* (jam masuk tap 1, jam pulang tap akhir, jam kerja, keterlambatan).
   - Tab / Filter khusus **"⚠️ Karyawan Tanpa Shift"** dengan tombol langsung **"Tetapkan Shift Default"** dan **"Kalkulasi Ulang"** agar tidak ada data absensi yang terlewat.
-- [x] Verifikasi build Next.js dan penyimpanan browser `localStorage` (`ams_attendance_raw_logs` & `ams_attendance_processed_records`).
+- [x] Verifikasi build Next.js dan penyimpanan browser `localStorage` (`gajianich_attendance_raw_logs` & `gajianich_attendance_processed_records`).
 
 ---
 

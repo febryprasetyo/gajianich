@@ -2,7 +2,7 @@
 
 ## Summary
 
-Currently, updating an asset in AMS can only be initiated from the main asset catalog list table (`/dashboard/assets`). When an administrator or technician views an individual asset's detail page (`/dashboard/assets/[id]`), the header offers actions for "Print Asset Tag QR", "Log Maintenance", and "Dispose Asset", but lacks an "Edit Asset" action. If any detail needs to be updated (e.g., serial number, brand/model name, condition, location, notes, processor/RAM/disk hardware specifications, or attached accessories), the user is forced to return to the catalog table, locate the item again, and click the edit icon.
+Currently, updating an asset in GAJIANICH can only be initiated from the main asset catalog list table (`/dashboard/assets`). When an administrator or technician views an individual asset's detail page (`/dashboard/assets/[id]`), the header offers actions for "Print Asset Tag QR", "Log Maintenance", and "Dispose Asset", but lacks an "Edit Asset" action. If any detail needs to be updated (e.g., serial number, brand/model name, condition, location, notes, processor/RAM/disk hardware specifications, or attached accessories), the user is forced to return to the catalog table, locate the item again, and click the edit icon.
 
 This design introduces a seamless "Edit Asset" action inside the Asset Detail View (`/dashboard/assets/[id]`), backed by a shared and reusable `AssetFormModal` component (`frontend/src/components/assets/AssetFormModal.tsx`). Upon saving changes, the asset detail view refreshes in place, updating all specification cards, custodian info, and audit history logs without navigating away.
 
@@ -15,7 +15,7 @@ This design introduces a seamless "Edit Asset" action inside the Asset Detail Vi
   - Computer hardware specifications (CPU, RAM size, RAM slots, primary disk, secondary disk).
   - Attached accessories list (add, remove, edit type, description, quantity, condition).
 - Immediately refresh asset detail information and audit logs upon successful update (`fetchAssetData()`).
-- Maintain consistent styling adhering to the AMS design system (glassmorphism, Tailwind CSS, responsive mobile-friendly layout, modal backdrop, inline loading spinner, in-modal error banners).
+- Maintain consistent styling adhering to the GAJIANICH design system (glassmorphism, Tailwind CSS, responsive mobile-friendly layout, modal backdrop, inline loading spinner, in-modal error banners).
 - Reuse `AssetFormModal` across both `/dashboard/assets` (list) and `/dashboard/assets/[id]` (detail) to eliminate code duplication.
 - Ensure full type safety, zero linter warnings/errors, and complete test suite passes.
 

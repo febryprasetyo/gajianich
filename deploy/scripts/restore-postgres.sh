@@ -13,7 +13,7 @@ fi
 BACKUP_FILE="$1"
 TARGET_DB="$2"
 FORCE_FLAG="${3:-}"
-PROD_DB="${PRODUCTION_DB_NAME:-ams_prod_db}"
+PROD_DB="${PRODUCTION_DB_NAME:-gajianich_prod_db}"
 DB_USER="${PGUSER:-postgres}"
 DB_HOST="${PGHOST:-localhost}"
 DB_PORT="${PGPORT:-5432}"

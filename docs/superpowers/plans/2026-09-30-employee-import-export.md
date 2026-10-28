@@ -254,7 +254,7 @@ export interface EmployeeImportPreviewResult {
   - Query database `employees` join `departments` dan `locations`.
   - Buat Excel workbook menggunakan `exceljs`.
   - Format header dengan style tebal (bold) dan background header profesional.
-  - Set response headers attachment filename `ams-karyawan-<date>.xlsx`.
+  - Set response headers attachment filename `gajianich-karyawan-<date>.xlsx`.
 
 - [ ] **Step 4: Run test to verify it passes**
   Run: `npm test --prefix backend src/controllers/employeeExport.test.ts`

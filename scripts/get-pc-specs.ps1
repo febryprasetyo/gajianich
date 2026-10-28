@@ -1,15 +1,15 @@
 <#
 .SYNOPSIS
-    Mendapatkan detail spesifikasi hardware PC / Laptop untuk registrasi AMS.
+    Mendapatkan detail spesifikasi hardware PC / Laptop untuk registrasi GAJIANICH.
 .DESCRIPTION
     Script ini mengekstrak Processor, RAM, Jumlah Slot RAM, Disk 1, Disk 2,
-    Serial Number, dan Model Perangkat dalam format yang siap dimasukkan ke AMS.
+    Serial Number, dan Model Perangkat dalam format yang siap dimasukkan ke GAJIANICH.
 #>
 
 $ErrorActionPreference = "SilentlyContinue"
 
 Write-Host "`n========================================================" -ForegroundColor Cyan
-Write-Host "   AMS IT ASSET HARDWARE SPECIFICATION EXTRACTOR" -ForegroundColor Cyan
+Write-Host "   GAJIANICH IT ASSET HARDWARE SPECIFICATION EXTRACTOR" -ForegroundColor Cyan
 Write-Host "========================================================`n" -ForegroundColor Cyan
 
 # 1. Device Model & Manufacturer
@@ -37,7 +37,7 @@ $disk1Gb = if ($disks.Count -ge 1) { [Math]::Round($disks[0].Size / 1GB) } else 
 $disk2Gb = if ($disks.Count -ge 2) { [Math]::Round($disks[1].Size / 1GB) } else { "" }
 
 # Tampilkan Hasil Terstruktur
-Write-Host "--- RINGKASAN UNTUK FORM AMS / EXCEL IMPORT ---" -ForegroundColor Yellow
+Write-Host "--- RINGKASAN UNTUK FORM GAJIANICH / EXCEL IMPORT ---" -ForegroundColor Yellow
 Write-Host "Model / Asset Name : " -NoNewline; Write-Host $model -ForegroundColor Green
 Write-Host "Serial Number      : " -NoNewline; Write-Host $serial -ForegroundColor Green
 Write-Host "Processor (CPU)    : " -NoNewline; Write-Host $cpu -ForegroundColor Green

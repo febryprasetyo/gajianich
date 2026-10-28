@@ -15,7 +15,7 @@ export async function runMigrations(databaseUrl: string, migrationsFolder?: stri
     try {
       // The role setting and migrator must use the same PostgreSQL session.
       if (runtimeRole) {
-        await client.query("SELECT set_config('ams.hr_audit_runtime_role', $1, false)", [runtimeRole]);
+        await client.query("SELECT set_config('gajianich.hr_audit_runtime_role', $1, false)", [runtimeRole]);
       }
       await migrate(drizzle(client), { migrationsFolder: resolvedFolder });
     } finally {

@@ -11,7 +11,7 @@ GAJIANICH production releases are automated via GitHub Actions (`.github/workflo
 ### 1.1 GitHub Secrets
 Configure under **Settings > Secrets and variables > Actions**:
 - `PROD_HOST`: Local LAN IP or hostname of the production server (e.g. `192.168.10.50`).
-- `PROD_SSH_KEY`: OpenSSH Ed25519 private key corresponding to `ams-deploy` user on production.
+- `PROD_SSH_KEY`: OpenSSH Ed25519 private key corresponding to `gajianich-deploy` user on production.
 - `PROD_SSH_HOST_KEY`: Pinned `known_hosts` entry for the production server (from `ssh-keyscan -H <PROD_IP>`).
 
 ### 1.2 GitHub Environment: `production`
@@ -32,7 +32,7 @@ Configure under **Settings > Environments > production**:
    git push origin v1.0.0
    ```
 3. **Workflow Execution:**
-   - GitHub Actions automatically runs `build-and-publish`, building Docker images and publishing them to GHCR (`ghcr.io/<owner>/ams-backend:v1.0.0` and `ghcr.io/<owner>/ams-frontend:v1.0.0`).
+   - GitHub Actions automatically runs `build-and-publish`, building Docker images and publishing them to GHCR (`ghcr.io/<owner>/gajianich-backend:v1.0.0` and `ghcr.io/<owner>/gajianich-frontend:v1.0.0`).
    - The workflow enters the `production` environment and waits for manual approval.
 4. **Approve Release:**
    - Designated approvers review the release in GitHub Actions UI and approve the deployment.
@@ -56,7 +56,7 @@ If application health checks fail after container startup, `deploy.sh` automatic
 ### 3.2 Manual Rollback Command
 To explicitly roll back to a specific previous release tag:
 ```bash
-ssh ams-deploy@<PROD_HOST>
+ssh gajianich-deploy@<PROD_HOST>
 /opt/gajianich/deploy/scripts/rollback.sh v1.0.0 --yes
 ```
 This pulls `v1.0.0`, starts containers, verifies health, and atomically updates `current-version`.

@@ -1,4 +1,4 @@
-# Implementation Plan: AMS Master Desain Standar Global
+# Implementation Plan: GAJIANICH Master Desain Standar Global
 
 - **Spec**: `docs/superpowers/specs/2026-10-27-master-design-standard-design.md`
 - **Date**: 2026-10-27

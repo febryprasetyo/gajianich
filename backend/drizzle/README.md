@@ -16,7 +16,7 @@ Keep the custom trigger, grants and permission SQL in 0015 when regenerating sch
 
 ## Integration tests
 
-Use PostgreSQL 16 or newer in a disposable local container. Explicitly set `HR_AUDIT_TEST_DATABASE_URL` to its loopback `ams_hr_audit_test` or `ams_ci_db` database using a test-only administrator with CREATEDB/CREATEROLE. No fallback to the application's `DATABASE_URL` is allowed. Each test fixture creates a randomly named database and unprivileged login, runs the real journal, tests as that login, then drops only its own database/role. Cleanup never disables audit triggers.
+Use PostgreSQL 16 or newer in a disposable local container. Explicitly set `HR_AUDIT_TEST_DATABASE_URL` to its loopback `gajianich_hr_audit_test` or `gajianich_ci_db` database using a test-only administrator with CREATEDB/CREATEROLE. No fallback to the application's `DATABASE_URL` is allowed. Each test fixture creates a randomly named database and unprivileged login, runs the real journal, tests as that login, then drops only its own database/role. Cleanup never disables audit triggers.
 
 ```sh
 npx tsx --test src/db/schema/hrAudit.test.ts
@@ -30,6 +30,6 @@ Missing test configuration fails the test; tests are not silently skipped. Never
 
 Production and LAN releases apply `deploy/compose.migrate.yml` only to the one-off migration container, so the running API never receives `MIGRATION_DATABASE_URL`. Both release scripts read `MIGRATION_DATABASE_URL` and `HR_AUDIT_RUNTIME_ROLE` from the deployment env file. Provision these before the first release containing 0015.
 
-For LAN installations the PostgreSQL bootstrap role `ams_app` is an administrator. Create a different unprivileged login for the API, grant its business-table permissions, and set `DATABASE_URL` to that login. Set `HR_AUDIT_RUNTIME_ROLE` to its name and `MIGRATION_DATABASE_URL` to the bootstrap/migration owner's URL. LAN Compose accepts the explicit runtime `DATABASE_URL`; its legacy default is retained only for compatibility with older releases. `init` does not provision this database login. Fresh installations can start PostgreSQL first, provision the login, and then run `release` with these settings. No existing production credentials or role ownership are changed by Task 1.
+For LAN installations the PostgreSQL bootstrap role `gajianich_app` is an administrator. Create a different unprivileged login for the API, grant its business-table permissions, and set `DATABASE_URL` to that login. Set `HR_AUDIT_RUNTIME_ROLE` to its name and `MIGRATION_DATABASE_URL` to the bootstrap/migration owner's URL. LAN Compose accepts the explicit runtime `DATABASE_URL`; its legacy default is retained only for compatibility with older releases. `init` does not provision this database login. Fresh installations can start PostgreSQL first, provision the login, and then run `release` with these settings. No existing production credentials or role ownership are changed by Task 1.
 
 The development smoke script provisions a test-only audit role and migrates before waiting for backend readiness. Run that script only against its disposable development stack: its existing cleanup removes the development volume. `npm test` also validates Compose credential separation using `docker compose config`, without starting application containers.

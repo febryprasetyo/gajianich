@@ -1,14 +1,14 @@
-# AMS Attendance Migration Implementation Plan
+# GAJIANICH Attendance Migration Implementation Plan
 
 > **Untuk pelaksana:** Gunakan `superpowers:executing-plans` untuk implementasi task-by-task. `superpowers:subagent-driven-development` dapat digunakan jika metode delegasi dipilih pada sesi implementasi. Checklist di bawah belum dieksekusi.
 
-**Goal:** Memindahkan fitur absensi Gajianich menjadi modul web dengan login/layout AMS yang sama, tetapi seluruh data bisnis dan master karyawannya terisolasi dalam tabel `attendance_*`.
+**Goal:** Memindahkan fitur absensi Gajianich menjadi modul web dengan login/layout GAJIANICH yang sama, tetapi seluruh data bisnis dan master karyawannya terisolasi dalam tabel `attendance_*`.
 
-**Architecture:** Port domain Rust ke TypeScript di backend Express. Next.js menggunakan shell, login dan API client AMS. PostgreSQL boleh satu database, tetapi master karyawan/departemen/lokasi, grant akses modul, draft, record, revisi dan audit semuanya berada pada tabel `attendance_*` tanpa FK/join ke tabel bisnis AMS. Migrasi historis memakai snapshot SQLite dan rekonsiliasi yang dapat diulang.
+**Architecture:** Port domain Rust ke TypeScript di backend Express. Next.js menggunakan shell, login dan API client GAJIANICH. PostgreSQL boleh satu database, tetapi master karyawan/departemen/lokasi, grant akses modul, draft, record, revisi dan audit semuanya berada pada tabel `attendance_*` tanpa FK/join ke tabel bisnis GAJIANICH. Migrasi historis memakai snapshot SQLite dan rekonsiliasi yang dapat diulang.
 
-**Tech Stack:** Stack AMS existing: Next.js 16.2.12, React 19.2.4, Tailwind 4, Express, TypeScript, Drizzle/PostgreSQL, Zod, Multer, node:test/tsx. Tidak ada upgrade framework yang diminta.
+**Tech Stack:** Stack GAJIANICH existing: Next.js 16.2.12, React 19.2.4, Tailwind 4, Express, TypeScript, Drizzle/PostgreSQL, Zod, Multer, node:test/tsx. Tidak ada upgrade framework yang diminta.
 
-**Spec:** [Spesifikasi migrasi](../specs/2026-09-25-ams-attendance-migration-design.md).
+**Spec:** [Spesifikasi migrasi](../specs/2026-09-25-gajianich-attendance-migration-design.md).
 
 **Status:** Rencana implementasi. Path file baru di bawah adalah target yang belum dibuat. Semua path relatif terhadap root `gajianich` kecuali disebut sumber Gajianich.
 
@@ -17,11 +17,11 @@
 ## Global Constraints
 
 - Branch usulan: `feat/attendance-migration`; periksa status dan instruksi repository sebelum membuat branch/worktree.
-- Satu aplikasi web AMS, tanpa runtime Tauri/Rust produksi atau database SQLite operasional baru.
+- Satu aplikasi web GAJIANICH, tanpa runtime Tauri/Rust produksi atau database SQLite operasional baru.
 - Tidak membuat menu Absence deduction, denda keterlambatan, potongan ketidakhadiran, atau kalkulasi nominal lembur. Rekap menjumlahkan menit final per karyawan/periode; durasi bukan nominal uang.
-- Autentikasi, `DashboardLayout`, `ModalShell`, `StatusBadge`, dan `api.ts` existing digunakan ulang. Tabel employees/master/audit/assets AMS tidak digunakan ulang.
-- Master baru `attendance_employees`, `attendance_departments`, dan `attendance_locations` berdiri sendiri; tidak ada lookup, FK, join, sinkronisasi, atau deduplikasi terhadap master AMS.
-- Actor menggunakan snapshot principal dari login bersama, tanpa FK ke users AMS. Grant domain berada pada `attendance_access_grants`, bukan roles/users AMS.
+- Autentikasi, `DashboardLayout`, `ModalShell`, `StatusBadge`, dan `api.ts` existing digunakan ulang. Tabel employees/master/audit/assets GAJIANICH tidak digunakan ulang.
+- Master baru `attendance_employees`, `attendance_departments`, dan `attendance_locations` berdiri sendiri; tidak ada lookup, FK, join, sinkronisasi, atau deduplikasi terhadap master GAJIANICH.
+- Actor menggunakan snapshot principal dari login bersama, tanpa FK ke users GAJIANICH. Grant domain berada pada `attendance_access_grants`, bukan roles/users GAJIANICH.
 - Tidak auto-create karyawan dari file, tidak auto-merge nama, tidak memetakan nomor mesin langsung ke employeeCode.
 - Angka nol di depan nomor mesin dipertahankan; source menjadi namespace identitas.
 - Limit 20 MiB per file, 50.000 baris; pagination default 50, maksimum 100; rentang laporan maksimum 366 hari.
@@ -30,9 +30,9 @@
 - Journal Drizzle wajib; dilarang `db:push`. Migrations additive, kompatibel dengan aplikasi lama selama cutover.
 - TypeScript tanpa `any`; kontrak API camelCase. Tidak menyalin monolit App.tsx atau fallback data contoh.
 - Ikuti page override terang-merah sesuai dashboard aktual; tidak mengubah tema global.
-- Perintah backend dijalankan dari `backend/`, frontend dari `frontend/`, scripts tingkat root dari root AMS.
+- Perintah backend dijalankan dari `backend/`, frontend dari `frontend/`, scripts tingkat root dari root GAJIANICH.
 - Tes database wajib memakai database uji terpisah. Jangan menjalankan suite integration pada database operasional.
-- Commit hanya file milestone yang selesai diverifikasi. Push, merge, dan deployment mengikuti instruksi sesi implementasi dan runbook release AMS.
+- Commit hanya file milestone yang selesai diverifikasi. Push, merge, dan deployment mengikuti instruksi sesi implementasi dan runbook release GAJIANICH.
 
 ## Review Focus
 
@@ -44,7 +44,7 @@
 | Akun masih membawa JWT lama setelah grant dicabut | Status akun login dan grant absensi terkini menentukan akses | 3 |
 | Modal diperbaiki tetapi pemakai existing rusak di mobile | Header/footer dan fokus aman pada absensi serta modal aset/karyawan/lisensi | 6–7 |
 
-Tambahkan gate isolasi pada task 1, 3, dan 8: ID/nama/kode yang sama di master AMS dan absensi tidak saling terhubung, serta seluruh FK absensi hanya menuju attendance_*.
+Tambahkan gate isolasi pada task 1, 3, dan 8: ID/nama/kode yang sama di master GAJIANICH dan absensi tidak saling terhubung, serta seluruh FK absensi hanya menuju attendance_*.
 
 ## 1. Peta file dan batas tanggung jawab
 
@@ -57,7 +57,7 @@ Tambahkan gate isolasi pada task 1, 3, dan 8: ID/nama/kode yang sama di master A
 | `backend/src/domain/attendanceAccess.ts` | Matriks izin domain. |
 | `backend/src/services/attendanceBiff.ts` | Validasi bytes dan parsing raw BIFF. |
 | `backend/src/services/attendanceIdentity.ts` | Source, pemetaan, validasi identity revision. |
-| `backend/src/services/attendanceMaster.ts` | CRUD master karyawan/departemen/lokasi absensi, tanpa import schema master AMS. |
+| `backend/src/services/attendanceMaster.ts` | CRUD master karyawan/departemen/lokasi absensi, tanpa import schema master GAJIANICH. |
 | `backend/src/services/attendanceAudit.ts` | Append audit domain attendance dan actor snapshot. |
 | `backend/src/services/attendanceImport.ts` | Upload, persist raw rows, draft, konflik dan review. |
 | `backend/src/services/attendanceCommit.ts` | Transaksi commit dan receipt idempotent. |
@@ -65,7 +65,7 @@ Tambahkan gate isolasi pada task 1, 3, dan 8: ID/nama/kode yang sama di master A
 | `backend/src/services/attendanceReporting.ts` | Kartu, rekap, summary, dan CSV. |
 | `backend/src/services/attendanceMigration.ts` | Dry-run, apply, resume/no-op dan rekonsiliasi legacy. |
 | `backend/src/middleware/attendanceAccess.ts` | Periksa akun login aktif melalui adapter auth dan grant attendance aktual. |
-| `backend/src/services/attendanceGrants.ts` | Pengelolaan grant domain oleh SuperAdmin AMS tanpa mengubah role login. |
+| `backend/src/services/attendanceGrants.ts` | Pengelolaan grant domain oleh SuperAdmin GAJIANICH tanpa mengubah role login. |
 | `backend/src/controllers/attendanceController.ts` | Validasi transport dan mapping response; pecah import/report controller jika tanggung jawab membesar. |
 | `backend/src/routes/attendanceRoutes.ts` | Middleware, upload dan daftar endpoint spec. |
 | `backend/src/app.ts` | Mount `/api/v1/attendance`. |
@@ -80,9 +80,9 @@ Tambahkan gate isolasi pada task 1, 3, dan 8: ID/nama/kode yang sama di master A
 | `frontend/src/components/attendance/` | Tabel, toolbar, upload, review, konflik, correction, dan history. |
 | `frontend/src/app/dashboard/attendance/` | Page composition untuk seluruh route di spec. |
 | `design-system/pages/attendance*.md` | Override desain modul dan per halaman. |
-| `docs/operations/ams-attendance-migration.md` | Salinan runbook yang dipelihara di repo tujuan saat implementasi. |
+| `docs/operations/gajianich-attendance-migration.md` | Salinan runbook yang dipelihara di repo tujuan saat implementasi. |
 
-File existing yang disentuh secara terbatas: API/AuthContext untuk timeout dan session invalidation, DashboardLayout untuk menu/permission absensi, ModalShell untuk kepatuhan mobile/fokus, app.ts untuk mount route, dan pipeline verifikasi. Employee routes/controller, EmployeeTable, schema master, audit AMS dan seed role existing tidak diubah. Semua perubahan shell kompatibel dengan pemakai lama.
+File existing yang disentuh secara terbatas: API/AuthContext untuk timeout dan session invalidation, DashboardLayout untuk menu/permission absensi, ModalShell untuk kepatuhan mobile/fokus, app.ts untuk mount route, dan pipeline verifikasi. Employee routes/controller, EmployeeTable, schema master, audit GAJIANICH dan seed role existing tidak diubah. Semua perubahan shell kompatibel dengan pemakai lama.
 
 Tambahkan error code sesi pada `backend/src/middleware/auth.ts` secara kompatibel agar 403 insufficient-role tidak disamakan dengan token invalid; uji alur login existing.
 
@@ -167,15 +167,15 @@ Tambahkan DTO row/detail/card/report pada task pemilik endpoint, mengikuti kolom
 
 **Files:** Buat `backend/src/db/schema/attendance.ts`, `backend/src/domain/attendanceTypes.ts`, `backend/src/db/attendanceMigration.test.ts`, `scripts/sync-attendance-contracts.mjs`; hasilkan migration di `backend/drizzle/`. Tidak mengubah seed/schema existing.
 
-**Consumes:** Model data spec bagian 5 dan pola Drizzle AMS sebagai referensi penulisan, tanpa import entitas bisnis existing.
+**Consumes:** Model data spec bagian 5 dan pola Drizzle GAJIANICH sebagai referensi penulisan, tanpa import entitas bisnis existing.
 
-**Produces:** Tiga belas tabel baru berawalan attendance_, FK internal/index/check constraints, kontrak shared generated. Tidak menambahkan role/akun di AMS.
+**Produces:** Tiga belas tabel baru berawalan attendance_, FK internal/index/check constraints, kontrak shared generated. Tidak menambahkan role/akun di GAJIANICH.
 
 - [ ] Buat tes database untuk UNIQUE(source, externalNoId), UNIQUE(employee, date), durasi negatif, FK employee RESTRICT, dan dua nomor `001`/`1` yang tetap berbeda.
-- [ ] Tambahkan introspeksi `pg_constraint` untuk membuktikan tidak ada FK attendance_* menuju tabel di luar attendance_*. Catat schema checksum tabel bisnis AMS sebelum/sesudah migrasi agar schema existing terbukti tidak berubah.
+- [ ] Tambahkan introspeksi `pg_constraint` untuk membuktikan tidak ada FK attendance_* menuju tabel di luar attendance_*. Catat schema checksum tabel bisnis GAJIANICH sebelum/sesudah migrasi agar schema existing terbukti tidak berubah.
 - [ ] Jalankan dari backend: `npx tsx --test src/db/attendanceMigration.test.ts`; pastikan tes merah karena schema target belum tersedia pada database uji.
 - [ ] Definisikan schema sesuai spec, buat migration dengan `npm run db:generate`, review SQL dan journal, lalu `npm run db:migrate` ke database uji.
-- [ ] Tambahkan source awal GAJIANICH secara idempotent; grant pertama diberikan melalui pengelolaan akses khusus SuperAdmin setelah deploy. Jangan menjalankan seed penuh atau menulis roles/users AMS.
+- [ ] Tambahkan source awal GAJIANICH secara idempotent; grant pertama diberikan melalui pengelolaan akses khusus SuperAdmin setelah deploy. Jangan menjalankan seed penuh atau menulis roles/users GAJIANICH.
 - [ ] Implementasikan script copy DTO memakai `readFile`/`writeFile`; `--check` membandingkan isi tanpa menulis dan exit 1 jika berbeda. Jalankan dari root `node scripts/sync-attendance-contracts.mjs`, lalu `node scripts/sync-attendance-contracts.mjs --check`.
 - [ ] Verifikasi backend `npx tsx --test src/db/attendanceMigration.test.ts` dan `npm run build`. Uji apply migrasi dua kali dan jalankan tes migration existing.
 - [ ] Review diff hanya scope milestone; commit `feat(attendance): add schema and public contracts`.
@@ -189,7 +189,7 @@ await assert.rejects(() => pool.query(
 ));
 ```
 
-`employeeId` berasal dari fixture **attendance_employees**, bukan employees AMS atau ID production; pool dan cleanup mengikuti pola integration test AMS.
+`employeeId` berasal dari fixture **attendance_employees**, bukan employees GAJIANICH atau ID production; pool dan cleanup mengikuti pola integration test GAJIANICH.
 
 ## Task 2: Parser BIFF dan normalisasi yang setara
 
@@ -226,17 +226,17 @@ test('work date uses a real calendar date', () => {
 
 **Files:** Buat access domain/middleware, grants/master/audit/identity/import services, routes/controller dari peta file; buat `backend/src/controllers/attendanceAccess.integration.test.ts`, `backend/src/services/attendanceIdentity.integration.test.ts`, `backend/src/services/attendanceMaster.integration.test.ts`, `backend/src/controllers/attendanceImport.integration.test.ts`; ubah app.ts untuk mount router baru saja.
 
-**Consumes:** Parser task 2, schema attendance task 1, authenticateToken existing dan adapter status akun login aktual; grant aktif dari attendance_access_grants. users.role aktual hanya diperlukan untuk izin pengelolaan grant SuperAdmin AMS.
+**Consumes:** Parser task 2, schema attendance task 1, authenticateToken existing dan adapter status akun login aktual; grant aktif dari attendance_access_grants. users.role aktual hanya diperlukan untuk izin pengelolaan grant SuperAdmin GAJIANICH.
 
-**Produces:** Me/grant/master/source/identity endpoints, upload/list/detail/rows/file endpoints; akses backend sesuai matriks; batch DRAFT beserta raw/proposal persisten. Tidak memakai employee/master endpoint AMS.
+**Produces:** Me/grant/master/source/identity endpoints, upload/list/detail/rows/file endpoints; akses backend sesuai matriks; batch DRAFT beserta raw/proposal persisten. Tidak memakai employee/master endpoint GAJIANICH.
 
 - [ ] Tulis integration test token missing→401, akun tanpa grant termasuk SuperAdmin→403 untuk data bisnis, grant HR_STAFF upload→201/mapping→403, grant HR_ADMIN mapping→201. Akun login fixture dan grant harus benar-benar ada/aktif; token buatan saja tidak cukup.
-- [ ] Tambahkan tes akun dinonaktifkan/grant dicabut dengan JWT masih valid: akses berikutnya ditolak. REPORT_VIEWER tidak boleh membaca imports/identities. SuperAdmin dapat mengelola grant; role AMS tidak otomatis berubah setelah grant dibuat.
-- [ ] Tulis tes CRUD attendance_employees dengan email/kode opsional, department/location FK internal, nama ganda yang sah, nonaktifkan tanpa menghapus histori. Siapkan karyawan AMS dengan ID/nama/kode sama; perubahan absensi tidak mengubah karyawan atau audit AMS.
+- [ ] Tambahkan tes akun dinonaktifkan/grant dicabut dengan JWT masih valid: akses berikutnya ditolak. REPORT_VIEWER tidak boleh membaca imports/identities. SuperAdmin dapat mengelola grant; role GAJIANICH tidak otomatis berubah setelah grant dibuat.
+- [ ] Tulis tes CRUD attendance_employees dengan email/kode opsional, department/location FK internal, nama ganda yang sah, nonaktifkan tanpa menghapus histori. Siapkan karyawan GAJIANICH dengan ID/nama/kode sama; perubahan absensi tidak mengubah karyawan atau audit GAJIANICH.
 - [ ] Tambahkan tes file sama mengembalikan ID batch yang sama; nomor belum mapped menahan commit; error parse tidak meninggalkan batch; raw file/hash/rows tetap tersedia sesudah restart server test.
 - [ ] Jalankan dari backend `npx tsx --test src/controllers/attendanceAccess.integration.test.ts src/services/attendanceIdentity.integration.test.ts src/services/attendanceMaster.integration.test.ts src/controllers/attendanceImport.integration.test.ts` pada database uji.
 - [ ] Implementasikan multer limit, validasi signature, Zod payload strict, transaction persist upload, dan list terpaginate. Jangan mengirim Buffer dalam JSON.
-- [ ] Implementasikan master/source/identity mutation dengan validasi, revision, FK internal dan attendance_audit_logs. Mapping yang sudah digunakan final tidak dapat dialihkan. Form master absensi tidak membutuhkan atau menawarkan karyawan AMS.
+- [ ] Implementasikan master/source/identity mutation dengan validasi, revision, FK internal dan attendance_audit_logs. Mapping yang sudah digunakan final tidak dapat dialihkan. Form master absensi tidak membutuhkan atau menawarkan karyawan GAJIANICH.
 - [ ] Implementasikan `/me` dan grant endpoints; snapshot actor dari principal server, tanpa FK users/roles. Gagal membaca permission modul tidak boleh memblokir halaman ITSM existing.
 - [ ] Mount router dengan urutan route statis sebelum route parameter yang berpotensi bertabrakan; jalankan tes di atas dan `npm run build`.
 - [ ] Commit `feat(attendance): add HR access and persistent import drafts`.
@@ -303,16 +303,16 @@ assert.deepEqual(results.map(result => result.status).sort(), [200, 409]);
 - [ ] Jalankan dari frontend `node --test src/lib/attendance/presentation.test.mjs src/lib/attendance/api.test.mjs` dan pastikan merah sebelum implementasi.
 - [ ] Implementasikan adapter memakai api existing; bila helper existing membuang error code, tambah error terstruktur secara kompatibel dan tes caller lama. Sinkronkan logout cookie/localStorage melalui mekanisme auth bersama.
 - [ ] Catat override desain berdasarkan dashboard nyata. Tambahkan grup Absensi dengan permission per item; pertahankan properti adminOnly dan visibilitas menu lama.
-- [ ] Gunakan referensi gambar Data Absensi untuk susunan tabel padat, filter, dan panel ringkasan setelah desain schema/API/route terkait diselaraskan. Tetap memakai shell/font/warna AMS dan tidak menambahkan Absence deduction.
-- [ ] Baca permission melalui `/attendance/me`, bukan roleName AMS. Grant HR tetap independen dari izin IT; SuperAdmin melihat Akses Absensi untuk bootstrap grant, tanpa menerima akses record otomatis.
+- [ ] Gunakan referensi gambar Data Absensi untuk susunan tabel padat, filter, dan panel ringkasan setelah desain schema/API/route terkait diselaraskan. Tetap memakai shell/font/warna GAJIANICH dan tidak menambahkan Absence deduction.
+- [ ] Baca permission melalui `/attendance/me`, bukan roleName GAJIANICH. Grant HR tetap independen dari izin IT; SuperAdmin melihat Akses Absensi untuk bootstrap grant, tanpa menerima akses record otomatis.
 - [ ] Sesuaikan ModalShell dengan kelas wajib, focus trap/restore, touch target, dan ID unik tanpa mengubah kontrak pemakai existing.
 - [ ] Daftarkan dua test baru ke script test frontend yang saat ini memiliki daftar file eksplisit; jangan menganggap file baru otomatis dijalankan.
 - [ ] Jalankan `npm test`, `npm run lint`, `npx tsc --noEmit` dari frontend; periksa modal aset, karyawan, dan lisensi secara interaktif.
-- [ ] Commit `feat(attendance): integrate AMS navigation and shared UI`.
+- [ ] Commit `feat(attendance): integrate GAJIANICH navigation and shared UI`.
 
 ## Task 7: Halaman absensi dan alur browser lengkap
 
-**Files:** Buat page.tsx pada sebelas route spec; komponen `AttendanceEmployeeTable`, `AttendanceEmployeeFormModal`, `AttendanceDepartmentTable`, `AttendanceLocationTable`, `AttendanceAccessTable`, `AttendanceImportTable`, `AttendanceUploadModal`, `AttendanceReviewTable`, `AttendanceConflictPanel`, `AttendanceCorrectionModal`, `AttendanceRevisionHistory`, `AttendanceAuditPanel`, `AttendanceCard`, `AttendanceReportTable`, `AttendanceIdentityTable`, `AttendanceIdentityModal`, `AttendanceSourceModal` di components/attendance; hook sesuai workflow. EmployeeTable/page AMS existing tidak diubah.
+**Files:** Buat page.tsx pada sebelas route spec; komponen `AttendanceEmployeeTable`, `AttendanceEmployeeFormModal`, `AttendanceDepartmentTable`, `AttendanceLocationTable`, `AttendanceAccessTable`, `AttendanceImportTable`, `AttendanceUploadModal`, `AttendanceReviewTable`, `AttendanceConflictPanel`, `AttendanceCorrectionModal`, `AttendanceRevisionHistory`, `AttendanceAuditPanel`, `AttendanceCard`, `AttendanceReportTable`, `AttendanceIdentityTable`, `AttendanceIdentityModal`, `AttendanceSourceModal` di components/attendance; hook sesuai workflow. EmployeeTable/page GAJIANICH existing tidak diubah.
 
 **Consumes:** Adapter/permissions/visual primitives task 6 dan API task 3–5.
 
@@ -320,7 +320,7 @@ assert.deepEqual(results.map(result => result.status).sort(), [200, 409]);
 
 - [ ] Implementasikan page composition tipis, komponen tabel menerima data/callback, modal memiliki draft form lokal. Buat client boundary hanya untuk interaksi.
 - [ ] Hubungkan imports: upload asli, daftar/detail server, pagination review, edit/ack/conflict, commit dengan key tetap per percobaan logis.
-- [ ] Bangun Master Karyawan Absensi serta departemen/lokasi miliknya; gunakan endpoint attendance saja. Aksi Lihat Absensi berada pada master absensi, bukan master AMS. Tampilkan label domain agar kedua daftar tidak membingungkan pengguna.
+- [ ] Bangun Master Karyawan Absensi serta departemen/lokasi miliknya; gunakan endpoint attendance saja. Aksi Lihat Absensi berada pada master absensi, bukan master GAJIANICH. Tampilkan label domain agar kedua daftar tidak membingungkan pengguna.
 - [ ] Hubungkan mapping/source forms ke attendance_employees dan reconcile draft setelah pemetaan. Tambahkan form grant untuk SuperAdmin tanpa mengubah role login.
 - [ ] Hubungkan kartu, koreksi, revision history, reports/CSV; gunakan endpoint summary untuk REPORT_VIEWER.
 - [ ] Utamakan Total Keterlambatan dan Total Lembur per karyawan/periode, dengan satuan jam-menit dan detail harian. Durasi di atas 24 jam tidak berputar menjadi jam kalender. Tampilkan penanda merah normalisasi, audit batch, dan pilihan existing/incoming yang mempertahankan histori. Ekspor mengirim expectedDataVersion dan menangani REPORT_CHANGED dengan reload laporan.
@@ -333,43 +333,43 @@ assert.deepEqual(results.map(result => result.status).sort(), [200, 409]);
 
 ## Task 8: Migrator data lama dan latihan cutover
 
-**Files:** Buat exporter Python, migrator service/CLI, `backend/src/services/attendanceMigration.integration.test.ts`, `scripts/tests/test_export_gajianich.py`; perbarui runbook existing `docs/operations/ams-attendance-migration.md` di AMS.
+**Files:** Buat exporter Python, migrator service/CLI, `backend/src/services/attendanceMigration.integration.test.ts`, `scripts/tests/test_export_gajianich.py`; perbarui runbook existing `docs/operations/gajianich-attendance-migration.md` di GAJIANICH.
 
-**Consumes:** Snapshot/manifest/mapping format pada [runbook](../../operations/ams-attendance-migration.md), tabel target, identity rules, legacy archive.
+**Consumes:** Snapshot/manifest/mapping format pada [runbook](../../operations/gajianich-attendance-migration.md), tabel target, identity rules, legacy archive.
 
 **Produces:** CLI `--mode dry-run|apply|verify` dengan `--input`, `--mapping`, `--report`, dan `--actor-user-id` untuk apply. Tidak tersedia sebagai endpoint publik.
 
 - [ ] Tulis tes snapshot WAL konsisten, dataset rusak/hash mismatch, unresolved employee, legacy revision tanpa snapshot lengkap, audit actor string, duplicate apply, dan overlap dataset berbeda.
-- [ ] Tulis tes target attendance kosong membuat master terpisah melalui keputusan CREATE, LINK hanya menunjuk attendance_employees, dan karyawan AMS yang bernama/kode sama tidak dibaca/dimodifikasi. Audit seluruh migrasi hanya ditulis di attendance_audit_logs.
+- [ ] Tulis tes target attendance kosong membuat master terpisah melalui keputusan CREATE, LINK hanya menunjuk attendance_employees, dan karyawan GAJIANICH yang bernama/kode sama tidak dibaca/dimodifikasi. Audit seluruh migrasi hanya ditulis di attendance_audit_logs.
 - [ ] Jalankan root `python3 -m unittest discover -s scripts/tests -p 'test_export_gajianich.py'`; backend `npx tsx --test src/services/attendanceMigration.integration.test.ts`.
 - [ ] Implementasikan export SQLite backup API read-only source → snapshot → JSONL per tabel + manifest. Dataset ID dihitung dari manifest canonical dan file checksums, tidak dari path/nama file.
 - [ ] Implementasikan dry-run tanpa write ke target, apply all-or-nothing satu dataset, dan verify tanpa perubahan. Simpan completed run/mappings hanya bersama transaksi apply yang sukses; conflict membatalkan apply.
 - [ ] Pertahankan payload raw/revision/audit asli. Jangan membuat before/after atau akun historis yang tidak ada di sumber.
 - [ ] Uji batch legacy berhash sama: satu batch kanonis, seluruh legacy ID terpetakan, raw rows dengan row_number yang bertabrakan diberi nomor tujuan deterministik dan nomor asli tetap di arsip. Metadata yang tidak tersedia tetap null berlabel legacy.
-- [ ] Latih runbook pada staging hasil restore AMS, bandingkan seluruh employee/date/status/duration dan jumlah legacy entity.
+- [ ] Latih runbook pada staging hasil restore GAJIANICH, bandingkan seluruh employee/date/status/duration dan jumlah legacy entity.
 - [ ] Jalankan tes exporter/migrator, `npm run build` backend; commit `feat(attendance): add verified legacy data migration`.
 
 ## Task 9: Verifikasi rilis dan handoff operasional
 
-**Files:** Catat hasil di `docs/operations/ams-attendance-migration.md`, sinkronkan aturan page override, dan tambahkan langkah contract-check ke script `ci` root tanpa menghapus pemeriksaan existing.
+**Files:** Catat hasil di `docs/operations/gajianich-attendance-migration.md`, sinkronkan aturan page override, dan tambahkan langkah contract-check ke script `ci` root tanpa menghapus pemeriksaan existing.
 
-- [ ] Pastikan DATABASE_URL semua tes menunjuk database uji. Dari root AMS jalankan `node scripts/sync-attendance-contracts.mjs --check` dan `npm run ci`.
-- [ ] Dari frontend jalankan `npx tsc --noEmit` secara eksplisit sesuai rules AMS.
+- [ ] Pastikan DATABASE_URL semua tes menunjuk database uji. Dari root GAJIANICH jalankan `node scripts/sync-attendance-contracts.mjs --check` dan `npm run ci`.
+- [ ] Dari frontend jalankan `npx tsc --noEmit` secara eksplisit sesuai rules GAJIANICH.
 - [ ] Jalankan tes Python exporter dari task 8; tes backend CI harus mencakup integration tests baru dan tidak skip karena DB tidak tersedia.
 - [ ] Ukur parser/normalisasi 10.000 dan 50.000 baris, laporan dataset nyata yang dianonimkan, memory backend, dan respons health saat proses impor.
-- [ ] Verifikasi source fixture Rust dengan `cargo test -p gajianich-core --offline` di Gajianich; ini tidak menggantikan tes target AMS.
+- [ ] Verifikasi source fixture Rust dengan `cargo test -p gajianich-core --offline` di Gajianich; ini tidak menggantikan tes target GAJIANICH.
 - [ ] Jalankan kembali browser skenario task 7 terhadap candidate release dan smoke test modul existing.
 - [ ] Pulihkan backup PostgreSQL ke database terpisah, jalankan verify migrator, dan cocokkan hasil audit/revisi/rekap.
-- [ ] Pastikan paket rilis memakai migrasi additive; dokumentasikan cara menonaktifkan akses absensi tanpa rollback data seluruh AMS.
+- [ ] Pastikan paket rilis memakai migrasi additive; dokumentasikan cara menonaktifkan akses absensi tanpa rollback data seluruh GAJIANICH.
 - [ ] Commit dokumentasi bukti verifikasi; handoff sesuai runbook release existing. Selesainya plan tidak otomatis berarti produksi sudah dipindahkan.
 
 ## Kriteria selesai keseluruhan
 
 - [ ] Semua acceptance spec bagian 11 terpenuhi dan hasilnya tercatat.
 - [ ] Tidak ada data mock/fallback sukses lokal pada alur produksi absensi.
-- [ ] Master karyawan/departemen/lokasi absensi terpisah dengan seluruh FK internal attendance_*. Tidak ada lookup/join/sinkronisasi terhadap master AMS.
-- [ ] Login tetap AMS yang sama; tidak ada password/token duplikat. Grant dan actor snapshot absensi terpisah, tanpa FK akun AMS.
+- [ ] Master karyawan/departemen/lokasi absensi terpisah dengan seluruh FK internal attendance_*. Tidak ada lookup/join/sinkronisasi terhadap master GAJIANICH.
+- [ ] Login tetap GAJIANICH yang sama; tidak ada password/token duplikat. Grant dan actor snapshot absensi terpisah, tanpa FK akun GAJIANICH.
 - [ ] Seluruh data historis yang disertakan berhasil direkonsiliasi; arsip yang tidak menjadi record modern tetap dapat ditelusuri.
-- [ ] Modul tampil dan berperilaku sebagai bagian dari AMS pada desktop/mobile.
+- [ ] Modul tampil dan berperilaku sebagai bagian dari GAJIANICH pada desktop/mobile.
 - [ ] Rekap dan CSV konsisten untuk total keterlambatan/lembur per karyawan; tidak ada kalkulasi potongan ketidakhadiran atau nominal lembur.
 - [ ] Cutover hanya berlangsung setelah dry-run, backup/restore rehearsal, serta kesiapan operasional pada runbook terpenuhi.

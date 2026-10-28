@@ -1,20 +1,20 @@
-name: ams-dev
+name: gajianich-dev
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: ams_postgres_dev
+    container_name: gajianich_postgres_dev
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-ams_dev_db}
+      POSTGRES_DB: ${POSTGRES_DB:-gajianich_dev_db}
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - ams_dev_pgdata:/var/lib/postgresql/data
+      - gajianich_dev_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ams_dev_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-gajianich_dev_db}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -23,14 +23,14 @@ services:
     build:
       context: ./backend
       target: development
-    container_name: ams_backend_dev
+    container_name: gajianich_backend_dev
     restart: unless-stopped
     ports:
       - "${BACKEND_BIND_ADDRESS:-127.0.0.1}:5000:5000"
     environment:
       PORT: 5000
       NODE_ENV: development
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-ams_dev_db}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-gajianich_dev_db}
       JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-do-not-use-in-production-1234}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev-refresh-secret-do-not-use-in-production-1234}
       AGENT_API_KEY: ${AGENT_API_KEY:-dev-agent-key-do-not-use-in-production-1234}
@@ -38,7 +38,7 @@ services:
     volumes:
       - ./backend:/app
       - /app/node_modules
-      - ams_dev_ga_evidence:/app/data/ga-evidence
+      - gajianich_dev_ga_evidence:/app/data/ga-evidence
     depends_on:
       postgres:
         condition: service_healthy
@@ -52,7 +52,7 @@ services:
     build:
       context: ./frontend
       target: development
-    container_name: ams_frontend_dev
+    container_name: gajianich_frontend_dev
     restart: unless-stopped
     ports:
       - "${FRONTEND_BIND_ADDRESS:-0.0.0.0}:3000:3000"
@@ -71,5 +71,5 @@ services:
         condition: service_healthy
 
 volumes:
-  ams_dev_ga_evidence:
-  ams_dev_pgdata:
+  gajianich_dev_ga_evidence:
+  gajianich_dev_pgdata:

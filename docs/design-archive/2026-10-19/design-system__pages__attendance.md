@@ -1,9 +1,9 @@
 # Attendance — page override
 
-Referensi: screenshot Data Absensi yang diberikan pengguna, 25 September 2026. Dashboard AMS tetap menjadi shell dan identitas visual.
+Referensi: screenshot Data Absensi yang diberikan pengguna, 25 September 2026. Dashboard GAJIANICH tetap menjadi shell dan identitas visual.
 
 - ENERGY 1 / RHYTHM 1 / MOTION 1: halaman operasional padat, fokus pada tabel dan keterbacaan angka.
-- Background slate-50, panel putih, border slate-200; aksi utama red-600 sesuai AMS. Status menggunakan teks serta warna semantik.
+- Background slate-50, panel putih, border slate-200; aksi utama red-600 sesuai GAJIANICH. Status menggunakan teks serta warna semantik.
 - Font body existing untuk label/nama, angka tabular untuk waktu/durasi. Tidak menambah font atau mengganti tema global.
 - Header ringkas, toolbar tanggal/filter/pencarian, satu strip metrik horizontal, tabel yang bisa digulir. Kolom identitas tetap pada desktop, detail lewat tautan dan aksi baris.
 - Semua data berasal dari repository; indikator diturunkan dari hasil filter, bukan konstanta visual.

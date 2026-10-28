@@ -2,7 +2,7 @@
 
 ## Overview
 
-The GAJIANICH development environment is hosted entirely on the Ubuntu development server (`ams-dev`). The developer laptop acts solely as an SSH IDE client (VS Code / Antigravity / Cursor over SSH) and stores no local project code or secrets.
+The GAJIANICH development environment is hosted entirely on the Ubuntu development server (`gajianich-dev`). The developer laptop acts solely as an SSH IDE client (VS Code / Antigravity / Cursor over SSH) and stores no local project code or secrets.
 
 ---
 
@@ -24,7 +24,7 @@ The GAJIANICH development environment is hosted entirely on the Ubuntu developme
    cp .env.example .env
    cp backend/.env.example backend/.env
    ```
-2. Review the `.env` files. The default development values connect to the isolated containerized PostgreSQL database (`ams_dev_db`).
+2. Review the `.env` files. The default development values connect to the isolated containerized PostgreSQL database (`gajianich_dev_db`).
 
 ---
 
@@ -38,7 +38,7 @@ npm run dev:up
 - **Frontend:** http://localhost:3000 (proxied through SSH port forwarding if developing remotely)
 - **Backend API:** http://localhost:5000/api/v1
 - **Health / Readiness:** http://localhost:5000/health/ready
-- **PostgreSQL Database:** `127.0.0.1:5432` (database: `ams_dev_db`, user: `postgres`, password: `postgres`)
+- **PostgreSQL Database:** `127.0.0.1:5432` (database: `gajianich_dev_db`, user: `postgres`, password: `postgres`)
 
 ---
 

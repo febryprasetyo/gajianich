@@ -42,7 +42,7 @@ jobs:
           context: ./backend
           target: production
           push: true
-          tags: ghcr.io/${{ steps.repo_owner.outputs.owner }}/ams-backend:${{ github.ref_name }}
+          tags: ghcr.io/${{ steps.repo_owner.outputs.owner }}/gajianich-backend:${{ github.ref_name }}
 
       - name: Build and Push Frontend Release Image
         uses: docker/build-push-action@v5
@@ -50,12 +50,12 @@ jobs:
           context: ./frontend
           target: production
           push: true
-          tags: ghcr.io/${{ steps.repo_owner.outputs.owner }}/ams-frontend:${{ github.ref_name }}
+          tags: ghcr.io/${{ steps.repo_owner.outputs.owner }}/gajianich-frontend:${{ github.ref_name }}
 
   deploy:
     name: Deploy to Production (LAN SSH)
     needs: build-and-publish
-    runs-on: [self-hosted, linux, x64, ams-dev]
+    runs-on: [self-hosted, linux, x64, gajianich-dev]
     environment: production
 
     steps:
@@ -66,8 +66,8 @@ jobs:
         run: |
           mkdir -p "$HOME/.ssh"
           chmod 700 "$HOME/.ssh"
-          echo "$SSH_PRIVATE_KEY" > "$HOME/.ssh/ams_deploy_key"
-          chmod 600 "$HOME/.ssh/ams_deploy_key"
+          echo "$SSH_PRIVATE_KEY" > "$HOME/.ssh/gajianich_deploy_key"
+          chmod 600 "$HOME/.ssh/gajianich_deploy_key"
           echo "$SSH_HOST_KEY" > "$HOME/.ssh/known_hosts"
           chmod 644 "$HOME/.ssh/known_hosts"
 
@@ -76,9 +76,9 @@ jobs:
           PROD_HOST: ${{ secrets.PROD_HOST }}
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          ssh -i "$HOME/.ssh/ams_deploy_key" "ams-deploy@$PROD_HOST" "/opt/gajianich/deploy/scripts/deploy.sh $RELEASE_TAG"
+          ssh -i "$HOME/.ssh/gajianich_deploy_key" "gajianich-deploy@$PROD_HOST" "/opt/gajianich/deploy/scripts/deploy.sh $RELEASE_TAG"
 
       - name: Cleanup SSH Keys
         if: always()
         run: |
-          rm -f "$HOME/.ssh/ams_deploy_key"
+          rm -f "$HOME/.ssh/gajianich_deploy_key"

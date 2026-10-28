@@ -11,7 +11,7 @@ Status: instalasi alat dan verifikasi lokal selesai. Analisis aplikasi target da
 
 ## Instalasi
 
-Seluruh komponen tambahan ditempatkan di `/home/fastpec/.local/share/rea-tools`, tanpa sudo dan tanpa mengubah runtime atau kode produk AMS.
+Seluruh komponen tambahan ditempatkan di `/home/fastpec/.local/share/rea-tools`, tanpa sudo dan tanpa mengubah runtime atau kode produk GAJIANICH.
 
 | Komponen | Versi | Kondisi |
 |---|---|---|
@@ -47,7 +47,7 @@ Restart Codex untuk memuat konfigurasi pada sesi baru. Pengujian MCP di atas men
 
 Belum ada akses remote ke komputer Windows, attach ke Att.exe, capture trafik nyata, pembacaan database attendance, perubahan konfigurasi mesin, atau perubahan integrasi Gajianich. Runtime Frida lokal tidak otomatis memberikan akses ke PC Windows. Menunggu salinan Att.exe beserta DLL/OCX terkait dan rekaman `.pcapng` penarikan log. PML hanya disiapkan untuk Windows; tidak ada klaim REA dapat membaca PML.
 
-Tidak ada verifikasi visual atau tes produk AMS karena kode produk tidak diubah dalam tugas ini. Perubahan paralel yang muncul pada checkout dipertahankan.
+Tidak ada verifikasi visual atau tes produk GAJIANICH karena kode produk tidak diubah dalam tugas ini. Perubahan paralel yang muncul pada checkout dipertahankan.
 
 ## SDK vendor yang tersedia di PC pengguna
 

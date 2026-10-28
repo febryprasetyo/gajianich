@@ -664,7 +664,7 @@ Expected: FAIL because routes are absent.
 
 - [ ] **Step 3: Implement HTTP handlers**
 
-`downloadAssetImportTemplate` sets the XLSX content type and attachment filename `ams-asset-import-template.xlsx`. Preview and commit reject a missing file, call `parseAssetImportWorkbook`, load lookups, validate, and return the response rules from the spec. Convert Zod/workbook errors to HTTP 400 and unexpected errors to a generic HTTP 500 response.
+`downloadAssetImportTemplate` sets the XLSX content type and attachment filename `gajianich-asset-import-template.xlsx`. Preview and commit reject a missing file, call `parseAssetImportWorkbook`, load lookups, validate, and return the response rules from the spec. Convert Zod/workbook errors to HTTP 400 and unexpected errors to a generic HTTP 500 response.
 
 - [ ] **Step 4: Add route-local Multer configuration and ordered routes**
 
@@ -876,7 +876,7 @@ Read the authenticated user from `useAuth`, compute `canManageAssets`, and hide 
 
 - [ ] **Step 2: Add template download**
 
-Call `api.download('/assets/import/template')`, create an object URL, click a temporary anchor named `ams-asset-import-template.xlsx`, revoke the URL, and surface errors in the existing page error UI.
+Call `api.download('/assets/import/template')`, create an object URL, click a temporary anchor named `gajianich-asset-import-template.xlsx`, revoke the URL, and surface errors in the existing page error UI.
 
 - [ ] **Step 3: Add XLSX selection and preview modal**
 

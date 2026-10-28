@@ -20,7 +20,7 @@ fi
 
 log_info "Selected newest backup: $NEWEST_DUMP"
 
-VERIFY_DB="ams_verify_$(date '+%Y%m%d_%H%M%S')"
+VERIFY_DB="gajianich_verify_$(date '+%Y%m%d_%H%M%S')"
 
 cleanup() {
   log_info "Cleaning up verification database $VERIFY_DB..."

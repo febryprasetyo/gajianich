@@ -8,7 +8,7 @@
 
 ## 1. Summary & Problem Statement
 
-Aplikasi AMS saat ini menyediakan modul manajemen pengguna (*Access Control*) yang utamanya ditujukan untuk administrator teknis (SuperAdmin / ITAdmin). Seiring berjalannya operasional absensi mobile mandiri bagi karyawan, HRD membutuhkan kemampuan untuk mendaftarkan dan mengelola akun pengguna karyawan secara mandiri tanpa harus meminta bantuan IT.
+Aplikasi GAJIANICH saat ini menyediakan modul manajemen pengguna (*Access Control*) yang utamanya ditujukan untuk administrator teknis (SuperAdmin / ITAdmin). Seiring berjalannya operasional absensi mobile mandiri bagi karyawan, HRD membutuhkan kemampuan untuk mendaftarkan dan mengelola akun pengguna karyawan secara mandiri tanpa harus meminta bantuan IT.
 
 Namun, terdapat beberapa kendala dan kebutuhan spesifik:
 1. **Flow Pendaftaran Akun Terlalu Rumit / Tidak Relevan:**
@@ -64,7 +64,7 @@ ALTER TABLE users ALTER COLUMN email DROP NOT NULL;
 ```
 Di Drizzle schema (`backend/src/db/schema/users.ts`):
 - `email: varchar('email', { length: 255 }).unique()` (menghapus `.notNull()`).
-- Tetap mempertahankan fallback internal (e.g. `${username.toLowerCase()}@ams.internal`) jika ada integrasi eksternal yang mengharuskan string email tidak kosong.
+- Tetap mempertahankan fallback internal (e.g. `${username.toLowerCase()}@gajianich.internal`) jika ada integrasi eksternal yang mengharuskan string email tidak kosong.
 
 ### Default Permissions Seed (`backend/src/domain/rbac.ts` & `backend/src/db/seed.ts`)
 Tambahkan permission untuk `hr_attendance`:

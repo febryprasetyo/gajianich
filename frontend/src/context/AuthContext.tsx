@@ -119,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const expireStr = "expires=Thu, 01 Jan 1970 00:00:01 GMT; Max-Age=0; path=/;";
     document.cookie = `${AUTH_COOKIE_NAME}=;${expireStr} SameSite=Lax`;
     document.cookie = `token=;${expireStr} SameSite=Lax`;
-    document.cookie = `ams_prod_token=;${expireStr} SameSite=Lax`;
+    document.cookie = `gajianich_prod_token=;${expireStr} SameSite=Lax`;
     router.replace('/login');
   };
 

@@ -19,7 +19,7 @@ import { localAttendanceTime } from '../domain/attendanceTime';
 const photoUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 const descriptor = Array(128).fill(0.1);
 test('clock validates identity and uses server instant in GPS zone; OUT retains initial zone', async t => {
-  const photoDir = await mkdtemp(path.join(os.tmpdir(), 'ams-clock-'));
+  const photoDir = await mkdtemp(path.join(os.tmpdir(), 'gajianich-clock-'));
   process.env.ATTENDANCE_PHOTO_DIR = photoDir;
   t.after(() => rm(photoDir, { recursive: true, force: true }));
   const { recordMobileClock } = await import('./mobileAttendanceService');
@@ -67,7 +67,7 @@ test('first enrollment activates profile; subsequent changes await HRD', async t
 });
 
 test('clock IN is rejected directly when independent IN record already exists', async t => {
-  const photoDir = await mkdtemp(path.join(os.tmpdir(), 'ams-clock-conflict-'));
+  const photoDir = await mkdtemp(path.join(os.tmpdir(), 'gajianich-clock-conflict-'));
   process.env.ATTENDANCE_PHOTO_DIR = photoDir;
   t.after(() => rm(photoDir, { recursive: true, force: true }));
   const { recordMobileClock } = await import('./mobileAttendanceService');
@@ -106,7 +106,7 @@ test('clock IN is rejected directly when independent IN record already exists', 
 });
 
 test('unassigned employee remains PENDING even if default shift has autoApprove enabled', async t => {
-  const photoDir = await mkdtemp(path.join(os.tmpdir(), 'ams-clock-default-review-'));
+  const photoDir = await mkdtemp(path.join(os.tmpdir(), 'gajianich-clock-default-review-'));
   process.env.ATTENDANCE_PHOTO_DIR = photoDir;
   t.after(() => rm(photoDir, { recursive: true, force: true }));
   const { recordMobileClock } = await import('./mobileAttendanceService');
@@ -126,7 +126,7 @@ test('unassigned employee remains PENDING even if default shift has autoApprove 
 });
 
 test('Smart Clock Selection: isDirectOut without IN records [DIRECT_OUT] as PENDING', async t => {
-  const photoDir = await mkdtemp(path.join(os.tmpdir(), 'ams-clock-direct-out-'));
+  const photoDir = await mkdtemp(path.join(os.tmpdir(), 'gajianich-clock-direct-out-'));
   process.env.ATTENDANCE_PHOTO_DIR = photoDir;
   t.after(() => rm(photoDir, { recursive: true, force: true }));
   const { recordMobileClock, getMobileTodaySummary } = await import('./mobileAttendanceService');
@@ -171,7 +171,7 @@ test('Smart Clock Selection: isDirectOut without IN records [DIRECT_OUT] as PEND
 });
 
 test('projectApprovedLog: approving DIRECT_OUT projects record with scanIn = null and scanOut set', async t => {
-  const photoDir = await mkdtemp(path.join(os.tmpdir(), 'ams-clock-approve-dir-'));
+  const photoDir = await mkdtemp(path.join(os.tmpdir(), 'gajianich-clock-approve-dir-'));
   process.env.ATTENDANCE_PHOTO_DIR = photoDir;
   t.after(() => rm(photoDir, { recursive: true, force: true }));
   const { recordMobileClock, verifyAttendanceRecord } = await import('./mobileAttendanceService');
@@ -204,7 +204,7 @@ test('projectApprovedLog: approving DIRECT_OUT projects record with scanIn = nul
 });
 
 test('Multi-clocking in default mode: multiple OUT clocks are allowed as PENDING, HR approval picks chosen one', async t => {
-  const photoDir = await mkdtemp(path.join(os.tmpdir(), 'ams-clock-multi-'));
+  const photoDir = await mkdtemp(path.join(os.tmpdir(), 'gajianich-clock-multi-'));
   process.env.ATTENDANCE_PHOTO_DIR = photoDir;
   t.after(() => rm(photoDir, { recursive: true, force: true }));
   const { recordMobileClock, verifyAttendanceRecord } = await import('./mobileAttendanceService');

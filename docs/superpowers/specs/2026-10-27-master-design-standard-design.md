@@ -1,4 +1,4 @@
-# Design Spec: AMS Master Desain Standar Global (Desktop & Future Pages)
+# Design Spec: GAJIANICH Master Desain Standar Global (Desktop & Future Pages)
 
 - **Tanggal**: 2026-10-27
 - **Status**: Approved
@@ -8,7 +8,7 @@
 ---
 
 ## 1. Latar Belakang & Problem Statement
-Sebelumnya, terdapat variasi antarhalaman di aplikasi AMS:
+Sebelumnya, terdapat variasi antarhalaman di aplikasi GAJIANICH:
 - Sebagian halaman menggunakan `max-w-7xl` atau `max-w-5xl`, sementara halaman lain menggunakan full-width yang disediakan oleh shell `DashboardLayout` (`max-w-[1600px]`), menyebabkan lebar visual desktop meloncat-loncat saat berpindah menu.
 - Struktur header bervariasi: ada yang tanpa ikon, ada yang menggunakan subjudul dengan font terlalu besar, dan ada yang meletakkan tombol aksi secara tidak teratur.
 - Filter dan pencarian belum seragam: ada yang hanya search box sederhana, ada yang filter dropdown tidak sejajar, dan belum semua metrik/KPI card dapat di-klik untuk memfilter data secara instan.

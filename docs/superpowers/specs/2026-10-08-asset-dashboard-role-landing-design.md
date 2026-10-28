@@ -13,7 +13,7 @@
 
 ## 1. Summary & Problem Statement
 
-Saat ini di AMS App:
+Saat ini di GAJIANICH App:
 1. Setelah login atau ketika mengakses root URL (`/` atau `/dashboard`), pengguna role Admin dan IT secara default di-redirect ke `/dashboard/master/departments` yang merupakan tabel data master mentah, bukan halaman beranda analitik.
 2. Modul aset hanya memiliki halaman inventaris berbasis tabel (`/dashboard/assets`), belum memiliki halaman ringkasan analitik (KPI, tren pengadaan, distribusi departemen, distribusi kategori aset) seperti yang sudah dimiliki oleh modul HR (`/dashboard/attendance/overview`).
 3. Belum ada pengalaman "Super App" yang mulus: sidebar belum memiliki menu tunggal "Dashboard" yang cerdas dan beradaptasi secara dinamis dengan role yang sedang aktif.

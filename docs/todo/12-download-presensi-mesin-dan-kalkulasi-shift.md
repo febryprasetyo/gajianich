@@ -44,7 +44,7 @@ Dokumen ini merinci rencana teknis integrasi mesin absensi fisik (Solution/ZKTec
 - [x] **Halaman 3: Laporan Presensi (Data Final Terkalkulasi)** (`/dashboard/attendance/transactions`):
   - Khusus data presensi final hasil kalkulasi shift (*First-In, Last-Out*, jam kerja, keterlambatan).
   - Tab khusus **"⚠️ Karyawan Tanpa Shift"** dengan tombol langsung **"Tetapkan Shift Default"** dan **"Kalkulasi Ulang"**.
-- [x] Integrasi sinkronisasi data antar halaman via browser cache (`ams_attendance_raw_logs` & `ams_attendance_processed_records`).
+- [x] Integrasi sinkronisasi data antar halaman via browser cache (`gajianich_attendance_raw_logs` & `gajianich_attendance_processed_records`).
 
 
 ### Revisi UI & Copywriting (Standard Humanizer & Refined UX):

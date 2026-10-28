@@ -48,7 +48,7 @@ docker compose -f compose.dev.yml exec backend npm run seed
 - **Frontend:** http://localhost:3000
 - **Backend API:** http://localhost:5000/api/v1
 - **Readiness Check:** http://localhost:5000/health/ready
-- **PostgreSQL:** `127.0.0.1:5432` (`ams_dev_db`)
+- **PostgreSQL:** `127.0.0.1:5432` (`gajianich_dev_db`)
 
 ---
 
@@ -67,7 +67,7 @@ npm run ci            # Run full local validation pipeline (lint, test, build)
 ## Production Architecture
 
 The active office deployment uses `deploy/compose.lan.yml`: Nginx, standalone
-Next.js, Express, and PostgreSQL in the separate `ams-live` Compose project.
+Next.js, Express, and PostgreSQL in the separate `gajianich-live` Compose project.
 Production is available at http://192.168.10.23:8080. Development runs on port 3000.
 The database and backend have no published host ports. The LAN deployment currently uses HTTP within the office subnet.
 Use the production commands above for releases and backups.
@@ -100,7 +100,7 @@ di backend. Pengajuan, barang, dan metadata lampiran disimpan dalam satu transak
 
 File disimpan di `GA_STORAGE_DIR` (default `backend/data/ga-evidence` jika server
 dijalankan dari `backend/`), terpisah dari database. Compose memakai volume
-persisten `ga_evidence` (development: `ams_dev_ga_evidence`). Docker image membuat
+persisten `ga_evidence` (development: `gajianich_dev_ga_evidence`). Docker image membuat
 direktori dengan kepemilikan user aplikasi. Jangan menghapus volume saat mengganti
 container. Akses file melalui API memerlukan autentikasi dan izin melihat GA;
 folder tidak disajikan sebagai static/public. File identik dalam satu pengajuan

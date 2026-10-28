@@ -28,7 +28,7 @@ INSERT INTO role_permissions(role_id, permission_id)
 SELECT r.id, p.id FROM roles r CROSS JOIN permissions p WHERE r.code = 'hr_attendance' AND p.code = 'attendance.mobile.verify'
 ON CONFLICT DO NOTHING;
 DO $$
-DECLARE runtime_name text := nullif(current_setting('ams.hr_audit_runtime_role', true), '');
+DECLARE runtime_name text := nullif(current_setting('gajianich.hr_audit_runtime_role', true), '');
 BEGIN
   IF runtime_name IS NOT NULL THEN
     EXECUTE format('GRANT SELECT, INSERT, UPDATE ON TABLE public.attendance_self_logs, public.attendance_face_profiles, public.attendance_face_requests TO %I', runtime_name);

@@ -8,8 +8,8 @@ export async function createHrAuditTestDatabase() {
   if (!configured) throw new Error('HR_AUDIT_TEST_DATABASE_URL is required; use a disposable PostgreSQL test instance');
   const url = new URL(configured);
   if (!['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)
-      || !/^\/ams_(hr_audit_test|ci_db)$/.test(url.pathname)) {
-    throw new Error('HR audit tests require a loopback ams_hr_audit_test or ams_ci_db database');
+      || !/^\/gajianich_(hr_audit_test|ci_db)$/.test(url.pathname)) {
+    throw new Error('HR audit tests require a loopback gajianich_hr_audit_test or gajianich_ci_db database');
   }
   const suffix = randomBytes(8).toString('hex');
   const name = `hr_audit_test_${suffix}`;

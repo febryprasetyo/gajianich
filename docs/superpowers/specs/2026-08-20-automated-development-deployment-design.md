@@ -1,8 +1,8 @@
-# AMS Automated Development and Deployment Design
+# GAJIANICH Automated Development and Deployment Design
 
 ## Objective
 
-Establish a repeatable development and release workflow for AMS in which:
+Establish a repeatable development and release workflow for GAJIANICH in which:
 
 - a laptop acts only as an IDE client over SSH;
 - all development files and services run on the development server;
@@ -15,7 +15,7 @@ Establish a repeatable development and release workflow for AMS in which:
 
 ## Current Application
 
-AMS is a monorepo containing:
+GAJIANICH is a monorepo containing:
 
 - an Express 4 and TypeScript backend on port 5000;
 - a Next.js 16 and React 19 frontend on port 3000;
@@ -57,8 +57,8 @@ production environment, and release history. GitHub Container Registry stores tw
 immutable release images:
 
 ```text
-ghcr.io/<owner>/ams-frontend:<version>
-ghcr.io/<owner>/ams-backend:<version>
+ghcr.io/<owner>/gajianich-frontend:<version>
+ghcr.io/<owner>/gajianich-backend:<version>
 ```
 
 Production deployment always references an explicit semantic version such as
@@ -230,11 +230,11 @@ attempting further mutation.
 
 ## Security Controls
 
-- The self-hosted runner is scoped to the AMS repository and executes only trusted
+- The self-hosted runner is scoped to the GAJIANICH repository and executes only trusted
   workflows for jobs that can access deployment credentials.
 - Pull request workflows, especially those from forks, never receive production
   secrets or use the production deployment runner context.
-- Production deployment uses a dedicated `ams-deploy` SSH account rather than root.
+- Production deployment uses a dedicated `gajianich-deploy` SSH account rather than root.
 - SSH host verification uses a pinned known-host entry; host checking is never
   disabled.
 - The PostgreSQL application role receives only application-required privileges.
@@ -261,7 +261,7 @@ Implementation includes concise runbooks for:
 
 The design is complete when the repository provides and documents a workflow where:
 
-1. a clean development server can start AMS and its development PostgreSQL database
+1. a clean development server can start GAJIANICH and its development PostgreSQL database
    through one documented command;
 2. source edits made over SSH are reflected through frontend and backend hot reload;
 3. pull requests receive automated build, lint, migration, and smoke validation;

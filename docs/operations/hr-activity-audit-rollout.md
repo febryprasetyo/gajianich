@@ -17,21 +17,21 @@ Dokumen ini menjelaskan prosedur migrasi, rollout bertahap, konfigurasi hak akse
 
 Untuk mematuhi prinsip *least privilege* dan menjamin sifat append-only secara fisik:
 
-### 2.1. Migration Owner (`ams_migration`)
+### 2.1. Migration Owner (`gajianich_migration`)
 - Memiliki hak DDL penuh untuk membuat tabel, indeks, foreign key, dan trigger.
 - Dijalankan via `npm run db:migrate` saat proses CI/CD deployment.
 - Variabel lingkungan: `MIGRATION_DATABASE_URL` (atau fallback `DATABASE_URL` pada lingkungan pengujian lokal).
 
-### 2.2. Runtime Service (`ams_app`)
+### 2.2. Runtime Service (`gajianich_app`)
 - Hanya memiliki hak DML terbatas:
   ```sql
   -- Tabel bisnis biasa
-  GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ams_app;
+  GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO gajianich_app;
 
   -- Khusus tabel audit append-only: DILARANG UPDATE ATAU DELETE
-  REVOKE UPDATE, DELETE, TRUNCATE ON TABLE hr_audit_events, hr_audit_targets, hr_mutation_receipts FROM ams_app;
-  GRANT SELECT, INSERT ON TABLE hr_audit_events, hr_audit_targets, hr_mutation_receipts TO ams_app;
-  GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ams_app;
+  REVOKE UPDATE, DELETE, TRUNCATE ON TABLE hr_audit_events, hr_audit_targets, hr_mutation_receipts FROM gajianich_app;
+  GRANT SELECT, INSERT ON TABLE hr_audit_events, hr_audit_targets, hr_mutation_receipts TO gajianich_app;
+  GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO gajianich_app;
   ```
 - Variabel lingkungan: `DATABASE_URL` (digunakan oleh Express backend saat runtime).
 
@@ -43,7 +43,7 @@ Sebelum menjalankan deployment ke server staging/production:
 
 1. **Backup Basis Data Penuh**:
    ```bash
-   pg_dump -h <db_host> -U <db_user> -d <db_name> -F c -b -v -f /backup/ams_pre_hr_audit_$(date +%Y%m%d_%H%M%S).dump
+   pg_dump -h <db_host> -U <db_user> -d <db_name> -F c -b -v -f /backup/gajianich_pre_hr_audit_$(date +%Y%m%d_%H%M%S).dump
    ```
 2. **Validasi Konektivitas & Versi PostgreSQL**:
    - Pastikan PostgreSQL versi 16+ aktif.
@@ -91,7 +91,7 @@ Setelah deployment selesai:
    - Buka menu *Riwayat Aktivitas HR*, pastikan event mutasi tersebut langsung muncul di urutan paling atas dengan timestamp WIB dan nama akun pelaku yang benar.
    - Buka drawer detail, pastikan perubahan field `before` dan `after` tertera jelas tanpa ada field kredensial/sensitif yang bocor.
 3. **Verifikasi Append-Only Enforcement**:
-   - Coba jalankan `DELETE FROM hr_audit_events WHERE id = ...;` menggunakan user runtime `ams_app`.
+   - Coba jalankan `DELETE FROM hr_audit_events WHERE id = ...;` menggunakan user runtime `gajianich_app`.
    - Pastikan query ditolak oleh trigger `trg_prevent_hr_audit_events_modification` atau permission privilege.
 
 ---

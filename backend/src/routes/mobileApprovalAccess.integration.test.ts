@@ -38,7 +38,7 @@ test('mobile API requires dedicated reviewer permission and protects employee ev
     assert.equal((await get(endpoint, employeeToken)).status, 403);
     assert.equal((await get(endpoint, reviewerToken)).status, 200);
   }
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'ams-private-photo-')); t.after(() => rm(dir, { recursive: true, force: true }));
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'gajianich-private-photo-')); t.after(() => rm(dir, { recursive: true, force: true }));
   const photo = path.join(dir, 'photo.webp'); await writeFile(photo, 'test-evidence');
   const [log] = await database.insert(attendanceSelfLogs).values({ employeeId: employee.id, eventType: 'IN', workDate: '2026-10-23', scanTime: '08:00', shiftCode: 'OFFICE', shiftCategory: 'OFFICE', txHash: 'api-evidence', photoUrl: photo }).returning();
   assert.equal((await get(`/photos/${log.id}`, employeeToken)).status, 200);

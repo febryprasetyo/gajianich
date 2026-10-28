@@ -9,7 +9,7 @@ import {
 } from "./attendancePhotoStorage";
 
 test("saveAttendancePhoto saves valid WebP image to disk", async () => {
-  const tmpDir = path.join(os.tmpdir(), "ams-selfies-test-" + Date.now());
+  const tmpDir = path.join(os.tmpdir(), "gajianich-selfies-test-" + Date.now());
   await fsPromises.mkdir(tmpDir, { recursive: true });
 
   // 1x1 transparent PNG base64
@@ -28,7 +28,7 @@ test("saveAttendancePhoto saves valid WebP image to disk", async () => {
 });
 
 test("purgeExpiredAttendancePhotos deletes photo files older than retention threshold and updates DB", async () => {
-  const tmpDir = path.join(os.tmpdir(), "ams-purge-test-" + Date.now());
+  const tmpDir = path.join(os.tmpdir(), "gajianich-purge-test-" + Date.now());
   await fsPromises.mkdir(tmpDir, { recursive: true });
 
   const oldFile = path.join(tmpDir, "old-selfie.webp");

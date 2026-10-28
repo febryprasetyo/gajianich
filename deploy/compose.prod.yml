@@ -1,9 +1,9 @@
-name: ams-prod
+name: gajianich-prod
 
 services:
   proxy:
     image: nginx:1.27-alpine
-    container_name: ams_proxy_prod
+    container_name: gajianich_proxy_prod
     ports:
       - "80:80"
     volumes:
@@ -21,8 +21,8 @@ services:
         max-file: "3"
 
   backend:
-    image: ghcr.io/${GHCR_OWNER:-fastpec}/ams-backend:${APP_VERSION:?Release version required}
-    container_name: ams_backend_prod
+    image: ghcr.io/${GHCR_OWNER:-fastpec}/gajianich-backend:${APP_VERSION:?Release version required}
+    container_name: gajianich_backend_prod
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -49,8 +49,8 @@ services:
         max-file: "3"
 
   frontend:
-    image: ghcr.io/${GHCR_OWNER:-fastpec}/ams-frontend:${APP_VERSION:?Release version required}
-    container_name: ams_frontend_prod
+    image: ghcr.io/${GHCR_OWNER:-fastpec}/gajianich-frontend:${APP_VERSION:?Release version required}
+    container_name: gajianich_frontend_prod
     restart: unless-stopped
     environment:
       NODE_ENV: production

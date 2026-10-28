@@ -50,8 +50,8 @@
 
 ### 4. Collector Scripts
 
-#### [MODIFY] `hardware-collector/src/AMS-Collector.ps1`
-- Mirror the peripheral form, dynamic custom category panel, and single-shot scan & sync logic from `hardware-collector/launcher/AMS-Collector.ps1`.
+#### [MODIFY] `hardware-collector/src/GAJIANICH-Collector.ps1`
+- Mirror the peripheral form, dynamic custom category panel, and single-shot scan & sync logic from `hardware-collector/launcher/GAJIANICH-Collector.ps1`.
 
 ### 5. Frontend UI Layer
 

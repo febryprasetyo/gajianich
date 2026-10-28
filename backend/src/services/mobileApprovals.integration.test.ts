@@ -84,7 +84,7 @@ test('mobile approvals preserve original evidence and project only approved scan
     assert.equal(approved.photoUrl, 'approved-photo'); assert.equal(profile.samplePhotoUrl, 'approved-photo'); assert.equal(profile.faceDescriptorHash, '[0.3]');
   });
   await t.test('unreviewed evidence survives retention until the reviewer can inspect it', async () => {
-    const dir = await mkdtemp(path.join(os.tmpdir(), 'ams-retention-'));
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'gajianich-retention-'));
     try {
       const file = path.join(dir, 'pending.webp'); await writeFile(file, 'evidence');
       const [pending] = await database.insert(attendanceSelfLogs).values({ employeeId: employee.id, userId: user.id, eventType: 'IN', workDate: '2026-01-01', scanTime: '08:00', shiftCode: 'OFFICE', shiftCategory: 'OFFICE', txHash: 'retention-test', approvalStatus: 'PENDING', photoUrl: file, createdAt: new Date(Date.now() - 30 * 86400_000) }).returning();

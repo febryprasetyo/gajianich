@@ -49,7 +49,7 @@ Nama kegagalan backend:
 2. `clock validates identity and uses server instant in GPS zone; OUT retains initial zone`: assertion 0 != 1.
 3. `Multi-clocking in default mode: multiple OUT clocks are allowed as PENDING, HR approval picks chosen one`: penolakan OUT karena guard minimal 30 menit.
 
-Ketiga kegagalan berada pada area di luar skrip yang diubah. Tidak dilakukan perubahan untuk menanganinya dan tidak diklaim telah dibuktikan gagal pada baseline sebelum tugas. Log run lengkap: `/tmp/ams-attendance-connector-backend-tests.log`.
+Ketiga kegagalan berada pada area di luar skrip yang diubah. Tidak dilakukan perubahan untuk menanganinya dan tidak diklaim telah dibuktikan gagal pada baseline sebelum tugas. Log run lengkap: `/tmp/gajianich-attendance-connector-backend-tests.log`.
 
 Tidak ada perubahan backend/src atau frontend pada tugas ini. Tidak ada verifikasi visual karena tidak ada UI yang diubah. Tes produk luas dijalankan sebagai regresi, bukan bukti integrasi pengambilan log sudah tersedia.
 

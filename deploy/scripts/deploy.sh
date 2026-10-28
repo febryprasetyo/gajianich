@@ -22,10 +22,10 @@ if [[ ! -f "$COMPOSE_FILE" ]]; then
   COMPOSE_FILE="$SCRIPT_DIR/../compose.prod.yml"
 fi
 
-acquire_lock "/tmp/ams_deploy.lock"
+acquire_lock "/tmp/gajianich_deploy.lock"
 
 log_info "======================================================"
-log_info "Starting deployment of AMS version: $TARGET_VERSION"
+log_info "Starting deployment of GAJIANICH version: $TARGET_VERSION"
 log_info "======================================================"
 
 # 1. Run Preflight checks

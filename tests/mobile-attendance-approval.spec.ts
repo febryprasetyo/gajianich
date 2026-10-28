@@ -31,7 +31,7 @@ for (const width of [360, 768, 1280]) {
     await page.getByRole('button').filter({ hasText: '23 Okt' }).click();
     await expect(page.getByRole('dialog').locator('iframe')).toHaveCount(1);
     await page.getByLabel('Keterangan koreksi').fill('Saya bekerja di lokasi cabang Bali.');
-    await page.screenshot({ path: `/tmp/ams-mobile-approval-${width}.png`, fullPage: true });
+    await page.screenshot({ path: `/tmp/gajianich-mobile-approval-${width}.png`, fullPage: true });
     await page.getByRole('button',{name:'Kirim koreksi'}).click();
     await expect.poll(() => correction).toEqual({ logId: 18, note: 'Saya bekerja di lokasi cabang Bali.' });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -86,7 +86,7 @@ for (const width of [360,1280]) {
     await page.getByRole('switch',{name:'Pulang otomatis'}).check();
     await page.getByRole('button',{name:'Simpan aturan OFFICE'}).click();
     await expect.poll(() => shift).toEqual({autoApproveIn:false,autoApproveOut:true});
-    await page.screenshot({ path:`/tmp/ams-reviewer-${width}.png`,fullPage:true });
+    await page.screenshot({ path:`/tmp/gajianich-reviewer-${width}.png`,fullPage:true });
     const overflow = await page.evaluate(() => Array.from(document.querySelectorAll('*')).filter(el => el.getBoundingClientRect().right > window.innerWidth + 1).map(el => ({ tag: el.tagName, className: el.className, width: el.getBoundingClientRect().width, text: el.textContent?.slice(0,60) })).slice(0,8));
     expect(overflow).toEqual([]);
     expect(errors).toEqual([]);

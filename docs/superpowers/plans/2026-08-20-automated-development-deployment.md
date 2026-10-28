@@ -1,8 +1,8 @@
-# AMS Automated Development and Deployment Implementation Plan
+# GAJIANICH Automated Development and Deployment Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make AMS reproducibly developable on the SSH development server and safely releasable to the local-only production server through tested, versioned, approval-gated automation.
+**Goal:** Make GAJIANICH reproducibly developable on the SSH development server and safely releasable to the local-only production server through tested, versioned, approval-gated automation.
 
 **Architecture:** Frontend and backend run in Docker in both environments; development also runs PostgreSQL in Compose, while production connects to native PostgreSQL. GitHub Actions validates changes and a repository-scoped self-hosted runner builds GHCR images and deploys tagged releases to production over LAN SSH with backup, migration, health checks, and application rollback.
 
@@ -46,10 +46,10 @@
 - `deploy/scripts/rollback.sh`: explicitly select and restore a preceding application version.
 - `deploy/scripts/restore-postgres.sh`: guarded restore to a non-active target database.
 - `deploy/scripts/verify-postgres-backup.sh`: restore the newest backup into an isolated verification database and query it.
-- `deploy/systemd/ams-postgres-backup.service`: scheduled backup unit.
-- `deploy/systemd/ams-postgres-backup.timer`: daily schedule.
-- `deploy/systemd/ams-postgres-verify.service`: scheduled restore-verification unit.
-- `deploy/systemd/ams-postgres-verify.timer`: weekly verification schedule.
+- `deploy/systemd/gajianich-postgres-backup.service`: scheduled backup unit.
+- `deploy/systemd/gajianich-postgres-backup.timer`: daily schedule.
+- `deploy/systemd/gajianich-postgres-verify.service`: scheduled restore-verification unit.
+- `deploy/systemd/gajianich-postgres-verify.timer`: weekly verification schedule.
 - `scripts/validate-compose.sh`: render and assert development/production Compose invariants.
 - `.github/workflows/ci.yml`: unprivileged pull-request and main-branch validation.
 - `.github/workflows/release.yml`: tag validation, GHCR publication, approval, and LAN deployment.
@@ -271,7 +271,7 @@ Expected: contract checker exits 0 and all development images build.
 
 ```bash
 git add .dockerignore .env.example compose.dev.yml scripts/validate-compose.sh package.json backend/Dockerfile backend/.dockerignore frontend/Dockerfile frontend/.dockerignore
-git commit -m "feat(dev): add containerized AMS environment"
+git commit -m "feat(dev): add containerized GAJIANICH environment"
 ```
 
 ### Task 4: Production Images and Same-Origin Routing
@@ -318,7 +318,7 @@ PostgreSQL using `host.docker.internal:host-gateway`.
 
 Run: `APP_VERSION=v0.0.0 GHCR_OWNER=test bash scripts/validate-compose.sh prod`
 
-Run: `docker build --target production -t ams-backend:test backend && docker build --target production -t ams-frontend:test frontend`
+Run: `docker build --target production -t gajianich-backend:test backend && docker build --target production -t gajianich-frontend:test frontend`
 
 Expected: contract checker and both production builds exit 0.
 
@@ -369,7 +369,7 @@ Expected: all unit, build, Compose contract, migration, image, and smoke checks 
 
 ```bash
 git add .github/workflows/ci.yml scripts/smoke-test.sh package.json
-git commit -m "ci: validate AMS builds migrations and containers"
+git commit -m "ci: validate GAJIANICH builds migrations and containers"
 ```
 
 ### Task 6: Production Backup and Guarded Restore
@@ -380,10 +380,10 @@ git commit -m "ci: validate AMS builds migrations and containers"
 - Create: `deploy/scripts/restore-postgres.sh`
 - Create: `deploy/scripts/verify-postgres-backup.sh`
 - Create: `deploy/tests/backup-restore.bats`
-- Create: `deploy/systemd/ams-postgres-backup.service`
-- Create: `deploy/systemd/ams-postgres-backup.timer`
-- Create: `deploy/systemd/ams-postgres-verify.service`
-- Create: `deploy/systemd/ams-postgres-verify.timer`
+- Create: `deploy/systemd/gajianich-postgres-backup.service`
+- Create: `deploy/systemd/gajianich-postgres-backup.timer`
+- Create: `deploy/systemd/gajianich-postgres-verify.service`
+- Create: `deploy/systemd/gajianich-postgres-verify.timer`
 
 **Interfaces:**
 - Produces: `backup-postgres.sh` printing the verified backup path on stdout.
@@ -424,9 +424,9 @@ implicit overwrite and never drop any database.
 - [ ] **Step 5: Implement scheduled restore verification**
 
 Select the newest checksum-valid backup, create a uniquely named temporary database,
-restore it, query the Drizzle migration journal and representative AMS schema tables,
+restore it, query the Drizzle migration journal and representative GAJIANICH schema tables,
 then drop only that exact temporary database in an EXIT trap. Refuse any temporary
-database name that does not start with `ams_restore_verify_`.
+database name that does not start with `gajianich_restore_verify_`.
 
 - [ ] **Step 6: Add systemd backup and verification schedules**
 
@@ -445,7 +445,7 @@ Expected: all Bats tests pass and ShellCheck reports no errors.
 - [ ] **Step 8: Commit backup tooling**
 
 ```bash
-git add deploy/scripts/lib.sh deploy/scripts/backup-postgres.sh deploy/scripts/restore-postgres.sh deploy/scripts/verify-postgres-backup.sh deploy/tests/backup-restore.bats deploy/systemd/ams-postgres-backup.service deploy/systemd/ams-postgres-backup.timer deploy/systemd/ams-postgres-verify.service deploy/systemd/ams-postgres-verify.timer
+git add deploy/scripts/lib.sh deploy/scripts/backup-postgres.sh deploy/scripts/restore-postgres.sh deploy/scripts/verify-postgres-backup.sh deploy/tests/backup-restore.bats deploy/systemd/gajianich-postgres-backup.service deploy/systemd/gajianich-postgres-backup.timer deploy/systemd/gajianich-postgres-verify.service deploy/systemd/gajianich-postgres-verify.timer
 git commit -m "feat(ops): add verified PostgreSQL backup and restore"
 ```
 
@@ -539,7 +539,7 @@ and publish both images under `${{ github.ref_name }}` without publishing `lates
 
 - [ ] **Step 4: Implement approved LAN deployment job**
 
-Target labels `[self-hosted, linux, x64, ams-dev]`, depend on successful image
+Target labels `[self-hosted, linux, x64, gajianich-dev]`, depend on successful image
 publication, declare `environment: production`, and set a deployment concurrency
 group. Build a pinned known-hosts file from the `PROD_SSH_HOST_KEY` secret and invoke
 `deploy.sh <tag>` over SSH. Never make production SSH secrets available to build jobs.
@@ -554,7 +554,7 @@ Expected: PASS with no forbidden mutable tag or disabled SSH verification.
 
 ```bash
 git add .github/workflows/release.yml scripts/validate-release-workflow.sh
-git commit -m "ci: publish and deploy approved AMS releases"
+git commit -m "ci: publish and deploy approved GAJIANICH releases"
 ```
 
 ### Task 9: Operator Runbooks and End-to-End Acceptance
@@ -579,7 +579,7 @@ Explicitly state that development source must be committed/pushed regularly.
 - [ ] **Step 2: Write the server setup runbook**
 
 Provide exact Ubuntu 22.04 commands for Docker repository setup, Compose plugin,
-native PostgreSQL 16 production role/database, firewall bindings, `ams-deploy` account,
+native PostgreSQL 16 production role/database, firewall bindings, `gajianich-deploy` account,
 `/opt/gajianich` permissions, GHCR login, self-hosted runner labels, systemd timer
 installation, and pinned SSH host key acquisition.
 
@@ -620,7 +620,7 @@ credential appears in `git status` or `git grep`.
 
 ```bash
 git add README.md docs/operations/development.md docs/operations/server-setup.md docs/operations/release.md docs/operations/database-recovery.md
-git commit -m "docs: add AMS development and release runbooks"
+git commit -m "docs: add GAJIANICH development and release runbooks"
 ```
 
 ### Task 10: Clean-Host Dress Rehearsal
@@ -652,7 +652,7 @@ returns to the preceding healthy image without restoring or down-migrating Postg
 - [ ] **Step 4: Prove backup recovery away from production**
 
 Restore a verified staging backup into a new database, run migrations/readiness, and
-query representative AMS tables. Record command outputs in the release checklist;
+query representative GAJIANICH tables. Record command outputs in the release checklist;
 do not commit database contents or secrets.
 
 - [ ] **Step 5: Fix rehearsal defects using regression tests**

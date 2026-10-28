@@ -1,12 +1,12 @@
 [Unit]
-Description=Weekly schedule for AMS PostgreSQL Backup Verification
+Description=Weekly schedule for GAJIANICH PostgreSQL Backup Verification
 RefuseManualStart=no
 RefuseManualStop=no
 
 [Timer]
 OnCalendar=Sun *-*-* 03:00:00
 Persistent=true
-Unit=ams-postgres-verify.service
+Unit=gajianich-postgres-verify.service
 
 [Install]
 WantedBy=timers.target

@@ -1,6 +1,6 @@
 [Unit]
-Description=AMS Production PostgreSQL Backup Integrity Verification
-After=postgresql.service ams-postgres-backup.service
+Description=GAJIANICH Production PostgreSQL Backup Integrity Verification
+After=postgresql.service gajianich-postgres-backup.service
 Requires=postgresql.service
 
 [Service]

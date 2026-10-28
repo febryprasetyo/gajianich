@@ -65,7 +65,7 @@ teardown() {
 }
 
 @test "backup-postgres.sh creates custom format dump and sha256 checksum" {
-  export DB_NAME="ams_test_db"
+  export DB_NAME="gajianich_test_db"
   run bash deploy/scripts/backup-postgres.sh "$BACKUP_DIR" "$DB_NAME"
   [ "$status" -eq 0 ]
   
@@ -82,12 +82,12 @@ teardown() {
 }
 
 @test "backup-postgres.sh enforces retention limits" {
-  export DB_NAME="ams_test_db"
+  export DB_NAME="gajianich_test_db"
   export RETENTION_COUNT=3
   
   for i in {1..5}; do
-    touch -d "$i days ago" "$BACKUP_DIR/ams_test_db_2026010${i}_000000.dump"
-    touch -d "$i days ago" "$BACKUP_DIR/ams_test_db_2026010${i}_000000.dump.sha256"
+    touch -d "$i days ago" "$BACKUP_DIR/gajianich_test_db_2026010${i}_000000.dump"
+    touch -d "$i days ago" "$BACKUP_DIR/gajianich_test_db_2026010${i}_000000.dump.sha256"
   done
 
   run bash deploy/scripts/backup-postgres.sh "$BACKUP_DIR" "$DB_NAME"
@@ -108,8 +108,8 @@ teardown() {
   echo "PGDUMP_HEADER_DUMMY" > "$DUMP_FILE"
   sha256sum "$DUMP_FILE" > "${DUMP_FILE}.sha256"
 
-  export PRODUCTION_DB_NAME="ams_prod_db"
-  run bash deploy/scripts/restore-postgres.sh "$DUMP_FILE" "ams_prod_db"
+  export PRODUCTION_DB_NAME="gajianich_prod_db"
+  run bash deploy/scripts/restore-postgres.sh "$DUMP_FILE" "gajianich_prod_db"
   [ "$status" -ne 0 ]
   [[ "$output" =~ "Refusing to overwrite active production database" ]]
 }
@@ -119,14 +119,14 @@ teardown() {
   echo "PGDUMP_HEADER_DUMMY" > "$DUMP_FILE"
   sha256sum "$DUMP_FILE" > "${DUMP_FILE}.sha256"
 
-  export PRODUCTION_DB_NAME="ams_prod_db"
-  run bash deploy/scripts/restore-postgres.sh "$DUMP_FILE" "ams_dev_recovery_db"
+  export PRODUCTION_DB_NAME="gajianich_prod_db"
+  run bash deploy/scripts/restore-postgres.sh "$DUMP_FILE" "gajianich_dev_recovery_db"
   [ "$status" -eq 0 ]
   [[ "$output" =~ "Restore completed successfully" ]]
 }
 
 @test "verify-postgres-backup.sh restores into isolated temporary DB and runs checks" {
-  DUMP_FILE="$BACKUP_DIR/ams_prod_db_20260820_120000.dump"
+  DUMP_FILE="$BACKUP_DIR/gajianich_prod_db_20260820_120000.dump"
   echo "PGDUMP_HEADER_DUMMY" > "$DUMP_FILE"
   sha256sum "$DUMP_FILE" > "${DUMP_FILE}.sha256"
 

@@ -8,7 +8,7 @@
 
 ## 1. Summary & Problem Statement
 
-Currently, the AMS platform authenticates users using email and password (`/auth/login`). Additionally, when creating users or resetting passwords:
+Currently, the GAJIANICH platform authenticates users using email and password (`/auth/login`). Additionally, when creating users or resetting passwords:
 - Administrators have to manually type and confirm passwords.
 - Newly created accounts or admin-reset accounts can log in directly without being forced to change their temporary credentials, posing a security risk.
 - The default SuperAdmin account was seeded with username `'System SuperAdmin'`, making username-based login awkward.
@@ -193,7 +193,7 @@ export const users = pgTable('users', {
 - **Login Handler**: If response `mustChangePassword === true`, redirects directly to `/change-password` with toast alert: "Silakan buat password baru Anda sebelum melanjutkan."
 
 ### 5.2. Force Change Password Screen (`/change-password`)
-- **Design Aesthetic**: Modern, premium card matching AMS design system with red accents and glassmorphism.
+- **Design Aesthetic**: Modern, premium card matching GAJIANICH design system with red accents and glassmorphism.
 - **Fields**:
   - New Password (`input type="password"` with show/hide toggle, minimum 8 characters).
   - Confirm New Password (`input type="password"`).

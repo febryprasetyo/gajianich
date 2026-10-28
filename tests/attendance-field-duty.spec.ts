@@ -5,7 +5,7 @@ for (const width of [360, 390, 768, 1280]) {
     await page.setViewportSize({ width, height: 900 });
     const user = { id: 1, username: 'field-duty-test', email: 'hr@example.test', fullName: 'HR Test', roleName: 'SuperAdmin', permissions: ['*'] };
     const token = `test.${Buffer.from(JSON.stringify({ ...user, userId: 1 })).toString('base64url')}.test`;
-    await context.addCookies([{ name: 'ams_prod_token', value: token, url: baseURL! }]);
+    await context.addCookies([{ name: 'gajianich_prod_token', value: token, url: baseURL! }]);
     await page.addInitScript(({ user, token }) => {
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('token', token);
@@ -46,7 +46,7 @@ for (const width of [360, 390, 768, 1280]) {
     await expect(dialog.getByText('Scan efektif Dinas Luar', { exact: true })).toBeVisible();
     await expect(dialog.locator('input[type="time"]')).toHaveCount(0);
     expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
-    await page.screenshot({ path: `/tmp/ams-dinas-luar-${width}.png`, fullPage: true });
+    await page.screenshot({ path: `/tmp/gajianich-dinas-luar-${width}.png`, fullPage: true });
     await dialog.getByRole('button', { name: 'Simpan Data' }).click();
     await expect(dialog).toHaveCount(0);
     expect(commands[0]).toMatchObject({ type: 'record_attendance', attendanceStatus: 'DINAS_LUAR', isDayOff: false, scanIn: null, scanOut: null });

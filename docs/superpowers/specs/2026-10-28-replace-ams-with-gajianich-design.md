@@ -34,9 +34,15 @@ Tujuan spesifikasi ini adalah menyeragamkan seluruh terminologi sistem ke **GAJI
   - Database role name `ams_app` dan trigger setting `ams.hr_audit_runtime_role` pada SQL migration yang sudah committed (`backend/drizzle/0015` s/d `0024`) tidak diubah, untuk mencegah rusaknya koneksi database PostgreSQL eksisting atau kegagalan checksum migrasi.
   - Substring alami yang memuat huruf "ams" (misal: `programs`, `params`, `diagrams`, `streams`) tidak boleh tersentuh.
 
-### Pendekatan B (Total Invasive Rename Termasuk Live DB & File Migrasi SQL)
-- Mengubah seluruh hal di Pendekatan A ditambah mengubah role database `ams_app` ──► `gajianich_app`, database name `ams_prod_db` ──► `gajianich_prod_db`, dan rename file unit systemd `ams-postgres-*.service`.
-- **Trade-off/Risiko**: Memerlukan migrasi data manual di server fisik/PostgreSQL dev lokal, serta membuat volume Docker dev harus di-reset ulang.
+### Pendekatan yang Dipilih: Total Full Rename (Pendekatan B Sesuai Permintaan Pengguna)
+- Sesuai arahan eksplisit pengguna ("ya jalankan semua ganti ke gajianich tinggalkan semua kata ams atau ams-app"), seluruh token `ams` diubah total:
+  - Database names & roles: `gajianich_dev_db`, `gajianich_prod_db`, `gajianich_app`, `gajianich.hr_audit_runtime_role`.
+  - Docker Compose containers, images, volume names: `gajianich-*`.
+  - Systemd units: `gajianich-postgres-backup.*`, `gajianich-postgres-verify.*`.
+  - Drizzle migrations `0015` - `0024` & `migrate.ts`: setting `gajianich.hr_audit_runtime_role`.
+  - Test suites & tmp directories: `gajianich_hr_audit_test`, `gajianich_ci_db`, `/tmp/gajianich-*`.
+  - Seluruh dokumen dan rancangan lama disinkronkan ke GAJIANICH.
+- **Batasan Baku**: Substring alami bahasa pemrograman/Inggris yang memuat huruf "ams" (misal: `ramSizeGb`, `params`, `diagrams`, `streams`, `streamsearch`) tetap dipertahankan karena merupakan konstruksi kode standar / hardware spec.
 
 ---
 

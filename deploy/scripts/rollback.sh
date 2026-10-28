@@ -30,7 +30,7 @@ if [[ ! -f "$COMPOSE_FILE" ]]; then
   COMPOSE_FILE="$SCRIPT_DIR/../compose.prod.yml"
 fi
 
-acquire_lock "/tmp/ams_deploy.lock"
+acquire_lock "/tmp/gajianich_deploy.lock"
 
 log_info "Initiating explicit rollback to version: $TARGET_VERSION"
 

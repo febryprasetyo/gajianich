@@ -7,7 +7,7 @@ Perusahaan PT Cahaya Mas Cemerlang mengelola administrasi permohonan cuti karyaw
 2. Proses pengajuan, delegasi serah terima tugas (*handover*), dan persetujuan bertingkat (Pemohon, Atasan Langsung, HRD, Atasan dari Atasan Langsung) membutuhkan waktu dan sering tercecer.
 3. Dokumen fisik yang dicetak dari sistem sering tidak pas dengan standar kertas operasional di Indonesia, yaitu **F4 / Folio (215 mm × 330 mm)**, sehingga terpotong menjadi 2 lembar atau format batas tabelnya tidak rapi.
 
-Fitur ini mengintegrasikan seluruh alur cuti ke dalam aplikasi AMS/Gajianich:
+Fitur ini mengintegrasikan seluruh alur cuti ke dalam aplikasi GAJIANICH/Gajianich:
 - **Input Web UI**: Formulir digital yang otomatis mengisi identitas karyawan, menghitung kuota cuti bersih secara realtime (setelah dikurangi cuti bersama), memvalidasi ketersediaan saldo, mencatat delegasi tugas (*handover*), dan mendukung alur persetujuan.
 - **Output Cetak Dokumen F4 Full Page**: Tampilan dokumen dan pratinjau cetak (*print preview/PDF*) yang mereplikasi format Excel secara *pixel-perfect* dalam ukuran **F4 (215 mm × 330 mm)** tepat **1 halaman penuh (single full page)** tanpa overflow.
 

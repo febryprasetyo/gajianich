@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# Script untuk mengekstrak spesifikasi PC/Laptop di Linux untuk AMS
+# Script untuk mengekstrak spesifikasi PC/Laptop di Linux untuk GAJIANICH
 #
 
 echo -e "\n========================================================"
-echo -e "   AMS IT ASSET HARDWARE SPECIFICATION EXTRACTOR (Linux)"
+echo -e "   GAJIANICH IT ASSET HARDWARE SPECIFICATION EXTRACTOR (Linux)"
 echo -e "========================================================\n"
 
 # 1. CPU Name
@@ -38,7 +38,7 @@ if [ -d /sys/devices/virtual/dmi/id ]; then
   SERIAL=$(cat /sys/devices/virtual/dmi/id/product_serial 2>/dev/null)
 fi
 
-echo -e "--- RINGKASAN UNTUK FORM AMS / EXCEL IMPORT ---"
+echo -e "--- RINGKASAN UNTUK FORM GAJIANICH / EXCEL IMPORT ---"
 echo -e "Model / Asset Name : \e[32m$MODEL\e[0m"
 echo -e "Serial Number      : \e[32m$SERIAL\e[0m"
 echo -e "Processor (CPU)    : \e[32m$CPU_NAME\e[0m"

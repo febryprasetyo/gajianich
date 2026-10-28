@@ -8,8 +8,8 @@ const root = path.resolve(__dirname, '../../..');
 const read = (file: string) => readFileSync(path.join(root, file), 'utf8');
 const environment = {
   ...process.env,
-  APP_VERSION: 'v0.0.0-test', DATABASE_URL: 'postgresql://runtime:fixture@postgres:5432/ams_prod_db',
-  MIGRATION_DATABASE_URL: 'postgresql://owner:fixture@postgres:5432/ams_prod_db',
+  APP_VERSION: 'v0.0.0-test', DATABASE_URL: 'postgresql://runtime:fixture@postgres:5432/gajianich_prod_db',
+  MIGRATION_DATABASE_URL: 'postgresql://owner:fixture@postgres:5432/gajianich_prod_db',
   HR_AUDIT_RUNTIME_ROLE: 'runtime', POSTGRES_PASSWORD: 'fixture',
   JWT_SECRET: 'fixture-jwt', JWT_REFRESH_SECRET: 'fixture-refresh', AGENT_API_KEY: 'fixture-agent',
   CORS_ALLOWED_ORIGINS: 'http://localhost', LAN_BIND_ADDRESS: '127.0.0.1',
@@ -40,7 +40,7 @@ test('production migration invocations select the migration-only overlay and env
 
 test('fresh smoke test provisions an audit runtime role before applying migrations', () => {
   const smoke = read('scripts/smoke-test.sh');
-  assert.ok(smoke.indexOf('CREATE ROLE ams_smoke_runtime') >= 0);
-  assert.ok(smoke.indexOf('CREATE ROLE ams_smoke_runtime') < smoke.indexOf('npm run db:migrate'));
-  assert.match(smoke, /HR_AUDIT_RUNTIME_ROLE=ams_smoke_runtime/);
+  assert.ok(smoke.indexOf('CREATE ROLE gajianich_smoke_runtime') >= 0);
+  assert.ok(smoke.indexOf('CREATE ROLE gajianich_smoke_runtime') < smoke.indexOf('npm run db:migrate'));
+  assert.match(smoke, /HR_AUDIT_RUNTIME_ROLE=gajianich_smoke_runtime/);
 });

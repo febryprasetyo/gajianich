@@ -1,16 +1,16 @@
-# Spesifikasi migrasi Gajianich menjadi modul Absensi AMS
+# Spesifikasi migrasi Gajianich menjadi modul Absensi GAJIANICH
 
 Tanggal: 25 September 2026. Status: rancangan untuk implementasi, belum diterapkan.
 
 ## 1. Ringkasan dan keputusan
 
-Pengguna meminta Gajianich disatukan dengan AMS dengan mengikuti konsep, layout, dan rules AMS. Pengguna sudah menetapkan bahwa absensi cukup digunakan melalui web/server AMS; kemampuan offline desktop tidak diperlukan.
+Pengguna meminta Gajianich disatukan dengan GAJIANICH dengan mengikuti konsep, layout, dan rules GAJIANICH. Pengguna sudah menetapkan bahwa absensi cukup digunakan melalui web/server GAJIANICH; kemampuan offline desktop tidak diperlukan.
 
-Target: fitur absensi menjadi bagian dari Next.js dan Express AMS. PostgreSQL boleh memakai database yang sama, tetapi seluruh data bisnis absensi berada pada tabel terpisah berawalan `attendance_`. Master karyawan absensi tidak memakai master karyawan AMS. Yang digunakan ulang adalah shell aplikasi, navigasi, komponen UI, API client, dan proses deployment.
+Target: fitur absensi menjadi bagian dari Next.js dan Express GAJIANICH. PostgreSQL boleh memakai database yang sama, tetapi seluruh data bisnis absensi berada pada tabel terpisah berawalan `attendance_`. Master karyawan absensi tidak memakai master karyawan GAJIANICH. Yang digunakan ulang adalah shell aplikasi, navigasi, komponen UI, API client, dan proses deployment.
 
-**Koreksi scope dari pengguna:** hanya aplikasinya yang menjadi satu; data absensi masih individual dan belum menyatu dengan data AMS. Instruksi ini menggantikan rekomendasi awal tentang satu master karyawan bersama. Tidak boleh membuat FK, join, sinkronisasi, lookup nama/kode, atau write dari domain absensi ke tabel bisnis AMS.
+**Koreksi scope dari pengguna:** hanya aplikasinya yang menjadi satu; data absensi masih individual dan belum menyatu dengan data GAJIANICH. Instruksi ini menggantikan rekomendasi awal tentang satu master karyawan bersama. Tidak boleh membuat FK, join, sinkronisasi, lookup nama/kode, atau write dari domain absensi ke tabel bisnis GAJIANICH.
 
-Pengguna mengonfirmasi **login AMS yang sama; data bisnis terpisah**. Akun AMS digunakan untuk autentikasi shell, sedangkan grant/role absensi dan snapshot actor disimpan di tabel absensi sendiri tanpa FK ke users AMS. Tidak membuat akun atau password absensi kedua.
+Pengguna mengonfirmasi **login GAJIANICH yang sama; data bisnis terpisah**. Akun GAJIANICH digunakan untuk autentikasi shell, sedangkan grant/role absensi dan snapshot actor disimpan di tabel absensi sendiri tanpa FK ke users GAJIANICH. Tidak membuat akun atau password absensi kedua.
 
 **Penegasan pengguna setelah meninjau referensi tampilan, 25 September 2026:** modul hanya menangani attendance. Rekap utama menghitung **total durasi keterlambatan per karyawan** dan **total durasi lembur per karyawan** untuk periode terpilih. Tidak ada kalkulasi potongan akibat ketidakhadiran, denda keterlambatan, nominal upah lembur, atau menu Absence deduction. Status ketidakhadiran tetap dicatat sebagai data absensi.
 
@@ -20,9 +20,9 @@ Keputusan teknis usulan dalam dokumen ini:
 
 - Port aturan absensi Rust ke TypeScript secara bertahap, dengan tes kesetaraan hasil.
 - Rust core menjadi pembanding perilaku selama migrasi; tidak menjadi service produksi tambahan.
-- Pertahankan identitas visual dashboard AMS yang diterapkan saat ini melalui page override terdokumentasi.
+- Pertahankan identitas visual dashboard GAJIANICH yang diterapkan saat ini melalui page override terdokumentasi.
 - Pakai namespace `/api/v1/attendance` dan `/dashboard/attendance`.
-- Master karyawan, departemen, lokasi, identitas mesin, audit dan seluruh histori memakai tabel `attendance_*`; tidak menggunakan tabel `employees`, `departments`, `locations`, `audit_logs`, atau `asset_custodians` AMS.
+- Master karyawan, departemen, lokasi, identitas mesin, audit dan seluruh histori memakai tabel `attendance_*`; tidak menggunakan tabel `employees`, `departments`, `locations`, `audit_logs`, atau `asset_custodians` GAJIANICH.
 - Riwayat sumber dipertahankan. Perbedaan antara perilaku lama dan perbaikan integritas dicatat sebagai perubahan yang disengaja.
 
 Dokumen sumber [product brief](../../../../gajianich/docs/product/product-brief.md) dan [PRD](../../../../gajianich/docs/product/prd.md) memuat aturan D-01–D-11. Aturan perhitungan tersebut tetap berlaku. Keputusan web/server pada sesi ini menggantikan asumsi offline/satu operator dan kebutuhan installer desktop, bukan menghapus aturan absensi. Detail akses, batas API, dan tata letak tambahan di dokumen ini merupakan usulan target, bukan klaim persetujuan bisnis yang sudah ada.
@@ -30,20 +30,20 @@ Dokumen sumber [product brief](../../../../gajianich/docs/product/product-brief.
 ### Tujuan
 
 1. HR dapat mengunggah, memeriksa, mengoreksi, menyimpan, dan melaporkan absensi dari browser.
-2. Identitas karyawan absensi berdiri sendiri. Nama, email, dan kode yang kebetulan sama dengan karyawan AMS tidak membentuk hubungan data.
+2. Identitas karyawan absensi berdiri sendiri. Nama, email, dan kode yang kebetulan sama dengan karyawan GAJIANICH tidak membentuk hubungan data.
 3. Impor dan koreksi dapat ditelusuri sampai data sumber, versi aturan, alasan, dan pengguna yang melakukan aksi.
 4. Beberapa pengguna dapat bekerja tanpa menimpa perubahan diam-diam.
-5. Modul baru mengikuti shell dashboard, pola komponen, aturan responsif, dan pipeline AMS.
+5. Modul baru mengikuti shell dashboard, pola komponen, aturan responsif, dan pipeline GAJIANICH.
 
 ### Di luar scope
 
-Payroll, slip gaji, perhitungan pajak/BPJS, potongan akibat ketidakhadiran, denda keterlambatan, menu Absence deduction, perhitungan nominal lembur, sinkronisasi offline, aplikasi desktop baru, sinkronisasi langsung mesin fingerprint, multi-shift per hari, kalender kerja otomatis, integrasi identitas dengan karyawan/aset AMS, serta redesign modul AMS lainnya.
+Payroll, slip gaji, perhitungan pajak/BPJS, potongan akibat ketidakhadiran, denda keterlambatan, menu Absence deduction, perhitungan nominal lembur, sinkronisasi offline, aplikasi desktop baru, sinkronisasi langsung mesin fingerprint, multi-shift per hari, kalender kerja otomatis, integrasi identitas dengan karyawan/aset GAJIANICH, serta redesign modul GAJIANICH lainnya.
 
 Status izin/sakit/cuti adalah pencatatan absensi, bukan workflow pengajuan cuti baru. Tidak menyimpulkan alpha dari tanggal kosong tanpa kalender kerja yang sah.
 
 ## 2. Sumber aturan dan penanganan perbedaannya
 
-Path link berikut mengarah ke checkout AMS yang diperiksa. Rules harus dibaca ulang pada awal implementasi.
+Path link berikut mengarah ke checkout GAJIANICH yang diperiksa. Rules harus dibaca ulang pada awal implementasi.
 
 | Sumber | Konsekuensi untuk migrasi |
 |---|---|
@@ -56,13 +56,13 @@ Path link berikut mengarah ke checkout AMS yang diperiksa. Rules harus dibaca ul
 | [Git workflow](../../../.agents/rules/git-workflow.md) dan `~/.agents/rules/git-workflow.md` | Milestone implementasi diverifikasi lalu di-commit; tidak menyertakan file pengguna yang tidak terkait. |
 | [Backend AGENTS](../../../backend/AGENTS.md) | Jalankan perintah backend dari direktori backend. |
 | [Frontend AGENTS](../../../frontend/AGENTS.md) | Jalankan perintah frontend dari direktori frontend; periksa dokumentasi Next.js lokal untuk API spesifik versi. |
-| [Design master](../../../design-system/ams-itsm/MASTER.md) | Page override mengungguli master; gunakan mekanisme ini untuk menyelaraskan aturan dengan dashboard nyata. |
+| [Design master](../../../design-system/gajianich-itsm/MASTER.md) | Page override mengungguli master; gunakan mekanisme ini untuk menyelaraskan aturan dengan dashboard nyata. |
 | [Frontend handoff](../plans/2026-09-22-frontend-page-refactor-handoff.md) | Halaman mengatur komposisi; komponen fitur, hook, dan helper memiliki batas tanggung jawab jelas. |
 | [Development runbook](../../operations/development.md) | Migrasi Drizzle berbasis journal; dilarang memakai `db:push`. |
 
 ### Konflik visual yang sudah ditemukan
 
-Master visual lama menyebut tema gelap-hijau dan Fira. `frontend/src/app/globals.css` serta halaman dashboard memakai terang-merah, Plus Jakarta Sans, dan JetBrains Mono. Root layout masih mengandung kelas gelap serta variabel font Geist. Karena ada ketidakkonsistenan, dokumen tidak mengklaim seluruh AMS sudah memakai token yang seragam.
+Master visual lama menyebut tema gelap-hijau dan Fira. `frontend/src/app/globals.css` serta halaman dashboard memakai terang-merah, Plus Jakarta Sans, dan JetBrains Mono. Root layout masih mengandung kelas gelap serta variabel font Geist. Karena ada ketidakkonsistenan, dokumen tidak mengklaim seluruh GAJIANICH sudah memakai token yang seragam.
 
 Saat implementasi, buat `design-system/pages/attendance.md` sebagai pedoman bersama modul dan page override `attendance-imports.md`, `attendance-import-review.md`, `attendance-employee.md`, `attendance-reports.md`, `attendance-identities.md`, `attendance-master-employees.md`, `attendance-master-departments.md`, `attendance-master-locations.md`, dan `attendance-access.md` yang merujuk pedoman tersebut. Tetapkan warna, font, dan shell berdasarkan dashboard saat ini; jangan menambahkan tema gelap-hijau baru pada absensi. Tidak mengubah tema global atau root layout dalam migrasi ini.
 
@@ -77,24 +77,24 @@ Komponen `ModalShell` existing belum sepenuhnya memenuhi kelas viewport pada des
 | UI | `src/App.tsx` 5.106 baris, banyak fallback data contoh tanpa Tauri. |
 | Kontrak | Field kandidat dan draft UI berbeda dengan core; command Tauri memanggil field/fungsi yang tidak sesuai core. Jangan menyalin kontrak UI lama sebagai API baru. |
 | Commit | Transaksi SQLite tersedia; identitas yang tidak ditemukan dapat dibuat otomatis. Target mengganti perilaku ini dengan pemetaan wajib. |
-| AMS | Next.js 16.2.12, React 19.2.4, Tailwind 4; Express/TypeScript, PostgreSQL/Drizzle; login JWT. Versi ini baseline, bukan permintaan upgrade. |
-| Karyawan AMS | ID bigint mode number, employeeCode dan email wajib unik. Hanya referensi pola implementasi; data dan constraint master ini tidak diwariskan ke karyawan absensi. |
-| Custodian | Entitas pemegang aset AMS. Tidak dibaca atau diubah oleh modul absensi. |
-| Audit AMS | Tidak digunakan untuk event absensi. Modul memiliki `attendance_audit_logs` sendiri. |
+| GAJIANICH | Next.js 16.2.12, React 19.2.4, Tailwind 4; Express/TypeScript, PostgreSQL/Drizzle; login JWT. Versi ini baseline, bukan permintaan upgrade. |
+| Karyawan GAJIANICH | ID bigint mode number, employeeCode dan email wajib unik. Hanya referensi pola implementasi; data dan constraint master ini tidak diwariskan ke karyawan absensi. |
+| Custodian | Entitas pemegang aset GAJIANICH. Tidak dibaca atau diubah oleh modul absensi. |
+| Audit GAJIANICH | Tidak digunakan untuk event absensi. Modul memiliki `attendance_audit_logs` sendiri. |
 
-Verifikasi pada sesi analisis: 52 tes core Rust lulus, build frontend Gajianich lulus, build backend AMS lulus. `cargo check -p gajianich --offline` terhenti karena `pkg-config` tidak tersedia. Belum ada verifikasi UI end-to-end atau database operasional AMS. Hasil ini bukan bukti bahwa implementasi migrasi sudah berjalan.
+Verifikasi pada sesi analisis: 52 tes core Rust lulus, build frontend Gajianich lulus, build backend GAJIANICH lulus. `cargo check -p gajianich --offline` terhenti karena `pkg-config` tidak tersedia. Belum ada verifikasi UI end-to-end atau database operasional GAJIANICH. Hasil ini bukan bukti bahwa implementasi migrasi sudah berjalan.
 
 ## 4. Arsitektur dan terminologi
 
 ```mermaid
 flowchart TD
-    Browser[Dashboard AMS / Modul Absensi] --> API[Express /api/v1/attendance]
+    Browser[Dashboard GAJIANICH / Modul Absensi] --> API[Express /api/v1/attendance]
     API --> Auth[Autentikasi shell dan grant absensi terpisah]
     API --> Domain[Parser BIFF dan aturan TypeScript]
-    API --> DB[(PostgreSQL AMS)]
+    API --> DB[(PostgreSQL GAJIANICH)]
     DB --> Attendance[attendance_*: master, imports, records, revisions, audit]
-    Other[Modul aset dan ITSM AMS] --> DB
-    DB --> Master[Tabel bisnis AMS existing]
+    Other[Modul aset dan ITSM GAJIANICH] --> DB
+    DB --> Master[Tabel bisnis GAJIANICH existing]
     Legacy[Snapshot SQLite Gajianich] --> Migration[Exporter dan migrator terverifikasi]
     Migration --> DB
 ```
@@ -112,11 +112,11 @@ flowchart TD
 
 Alur utama: upload → parsing → pemetaan identitas → normalisasi → review → commit → laporan. Parsing tidak membuat karyawan, absensi final, atau mengubah hubungan aset. Semua keputusan review persisten di server agar refresh browser tidak menghilangkan pekerjaan.
 
-Kedua kelompok tabel berbagi server/database, bukan entitas bisnis. Seluruh FK tabel absensi hanya boleh menunjuk tabel `attendance_*`. Service absensi tidak mengimpor schema employees/master/assets/system AMS. Nomor ID yang sama pada dua kelompok tabel tidak mempunyai hubungan. Backup fisik satu database tetap dapat memuat kedua domain; isolasi tabel bukan klaim isolasi infrastruktur atau backup independen.
+Kedua kelompok tabel berbagi server/database, bukan entitas bisnis. Seluruh FK tabel absensi hanya boleh menunjuk tabel `attendance_*`. Service absensi tidak mengimpor schema employees/master/assets/system GAJIANICH. Nomor ID yang sama pada dua kelompok tabel tidak mempunyai hubungan. Backup fisik satu database tetap dapat memuat kedua domain; isolasi tabel bukan klaim isolasi infrastruktur atau backup independen.
 
 ## 5. Model data dan migrasi schema
 
-Semua tabel baru memakai bigint identity sebagai PK, kecuali dinyatakan lain. API menerima ID positive safe integer sesuai pola AMS. Tanggal kerja memakai PostgreSQL `date`; jam scan memakai `time without time zone`; timestamp operasional memakai `timestamptz`. API mengirim tanggal `YYYY-MM-DD`, jam `HH:MM`, dan timestamp ISO UTC. Presentasi waktu audit menggunakan Asia/Jakarta.
+Semua tabel baru memakai bigint identity sebagai PK, kecuali dinyatakan lain. API menerima ID positive safe integer sesuai pola GAJIANICH. Tanggal kerja memakai PostgreSQL `date`; jam scan memakai `time without time zone`; timestamp operasional memakai `timestamptz`. API mengirim tanggal `YYYY-MM-DD`, jam `HH:MM`, dan timestamp ISO UTC. Presentasi waktu audit menggunakan Asia/Jakarta.
 
 ### Tabel baru di `backend/src/db/schema/attendance.ts`
 
@@ -127,7 +127,7 @@ Semua tabel baru memakai bigint identity sebagai PK, kecuali dinyatakan lain. AP
 | `attendance_employees` | `employee_code` nullable unique, `full_name` wajib, `email` nullable, `phone` nullable, `department_id` FK attendance_departments RESTRICT nullable, `location_id` FK attendance_locations RESTRICT nullable, `position` nullable, `is_active`, `revision`, timestamps. Email bukan kunci identitas dan tidak wajib unik; nomor mesin dikelola di identities. |
 | `attendance_sources` | `code` unique, `name`, `timezone` default `Asia/Jakarta`, `is_active`, timestamps. Satu source awal `GAJIANICH`; bukan source otomatis per nama file. |
 | `attendance_employee_identities` | `employee_id` FK attendance_employees RESTRICT, `source_id` FK attendance_sources RESTRICT, `external_no_id` text nonempty, `revision` default 1, `created_by_actor` jsonb, timestamps. UNIQUE(source_id, external_no_id). Satu karyawan boleh memiliki beberapa nomor. |
-| `attendance_access_grants` | `principal_key` text unique, `role` (`HR_ADMIN`, `HR_STAFF`, `REPORT_VIEWER`), `is_active`, `revision`, actor snapshot, timestamps. Tidak ada FK ke users/roles AMS. |
+| `attendance_access_grants` | `principal_key` text unique, `role` (`HR_ADMIN`, `HR_STAFF`, `REPORT_VIEWER`), `is_active`, `revision`, actor snapshot, timestamps. Tidak ada FK ke users/roles GAJIANICH. |
 | `attendance_import_batches` | `source_id` FK attendance_sources, `filename`, `file_sha256` nullable untuk legacy tanpa hash sah, `original_file` bytea nullable untuk batch legacy tanpa file, `status`, `total_rows`, `rule_version`, `rule_snapshot` jsonb nullable jika legacy tidak menyimpan konfigurasi, `revision`, `created_by_actor` jsonb, `committed_by_actor` jsonb, `committed_at`, `receipt` jsonb, `commit_key`, `commit_request_hash`, timestamps. UNIQUE(source_id, file_sha256) untuk hash nyata yang tersedia. |
 | `attendance_import_rows` | `batch_id` FK attendance_import_batches, `row_number`, `external_no_id`, `employee_id` FK attendance_employees nullable sebelum mapping, `identity_revision`, `work_date`, `raw_payload` jsonb immutable, `proposed_values` jsonb, `final_values` jsonb, `review_status`, `origin_tag`, `issues` jsonb, `conflict_group` text nullable, `resolution` jsonb nullable, `acknowledged_by_actor` jsonb, `acknowledged_at`, `reason`, `revision`. UNIQUE(batch_id, row_number). |
 | `attendance_records` | `employee_id` FK attendance_employees RESTRICT, `work_date`, `scan_in/out` nullable, `late_minutes`, `early_minutes`, `overtime_minutes`, `attendance_status`, `source_batch_id` nullable FK attendance_import_batches, `revision_number`, timestamps. UNIQUE(employee_id, work_date). Durasi integer >= 0; revisi >= 1. |
@@ -144,15 +144,15 @@ Index tambahan: records(work_date, employee_id), batches(created_at), rows(batch
 
 Batch baru wajib memiliki hash, file asli, dan rule snapshot. Batch historis yang tidak memiliki metadata lengkap memakai null dan penanda legacy melalui arsip, bukan nilai yang ditebak. Jika beberapa batch legacy mempunyai hash sama, petakan ke satu batch kanonis sambil mengarsipkan seluruh batch sumber; relokasi row_number harus deterministik dengan nomor asli tersimpan pada raw_payload dan legacy map. Jangan membuang baris karena benturan nomor baris.
 
-File asli disimpan di PostgreSQL agar tidak hilang ketika container dibuat ulang dan ikut backup AMS. Hash dihitung dari bytes server, bukan nilai kiriman UI. Rilis pertama tidak menyediakan penghapusan otomatis file/bukti; pantau ukuran backup. Limit 20 MiB per file tetap berlaku. Tidak mengirim bytes file dalam response daftar/detail batch.
+File asli disimpan di PostgreSQL agar tidak hilang ketika container dibuat ulang dan ikut backup GAJIANICH. Hash dihitung dari bytes server, bukan nilai kiriman UI. Rilis pertama tidak menyediakan penghapusan otomatis file/bukti; pantau ukuran backup. Limit 20 MiB per file tetap berlaku. Tidak mengirim bytes file dalam response daftar/detail batch.
 
 ### Batas perubahan existing
 
-- Tidak menambah kolom/FK atau mengubah data pada tabel bisnis AMS, termasuk employees, departments, locations, asset_custodians dan audit_logs.
-- Tidak menambahkan role HR pada tabel roles/users AMS. Izin modul berada di attendance_access_grants; akun tanpa grant aktif tidak memperoleh akses data absensi.
-- Tidak mengubah employee routes/controller/table UI AMS. Master absensi memakai endpoint dan halaman tersendiri.
+- Tidak menambah kolom/FK atau mengubah data pada tabel bisnis GAJIANICH, termasuk employees, departments, locations, asset_custodians dan audit_logs.
+- Tidak menambahkan role HR pada tabel roles/users GAJIANICH. Izin modul berada di attendance_access_grants; akun tanpa grant aktif tidak memperoleh akses data absensi.
+- Tidak mengubah employee routes/controller/table UI GAJIANICH. Master absensi memakai endpoint dan halaman tersendiri.
 - Kode shell, API client, primitive UI, registrasi route, dan build pipeline boleh diperluas untuk menampilkan modul baru secara kompatibel.
-- Actor snapshot memuat `principalKey`, `displayName`, dan `roleAtAction` dari server pada waktu aksi; tidak menjadi relasi FK ke AMS. Tidak menyalin password atau token ke tabel absensi.
+- Actor snapshot memuat `principalKey`, `displayName`, dan `roleAtAction` dari server pada waktu aksi; tidak menjadi relasi FK ke GAJIANICH. Tidak menyalin password atau token ke tabel absensi.
 - Penghapusan master absensi dilakukan dengan nonaktifkan; tidak ada endpoint hard-delete rutin. FK internal menjaga histori.
 
 Migration SQL dan snapshot/journal dihasilkan dengan `npm run db:generate` dari backend. Nomor file mengikuti journal aktual; jangan mengasumsikan nomor berikutnya. Review output dan keluarkan perubahan tabel bisnis existing yang tidak terkait, termasuk drift schema yang mungkin ikut terdeteksi generator. Terapkan dengan `npm run db:migrate`. Tidak menggunakan `db:push` atau seed sebagai pengganti migrasi.
@@ -162,9 +162,9 @@ Migration SQL dan snapshot/journal dihasilkan dengan `npm run db:generate` dari 
 ### Pemetaan karyawan
 
 1. Cocokkan `(sourceId, externalNoId)` ke tabel identity.
-2. Tampilkan nama sumber dan nama AMS untuk review jika berbeda; jangan ubah nama master otomatis.
+2. Tampilkan nama sumber dan nama GAJIANICH untuk review jika berbeda; jangan ubah nama master otomatis.
 3. Nomor belum dipetakan menahan commit baris yang akan menghasilkan kehadiran. Baris skipped tetap disimpan sebagai bukti.
-4. Kandidat nama/kode hanya saran dari master **attendance_employees**. HRAdmin menetapkan pemetaan atau membuat karyawan melalui form Master Karyawan Absensi. Email dan kode internal opsional; nomor mesin tetap wajib pada identity. Jangan membaca atau menawarkan karyawan AMS sebagai kandidat.
+4. Kandidat nama/kode hanya saran dari master **attendance_employees**. HRAdmin menetapkan pemetaan atau membuat karyawan melalui form Master Karyawan Absensi. Email dan kode internal opsional; nomor mesin tetap wajib pada identity. Jangan membaca atau menawarkan karyawan GAJIANICH sebagai kandidat.
 5. Karyawan inactive masih dapat menerima impor historis dengan konfirmasi HRAdmin dan alasan; jangan aktifkan kembali karyawan otomatis.
 6. Pemetaan yang sudah dipakai record final tidak dapat dialihkan ke orang lain pada rilis pertama. Koreksi salah pemetaan diselesaikan sebagai rekonsiliasi terkontrol, bukan update massal tersembunyi.
 7. Saat commit, periksa ulang identity revision dan target karyawan; pemetaan yang berubah sejak review menghasilkan 409.
@@ -193,15 +193,15 @@ Migration SQL dan snapshot/journal dihasilkan dengan `npm run db:generate` dari 
 - `Idempotency-Key` commit disimpan beserta hash request. Retry key/payload sama mengembalikan receipt tersimpan dengan waktu commit yang sama. Key berbeda pada batch committed atau key sama dengan payload berbeda menghasilkan 409.
 - Koreksi record memakai conditional update `WHERE id = ? AND revision_number = ?`; bila tidak ada baris berubah, response 409. Insert revision dan audit berada dalam transaksi yang sama.
 
-Setiap upload, normalisasi, perubahan mapping, edit/acknowledgment, keputusan konflik, cancel/reopen, commit, koreksi, dan ekspor mencatat event audit. Mutasi data dan audit berada dalam satu transaksi. Ekspor mencatat filter, waktu pembuatan, dan versi data yang dibaca; tidak memasukkan seluruh CSV ke log. Restore database mengikuti audit operator pada runbook pemulihan AMS.
+Setiap upload, normalisasi, perubahan mapping, edit/acknowledgment, keputusan konflik, cancel/reopen, commit, koreksi, dan ekspor mencatat event audit. Mutasi data dan audit berada dalam satu transaksi. Ekspor mencatat filter, waktu pembuatan, dan versi data yang dibaca; tidak memasukkan seluruh CSV ke log. Restore database mengikuti audit operator pada runbook pemulihan GAJIANICH.
 
 Perbedaan disengaja dari sumber: tidak auto-create employee saat commit; tidak percaya actor/status final kiriman klien; tidak mengabaikan durasi invalid; tidak mengubah data committed melalui normalisasi ulang; seluruh koreksi dan audit atomik.
 
 ## 7. Otorisasi
 
-Gunakan autentikasi JWT AMS. Setelah token valid, adapter autentikasi memeriksa akun aktual masih aktif. Bentuk principalKey server-side sebagai `ams:user:<userId>`, kemudian baca grant aktif di `attendance_access_grants`. Pembacaan users untuk autentikasi adalah batas integrasi aplikasi yang diizinkan; tidak ada pembacaan master karyawan/aset AMS. `roleId` JWT tidak digunakan sebagai FK role karena login existing mengisinya dengan user ID.
+Gunakan autentikasi JWT GAJIANICH. Setelah token valid, adapter autentikasi memeriksa akun aktual masih aktif. Bentuk principalKey server-side sebagai `gajianich:user:<userId>`, kemudian baca grant aktif di `attendance_access_grants`. Pembacaan users untuk autentikasi adalah batas integrasi aplikasi yang diizinkan; tidak ada pembacaan master karyawan/aset GAJIANICH. `roleId` JWT tidak digunakan sebagai FK role karena login existing mengisinya dengan user ID.
 
-Role domain absensi: `HR_ADMIN` (label HRAdmin), `HR_STAFF` (HRStaff), dan `REPORT_VIEWER` (Pembaca Laporan). Role ini tidak mengubah users.role AMS. Akun ITAdmin, Management, Employee, atau SuperAdmin hanya mendapat akses bisnis absensi jika diberi grant yang sesuai. SuperAdmin AMS boleh mengelola grant modul, tetapi membaca data bisnis tetap membutuhkan grant aktif.
+Role domain absensi: `HR_ADMIN` (label HRAdmin), `HR_STAFF` (HRStaff), dan `REPORT_VIEWER` (Pembaca Laporan). Role ini tidak mengubah users.role GAJIANICH. Akun ITAdmin, Management, Employee, atau SuperAdmin hanya mendapat akses bisnis absensi jika diberi grant yang sesuai. SuperAdmin GAJIANICH boleh mengelola grant modul, tetapi membaca data bisnis tetap membutuhkan grant aktif.
 
 | Aksi | HRAdmin | HRStaff | Pembaca Laporan | Tanpa grant aktif |
 |---|:---:|:---:|:---:|:---:|
@@ -213,9 +213,9 @@ Role domain absensi: `HR_ADMIN` (label HRAdmin), `HR_STAFF` (HRStaff), dan `REPO
 | Rekap agregat per periode dan CSV agregat | Ya | Ya | Ya | Tidak |
 | File asli, revisions dan audit detail | Ya | Ya | Tidak | Tidak |
 
-Pembaca Laporan hanya menerima agregat tanpa nama, employeeId, nomor mesin, atau baris per-orang; parameter filter employee tidak diizinkan pada endpoint summary. Role Employee AMS tidak menjadi relasi ke attendance_employees. Tidak ada portal absensi pribadi pada rilis pertama.
+Pembaca Laporan hanya menerima agregat tanpa nama, employeeId, nomor mesin, atau baris per-orang; parameter filter employee tidak diizinkan pada endpoint summary. Role Employee GAJIANICH tidak menjadi relasi ke attendance_employees. Tidak ada portal absensi pribadi pada rilis pertama.
 
-`GET /me` mengembalikan permission modul aktual untuk menu/action. UI tidak menebak izin absensi dari roleName AMS. Revokasi grant berlaku pada request berikutnya; histori actor tidak hilang karena berupa snapshot. Pengelolaan grant mencatat audit absensi dan memvalidasi principal terhadap provider autentikasi; tidak membuat user baru. Jangan memasukkan grant HR ke helper `canManageCustodians` atau mengubah hak akses modul IT.
+`GET /me` mengembalikan permission modul aktual untuk menu/action. UI tidak menebak izin absensi dari roleName GAJIANICH. Revokasi grant berlaku pada request berikutnya; histori actor tidak hilang karena berupa snapshot. Pengelolaan grant mencatat audit absensi dan memvalidasi principal terhadap provider autentikasi; tidak membuat user baru. Jangan memasukkan grant HR ke helper `canManageCustodians` atau mengubah hak akses modul IT.
 
 ## 8. Kontrak API
 
@@ -223,10 +223,10 @@ Semua path relatif ke `/api/v1/attendance`. ID bertipe number safe integer posit
 
 | Method/path | Request | Response sukses | Izin |
 |---|---|---|---|
-| GET `/me` | sesi AMS | 200 role modul nullable + permissions + canManageAccess; tanpa data karyawan | Semua sesi AMS valid |
-| GET `/access-grants` | page/pageSize | 200 daftar grant | SuperAdmin AMS |
-| POST `/access-grants` | principalKey, role, reason | 201 grant; validasi akun login existing | SuperAdmin AMS |
-| PATCH `/access-grants/:id` | role?, isActive?, expectedRevision, reason | 200 grant | SuperAdmin AMS |
+| GET `/me` | sesi GAJIANICH | 200 role modul nullable + permissions + canManageAccess; tanpa data karyawan | Semua sesi GAJIANICH valid |
+| GET `/access-grants` | page/pageSize | 200 daftar grant | SuperAdmin GAJIANICH |
+| POST `/access-grants` | principalKey, role, reason | 201 grant; validasi akun login existing | SuperAdmin GAJIANICH |
+| PATCH `/access-grants/:id` | role?, isActive?, expectedRevision, reason | 200 grant | SuperAdmin GAJIANICH |
 | GET `/departments` | q, page/pageSize | 200 master departemen absensi | HR read |
 | POST `/departments` | code?, name | 201 departemen absensi | HRAdmin |
 | PATCH `/departments/:id` | code?, name?, isActive? | 200 departemen absensi | HRAdmin |
@@ -264,7 +264,7 @@ Semua path relatif ke `/api/v1/attendance`. ID bertipe number safe integer posit
 | GET `/summary.csv` | startDate, endDate | 200 CSV totals agregat | HR read / Pembaca Laporan |
 | GET `/audit` | entityType?, entityId?, page/pageSize | 200 event attendance termasuk arsip legacy berlabel | HR read |
 
-HR read = grant HR_ADMIN/HR_STAFF; HR write draft = grant yang sama. HRAdmin berarti grant HR_ADMIN, bukan users.role AMS. Seluruh employeeId/departmentId/locationId di namespace ini adalah ID tabel attendance_*, tidak pernah ID master AMS. Range tanggal inklusif, maksimum 366 hari per permintaan; rentang lebih panjang dipecah pengguna. Seluruh query reports hanya memakai record efektif, tidak menghitung draft. Filter departemen memakai departemen karyawan absensi saat ini dan diberi keterangan di UI; histori departemen tidak direkonstruksi dari asumsi.
+HR read = grant HR_ADMIN/HR_STAFF; HR write draft = grant yang sama. HRAdmin berarti grant HR_ADMIN, bukan users.role GAJIANICH. Seluruh employeeId/departmentId/locationId di namespace ini adalah ID tabel attendance_*, tidak pernah ID master GAJIANICH. Range tanggal inklusif, maksimum 366 hari per permintaan; rentang lebih panjang dipecah pengguna. Seluruh query reports hanya memakai record efektif, tidak menghitung draft. Filter departemen memakai departemen karyawan absensi saat ini dan diberi keterangan di UI; histori departemen tidak direkonstruksi dari asumsi.
 
 Setiap baris rekap HR wajib memuat dua metrik utama: `lateMinutes` (total durasi keterlambatan) dan `overtimeMinutes` (total durasi lembur). Keduanya merupakan SUM menit final seluruh record efektif milik karyawan pada periode inklusif yang dipilih, bukan jumlah kejadian, bukan pengurangan jam scan, dan bukan nominal uang. Tampilkan sebagai jam dan menit, termasuk total melampaui 24 jam; 90 menit ditampilkan sebagai 1 jam 30 menit. Pagination tidak membatasi cakupan total.
 
@@ -306,7 +306,7 @@ Kode: 400 payload/format/rentang salah; 401 token missing/expired atau akun tida
 - Gunakan `api.upload`, `api.get`, `api.post`, `api.patch`, dan `api.download` existing. Request biasa timeout 10 detik; upload/commit/export 60 detik. Batas ini usulan yang harus diukur di staging.
 - Abort setelah submit tidak berarti transaksi dibatalkan. UI menampilkan hasil belum diketahui, membaca status batch, lalu retry commit dengan key yang sama.
 - Tangani 401 dan kode `SESSION_INVALID` dengan membersihkan cookie dan localStorage serta mengarahkan ke login. Jangan logout pada 403 insufficient-role atau gangguan jaringan biasa.
-- Middleware autentikasi AMS saat ini memakai 403 untuk token invalid. Integrasi harus menyediakan error code sesi yang eksplisit melalui penyesuaian kompatibel pada middleware/auth dan tes caller existing; jangan menafsirkan semua 403 sebagai sesi kedaluwarsa.
+- Middleware autentikasi GAJIANICH saat ini memakai 403 untuk token invalid. Integrasi harus menyediakan error code sesi yang eksplisit melalui penyesuaian kompatibel pada middleware/auth dan tes caller existing; jangan menafsirkan semua 403 sebagai sesi kedaluwarsa.
 - Limit upload ditegakkan pada middleware dan parser berdasarkan bytes/signature; extension dan MIME hanya informasi tambahan. Nginx existing menerima 50M, jadi limit aplikasi 20 MiB lebih ketat.
 - Parser memeriksa boundary setiap BIFF record. Baris melampaui limit dan binary terpotong ditolak eksplisit. Formula tidak dieksekusi. Encoding fixture diuji sebelum mengklaim dukungan format lain.
 - Batasi query dan batch insert; jangan menjalankan puluhan ribu await/SQL satu per baris. Uji dampak parsing terhadap health endpoint. Jika parsing sinkron memblokir server pada fixture batas, gunakan Node worker thread untuk parser saja, tanpa menambah service atau queue eksternal.
@@ -317,15 +317,15 @@ Kode: 400 payload/format/rentang salah; 401 token missing/expired atau akun tida
 
 Semua halaman memakai `DashboardLayout` dan `AuthContext` existing. Jangan membawa sidebar, header desktop, global `App.css`, atau branding aplikasi kedua dari Gajianich.
 
-Tambahkan grup sidebar **Absensi** sesudah Master Data dengan item: **Master Karyawan Absensi**, **Impor Absensi**, **Kartu Absensi**, **Laporan Absensi**, dan **Pemetaan Identitas**. Tampilkan sesuai permission `/attendance/me`; Pembaca Laporan hanya melihat Laporan Absensi yang menggunakan summary. Halaman mapping memuat pengelolaan source sederhana. Master absensi mencakup departemen/lokasi miliknya. SuperAdmin AMS melihat **Akses Absensi** untuk mengelola grant. Master karyawan AMS di `/dashboard/master/employees` tetap tidak terhubung.
+Tambahkan grup sidebar **Absensi** sesudah Master Data dengan item: **Master Karyawan Absensi**, **Impor Absensi**, **Kartu Absensi**, **Laporan Absensi**, dan **Pemetaan Identitas**. Tampilkan sesuai permission `/attendance/me`; Pembaca Laporan hanya melihat Laporan Absensi yang menggunakan summary. Halaman mapping memuat pengelolaan source sederhana. Master absensi mencakup departemen/lokasi miliknya. SuperAdmin GAJIANICH melihat **Akses Absensi** untuk mengelola grant. Master karyawan GAJIANICH di `/dashboard/master/employees` tetap tidak terhubung.
 
 | Route | Layout dan komponen fitur |
 |---|---|
 | `/dashboard/attendance` | Redirect ke imports untuk HR, reports untuk Pembaca Laporan; akun tanpa grant menampilkan akses ditolak. |
-| `/dashboard/attendance/master/employees` | CRUD master karyawan absensi, status aktif, pencarian, tautan kartu; tidak memakai endpoint /api/v1/employees AMS. |
+| `/dashboard/attendance/master/employees` | CRUD master karyawan absensi, status aktif, pencarian, tautan kartu; tidak memakai endpoint /api/v1/employees GAJIANICH. |
 | `/dashboard/attendance/master/departments` | Master departemen khusus absensi. |
 | `/dashboard/attendance/master/locations` | Master lokasi khusus absensi. |
-| `/dashboard/attendance/access` | Pengelolaan grant absensi oleh SuperAdmin AMS; tidak mengubah role akun AMS. |
+| `/dashboard/attendance/access` | Pengelolaan grant absensi oleh SuperAdmin GAJIANICH; tidak mengubah role akun GAJIANICH. |
 | `/dashboard/attendance/imports` | Judul + Upload; ringkasan batch nyata; filter; tabel batch; upload modal. |
 | `/dashboard/attendance/imports/[id]` | Metadata batch; tahapan proses; summary review; filter status; tabel raw/proposed/final; panel konflik; audit batch; aksi commit sesuai izin. |
 | `/dashboard/attendance/employees` | Pencarian/pemilih dari attendance_employees dan rentang tanggal; tautan kartu per karyawan. |
@@ -333,7 +333,7 @@ Tambahkan grup sidebar **Absensi** sesudah Master Data dengan item: **Master Kar
 | `/dashboard/attendance/reports` | Filter periode/departemen absensi; rekap dan ekspor untuk HR; hanya ringkasan agregat untuk Pembaca Laporan. |
 | `/dashboard/attendance/identities` | Pemilih source; pencarian nomor mesin/karyawan; daftar mapping; form mapping dan form source khusus HRAdmin. |
 
-Aksi **Lihat Absensi** hanya berada pada tabel Master Karyawan Absensi. Jangan menambah tautan kartu absensi pada EmployeeTable AMS karena ID dan entitasnya berbeda. Label navigasi dan breadcrumb harus membedakan kedua master dengan jelas, walaupun komponen visualnya menggunakan pola yang sama.
+Aksi **Lihat Absensi** hanya berada pada tabel Master Karyawan Absensi. Jangan menambah tautan kartu absensi pada EmployeeTable GAJIANICH karena ID dan entitasnya berbeda. Label navigasi dan breadcrumb harus membedakan kedua master dengan jelas, walaupun komponen visualnya menggunakan pola yang sama.
 
 Pada laporan HR, tampilkan nama/ID karyawan, periode, **Total Keterlambatan** dan **Total Lembur** sebagai informasi utama. Kedua total mengikuti filter yang sama dan dapat ditelusuri ke detail harian. Tidak ada kolom nominal, tarif, pengali pembayaran, atau potongan. Ringkasan untuk Pembaca Laporan tetap tanpa identitas sesuai batas akses bagian 7. Penyesuaian halaman utama ke referensi Data Absensi harus mempertahankan batas akses ini.
 
@@ -345,7 +345,7 @@ Pada laporan HR, tampilkan nama/ID karyawan, periode, **Total Keterlambatan** da
 | Teks | slate-900 / `#0F172A`; metadata slate-500 dengan verifikasi kontras ukuran aktual. |
 | Aksi utama | red-600 / `#DC2626`, hover red-700; satu aksi utama per konteks. |
 | Tipografi | Gunakan font body dan `.font-mono` existing; tidak menambah font. |
-| Spasi/bentuk | `space-y-6`, header bertumpuk di mobile, panel rounded-2xl dan kontrol rounded-xl sesuai halaman AMS. |
+| Spasi/bentuk | `space-y-6`, header bertumpuk di mobile, panel rounded-2xl dan kontrol rounded-xl sesuai halaman GAJIANICH. |
 | Ikon | `lucide-react` existing; pilih ikon absensi, unggah, file, karyawan, dan riwayat yang relevan. |
 | Status | Gunakan `StatusBadge`: success untuk ready/present, danger untuk anomali scan yang dinormalisasi dan blocked dengan label berbeda, warning untuk review lainnya, slate untuk skipped/no-data; label teks selalu ada. |
 | Dialog | Gunakan `ModalShell`; confirmation existing hanya untuk konfirmasi sederhana. Koreksi dengan alasan mempunyai form sendiri di dalam shell. |
@@ -356,7 +356,7 @@ Aturan D-08 dari produk sumber tetap berlaku: baris scan yang dinormalisasi memp
 
 ### Modal dan responsif
 
-Kelas wajib menurut rules AMS:
+Kelas wajib menurut rules GAJIANICH:
 
 ```text
 Backdrop: fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm overflow-hidden
@@ -390,18 +390,18 @@ Pemetaan sumber:
 
 | SQLite | PostgreSQL |
 |---|---|
-| employees | attendance_employees baru atau existing melalui keputusan eksplisit + attendance_employee_identities + arsip original payload. Tidak memetakan ke employees AMS. |
+| employees | attendance_employees baru atau existing melalui keputusan eksplisit + attendance_employee_identities + arsip original payload. Tidak memetakan ke employees GAJIANICH. |
 | import_batches | attendance_import_batches dengan legacy ID terarsip, rule metadata dipertahankan apa adanya |
 | raw_attendance_records | attendance_import_rows; data asli tetap immutable |
 | attendance_records | attendance_records dengan employeeId target, nilai efektif dan revisi dipertahankan |
 | attendance_revisions | attendance_revisions jika dapat dipetakan tanpa mengarang snapshot; seluruh payload asli masuk attendance_legacy_entities |
 | audit_logs | attendance_legacy_entities sebagai audit historis; attendance_audit_logs mencatat proses migrasi dengan snapshot akun pelaksana |
 
-Actor lama berupa string tidak disamakan otomatis dengan akun AMS. Pakai `legacy_actor` dan label sumber. Revisi lama dengan changed-fields saja tetap ditampilkan sebagai legacy event; jangan merekayasa before/after penuh. Jika nomor revisi sudah ada tetapi payload lama tidak cukup, simpan arsipnya tanpa membuat revision modern palsu.
+Actor lama berupa string tidak disamakan otomatis dengan akun GAJIANICH. Pakai `legacy_actor` dan label sumber. Revisi lama dengan changed-fields saja tetap ditampilkan sebagai legacy event; jangan merekayasa before/after penuh. Jika nomor revisi sudah ada tetapi payload lama tidak cukup, simpan arsipnya tanpa membuat revision modern palsu.
 
-Migrasi menyimpan dataset hash + legacy ID map. Menjalankan dataset yang sudah completed menjadi no-op terverifikasi; dataset berbeda yang overlap pada employee/date menghasilkan konflik, bukan overwrite. Data gagal mapping dilaporkan dan menghalangi cutover. Detail operasi berada di [runbook](../../operations/ams-attendance-migration.md).
+Migrasi menyimpan dataset hash + legacy ID map. Menjalankan dataset yang sudah completed menjadi no-op terverifikasi; dataset berbeda yang overlap pada employee/date menghasilkan konflik, bukan overwrite. Data gagal mapping dilaporkan dan menghalangi cutover. Detail operasi berada di [runbook](../../operations/gajianich-attendance-migration.md).
 
-Pada target attendance yang kosong, keputusan `CREATE` membentuk master attendance_employees dari sumber tanpa memerlukan email/kode karyawan AMS. Departemen teks sumber dinormalisasi trim lalu dipetakan ke attendance_departments dengan keputusan yang tercatat; nama ambigu ditahan untuk HR. Location yang tidak tersedia tetap null. Keputusan `LINK` hanya menunjuk karyawan attendance existing. Karyawan bernama/kode sama pada employees AMS tidak menjadi kandidat dan tidak menghalangi migrasi.
+Pada target attendance yang kosong, keputusan `CREATE` membentuk master attendance_employees dari sumber tanpa memerlukan email/kode karyawan GAJIANICH. Departemen teks sumber dinormalisasi trim lalu dipetakan ke attendance_departments dengan keputusan yang tercatat; nama ambigu ditahan untuk HR. Location yang tidak tersedia tetap null. Keputusan `LINK` hanya menunjuk karyawan attendance existing. Karyawan bernama/kode sama pada employees GAJIANICH tidak menjadi kandidat dan tidak menghalangi migrasi.
 
 ## 11. Verifikasi dan penerimaan
 
@@ -415,7 +415,7 @@ Pada target attendance yang kosong, keputusan `CREATE` membentuk master attendan
 8. Existing asset/custodian/ticket/license flows dan role mereka tetap bekerja.
 9. Target awal yang harus diukur: normalisasi 10.000 baris <=15 detik; rekap satu bulan dataset representatif <=3 detik di server staging. Uji batas 50.000 baris, memory, dan respons `/health/ready` bersamaan; angka ini target, bukan hasil ukur.
 10. Backup PostgreSQL pascamigrasi dipulihkan ke database terpisah dan hasil rekonsiliasi diverifikasi.
-11. Tidak ada FK dari attendance_* ke tabel non-attendance. Tes mengubah master/absensi dan membuktikan tabel bisnis/audit AMS tidak berubah; kode service tidak membaca master AMS. Fixture dua karyawan bernama/kode/ID numerik sama pada masing-masing domain tetap independen.
+11. Tidak ada FK dari attendance_* ke tabel non-attendance. Tes mengubah master/absensi dan membuktikan tabel bisnis/audit GAJIANICH tidak berubah; kode service tidak membaca master GAJIANICH. Fixture dua karyawan bernama/kode/ID numerik sama pada masing-masing domain tetap independen.
 12. Rekap per karyawan dan CSV menghasilkan total keterlambatan/lembur yang sama untuk filter dan versi data yang sama. Uji contoh 45 menit terlambat/150 menit lembur, total di atas 24 jam, koreksi tanpa penghitungan ganda, pagination, serta pemisahan nol valid dari belum ada data. Tidak ada menu atau kalkulasi potongan akibat ketidakhadiran maupun nominal lembur.
 
 Implementasi dinyatakan siap ketika seluruh acceptance dan checklist runbook terpenuhi, bukan hanya ketika halaman dapat dibuka.

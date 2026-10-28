@@ -10,7 +10,7 @@ import { runMigrations } from '../db/migrate';
 
 test('GA API saves complete requests, protects evidence, handles drafts, status transitions, and signed documents', async t => {
   const fixture = await createHrAuditTestDatabase();
-  const directory = await mkdtemp(path.join(tmpdir(), 'ams-ga-api-'));
+  const directory = await mkdtemp(path.join(tmpdir(), 'gajianich-ga-api-'));
   let closeApp = async () => {};
   t.after(async () => { await closeApp(); await fixture.cleanup(); await rm(directory, { recursive: true, force: true }); });
   await runMigrations(fixture.ownerUrl, undefined, fixture.runtimeRole);

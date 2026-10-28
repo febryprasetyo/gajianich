@@ -1,9 +1,9 @@
 <#
 .SYNOPSIS
-    AMS Accurate 5 Desktop & PC Telemetry Background Agent
+    GAJIANICH Accurate 5 Desktop & PC Telemetry Background Agent
 .DESCRIPTION
     Script background PowerShell untuk memantau status PC, service Accurate/Firebird,
-    serta inventarisasi file database .gdb secara otomatis dan mengirimkan sinyal telemetry ke backend AMS.
+    serta inventarisasi file database .gdb secara otomatis dan mengirimkan sinyal telemetry ke backend GAJIANICH.
 .EXAMPLE
     powershell.exe -ExecutionPolicy Bypass -File .\accurate_agent.ps1 -Once
 #>
@@ -18,7 +18,7 @@ if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
     $ConfigPath = Join-Path -Path $PSScriptRoot -ChildPath "config.json"
 }
 
-$mutexName = "Local\AMS_Accurate_Telemetry_Agent"
+$mutexName = "Local\GAJIANICH_Accurate_Telemetry_Agent"
 $createdMutex = $false
 if (-not $Once) {
     $script:AgentMutex = [System.Threading.Mutex]::new($true, $mutexName, [ref]$createdMutex)
@@ -389,7 +389,7 @@ function Get-GdbDatabases {
 
 
 # -----------------------------------------------------------------------------
-# 4. Transmit Telemetry Signal to AMS Backend
+# 4. Transmit Telemetry Signal to GAJIANICH Backend
 # -----------------------------------------------------------------------------
 function Send-TelemetrySignal {
     param (
@@ -431,7 +431,7 @@ try {
     exit 1
 }
 
-Write-Log "=== AMS Accurate Background Telemetry Agent Dimulai ===" "INFO"
+Write-Log "=== GAJIANICH Accurate Background Telemetry Agent Dimulai ===" "INFO"
 Write-Log "Server API: $($script:Config.apiUrl)" "INFO"
 Write-Log "Interval : $($script:Config.intervalSeconds) detik" "INFO"
 

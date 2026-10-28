@@ -94,7 +94,7 @@ GA sebagai pembuat dan tanda tangan basah sebagai mekanisme persetujuan.
 - Pembatalan mencatat alasan dan tetap mempertahankan riwayat.
 - Selesai berarti kebutuhan telah dipenuhi, terpisah dari kelengkapan persetujuan manual.
 
-## Integrasi dengan AMS
+## Integrasi dengan GAJIANICH
 
 Alur existing berada di [komponen GA](../../../frontend/src/components/ga/GoodsRequestList.tsx)
 dan [API GA](../../../backend/src/routes/goodsRequestRoutes.ts). Model saat ini menyimpan
@@ -145,4 +145,4 @@ diimplementasikan; verifikasi visual belum dilakukan.
 
 Sumber produk telah ditinjau pada percakapan riset sebelumnya. Pengelompokan pengajuan mengacu pada
 Odoo; pembuatan oleh GA dan persetujuan tanda tangan basah mengikuti arahan pengguna.
-Status administrasi dan arsip merupakan rekomendasi untuk AMS.
+Status administrasi dan arsip merupakan rekomendasi untuk GAJIANICH.

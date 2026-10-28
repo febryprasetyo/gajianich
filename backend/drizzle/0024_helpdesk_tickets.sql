@@ -179,7 +179,7 @@ ON CONFLICT DO NOTHING;
 --> statement-breakpoint
 
 DO $$
-DECLARE runtime_name text := nullif(current_setting('ams.hr_audit_runtime_role', true), '');
+DECLARE runtime_name text := nullif(current_setting('gajianich.hr_audit_runtime_role', true), '');
 BEGIN
   IF runtime_name IS NOT NULL THEN
     EXECUTE format('GRANT SELECT, INSERT, UPDATE ON TABLE public.helpdesk_tickets, public.helpdesk_ticket_comments, public.helpdesk_attachments, public.helpdesk_ticket_counters TO %I', runtime_name);

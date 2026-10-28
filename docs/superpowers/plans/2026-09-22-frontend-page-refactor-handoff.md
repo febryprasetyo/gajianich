@@ -2,7 +2,7 @@
 
 > **Untuk agen Codex penerima:** Dokumen ini memuat konteks, hasil analisis, batasan, urutan kerja, dan kriteria penerimaan dalam satu file. Saat ditugaskan mengimplementasikan, gunakan skill `superpowers:subagent-driven-development` atau `superpowers:executing-plans` bila tersedia. Jika tidak tersedia, ikuti checklist di dokumen ini tanpa menambah dependency hanya untuk menjalankan workflow.
 
-**Goal:** Merapikan seluruh halaman frontend AMS dengan memisahkan tanggung jawab dan mengurangi duplikasi melalui komponen kecil yang dapat digunakan ulang, sambil mempertahankan perilaku aplikasi.
+**Goal:** Merapikan seluruh halaman frontend GAJIANICH dengan memisahkan tanggung jawab dan mengurangi duplikasi melalui komponen kecil yang dapat digunakan ulang, sambil mempertahankan perilaku aplikasi.
 
 **Architecture:** Halaman menjadi pengatur komposisi dan koordinasi fitur. Komponen fitur memiliki tanggung jawab yang jelas; draft form berada dekat form, data server dikelola hook fitur, dan aturan/payload yang digunakan bersama berada di modul domain. Komponen UI bersama tidak bergantung pada endpoint atau aturan bisnis fitur.
 
@@ -328,4 +328,4 @@ Setelah implementasi, berikan:
 
 ## 12. Instruksi singkat untuk diserahkan ke Codex
 
-> Gunakan dokumen ini sebagai brief refactor frontend AMS. Baca baseline dan aturan repository terlebih dahulu, lalu kerjakan tahap 0–7 secara bertahap. Pertahankan tampilan, route, API, payload, permission, dan perilaku form yang ada. Utamakan komponen fitur beserta ownership state, gunakan kembali komponen existing, dan buat primitive bersama hanya berdasarkan duplikasi nyata. Jangan menambah dependency atau mengubah backend. Verifikasi sesuai bagian 9, gunakan definition of done bagian 10, dan laporkan hasil sesuai bagian 11. Halaman yang sudah fokus boleh dipertahankan dengan alasan yang jelas.
+> Gunakan dokumen ini sebagai brief refactor frontend GAJIANICH. Baca baseline dan aturan repository terlebih dahulu, lalu kerjakan tahap 0–7 secara bertahap. Pertahankan tampilan, route, API, payload, permission, dan perilaku form yang ada. Utamakan komponen fitur beserta ownership state, gunakan kembali komponen existing, dan buat primitive bersama hanya berdasarkan duplikasi nyata. Jangan menambah dependency atau mengubah backend. Verifikasi sesuai bagian 9, gunakan definition of done bagian 10, dan laporkan hasil sesuai bagian 11. Halaman yang sudah fokus boleh dipertahankan dengan alasan yang jelas.

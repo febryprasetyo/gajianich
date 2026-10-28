@@ -9,7 +9,7 @@
 
 ## 1. Summary & Problem Statement
 
-Berdasarkan audit pra-rilis production terhadap repository AMS App, ditemukan beberapa celah keamanan dan kesiapan infrastruktur yang harus diperbaiki sebelum aplikasi dinyatakan siap live:
+Berdasarkan audit pra-rilis production terhadap repository GAJIANICH App, ditemukan beberapa celah keamanan dan kesiapan infrastruktur yang harus diperbaiki sebelum aplikasi dinyatakan siap live:
 1. **File Permissions**: Berkas `.env` dan `backend/.env` berizin `664` (`-rw-rw-r--`), yang memungkinkan akun lokal lain membaca credential dan anggota grup memodifikasinya.
 2. **Git Ignore Leaks Potential**: `.gitignore` pada root dan `backend/` hanya mengecualikan `.env` dan `.env.local`, namun variasi seperti `.env.production` atau `.env.staging` rentan ter-commit tanpa sengaja.
 3. **Template Environment**: Template `deploy/.env.example` belum mencantumkan `AGENT_API_KEY`, sehingga deployment container production berisiko gagal saat preflight.
@@ -57,12 +57,12 @@ Menambahkan variabel wajib dan panduan pembangkitan secret:
 ```dotenv
 APP_VERSION=v1.0.0
 GHCR_OWNER=fastpec
-DATABASE_URL=postgresql://ams_app:<GENERATE_STRONG_RANDOM_PASSWORD_MIN_16_CHARS>@host.docker.internal:5432/ams_prod_db
+DATABASE_URL=postgresql://gajianich_app:<GENERATE_STRONG_RANDOM_PASSWORD_MIN_16_CHARS>@host.docker.internal:5432/gajianich_prod_db
 JWT_SECRET=<GENERATE_WITH_OPENSSL_RAND_HEX_32>
 JWT_REFRESH_SECRET=<GENERATE_WITH_OPENSSL_RAND_HEX_32>
 AGENT_API_KEY=<GENERATE_WITH_OPENSSL_RAND_HEX_32>
 ACCURATE_LICENSE_SERVER_URL=http://192.168.10.160:6688
-CORS_ALLOWED_ORIGINS=https://ams.yourdomain.com
+CORS_ALLOWED_ORIGINS=https://gajianich.yourdomain.com
 ```
 
 ### 3.3 Strict Environment Validation (`backend/src/config/env.ts`)

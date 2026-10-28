@@ -13,14 +13,14 @@ trap cleanup EXIT
 # Initialize the fresh database before backend readiness starts checking required tables.
 echo "📦 Starting smoke-test PostgreSQL..."
 docker compose -f compose.dev.yml up -d --wait postgres
-docker compose -f compose.dev.yml exec -T postgres psql -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-ams_dev_db}" -v ON_ERROR_STOP=1 <<'SQL'
+docker compose -f compose.dev.yml exec -T postgres psql -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-gajianich_dev_db}" -v ON_ERROR_STOP=1 <<'SQL'
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='ams_smoke_runtime') THEN
-    CREATE ROLE ams_smoke_runtime NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='gajianich_smoke_runtime') THEN
+    CREATE ROLE gajianich_smoke_runtime NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
   END IF;
 END $$;
 SQL
-docker compose -f compose.dev.yml run --rm --build --no-deps -e HR_AUDIT_RUNTIME_ROLE=ams_smoke_runtime backend npm run db:migrate
+docker compose -f compose.dev.yml run --rm --build --no-deps -e HR_AUDIT_RUNTIME_ROLE=gajianich_smoke_runtime backend npm run db:migrate
 docker compose -f compose.dev.yml up -d --build
 
 # 2. Wait for backend readiness

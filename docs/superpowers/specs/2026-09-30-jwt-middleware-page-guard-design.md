@@ -9,7 +9,7 @@
 
 ## 1. Summary & Problem Statement
 
-Saat ini, sistem AMS-ITSM belum menerapkan proteksi JWT dan middleware secara konsisten di seluruh halaman frontend Next.js:
+Saat ini, sistem GAJIANICH-ITSM belum menerapkan proteksi JWT dan middleware secara konsisten di seluruh halaman frontend Next.js:
 1. **Tidak adanya layout level guard (`src/app/dashboard/layout.tsx`)**: Setiap halaman di `/dashboard` memanggil `<DashboardLayout>` secara manual. Jika user (misal ber-role `HRD` atau `hr_attendance`) mengakses URL terlarang (seperti `/dashboard/assets`, `/dashboard/licenses`, `/dashboard/infrastructure`), komponen halaman tetap termuat (`mount`) dan tetap menjalankan panggilan API (`api.get(...)`) sebelum verifikasi hak akses selesai, menghasilkan error alert dan tampilan yang bocor.
 2. **Next.js `src/middleware.ts` belum aktif/tersinkronisasi**: Token JWT pada frontend disimpan di `localStorage`, sedangkan Next.js Server Middleware membaca cookie HTTP (`request.cookies.get('token')`). Ketika cookie tidak sinkron atau hilang, middleware tidak dapat memverifikasi JWT dan role permissions secara akurat.
 3. **Aturan Hak Akses Master Data Terlalu Luas**: Role HRD (`hr_attendance`) saat ini memiliki izin umum `master.view`, sehingga user HRD dapat mengakses dan melihat master data khusus IT seperti *IT Equipment Types*, *Vendors*, dan *Asset Custodians*. Padahal HRD seharusnya hanya diizinkan mengakses master data relevan HR (*Departments*, *Employees*, *Locations*).

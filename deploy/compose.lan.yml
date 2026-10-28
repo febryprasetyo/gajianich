@@ -1,4 +1,4 @@
-name: ams-live
+name: gajianich-live
 
 x-logging: &logging
   driver: json-file
@@ -11,13 +11,13 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ams_prod_db
-      POSTGRES_USER: ams_app
+      POSTGRES_DB: gajianich_prod_db
+      POSTGRES_USER: gajianich_app
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Production database password required}
     volumes:
       - prod_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: [CMD-SHELL, "pg_isready -U ams_app -d ams_prod_db"]
+      test: [CMD-SHELL, "pg_isready -U gajianich_app -d gajianich_prod_db"]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -26,14 +26,14 @@ services:
     logging: *logging
 
   backend:
-    image: ams-lan-backend:${APP_VERSION:?Release version required}
+    image: gajianich-lan-backend:${APP_VERSION:?Release version required}
     pull_policy: never
     restart: unless-stopped
     environment:
       PORT: 5000
       NODE_ENV: production
       GA_STORAGE_DIR: /app/data/ga-evidence
-      DATABASE_URL: ${DATABASE_URL:-postgresql://ams_app:${POSTGRES_PASSWORD}@postgres:5432/ams_prod_db}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://gajianich_app:${POSTGRES_PASSWORD}@postgres:5432/gajianich_prod_db}
       JWT_SECRET: ${JWT_SECRET:?JWT secret required}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Refresh secret required}
       AGENT_API_KEY: ${AGENT_API_KEY:?Agent key required}
@@ -53,7 +53,7 @@ services:
     logging: *logging
 
   frontend:
-    image: ams-lan-frontend:${APP_VERSION:?Release version required}
+    image: gajianich-lan-frontend:${APP_VERSION:?Release version required}
     pull_policy: never
     restart: unless-stopped
     environment:

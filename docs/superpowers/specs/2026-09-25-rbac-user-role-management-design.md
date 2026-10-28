@@ -9,7 +9,7 @@
 
 ## 1. Summary & Problem Statement
 
-Sistem AMS-ITSM saat ini memiliki autentikasi berbasis JWT dengan role statis yang dicek melalui nama role hardcoded (`SuperAdmin`, `ITAdmin`, `ITStaff`, `Employee`, `Management`). Belum ada halaman antarmuka pengguna (UI) maupun API backend terpadu untuk:
+Sistem GAJIANICH-ITSM saat ini memiliki autentikasi berbasis JWT dengan role statis yang dicek melalui nama role hardcoded (`SuperAdmin`, `ITAdmin`, `ITStaff`, `Employee`, `Management`). Belum ada halaman antarmuka pengguna (UI) maupun API backend terpadu untuk:
 1. Mengelola pengguna (tambah user, ubah data/role, toggle status aktif/nonaktif, reset password).
 2. Menghubungkan akun user secara opsional dengan master data karyawan (`employees`).
 3. Mengatur peran (roles) dan menentukan aksi/hak akses (permissions) secara visual dan dinamis per modul aplikasi (Assets, Tickets, Licenses, Infrastructure, HR/Attendance, Master Data, Access Control).

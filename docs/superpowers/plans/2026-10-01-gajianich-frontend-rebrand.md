@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Rebrand the existing frontend from AMS to GAJIANICH without changing routes, menu labels/order, permission behavior, APIs, or business workflows.
+**Goal:** Rebrand the existing frontend from GAJIANICH to GAJIANICH without changing routes, menu labels/order, permission behavior, APIs, or business workflows.
 
 **Architecture:** Add a small brand contract and a local SVG cat mascot, then apply them through global tokens, the persistent shell, authentication states, and the existing module components. Presentation migrations are grouped by module so each group can be checked independently while the data and interaction interfaces stay intact.
 
@@ -182,7 +182,7 @@ Read the shell source and assert the exact existing menu group/item labels remai
 - [ ] **Step 2: Run the shell and route-permission tests to verify the new shell test fails**
 
 Run: `npm test --prefix frontend -- src/lib/dashboardShell.test.mjs src/lib/access/routes.test.mjs`  
-Expected: dashboard shell test FAILS for the old AMS/shield/inert controls; route tests PASS.
+Expected: dashboard shell test FAILS for the old GAJIANICH/shield/inert controls; route tests PASS.
 
 - [ ] **Step 3: Apply GAJIANICH presentation to `DashboardLayout.tsx`**
 
@@ -217,7 +217,7 @@ git commit -m "feat: rebrand gajianich dashboard shell"
 
 - [ ] **Step 1: Write failing entry-point regression tests**
 
-Read the five entry-point sources and assert each has no AMS title/portal string, no brand shield import, no grid/glow class, and login contains `BRAND_NAME`, `BRAND_TAGLINE`, and `GajianichMascot`. Assert password security conditions and `router` destinations remain unchanged in their source contracts.
+Read the five entry-point sources and assert each has no GAJIANICH title/portal string, no brand shield import, no grid/glow class, and login contains `BRAND_NAME`, `BRAND_TAGLINE`, and `GajianichMascot`. Assert password security conditions and `router` destinations remain unchanged in their source contracts.
 
 - [ ] **Step 2: Run the entry-point test to verify it fails**
 

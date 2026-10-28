@@ -33,7 +33,7 @@ CREATE INDEX "ga_goods_requests_status_idx" ON "ga_goods_requests" USING btree (
 --> statement-breakpoint
 DO $$
 DECLARE
-  runtime_name text := nullif(current_setting('ams.hr_audit_runtime_role', true), '');
+  runtime_name text := nullif(current_setting('gajianich.hr_audit_runtime_role', true), '');
 BEGIN
   IF runtime_name IS NOT NULL THEN
     EXECUTE format('GRANT SELECT, INSERT, UPDATE ON TABLE public.ga_goods_requests, public.ga_goods_request_status_logs, public.ga_goods_request_signed_documents TO %I', runtime_name);

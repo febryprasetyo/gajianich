@@ -11,6 +11,6 @@ Verifikasi:
 - `codex mcp list`: REA enabled.
 - Uji stdio MCP langsung: initialize dan tools/list lulus, server rea 6.7.0, 207 tools tersedia.
 
-Batas: koneksi sesi Codex aktif belum dimuat ulang; restart Codex untuk memuat MCP dan skill. Ghidra, IDA, JADX dan Kuna belum dikonfigurasi. Uji ini memverifikasi server dan registrasi, belum analisis target nyata atau fitur Frida opsional. npm melaporkan install script Frida belum disetujui. Tidak ada pengujian visual atau pengujian produk AMS karena tidak ada perubahan kode produk.
+Batas: koneksi sesi Codex aktif belum dimuat ulang; restart Codex untuk memuat MCP dan skill. Ghidra, IDA, JADX dan Kuna belum dikonfigurasi. Uji ini memverifikasi server dan registrasi, belum analisis target nyata atau fitur Frida opsional. npm melaporkan install script Frida belum disetujui. Tidak ada pengujian visual atau pengujian produk GAJIANICH karena tidak ada perubahan kode produk.
 
 Pembaruan tooling: keterbatasan Ghidra dan Frida pada checkpoint awal ditindaklanjuti dalam [checkpoint Solution X900](2026-10-27-solution-x900-tooling-checkpoint.md). Catatan di atas merupakan hasil instalasi awal.

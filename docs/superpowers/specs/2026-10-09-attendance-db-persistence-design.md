@@ -8,7 +8,7 @@
 
 ## 1. Summary & Problem Statement
 
-Saat ini, data hasil unggah impor absensi dan rekap absensi harian (AttendanceDataset, records, batches) disimpan di **Local Storage browser** (localStorage['ams:attendance-workspace:v2']). Akibatnya:
+Saat ini, data hasil unggah impor absensi dan rekap absensi harian (AttendanceDataset, records, batches) disimpan di **Local Storage browser** (localStorage['gajianich:attendance-workspace:v2']). Akibatnya:
 - Ketika file absensi diunggah dan disimpan di laptop HRD, data hanya berada di browser laptop HRD tersebut.
 - Pengguna lain (seperti Administrator atau sesama staf HR di laptop berbeda) tidak dapat melihat data yang sudah diunggah dan disimpan karena data tidak tersinkronisasi ke server database.
 

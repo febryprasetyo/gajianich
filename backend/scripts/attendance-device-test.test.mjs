@@ -193,7 +193,7 @@ const exec = promisify(execFile);
 const cli = new URL('./attendance-device-test.mjs', import.meta.url).pathname;
 
 async function configFile(t, devices) {
-  const directory = await mkdtemp(join(tmpdir(), 'ams-zk-test-'));
+  const directory = await mkdtemp(join(tmpdir(), 'gajianich-zk-test-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const path = join(directory, 'devices.json');
   await writeFile(path, JSON.stringify({ devices }));

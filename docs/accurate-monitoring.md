@@ -26,7 +26,7 @@ Pada development, backend default hanya bind ke localhost. Agar agent dari serve
 BACKEND_BIND_ADDRESS=0.0.0.0
 ```
 
-Buka TCP port 5000 pada firewall hanya dari subnet atau alamat server Accurate yang dipercaya. PostgreSQL tetap bind ke localhost. Gunakan IP LAN mesin AMS pada `apiUrl` agent, bukan `localhost`.
+Buka TCP port 5000 pada firewall hanya dari subnet atau alamat server Accurate yang dipercaya. PostgreSQL tetap bind ke localhost. Gunakan IP LAN mesin GAJIANICH pada `apiUrl` agent, bukan `localhost`.
 
 Jalankan migration sebelum menerima signal agent:
 
@@ -52,7 +52,7 @@ oleh script, tetapi console dan `agent.log` tetap harus dibatasi untuk administr
 
 Setelah valid, jalankan agent melalui Windows Task Scheduler saat startup dengan akun
 yang memiliki akses baca ke seluruh `scanPaths`. Server tambahan tidak memerlukan
-perubahan kode AMS; cukup gunakan script/config yang sama dengan hostname server yang
+perubahan kode GAJIANICH; cukup gunakan script/config yang sama dengan hostname server yang
 unik.
 
 ## Keamanan

@@ -2,10 +2,10 @@
 
 ## Summary
 
-The AMS Hardware Collector portable tool allows IT engineers and technicians to perform rapid hardware audits on employee PCs and laptops. In real-world office environments, computers are often accompanied by multiple peripherals such as Printers, Scanners, Monitors, and custom manual accessories (Barcode Scanners, UPS, Projectors, Webcams, etc.).
+The GAJIANICH Hardware Collector portable tool allows IT engineers and technicians to perform rapid hardware audits on employee PCs and laptops. In real-world office environments, computers are often accompanied by multiple peripherals such as Printers, Scanners, Monitors, and custom manual accessories (Barcode Scanners, UPS, Projectors, Webcams, etc.).
 
 This specification defines end-to-end support for capturing, transmitting, storing, displaying, and converting multiple attached peripherals across the entire Hardware Audit pipeline:
-1. Portable Collector tool (`AMS-Collector.ps1`)
+1. Portable Collector tool (`GAJIANICH-Collector.ps1`)
 2. Ingest and Batch Sync APIs (`POST /api/v1/hardware-audits/ingest`, `POST /api/v1/hardware-audits/batch-sync`)
 3. Database persistence (`hardware_audit_peripherals` table)
 4. Query enrichment (`GET /api/v1/hardware-audits`)
@@ -19,7 +19,7 @@ This specification defines end-to-end support for capturing, transmitting, stori
 3. **Rich Query Responses**: Enrich `GET /api/v1/hardware-audits` with full peripheral objects so the dashboard displays all attached peripherals associated with each audited machine.
 4. **Seamless Asset Integration**: When an audit record is used to create a new computer asset or linked to an existing one, automatically convert or attach its peripherals to `asset_accessories` with appropriate categories, descriptions, conditions, and notes.
 5. **High-Fidelity Dashboard UI**: Provide an intuitive, responsive UI in `/dashboard/hardware-audits` displaying peripheral counts, category tags, brand/model, serial numbers, and badges for custom categories.
-6. **Tool Consistency**: Keep `hardware-collector/launcher/AMS-Collector.ps1` and `hardware-collector/src/AMS-Collector.ps1` in perfect sync.
+6. **Tool Consistency**: Keep `hardware-collector/launcher/GAJIANICH-Collector.ps1` and `hardware-collector/src/GAJIANICH-Collector.ps1` in perfect sync.
 
 ## Non-goals
 

@@ -32,7 +32,7 @@ test.describe('HR Activity Audit History Page', () => {
 
     await context.addCookies([
       { name: 'token', value: mockToken, domain: '127.0.0.1', path: '/' },
-      { name: 'ams_prod_token', value: mockToken, domain: '127.0.0.1', path: '/' },
+      { name: 'gajianich_prod_token', value: mockToken, domain: '127.0.0.1', path: '/' },
     ]);
 
     await page.addInitScript(({ token, user }) => {
@@ -227,7 +227,7 @@ test.describe('HR Activity Audit History Page', () => {
 
     await context.addCookies([
       { name: 'token', value: mockToken, domain: '127.0.0.1', path: '/' },
-      { name: 'ams_prod_token', value: mockToken, domain: '127.0.0.1', path: '/' },
+      { name: 'gajianich_prod_token', value: mockToken, domain: '127.0.0.1', path: '/' },
     ]);
 
     await page.addInitScript(({ token, user }) => {

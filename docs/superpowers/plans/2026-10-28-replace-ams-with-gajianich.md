@@ -59,9 +59,13 @@ Phase 4: Verification & Git Commit
 - [x] Update `README.md`: perbarui judul dan referensi teks AMS ──► GAJIANICH.
 - [x] Update `docs/operations/*`: perbarui kata AMS di dokumen operasional.
 
-### Phase 4: Verification & Git Commit
-- [x] Jalankan pengujian bats: `npx bats deploy/tests/deploy.bats`.
-- [x] Jalankan verifikasi kata mandiri untuk memastikan tidak ada perubahan keliru pada kata seperti `programs`, `params`, `diagrams`.
-- [ ] Buat Git commit dengan conventional commit:
-  - `refactor(repo): replace ams naming with gajianich across ui, templates, and docs`
+### Phase 4: Database, Docker, Systemd, Tests & Documentation
+- [x] Update database names in env examples and compose: `gajianich_dev_db`, `gajianich_prod_db`, `gajianich_app`.
+- [x] Rename and update systemd backup and verify units: `gajianich-postgres-backup.*` dan `gajianich-postgres-verify.*`.
+- [x] Update Drizzle migration role setting: `gajianich.hr_audit_runtime_role` in `migrate.ts` and SQL migrations `0015` s/d `0024`.
+- [x] Update test database names & paths across backend/deploy/e2e tests: `gajianich_hr_audit_test`, `gajianich_ci_db`, `/tmp/gajianich-*`.
+- [x] Update all remaining operational docs and past specs/plans to reference GAJIANICH.
+- [x] Run verification: bats tests (11/11), backend unit & integration tests (20/20), frontend typecheck.
+- [x] Buat Git commit dengan conventional commit:
+  - `refactor(repo): replace all remaining ams references with gajianich across database, docker, tests, and docs`
 

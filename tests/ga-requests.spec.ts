@@ -40,7 +40,7 @@ test.afterAll(async () => {
   await fixture?.cleanup(); if (storage) await rm(storage, { recursive: true, force: true });
 });
 test.beforeEach(async ({ page, context }) => {
-  await context.addCookies([{ name: 'ams_prod_token', value: token, domain: '127.0.0.1', path: '/' }, { name: 'token', value: token, domain: '127.0.0.1', path: '/' }]);
+  await context.addCookies([{ name: 'gajianich_prod_token', value: token, domain: '127.0.0.1', path: '/' }, { name: 'token', value: token, domain: '127.0.0.1', path: '/' }]);
   await page.addInitScript(({ token, user }) => { Object.defineProperty(Crypto.prototype, 'randomUUID', { value: undefined, configurable: true }); localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify(user)); }, { token, user });
   await page.route('**/api/v1/**', async route => {
     const url = new URL(route.request().url());

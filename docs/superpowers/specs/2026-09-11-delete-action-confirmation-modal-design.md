@@ -2,9 +2,9 @@
 
 ## Summary
 
-Currently, several dashboard management pages in AMS Portal use native browser dialogs (`window.confirm(...)` and `window.alert(...)`) for destructive actions like deleting or deactivating records. These browser dialogs are visually jarring, block the browser thread, offer no item preview context or loading indicators, and degrade the user experience.
+Currently, several dashboard management pages in GAJIANICH Portal use native browser dialogs (`window.confirm(...)` and `window.alert(...)`) for destructive actions like deleting or deactivating records. These browser dialogs are visually jarring, block the browser thread, offer no item preview context or loading indicators, and degrade the user experience.
 
-This design introduces a reusable, polished, accessible, and high-fidelity confirmation modal component (`ConfirmDeleteModal`) styled consistently with the AMS design system (Tailwind CSS, Plus Jakarta Sans, glassmorphism, responsive mobile-friendly layouts, inline loading spinner, and in-modal error banners) and replaces all native `confirm`/`alert` calls across all pages.
+This design introduces a reusable, polished, accessible, and high-fidelity confirmation modal component (`ConfirmDeleteModal`) styled consistently with the GAJIANICH design system (Tailwind CSS, Plus Jakarta Sans, glassmorphism, responsive mobile-friendly layouts, inline loading spinner, and in-modal error banners) and replaces all native `confirm`/`alert` calls across all pages.
 
 ## Goals
 

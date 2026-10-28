@@ -1,10 +1,10 @@
 # GAJIANICH Server Setup Runbook (Ubuntu 22.04 LTS)
 
-This guide documents the exact server preparation steps for the GAJIANICH Development Server (`ams-dev`) and Production Server (`ams-prod`).
+This guide documents the exact server preparation steps for the GAJIANICH Development Server (`gajianich-dev`) and Production Server (`gajianich-prod`).
 
 ---
 
-## 1. Development Server Setup (`ams-dev`)
+## 1. Development Server Setup (`gajianich-dev`)
 
 ### 1.1 Prerequisites & Docker Engine
 ```bash
@@ -28,7 +28,7 @@ sudo usermod -aG docker $USER
 Register a repository-scoped self-hosted runner:
 1. In GitHub repo: **Settings > Actions > Runners > New self-hosted runner**.
 2. Run installation commands as a dedicated service account.
-3. Configure runner labels: `self-hosted, linux, x64, ams-dev`.
+3. Configure runner labels: `self-hosted, linux, x64, gajianich-dev`.
 4. Install and start runner as a systemd service:
    ```bash
    sudo ./svc.sh install
@@ -37,7 +37,7 @@ Register a repository-scoped self-hosted runner:
 
 ---
 
-## 2. Production Server Setup (`ams-prod`)
+## 2. Production Server Setup (`gajianich-prod`)
 
 ### 2.1 Native PostgreSQL 16 Setup
 Production runs native PostgreSQL managed by systemd:
@@ -46,9 +46,9 @@ sudo apt-get install -y postgresql-16 postgresql-client-16
 
 # Create production database user and database
 sudo -u postgres psql << 'SQL'
-CREATE USER ams_app WITH PASSWORD '<STRONG_PRODUCTION_PASSWORD>';
-CREATE DATABASE ams_prod_db OWNER ams_app;
-GRANT ALL PRIVILEGES ON DATABASE ams_prod_db TO ams_app;
+CREATE USER gajianich_app WITH PASSWORD '<STRONG_PRODUCTION_PASSWORD>';
+CREATE DATABASE gajianich_prod_db OWNER gajianich_app;
+GRANT ALL PRIVILEGES ON DATABASE gajianich_prod_db TO gajianich_app;
 SQL
 
 # Verify PostgreSQL is active and bound to localhost only
@@ -56,38 +56,38 @@ sudo systemctl enable --now postgresql
 ```
 
 ### 2.2 Dedicated Deployment Account & Directory
-Create the unprivileged `ams-deploy` user and deployment directory:
+Create the unprivileged `gajianich-deploy` user and deployment directory:
 ```bash
-sudo useradd -m -s /bin/bash -G docker ams-deploy
+sudo useradd -m -s /bin/bash -G docker gajianich-deploy
 sudo mkdir -p /opt/gajianich /var/backups/gajianich/postgres
-sudo chown -R ams-deploy:ams-deploy /opt/gajianich
+sudo chown -R gajianich-deploy:gajianich-deploy /opt/gajianich
 sudo chown -R postgres:postgres /var/backups/gajianich/postgres
 sudo chmod 700 /var/backups/gajianich/postgres
 
 # Clone repository into /opt/gajianich
-sudo -u ams-deploy git clone https://github.com/<owner>/gajianich.git /opt/gajianich
+sudo -u gajianich-deploy git clone https://github.com/<owner>/gajianich.git /opt/gajianich
 ```
 
 ### 2.3 Production Environment Configuration
-Create `/opt/gajianich/.env` owned by `ams-deploy` with mode `600`:
+Create `/opt/gajianich/.env` owned by `gajianich-deploy` with mode `600`:
 ```bash
-sudo -u ams-deploy cp /opt/gajianich/deploy/.env.example /opt/gajianich/.env
+sudo -u gajianich-deploy cp /opt/gajianich/deploy/.env.example /opt/gajianich/.env
 sudo chmod 600 /opt/gajianich/.env
 ```
 Edit `/opt/gajianich/.env` to configure production secrets:
-- `DATABASE_URL=postgresql://ams_app:<STRONG_PASSWORD>@host.docker.internal:5432/ams_prod_db`
+- `DATABASE_URL=postgresql://gajianich_app:<STRONG_PASSWORD>@host.docker.internal:5432/gajianich_prod_db`
 - `JWT_SECRET=<STRONG_RANDOM_SECRET_MIN_32_CHARS>`
 - `JWT_REFRESH_SECRET=<STRONG_RANDOM_REFRESH_SECRET_MIN_32_CHARS>`
 
 ### 2.4 Systemd Scheduled Backups & Integrity Verification
 Install backup and verification systemd units:
 ```bash
-sudo cp /opt/gajianich/deploy/systemd/ams-postgres-backup.* /etc/systemd/system/
-sudo cp /opt/gajianich/deploy/systemd/ams-postgres-verify.* /etc/systemd/system/
+sudo cp /opt/gajianich/deploy/systemd/gajianich-postgres-backup.* /etc/systemd/system/
+sudo cp /opt/gajianich/deploy/systemd/gajianich-postgres-verify.* /etc/systemd/system/
 
 sudo systemctl daemon-reload
-sudo systemctl enable --now ams-postgres-backup.timer
-sudo systemctl enable --now ams-postgres-verify.timer
+sudo systemctl enable --now gajianich-postgres-backup.timer
+sudo systemctl enable --now gajianich-postgres-verify.timer
 ```
 
 ### 2.5 Pinned SSH Host Key Setup

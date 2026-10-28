@@ -6,7 +6,7 @@
 
 ## Purpose
 
-Replace the current AMS security-console presentation with GAJIANICH, a friendly Indonesian internal-office platform. GAJIANICH stands for *Grup Administrasi, Jadwal, & Informasi Internal* and uses the tagline:
+Replace the current GAJIANICH security-console presentation with GAJIANICH, a friendly Indonesian internal-office platform. GAJIANICH stands for *Grup Administrasi, Jadwal, & Informasi Internal* and uses the tagline:
 
 > Biar Kantor Jalan, Semua Kebagian.
 
@@ -50,7 +50,7 @@ Plus Jakarta Sans is the product typeface. Monospace stays limited to IDs, codes
 
 The rebrand changes only its presentation:
 
-- Replace the shield logo and AMS PRO lockup with a compact GAJIANICH cat mark, product name, and short descriptor.
+- Replace the shield logo and GAJIANICH PRO lockup with a compact GAJIANICH cat mark, product name, and short descriptor.
 - Retain the existing nav groups, group titles, item labels, item order, icons, URLs, permission checks, and role-specific visibility rules exactly as they are today.
 - Replace red active/hover treatments with emerald equivalents and use amber only as a small warm accent.
 - Keep breadcrumbs, but change the root crumb from `Platform` to `GAJIANICH`.

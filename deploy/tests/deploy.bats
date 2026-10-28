@@ -15,7 +15,7 @@ setup() {
 
   # Create mock env file
   cat << 'MOCK_ENV' > "$ENV_FILE"
-DATABASE_URL=postgresql://ams_app:secret@localhost:5432/ams_prod_db
+DATABASE_URL=postgresql://gajianich_app:secret@localhost:5432/gajianich_prod_db
 JWT_SECRET=production-secret-min-32-chars-long-1234
 JWT_REFRESH_SECRET=production-refresh-secret-min-32-chars-1234
 AGENT_API_KEY=production-agent-key-min-32-chars-1234
@@ -37,7 +37,7 @@ if [[ "$*" == *"compose"*"up"* ]]; then
   exit 0
 fi
 if [[ "$*" == *"compose"*"ps"* ]]; then
-  echo "ams_proxy_prod running"
+  echo "gajianich_proxy_prod running"
   exit 0
 fi
 exit 0

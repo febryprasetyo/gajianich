@@ -9,7 +9,7 @@
 
 ## 1. Summary & Problem Statement
 
-Sistem Asset Management System (AMS) mengelola aset, lisensi, tiket operasional, dan kepemilikan aset (*custodian*) yang terikat langsung dengan data karyawan (*employees*). Saat ini:
+Sistem Asset Management System (GAJIANICH) mengelola aset, lisensi, tiket operasional, dan kepemilikan aset (*custodian*) yang terikat langsung dengan data karyawan (*employees*). Saat ini:
 1. Input data karyawan hanya dapat dilakukan satu per satu secara manual melalui form modal di halaman Employee Directory.
 2. Perusahaan memiliki data master karyawan aktif dalam format Excel dari HRIS Talenta (`docs/TARIKAN TALENTA KARYAWAN AKTIF.xlsx`) berisi 242+ karyawan dan 33 kolom data lengkap (identitas, jabatan, departemen/organisasi, kompensasi/rekening, BPJS, tanggal bergabung, dan data kependudukan).
 3. Tabel database `employees` yang ada saat ini hanya memuat beberapa kolom dasar (`employeeCode`, `fullName`, `email`, `phone`, `departmentId`, `locationId`, `position`, `status`), sehingga informasi penting HR dari Talenta belum dapat disimpan.
@@ -107,7 +107,7 @@ Semua endpoint diautentikasi melalui `authenticateToken`.
 - **Method & Path**: `GET /api/v1/employees/import/template`
 - **Permission**: `master.view`
 - **Response**: `200 OK` dengan binary stream Excel (`Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`).
-- **Filename**: `ams-employee-import-template.xlsx`. Berisi 33 header standar Talenta dengan 2 contoh baris dummy untuk panduan pengisian.
+- **Filename**: `gajianich-employee-import-template.xlsx`. Berisi 33 header standar Talenta dengan 2 contoh baris dummy untuk panduan pengisian.
 
 ### 2. Preview Import
 - **Method & Path**: `POST /api/v1/employees/import/preview`
@@ -167,7 +167,7 @@ Semua endpoint diautentikasi melalui `authenticateToken`.
 - **Method & Path**: `GET /api/v1/employees/export`
 - **Permission**: `master.view`
 - **Query Params**: `?status=Active` (opsional filter status)
-- **Response**: `200 OK` binary file Excel (`ams-karyawan-aktif-<YYYY-MM-DD>.xlsx`) dengan 33 kolom lengkap Talenta.
+- **Response**: `200 OK` binary file Excel (`gajianich-karyawan-aktif-<YYYY-MM-DD>.xlsx`) dengan 33 kolom lengkap Talenta.
 
 ---
 
