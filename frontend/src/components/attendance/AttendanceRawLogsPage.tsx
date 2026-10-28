@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import React, { useState, useMemo, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Search,
   Calendar,
@@ -14,55 +14,96 @@ import {
   RotateCcw,
   ChevronLeft,
   ChevronRight,
-} from 'lucide-react';
-import {
-  RawAttendanceLog,
-  INITIAL_RAW_LOGS,
-  calculateRecordsFromRawLogs,
-  KNOWN_SHIFTS,
-} from './attendanceMachineStore';
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
+import { apiFetch } from "@/lib/api";
+import { RawAttendanceLog, AttendanceDevice } from "./attendanceMachineStore";
 
 export default function AttendanceRawLogsPage() {
   const router = useRouter();
-  const [logs, setLogs] = useState<RawAttendanceLog[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('ams_attendance_raw_logs');
-      if (saved) {
-        try { return JSON.parse(saved); } catch {}
-      }
-    }
-    return INITIAL_RAW_LOGS;
-  });
+  const [logs, setLogs] = useState<RawAttendanceLog[]>([]);
+  const [devices, setDevices] = useState<AttendanceDevice[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [startDate, setStartDate] = useState('2026-10-27');
-  const [endDate, setEndDate] = useState('2026-10-27');
-  const [selectedDevice, setSelectedDevice] = useState('all');
-  const [selectedState, setSelectedState] = useState<'all' | 'Masuk' | 'Pulang' | 'Scan Antara'>('all');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [selectedDevice, setSelectedDevice] = useState("all");
+  const [selectedState, setSelectedState] = useState<"all" | "Masuk" | "Pulang" | "Scan Antara">("all");
   const [isCalculating, setIsCalculating] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  // Sync logs if updated from another page
-  useEffect(() => {
-    const handleStorage = () => {
-      const saved = localStorage.getItem('ams_attendance_raw_logs');
-      if (saved) {
-        try { setLogs(JSON.parse(saved)); } catch {}
+  const fetchDevices = async () => {
+    try {
+      const res = await apiFetch<{ success: boolean; data: AttendanceDevice[] }>("/attendance/devices");
+      if (res.success && res.data) {
+        setDevices(res.data);
       }
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    } catch (err) {
+      console.warn("Gagal memuat daftar perangkat:", err);
+    }
+  };
+
+  const fetchLogs = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (startDate) params.set("startDate", startDate);
+      if (endDate) params.set("endDate", endDate);
+      if (selectedDevice !== "all") params.set("deviceId", selectedDevice);
+      params.set("limit", "200");
+
+      const res = await apiFetch<{ success: boolean; data: any[] }>(`/attendance/devices/raw-logs/query?${params.toString()}`);
+      if (res.success && res.data) {
+        const formatted: RawAttendanceLog[] = res.data.map((r) => {
+          const d = new Date(r.timestamp);
+          const pad = (n: number) => String(n).padStart(2, "0");
+          const timeStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+          return {
+            id: r.id,
+            deviceIp: r.deviceId ? String(r.deviceId) : "-",
+            deviceName: r.deviceName || "Mesin Absensi",
+            deviceLocation: r.deviceLocation,
+            pin: r.pin,
+            employeeCode: r.employeeNik || r.pin,
+            employeeName: r.employeeName || `Karyawan (${r.pin})`,
+            department: r.department || "-",
+            timestamp: timeStr,
+            verifyMode: r.verifyMode,
+            inOutState: r.inOutState,
+            workDate: r.workDate,
+          };
+        });
+        setLogs(formatted);
+      }
+    } catch (err: any) {
+      console.error("Gagal memuat log presensi:", err);
+      setToastMessage("Gagal memuat data presensi dari server.");
+      setTimeout(() => setToastMessage(null), 4000);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [startDate, endDate, selectedDevice]);
+
+  useEffect(() => {
+    fetchDevices();
   }, []);
 
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
+
   const handleResetFilters = () => {
-    setSearchQuery('');
-    setStartDate('');
-    setEndDate('');
-    setSelectedDevice('all');
-    setSelectedState('all');
+    setSearchQuery("");
+    setStartDate("");
+    setEndDate("");
+    setSelectedDevice("all");
+    setSelectedState("all");
     setCurrentPage(1);
   };
 
@@ -71,8 +112,8 @@ export default function AttendanceRawLogsPage() {
     return logs.filter((log) => {
       if (startDate && log.workDate < startDate) return false;
       if (endDate && log.workDate > endDate) return false;
-      if (selectedDevice !== 'all' && log.deviceIp !== selectedDevice) return false;
-      if (selectedState !== 'all' && log.inOutState !== selectedState) return false;
+      if (selectedDevice !== "all" && String(log.deviceIp) !== selectedDevice) return false;
+      if (selectedState !== "all" && log.inOutState !== selectedState) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchName = log.employeeName.toLowerCase().includes(q);
@@ -92,25 +133,41 @@ export default function AttendanceRawLogsPage() {
     return filteredLogs.slice(start, start + pageSize);
   }, [filteredLogs, currentPage, pageSize]);
 
-  const uniqueDevices = useMemo(() => {
-    const map = new Map<string, string>();
-    logs.forEach((l) => map.set(l.deviceIp, l.deviceName));
-    return Array.from(map.entries()).map(([ip, name]) => ({ ip, name }));
-  }, [logs]);
-
-  const handleCalculate = () => {
+  const handleCalculate = async () => {
     setIsCalculating(true);
-    setTimeout(() => {
-      const { processed, unassigned } = calculateRecordsFromRawLogs(logs, KNOWN_SHIFTS);
-      localStorage.setItem('ams_attendance_processed_records', JSON.stringify(processed));
-      localStorage.setItem('ams_attendance_unassigned_shift_records', JSON.stringify(unassigned));
+    try {
+      const res = await apiFetch<{ success: boolean; message: string; data: any }>("/attendance/devices/calculate", {
+        method: "POST",
+        body: JSON.stringify({
+          startDate,
+          endDate,
+          deviceId: selectedDevice !== "all" ? parseInt(selectedDevice, 10) : undefined,
+          saveToDatabase: true,
+        }),
+      });
+
+      if (res.success) {
+        setToastMessage(res.message);
+        router.push("/dashboard/attendance/transactions");
+      }
+    } catch (err: any) {
+      setToastMessage(`Gagal menghitung kalkulasi: ${err.message}`);
+      setTimeout(() => setToastMessage(null), 4000);
+    } finally {
       setIsCalculating(false);
-      router.push('/dashboard/attendance/transactions');
-    }, 500);
+    }
   };
 
   return (
     <div className="space-y-6">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-20 right-6 z-50 flex items-center gap-3 px-4 py-3 bg-slate-900 text-white rounded-xl shadow-xl border border-slate-700 animate-in fade-in slide-in-from-top-4 duration-200">
+          <AlertCircle className="w-5 h-5 text-emerald-400 shrink-0" />
+          <p className="text-sm font-medium">{toastMessage}</p>
+        </div>
+      )}
+
       {/* Header Halaman */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -141,7 +198,11 @@ export default function AttendanceRawLogsPage() {
             disabled={isCalculating || logs.length === 0}
             className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
           >
-            <Calculator className="w-4 h-4" />
+            {isCalculating ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Calculator className="w-4 h-4" />
+            )}
             <span>{isCalculating ? "Mengkalkulasi..." : "Kalkulasi ke Laporan Presensi"}</span>
           </button>
         </div>
@@ -209,8 +270,8 @@ export default function AttendanceRawLogsPage() {
                 className="bg-transparent text-xs text-slate-700 cursor-pointer focus:outline-none"
               >
                 <option value="all">Semua Mesin</option>
-                {uniqueDevices.map((d) => (
-                  <option key={d.ip} value={d.ip}>
+                {devices.map((d) => (
+                  <option key={d.id} value={String(d.id)}>
                     {d.name} ({d.ip})
                   </option>
                 ))}
@@ -269,7 +330,14 @@ export default function AttendanceRawLogsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {paginatedLogs.length > 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                    <Loader2 className="w-6 h-6 animate-spin text-emerald-600 mx-auto mb-2" />
+                    <p className="text-xs text-slate-500">Memuat data log mentah dari server...</p>
+                  </td>
+                </tr>
+              ) : paginatedLogs.length > 0 ? (
                 paginatedLogs.map((log, index) => (
                   <tr key={log.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-2.5 px-3 text-center text-slate-400 font-mono">
@@ -291,22 +359,22 @@ export default function AttendanceRawLogsPage() {
                       {log.deviceName}
                     </td>
                     <td className="py-2.5 px-3 text-slate-600">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] bg-slate-100 text-slate-700 border border-slate-200">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-[11px] bg-slate-100 text-slate-700 border border-slate-200">
                         {log.verifyMode}
                       </span>
                     </td>
                     <td className="py-2.5 px-3">
-                      {log.inOutState === 'Masuk' && (
+                      {log.inOutState === "Masuk" && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
                           Masuk
                         </span>
                       )}
-                      {log.inOutState === 'Pulang' && (
+                      {log.inOutState === "Pulang" && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-800 border border-blue-200">
                           Pulang
                         </span>
                       )}
-                      {log.inOutState === 'Scan Antara' && (
+                      {log.inOutState === "Scan Antara" && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
                           Scan Antara
                         </span>
@@ -342,7 +410,7 @@ export default function AttendanceRawLogsPage() {
               <option value={50}>50</option>
             </select>
             <span>
-              Menampilkan {filteredLogs.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} -{' '}
+              Menampilkan {filteredLogs.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} -{" "}
               {Math.min(currentPage * pageSize, filteredLogs.length)} dari {filteredLogs.length} data
             </span>
           </div>
@@ -352,18 +420,20 @@ export default function AttendanceRawLogsPage() {
               type="button"
               disabled={currentPage <= 1}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              className="p-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-40 transition-colors"
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Halaman Sebelumnya"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="px-3 py-1 font-medium text-slate-700">
-              Halaman {currentPage} dari {totalPages}
+            <span className="px-2 font-mono">
+              {currentPage} / {totalPages}
             </span>
             <button
               type="button"
               disabled={currentPage >= totalPages}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              className="p-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-40 transition-colors"
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Halaman Selanjutnya"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
