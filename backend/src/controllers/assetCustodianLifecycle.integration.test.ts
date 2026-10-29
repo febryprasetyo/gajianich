@@ -13,7 +13,7 @@ test('asset registration creates a reusable manual holder without an HR employee
   const operator = await createTestOperator();
   const token = operator.token();
   async function api(path: string, method = 'GET', body?: unknown) {
-    const response = await fetch(base + path, { method, headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+    const response = await fetch(base + path, { method, headers: { ...operator.headers(token), 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(path==='/assets'&&method==='POST'?{locationId:operator.locationId,...body as object}:body) });
     return { status: response.status, body: await response.json() as any };
   }
   let assetId: number | undefined;
@@ -65,7 +65,7 @@ test('custodian lifecycle keeps history immutable and rolls back failed inline o
   const categoryIds: number[] = [];
   const holderNames = ['Primary ', 'Rollback ', 'Staff ', 'Alternative ', 'Inactive '].map(prefix => prefix + suffix);
   async function api(path: string, method = 'GET', body?: unknown, token = admin) {
-    const response = await fetch(base + path, {method, headers: {Authorization: 'Bearer ' + token, 'Content-Type': 'application/json'}, body: body === undefined ? undefined : JSON.stringify(body)});
+    const response = await fetch(base + path, {method, headers: {...operator.headers(token), 'Content-Type': 'application/json'}, body: body === undefined ? undefined : JSON.stringify(method==='POST'&&(path==='/assets'||path==='/asset-custodians')?{locationId:operator.locationId,...body as object}:body)});
     return {status: response.status, body: await response.json() as any};
   }
   try {
@@ -154,7 +154,7 @@ test('custodian lifecycle keeps history immutable and rolls back failed inline o
     const stored = (await pool.query('SELECT current_user_id FROM assets WHERE id=$1',[id])).rows[0];
     assert.equal(stored.current_user_id,null,'new writes never populate legacy employee assignment column');
     const assignments = (await pool.query('SELECT employee_id, custodian_id, custodian_name_snapshot, assigned_by_user_id FROM asset_assignment_history WHERE asset_id=$1',[id])).rows;
-    assert.ok(assignments.every(row => row.employee_id === null && row.custodian_id && row.custodian_name_snapshot && Number(row.assigned_by_user_id) === operator.userId));
+    assert.ok(assignments.every(row => row.employee_id === null && row.custodian_id && row.custodian_name_snapshot && Number(row.assigned_by_user_id) === operator.userIdForRole(row.custodian_name_snapshot === holderNames[0] ? 'ITAdmin' : 'ITStaff')));
   } finally {
     for (const id of assetIds) {
       await pool.query('DELETE FROM asset_assignment_history WHERE asset_id=$1',[id]);
@@ -183,7 +183,7 @@ test('deleteAsset permanently removes an asset and cleanly cascades its assignme
   const operator = await createTestOperator();
   const token = operator.token();
   async function api(path: string, method = 'GET', body?: unknown) {
-    const response = await fetch(base + path, { method, headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+    const response = await fetch(base + path, { method, headers: { ...operator.headers(token), 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(path==='/assets'&&method==='POST'?{locationId:operator.locationId,...body as object}:body) });
     return { status: response.status, body: await response.json() as any };
   }
   let assetId: number | undefined;

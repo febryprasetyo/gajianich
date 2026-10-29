@@ -32,13 +32,14 @@ test("Helpdesk Routes API integration test suite", async (t) => {
       "INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id",
       ["admin_api_" + Date.now(), "admin_api_" + Date.now() + "@test.com", "hash"]
     );
-    adminUserId = adminUserRes.rows[0].id;
+    adminUserId = Number(adminUserRes.rows[0].id);
 
     const unauthRes = await client.query(
       "INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id",
       ["unauth_" + Date.now(), "unauth_" + Date.now() + "@test.com", "hash"]
     );
-    unauthorizedUserId = unauthRes.rows[0].id;
+    unauthorizedUserId = Number(unauthRes.rows[0].id);
+    await client.query("UPDATE users SET role='Employee' WHERE id=$1", [unauthorizedUserId]);
   } finally {
     client.release();
   }

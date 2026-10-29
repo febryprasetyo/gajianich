@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import {createHrScopeFixture,ownedFixtureDatabase} from '../testing/hrScopeFixture';
 import { mkdtemp, writeFile, stat, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -14,13 +15,21 @@ import { attendanceSelfLogs } from '../db/schema/attendanceSelfLogs';
 import { attendanceRecords, attendanceBatches } from '../db/schema/attendance';
 import { attendanceFaceProfiles } from '../db/schema/attendanceFaceProfiles';
 import { attendanceFaceRequests } from '../db/schema/attendanceFaceRequests';
-import { verifyAttendanceRecord, correctMobileAttendance, getMobileAttendanceHistory, getMobileTodaySummary, verifyFaceRequest, recordMobileClock, listPendingVerifications, listFaceRequests } from './mobileAttendanceService';
+import { verifyAttendanceRecord as rawVerify, correctMobileAttendance, getMobileAttendanceHistory, getMobileTodaySummary, verifyFaceRequest as rawVerifyFace, recordMobileClock, listPendingVerifications as rawPending, listFaceRequests as rawFaces } from './mobileAttendanceService';
+const fixtureScopes=new WeakMap<object,any>();
+const verifyAttendanceRecord=(userId:number,input:any,database:any)=>rawVerify(userId,input,database,fixtureScopes.get(database));
+const verifyFaceRequest=(userId:number,id:number,status:any,note:string,database:any)=>rawVerifyFace(userId,id,status,note,database,fixtureScopes.get(database));
+const listPendingVerifications=(database:any)=>rawPending(database,fixtureScopes.get(database));
+const listFaceRequests=(database:any)=>rawFaces(database,fixtureScopes.get(database));
 
 test('mobile approvals preserve original evidence and project only approved scans', async t => {
   const fixture = await createHrAuditTestDatabase();
   t.after(() => fixture.cleanup());
   await runMigrations(fixture.ownerUrl, undefined, fixture.runtimeRole);
-  const database = drizzle(fixture.owner);
+  const ownerDatabase = drizzle(fixture.owner);
+  const hr=await createHrScopeFixture(ownerDatabase);
+  const database=ownedFixtureDatabase(ownerDatabase,hr.scope,hr.department.id);
+  fixtureScopes.set(database,hr.scope);
   const [employee] = await database.insert(employees).values({ employeeCode: 'MOB-01', fullName: 'Mobile Tester' }).returning();
   const [other] = await database.insert(employees).values({ employeeCode: 'MOB-02', fullName: 'Other Tester' }).returning();
   const [user] = await database.insert(users).values({ username: 'mobile-review', passwordHash: 'test-only', employeeId: employee.id }).returning();
@@ -198,7 +207,10 @@ test('mobile approvals preserve original evidence and project only approved scan
 test('legacy recap readers hide pending scans while preserving stored evidence and independent records', async t => {
   const fixture = await createHrAuditTestDatabase(); t.after(() => fixture.cleanup());
   await runMigrations(fixture.ownerUrl, undefined, fixture.runtimeRole);
-  const database = drizzle(fixture.owner);
+  const ownerDatabase = drizzle(fixture.owner);
+  const hr=await createHrScopeFixture(ownerDatabase);
+  const database=ownedFixtureDatabase(ownerDatabase,hr.scope,hr.department.id);
+  fixtureScopes.set(database,hr.scope);
   const { approvedAttendanceRecords } = await import('./approvedAttendanceRecords');
   const { loadAttendanceWorkspace } = await import('./attendanceWorkspace');
   const [employee] = await database.insert(employees).values({ employeeCode: 'LEGACY-01', fullName: 'Legacy Employee' }).returning();
@@ -209,7 +221,7 @@ test('legacy recap readers hide pending scans while preserving stored evidence a
   const records = await database.select().from(attendanceRecords);
   const visible = await approvedAttendanceRecords(records, database);
   assert.equal(visible.length, 1); assert.equal(visible[0].workDate, '2026-01-02');
-  const workspace = await loadAttendanceWorkspace(database as any, { actor: { id: String(user.id), name: 'Reviewer' } } as any);
+  const workspace = await loadAttendanceWorkspace(database as any, { actor: { id: String(user.id), name: 'Reviewer' } } as any,hr.scope);
   assert.equal(workspace.records.length, 1);
   assert.equal((await database.select().from(attendanceRecords)).length, 2);
   await verifyAttendanceRecord(user.id, { logId: log.id, status: 'REJECTED', note: 'Koreksi keterangan' }, database as any);

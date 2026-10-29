@@ -182,6 +182,34 @@
       "when": 1793150120897,
       "tag": "0025_married_blazing_skull",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1793254329502,
+      "tag": "0026_organization_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1793256656075,
+      "tag": "0027_organization_ownership_documents",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1793257402348,
+      "tag": "0028_organization_history_constraints",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1793259076754,
+      "tag": "0029_immutable_hardware_ownership",
+      "breakpoints": true
     }
   ],
   "version": "7"

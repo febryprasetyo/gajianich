@@ -1,3 +1,4 @@
+import {requireOrganizationScope} from '../middleware/organizationScope';
 import { Router } from 'express';
 import multer from 'multer';
 import {
@@ -20,8 +21,8 @@ const router = Router();
 // Protect all employee routes with authentication
 router.use(authenticateToken);
 
-const viewEmployee = requirePermission(['master.view', 'attendance.view']);
-const manageEmployee = requirePermission(['master.manage', 'attendance.manage', 'attendance.import']);
+const viewEmployee = requirePermission(['attendance.view', 'attendance.manage']);
+const manageEmployee = requirePermission(['attendance.manage', 'attendance.import']);
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -29,16 +30,16 @@ const upload = multer({
 });
 
 // --- Employee Import & Export Routes (Must be registered before /:id) ---
-router.get('/import/template', viewEmployee, downloadEmployeeTemplate);
-router.post('/import/preview', manageEmployee, upload.single('file'), previewEmployeeImport);
-router.post('/import/commit', manageEmployee, upload.single('file'), commitEmployeeImport);
-router.get('/export', viewEmployee, exportEmployeesToExcel);
+router.get('/import/template', viewEmployee, requireOrganizationScope('hr', 'read'), downloadEmployeeTemplate);
+router.post('/import/preview', manageEmployee, requireOrganizationScope('hr', 'write'), upload.single('file'), previewEmployeeImport);
+router.post('/import/commit', manageEmployee, requireOrganizationScope('hr', 'write'), upload.single('file'), commitEmployeeImport);
+router.get('/export', viewEmployee, requireOrganizationScope('hr', 'read'), exportEmployeesToExcel);
 
 // --- Employee CRUD Routes ---
-router.get('/', viewEmployee, getEmployees);
-router.get('/:id', viewEmployee, getEmployeeById);
-router.post('/', manageEmployee, createEmployee);
-router.put('/:id', manageEmployee, updateEmployee);
-router.delete('/:id', manageEmployee, deleteEmployee);
+router.get('/', viewEmployee, requireOrganizationScope('hr', 'read'), getEmployees);
+router.get('/:id', viewEmployee, requireOrganizationScope('hr', 'read'), getEmployeeById);
+router.post('/', manageEmployee, requireOrganizationScope('hr', 'write'), createEmployee);
+router.put('/:id', manageEmployee, requireOrganizationScope('hr', 'write'), updateEmployee);
+router.delete('/:id', manageEmployee, requireOrganizationScope('hr', 'write'), deleteEmployee);
 
 export default router;

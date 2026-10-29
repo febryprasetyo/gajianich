@@ -1,3 +1,5 @@
+import {employeeScopePredicate,historicalScopePredicate,requireHrScope,requireScopedEmployee} from '../services/hrOrganizationScope';
+import {loadCurrentIdentity} from '../services/currentIdentity';
 import { Request, Response } from "express";
 import { eq, desc, and, gte, lte, ilike, or, sql } from "drizzle-orm";
 import { db } from "../db";
@@ -38,6 +40,7 @@ export async function getAttendanceDevicesHandler(req: Request, res: Response) {
     const list = await db
       .select()
       .from(attendanceDevices)
+      .where(historicalScopePredicate(requireHrScope(req as any),attendanceDevices.groupId))
       .orderBy(attendanceDevices.id);
 
     const enriched = list.map((dev) => {
@@ -69,6 +72,8 @@ export async function getAttendanceDevicesHandler(req: Request, res: Response) {
 
 export async function createAttendanceDeviceHandler(req: Request, res: Response) {
   try {
+    const scope = requireHrScope(req as any);
+    if (!(await loadCurrentIdentity((req as any).user?.userId))?.isGlobalAdministrator) return res.status(403).json({error:'Device configuration and ingestion require global administrator'});
     const { name, ip, port, commKey, deviceNumber, location, connectionType } = req.body;
     if (!name || !ip) {
       return res.status(400).json({ success: false, message: "Nama dan IP mesin wajib diisi" });
@@ -79,6 +84,7 @@ export async function createAttendanceDeviceHandler(req: Request, res: Response)
       .insert(attendanceDevices)
       .values({
         code,
+        groupId:scope.selectedGroupId,
         name,
         ip,
         port: parseInt(port, 10) || 4370,
@@ -99,6 +105,10 @@ export async function createAttendanceDeviceHandler(req: Request, res: Response)
 
 export async function updateAttendanceDeviceHandler(req: Request, res: Response) {
   try {
+    const scope = requireHrScope(req as any);
+    if (!(await loadCurrentIdentity((req as any).user?.userId))?.isGlobalAdministrator) return res.status(403).json({error:'Device configuration and ingestion require global administrator'});
+    const [ownedDevice] = await db.select().from(attendanceDevices).where(and(eq(attendanceDevices.id,Number(req.params.id)),historicalScopePredicate({...scope,includeUnmapped:false},attendanceDevices.groupId)));
+    if (!ownedDevice) return res.status(404).json({error:'Device unavailable in destination group'});
     const deviceId = parseInt(req.params.id, 10);
     const { name, ip, port, commKey, deviceNumber, location, connectionType, isEnabled } = req.body;
 
@@ -130,6 +140,10 @@ export async function updateAttendanceDeviceHandler(req: Request, res: Response)
 
 export async function deleteAttendanceDeviceHandler(req: Request, res: Response) {
   try {
+    const scope = requireHrScope(req as any);
+    if (!(await loadCurrentIdentity((req as any).user?.userId))?.isGlobalAdministrator) return res.status(403).json({error:'Device configuration and ingestion require global administrator'});
+    const [ownedDevice] = await db.select().from(attendanceDevices).where(and(eq(attendanceDevices.id,Number(req.params.id)),historicalScopePredicate({...scope,includeUnmapped:false},attendanceDevices.groupId)));
+    if (!ownedDevice) return res.status(404).json({error:'Device unavailable in destination group'});
     const deviceId = parseInt(req.params.id, 10);
     await attendanceDeviceSessionManager.disconnect(deviceId);
 
@@ -150,6 +164,10 @@ export async function deleteAttendanceDeviceHandler(req: Request, res: Response)
 
 export async function connectAttendanceDeviceHandler(req: Request, res: Response) {
   try {
+    const scope = requireHrScope(req as any);
+    if (!(await loadCurrentIdentity((req as any).user?.userId))?.isGlobalAdministrator) return res.status(403).json({error:'Device configuration and ingestion require global administrator'});
+    const [ownedDevice] = await db.select().from(attendanceDevices).where(and(eq(attendanceDevices.id,Number(req.params.id)),historicalScopePredicate({...scope,includeUnmapped:false},attendanceDevices.groupId)));
+    if (!ownedDevice) return res.status(404).json({error:'Device unavailable in destination group'});
     const deviceId = parseInt(req.params.id, 10);
     const [device] = await db
       .select()
@@ -228,6 +246,10 @@ export async function connectAttendanceDeviceHandler(req: Request, res: Response
 
 export async function disconnectAttendanceDeviceHandler(req: Request, res: Response) {
   try {
+    const scope = requireHrScope(req as any);
+    if (!(await loadCurrentIdentity((req as any).user?.userId))?.isGlobalAdministrator) return res.status(403).json({error:'Device configuration and ingestion require global administrator'});
+    const [ownedDevice] = await db.select().from(attendanceDevices).where(and(eq(attendanceDevices.id,Number(req.params.id)),historicalScopePredicate({...scope,includeUnmapped:false},attendanceDevices.groupId)));
+    if (!ownedDevice) return res.status(404).json({error:'Device unavailable in destination group'});
     const deviceId = parseInt(req.params.id, 10);
     await attendanceDeviceSessionManager.disconnect(deviceId);
 
@@ -248,6 +270,10 @@ export async function disconnectAttendanceDeviceHandler(req: Request, res: Respo
 
 export async function syncAttendanceDeviceHandler(req: Request, res: Response) {
   try {
+    const scope = requireHrScope(req as any);
+    if (!(await loadCurrentIdentity((req as any).user?.userId))?.isGlobalAdministrator) return res.status(403).json({error:'Device configuration and ingestion require global administrator'});
+    const [ownedDevice] = await db.select().from(attendanceDevices).where(and(eq(attendanceDevices.id,Number(req.params.id)),historicalScopePredicate({...scope,includeUnmapped:false},attendanceDevices.groupId)));
+    if (!ownedDevice) return res.status(404).json({error:'Device unavailable in destination group'});
     const deviceId = parseInt(req.params.id, 10);
     const { startDate, endDate, overwriteExisting = true } = req.body;
 
@@ -264,6 +290,7 @@ export async function syncAttendanceDeviceHandler(req: Request, res: Response) {
     const [syncLog] = await db
       .insert(attendanceDeviceSyncLogs)
       .values({
+        groupId:device.groupId,
         deviceId: device.id,
         syncType: "MANUAL_DOWNLOAD",
         startDate: startDate || null,
@@ -310,7 +337,7 @@ export async function syncAttendanceDeviceHandler(req: Request, res: Response) {
     }
 
     // 3. Match PIN to Employees using canonical resolveImportEmployee
-    const allEmployees = await db.select().from(employees);
+    const allEmployees = await db.select().from(employees).where(employeeScopePredicate({...requireHrScope(req as any),includeUnmapped:false}));
     const identities = await db.select().from(attendanceIdentities);
     const pinResolutionCache = new Map<string, number | null>();
 
@@ -366,7 +393,10 @@ export async function syncAttendanceDeviceHandler(req: Request, res: Response) {
       if (startDate && punch.workDate < startDate) continue;
       if (endDate && punch.workDate > endDate) continue;
       const empId = getEmployeeIdForPin(punch.pin);
+      if (!empId) continue;
+      const owner = await requireScopedEmployee(requireHrScope(req as any),empId);
       rawInserts.push({
+        groupId:owner.groupId,
         syncLogId: syncLog.id,
         deviceId: device.id,
         pin: punch.pin,
@@ -427,7 +457,7 @@ export async function getRawAttendanceLogsHandler(req: Request, res: Response) {
   try {
     const { startDate, endDate, deviceId, pin, limit = 50, offset = 0 } = req.query;
 
-    const conditions = [];
+    const conditions = [historicalScopePredicate(requireHrScope(req as any),attendanceDeviceRawLogs.groupId)];
     if (startDate) conditions.push(gte(attendanceDeviceRawLogs.workDate, String(startDate)));
     if (endDate) conditions.push(lte(attendanceDeviceRawLogs.workDate, String(endDate)));
     if (deviceId) conditions.push(eq(attendanceDeviceRawLogs.deviceId, parseInt(String(deviceId), 10)));
@@ -461,7 +491,7 @@ export async function getRawAttendanceLogsHandler(req: Request, res: Response) {
     // Fallback: If any log rows have null employeeId, resolve them dynamically
     const unmappedLogs = logs.filter((l) => !l.employeeId);
     if (unmappedLogs.length > 0) {
-      const allEmployees = await db.select().from(employees);
+      const allEmployees = await db.select().from(employees).where(employeeScopePredicate({...requireHrScope(req as any),includeUnmapped:false}));
       const identities = await db.select().from(attendanceIdentities);
       const pinCache = new Map<string, number | null>();
       for (const log of unmappedLogs) {
@@ -492,7 +522,7 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
   try {
     const { startDate, endDate, deviceId, assignDefaultShiftIfUnassigned = true, saveToDatabase = true } = req.body;
 
-    const conditions = [];
+    const conditions = [historicalScopePredicate(requireHrScope(req as any),attendanceDeviceRawLogs.groupId)];
     if (startDate) conditions.push(gte(attendanceDeviceRawLogs.workDate, String(startDate)));
     if (endDate) conditions.push(lte(attendanceDeviceRawLogs.workDate, String(endDate)));
     if (deviceId) conditions.push(eq(attendanceDeviceRawLogs.deviceId, parseInt(String(deviceId), 10)));
@@ -516,7 +546,7 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
       .where(whereClause);
 
     // Query employees, shifts, assignments, and identities
-    const allEmployees = await db.select().from(employees);
+    const allEmployees = await db.select().from(employees).where(employeeScopePredicate({...requireHrScope(req as any),includeUnmapped:false}));
     const identities = await db.select().from(attendanceIdentities);
     const pinResolutionCache = new Map<string, number | null>();
 
@@ -580,9 +610,13 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
     if (saveToDatabase && result.processedRecords.length > 0) {
       for (const rec of result.processedRecords) {
         if (!rec.employeeId) continue;
+        const owner = await requireScopedEmployee(requireHrScope(req as any),rec.employeeId);
+        const [previous] = await db.select().from(attendanceRecords).where(and(eq(attendanceRecords.employeeId,rec.employeeId),eq(attendanceRecords.workDate,rec.workDate)));
+        if (previous && previous.groupId !== owner.groupId) throw new Error('Historical attendance ownership mismatch');
         await db
           .insert(attendanceRecords)
           .values({
+            groupId:owner.groupId,organizationId:owner.organizationId,
             employeeId: rec.employeeId,
             workDate: rec.workDate,
             shift: rec.shiftName,

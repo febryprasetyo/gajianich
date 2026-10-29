@@ -1,4 +1,5 @@
 import { AUTH_COOKIE_NAME } from "./authCookie";
+import {organizationRequests} from './access/organizationScope';
 
 const getBaseUrl = (): string => {
   if (typeof window !== 'undefined') {
@@ -35,6 +36,8 @@ function getToken(): string | null {
 }
 
 export async function apiFetch<T = unknown>(endpoint: string, options: ApiOptions = {}): Promise<T> {
+  const scope=endpoint.includes('/auth/')?null:organizationRequests.begin(options.signal);
+  try {
   const token = getToken();
   const baseUrl = getBaseUrl().replace(/\/+$/, '');
 
@@ -47,6 +50,7 @@ export async function apiFetch<T = unknown>(endpoint: string, options: ApiOption
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
+  if(scope?.groupId!==null && scope?.groupId!==undefined) headers['X-Organization-Group-Id']=String(scope.groupId);
 
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = endpoint.startsWith('http') ? endpoint : `${baseUrl}${cleanEndpoint}`;
@@ -54,11 +58,14 @@ export async function apiFetch<T = unknown>(endpoint: string, options: ApiOption
   const response = await fetch(url, {
     ...options,
     headers,
+    ...(scope?{signal:scope.signal}:{}),
   });
+  scope?.assertCurrent();
 
   const contentType = response.headers.get('content-type');
   const isJson = contentType && contentType.includes('application/json');
   const data = isJson ? await response.json() : null;
+  scope?.assertCurrent();
 
   if (!response.ok) {
     const errorMessage = data?.error || data?.message || `HTTP Error ${response.status}: ${response.statusText}`;
@@ -66,6 +73,7 @@ export async function apiFetch<T = unknown>(endpoint: string, options: ApiOption
   }
 
   return data as T;
+  }finally{scope?.finish();}
 }
 
 export const api = {
@@ -104,6 +112,8 @@ export const api = {
     }),
 
   download: async (endpoint: string, options?: ApiOptions): Promise<Blob> => {
+    const scope=organizationRequests.begin(options?.signal);
+    try {
     const token = getToken();
     const baseUrl = getBaseUrl().replace(/\/+$/, '');
     const headers: Record<string, string> = {
@@ -112,6 +122,7 @@ export const api = {
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
+    if(scope.groupId!==null) headers['X-Organization-Group-Id']=String(scope.groupId);
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     const url = endpoint.startsWith('http') ? endpoint : `${baseUrl}${cleanEndpoint}`;
 
@@ -119,7 +130,9 @@ export const api = {
       ...options,
       method: 'GET',
       headers,
+      signal:scope.signal,
     });
+    scope.assertCurrent();
 
     if (!response.ok) {
       let errorMessage = `HTTP Error ${response.status}: ${response.statusText}`;
@@ -131,6 +144,7 @@ export const api = {
       }
       throw new Error(errorMessage);
     }
-    return response.blob();
+    const blob=await response.blob();scope.assertCurrent();return blob;
+    }finally{scope.finish();}
   },
 };

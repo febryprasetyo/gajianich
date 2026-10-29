@@ -1,3 +1,4 @@
+import {createHrScopeFixture} from '../testing/hrScopeFixture';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -26,8 +27,10 @@ test('clock validates identity and uses server instant in GPS zone; OUT retains 
   const fixture = await createHrAuditTestDatabase(); t.after(() => fixture.cleanup());
   await runMigrations(fixture.ownerUrl, undefined, fixture.runtimeRole);
   const database = drizzle(fixture.owner);
-  const [employee] = await database.insert(employees).values({ employeeCode: 'CLOCK-01', fullName: 'Clock Tester' }).returning();
+  const hr = await createHrScopeFixture(database);
+  const [employee] = await database.insert(employees).values({ departmentId:hr.department.id,employeeCode: 'CLOCK-01', fullName: 'Clock Tester' }).returning();
   const [user] = await database.insert(users).values({ username: 'clock-tester', passwordHash: 'test-only', employeeId: employee.id }).returning();
+  await hr.grantUsers([user.id]);
   await database.insert(attendanceFaceProfiles).values({ employeeId: employee.id, isEnrolled: true, samplePhotoUrl: photoUrl, faceDescriptorHash: JSON.stringify(descriptor), descriptorVersion: FACE_DESCRIPTOR_VERSION });
   const [shift] = await database.insert(attendanceShifts).values({ code: 'CLOCK', name: 'Clock Shift', scheduleIn: '08:00', scheduleOut: '17:00', autoApproveIn: true, autoApproveOut: true }).returning();
   await database.insert(attendanceShiftAssignments).values({ shiftId: shift.id, employeeId: employee.id });
@@ -51,9 +54,11 @@ test('first enrollment activates profile; subsequent changes await HRD', async t
   const fixture = await createHrAuditTestDatabase(); t.after(() => fixture.cleanup());
   await runMigrations(fixture.ownerUrl, undefined, fixture.runtimeRole);
   const database = drizzle(fixture.owner);
+  const hr = await createHrScopeFixture(database);
   const { updateFaceEnrollment, getFaceProfile } = await import('./mobileAttendanceService');
-  const [employee] = await database.insert(employees).values({ employeeCode: 'FACE-01', fullName: 'Face Tester' }).returning();
+  const [employee] = await database.insert(employees).values({ departmentId:hr.department.id,employeeCode: 'FACE-01', fullName: 'Face Tester' }).returning();
   const [user] = await database.insert(users).values({ username: 'face-tester', passwordHash: 'test-only', employeeId: employee.id }).returning();
+  await hr.grantUsers([user.id]);
   await database.insert(attendanceFaceProfiles).values({ employeeId: employee.id, isEnrolled: false });
   const first = await updateFaceEnrollment(user.id, { samplePhotoBase64: photoUrl }, database as any, async () => ({ descriptor, photoUrl }));
   assert.equal(first.changeStatus, null); assert.equal(first.isEnrolled, true);
@@ -75,15 +80,17 @@ test('clock IN is rejected directly when independent IN record already exists', 
   const fixture = await createHrAuditTestDatabase(); t.after(() => fixture.cleanup());
   await runMigrations(fixture.ownerUrl, undefined, fixture.runtimeRole);
   const database = drizzle(fixture.owner);
-  const [employee] = await database.insert(employees).values({ employeeCode: 'CLOCK-INDEP', fullName: 'Indep Tester' }).returning();
+  const hr = await createHrScopeFixture(database);
+  const [employee] = await database.insert(employees).values({ departmentId:hr.department.id,employeeCode: 'CLOCK-INDEP', fullName: 'Indep Tester' }).returning();
   const [user] = await database.insert(users).values({ username: 'clock-indep', passwordHash: 'test-only', employeeId: employee.id }).returning();
+  await hr.grantUsers([user.id]);
   await database.insert(attendanceFaceProfiles).values({ employeeId: employee.id, isEnrolled: true, samplePhotoUrl: photoUrl, faceDescriptorHash: JSON.stringify(descriptor), descriptorVersion: FACE_DESCRIPTOR_VERSION });
   const [shift] = await database.insert(attendanceShifts).values({ code: 'OFFICE', name: 'Office Shift', scheduleIn: '08:00', scheduleOut: '17:00', autoApproveIn: true, autoApproveOut: true }).returning();
   await database.insert(attendanceShiftAssignments).values({ shiftId: shift.id, employeeId: employee.id });
 
   const todayDate = localAttendanceTime(new Date(), 'Asia/Jakarta').workDate;
-  const [batch] = await database.insert(attendanceBatches).values({ filename: 'machine-import.xlsx' }).returning();
-  await database.insert(attendanceRecords).values({
+  const [batch] = await database.insert(attendanceBatches).values({groupId:hr.group.id, filename: 'machine-import.xlsx' }).returning();
+  await database.insert(attendanceRecords).values({groupId:hr.group.id,
     employeeId: employee.id,
     workDate: todayDate,
     scanIn: '08:00',
@@ -114,8 +121,10 @@ test('unassigned employee remains PENDING even if default shift has autoApprove 
   const fixture = await createHrAuditTestDatabase(); t.after(() => fixture.cleanup());
   await runMigrations(fixture.ownerUrl, undefined, fixture.runtimeRole);
   const database = drizzle(fixture.owner);
-  const [employee] = await database.insert(employees).values({ employeeCode: 'UNASSIGNED-01', fullName: 'Unassigned Tester' }).returning();
+  const hr = await createHrScopeFixture(database);
+  const [employee] = await database.insert(employees).values({ departmentId:hr.department.id,employeeCode: 'UNASSIGNED-01', fullName: 'Unassigned Tester' }).returning();
   const [user] = await database.insert(users).values({ username: 'unassigned-tester', passwordHash: 'test-only', employeeId: employee.id }).returning();
+  await hr.grantUsers([user.id]);
   await database.insert(attendanceFaceProfiles).values({ employeeId: employee.id, isEnrolled: true, samplePhotoUrl: photoUrl, faceDescriptorHash: JSON.stringify(descriptor), descriptorVersion: FACE_DESCRIPTOR_VERSION });
   // Default shift has autoApproveIn: true and autoApproveOut: true
   await database.insert(attendanceShifts).values({ code: 'DEF-AUTO', name: 'Default Auto Shift', scheduleIn: '08:00', scheduleOut: '17:00', isDefault: true, autoApproveIn: true, autoApproveOut: true });
@@ -134,8 +143,10 @@ test('Smart Clock Selection: isDirectOut without IN records [DIRECT_OUT] as PEND
   const fixture = await createHrAuditTestDatabase(); t.after(() => fixture.cleanup());
   await runMigrations(fixture.ownerUrl, undefined, fixture.runtimeRole);
   const database = drizzle(fixture.owner);
-  const [employee] = await database.insert(employees).values({ employeeCode: 'DIRECT-01', fullName: 'Direct Out Tester' }).returning();
+  const hr = await createHrScopeFixture(database);
+  const [employee] = await database.insert(employees).values({ departmentId:hr.department.id,employeeCode: 'DIRECT-01', fullName: 'Direct Out Tester' }).returning();
   const [user] = await database.insert(users).values({ username: 'direct-tester', passwordHash: 'test-only', employeeId: employee.id }).returning();
+  await hr.grantUsers([user.id]);
   await database.insert(attendanceFaceProfiles).values({ employeeId: employee.id, isEnrolled: true, samplePhotoUrl: photoUrl, faceDescriptorHash: JSON.stringify(descriptor), descriptorVersion: FACE_DESCRIPTOR_VERSION });
   const [shift] = await database.insert(attendanceShifts).values({ code: 'OFFICE-DIR', name: 'Office Direct', scheduleIn: '08:00', scheduleOut: '17:00', autoApproveIn: true, autoApproveOut: true }).returning();
   await database.insert(attendanceShiftAssignments).values({ shiftId: shift.id, employeeId: employee.id });
@@ -179,8 +190,10 @@ test('projectApprovedLog: approving DIRECT_OUT projects record with scanIn = nul
   const fixture = await createHrAuditTestDatabase(); t.after(() => fixture.cleanup());
   await runMigrations(fixture.ownerUrl, undefined, fixture.runtimeRole);
   const database = drizzle(fixture.owner);
-  const [employee] = await database.insert(employees).values({ employeeCode: 'DIR-APP-01', fullName: 'Direct Approve Tester' }).returning();
+  const hr = await createHrScopeFixture(database);
+  const [employee] = await database.insert(employees).values({ departmentId:hr.department.id,employeeCode: 'DIR-APP-01', fullName: 'Direct Approve Tester' }).returning();
   const [user] = await database.insert(users).values({ username: 'dir-app-tester', passwordHash: 'test-only', employeeId: employee.id }).returning();
+  await hr.grantUsers([user.id]);
   const [hrUser] = await database.insert(users).values({ username: 'hr-verifier', passwordHash: 'test-only' }).returning();
   await database.insert(attendanceFaceProfiles).values({ employeeId: employee.id, isEnrolled: true, samplePhotoUrl: photoUrl, faceDescriptorHash: JSON.stringify(descriptor), descriptorVersion: FACE_DESCRIPTOR_VERSION });
   const [shift] = await database.insert(attendanceShifts).values({ code: 'OFFICE-APP', name: 'Office App', scheduleIn: '08:00', scheduleOut: '17:00' }).returning();
@@ -194,7 +207,7 @@ test('projectApprovedLog: approving DIRECT_OUT projects record with scanIn = nul
   );
 
   // HR approves the direct out
-  await verifyAttendanceRecord(hrUser.id, { logId: clockResult.data.id, status: 'APPROVED' }, database as any);
+  await verifyAttendanceRecord(hrUser.id, { logId: clockResult.data.id, status: 'APPROVED' }, database as any,hr.scope);
 
   const [record] = await database.select().from(attendanceRecords).where(eq(attendanceRecords.employeeId, employee.id));
   assert.ok(record, 'attendanceRecords should be created');
@@ -212,8 +225,10 @@ test('Multi-clocking in default mode: multiple OUT clocks are allowed as PENDING
   const fixture = await createHrAuditTestDatabase(); t.after(() => fixture.cleanup());
   await runMigrations(fixture.ownerUrl, undefined, fixture.runtimeRole);
   const database = drizzle(fixture.owner);
-  const [employee] = await database.insert(employees).values({ employeeCode: 'MULTI-01', fullName: 'Multi Clock Tester' }).returning();
+  const hr = await createHrScopeFixture(database);
+  const [employee] = await database.insert(employees).values({ departmentId:hr.department.id,employeeCode: 'MULTI-01', fullName: 'Multi Clock Tester' }).returning();
   const [user] = await database.insert(users).values({ username: 'multi-tester', passwordHash: 'test-only', employeeId: employee.id }).returning();
+  await hr.grantUsers([user.id]);
   const [hrUser] = await database.insert(users).values({ username: 'hr-multi', passwordHash: 'test-only' }).returning();
   await database.insert(attendanceFaceProfiles).values({ employeeId: employee.id, isEnrolled: true, samplePhotoUrl: photoUrl, faceDescriptorHash: JSON.stringify(descriptor), descriptorVersion: FACE_DESCRIPTOR_VERSION });
   const [shift] = await database.insert(attendanceShifts).values({ code: 'OFFICE-MUL', name: 'Office Multi', scheduleIn: '08:00', scheduleOut: '17:00', autoApproveIn: true, autoApproveOut: false }).returning();
@@ -235,7 +250,7 @@ test('Multi-clocking in default mode: multiple OUT clocks are allowed as PENDING
   assert.equal(logs.length, 3); // 1 IN + 2 OUT
 
   // 4. When HR approves the second OUT (out2), projectApprovedLog updates scanOut to out2 time
-  await verifyAttendanceRecord(hrUser.id, { logId: out2.data.id, status: 'APPROVED' }, database as any);
+  await verifyAttendanceRecord(hrUser.id, { logId: out2.data.id, status: 'APPROVED' }, database as any,hr.scope);
 
   const [record] = await database.select().from(attendanceRecords).where(eq(attendanceRecords.employeeId, employee.id));
   assert.equal(record.scanOut, out2.data.scanTime);
@@ -249,8 +264,10 @@ test('Multi-clocking with autoApproveOut enabled: multiple OUT clocks are auto-a
   const fixture = await createHrAuditTestDatabase(); t.after(() => fixture.cleanup());
   await runMigrations(fixture.ownerUrl, undefined, fixture.runtimeRole);
   const database = drizzle(fixture.owner);
-  const [employee] = await database.insert(employees).values({ employeeCode: 'MULTI-AUTO-01', fullName: 'Multi Auto Tester' }).returning();
+  const hr = await createHrScopeFixture(database);
+  const [employee] = await database.insert(employees).values({ departmentId:hr.department.id,employeeCode: 'MULTI-AUTO-01', fullName: 'Multi Auto Tester' }).returning();
   const [user] = await database.insert(users).values({ username: 'multi-auto-tester', passwordHash: 'test-only', employeeId: employee.id }).returning();
+  await hr.grantUsers([user.id]);
   await database.insert(attendanceFaceProfiles).values({ employeeId: employee.id, isEnrolled: true, samplePhotoUrl: photoUrl, faceDescriptorHash: JSON.stringify(descriptor), descriptorVersion: FACE_DESCRIPTOR_VERSION });
   const [shift] = await database.insert(attendanceShifts).values({ code: 'OFFICE-AUTO', name: 'Office Auto', scheduleIn: '08:00', scheduleOut: '17:00', autoApproveIn: true, autoApproveOut: true }).returning();
   await database.insert(attendanceShiftAssignments).values({ shiftId: shift.id, employeeId: employee.id });

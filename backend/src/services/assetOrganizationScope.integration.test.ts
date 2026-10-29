@@ -1,0 +1,70 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { createHrAuditTestDatabase } from '../testing/hrAuditDatabase';
+import { runMigrations } from '../db/migrate';
+
+test('primary facility isolates inventory independently of custodian and authorizes transfers', async () => {
+  const fixture = await createHrAuditTestDatabase();
+  let server: any;
+  let closeDatabase: (() => Promise<void>) | undefined;
+  try {
+    await runMigrations(fixture.ownerUrl, undefined, fixture.runtimeRole);
+    process.env.DATABASE_URL = fixture.ownerUrl;
+    const app = await import('../app');
+    closeDatabase = (await import('../db')).closeDatabase;
+    const { generateToken } = await import('../utils/jwt');
+    await fixture.owner.query(`INSERT INTO organization_groups (code,name) VALUES ('CMC','CMC'),('MGM','MGM');
+      INSERT INTO locations (code,name) VALUES ('CMC','CMC facility'),('MGM','MGM facility');
+      INSERT INTO location_organization_mappings (location_id,group_id,approval_reference) SELECT l.id,g.id,'fixture' FROM locations l JOIN organization_groups g ON l.code=g.code;
+      INSERT INTO users (username,password_hash,role) VALUES ('asset-global','fixture','SuperAdmin'),('asset-it','fixture','ITAdmin');
+      INSERT INTO user_organization_group_access (user_id,group_id) SELECT u.id,g.id FROM users u CROSS JOIN organization_groups g WHERE u.username='asset-it';
+      INSERT INTO asset_categories (name,code) VALUES ('Furniture','FUR');
+      INSERT INTO asset_custodians (display_name,normalized_name,location_id) SELECT 'CMC holder','cmc holder',id FROM locations WHERE code='CMC';
+      INSERT INTO assets (asset_tag,brand,category_id,location_id,current_custodian_id) SELECT l.code||'-1',l.code||' item',c.id,l.id,h.id FROM asset_categories c CROSS JOIN locations l CROSS JOIN asset_custodians h;
+      INSERT INTO assets (asset_tag,brand,category_id) SELECT 'UNMAPPED','Unresolved',id FROM asset_categories;`);
+    const groups = (await fixture.owner.query('SELECT id::int,code FROM organization_groups')).rows;
+    const cmc = groups.find(g => g.code === 'CMC').id, mgm = groups.find(g => g.code === 'MGM').id;
+    const rows = (await fixture.owner.query('SELECT id::int,asset_tag FROM assets')).rows;
+    const cmcId = rows.find(a => a.asset_tag === 'CMC-1').id, mgmId = rows.find(a => a.asset_tag === 'MGM-1').id;
+    const mgmLocation = (await fixture.owner.query("SELECT id::int FROM locations WHERE code='MGM'")).rows[0].id;
+    const categoryId = (await fixture.owner.query('SELECT id::int FROM asset_categories')).rows[0].id;
+    const identities = (await fixture.owner.query('SELECT id::int,username,role FROM users')).rows;
+    server = app.createApp().listen(0);
+    const api = async (path: string, method = 'GET', body?: unknown, group: number | null = cmc, global = false) => {
+      const u = identities.find(u => u.username === (global ? 'asset-global' : 'asset-it'));
+      const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1${path}`, {method, headers: {Authorization: `Bearer ${generateToken({userId:u.id,roleId:0,roleName:u.role})}`, 'Content-Type':'application/json', ...(group === null ? {} : {'X-Organization-Group-Id':String(group)})}, ...(body === undefined ? {} : {body:JSON.stringify(body)})});
+      return {status:response.status, body:await response.json() as any};
+    };
+    await fixture.owner.query(`INSERT INTO system_settings (key,value) VALUES ('private_machine_token','"secret-fixture"'),('attendance_strict_integrity','true');`);
+    assert.equal((await api('/system/settings/private_machine_token')).status,403);
+    assert.equal((await api('/system/settings')).status,403,'IT permissions do not expose shared HR settings');
+    await fixture.owner.query(`INSERT INTO ticket_categories (name) VALUES ('Fixture');
+      INSERT INTO it_tickets (ticket_code,subject,description,category_id,reporter_id,asset_id) SELECT 'IT-MGM','Fixture','Fixture',c.id,u.id,a.id FROM ticket_categories c CROSS JOIN users u CROSS JOIN assets a WHERE u.username='asset-it' AND a.asset_tag='MGM-1';`);
+    const tickets = await api('/tickets');
+    assert.equal(tickets.status,200);
+    assert.deepEqual(tickets.body,[],'tickets cannot expose inventory references from another group');
+    const ticketId = (await fixture.owner.query("SELECT id FROM it_tickets WHERE ticket_code='IT-MGM'")).rows[0].id;
+    assert.equal((await api(`/tickets/${ticketId}`)).status,404);
+    assert.equal((await api(`/tickets/${ticketId}`,'PUT',{assetId:null,status:'Closed'})).status,404);
+    assert.equal((await api(`/tickets/${ticketId}/comments`,'POST',{commentText:'Outside scope'})).status,404);
+    assert.equal((await api(`/tickets/${ticketId}`,'GET',undefined,mgm)).status,200);
+    assert.equal(Number((await fixture.owner.query('SELECT status,asset_id FROM it_tickets WHERE id=$1',[ticketId])).rows[0].asset_id),mgmId);
+    const list = await api('/assets');
+    assert.equal(list.status,200);
+    assert.deepEqual(list.body.map((a:any) => a.assetCode),['CMC-1']);
+    assert.equal((await api('/assets/dashboard-summary')).body.data.kpis.totalAssets,1);
+    assert.equal((await api(`/assets/${mgmId}`)).status,404);
+    assert.equal((await api(`/assets/${mgmId}/history`)).status,404);
+    assert.equal((await api('/assets','POST',{name:'Wrong facility',categoryId,locationId:mgmLocation})).status,403);
+    assert.equal((await api(`/assets/${cmcId}`,'PUT',{locationId:mgmLocation},mgm)).status,404);
+    assert.equal((await api(`/assets/${cmcId}`,'PUT',{locationId:mgmLocation},mgm,true)).status,200);
+    const logs = (await fixture.owner.query("SELECT * FROM audit_logs WHERE entity='ASSET' AND entity_id=$1",[cmcId])).rows;
+    assert.ok(logs.some(l => l.old_values?.locationId && l.new_values?.locationId === mgmLocation));
+    assert.equal((await api('/assets','GET',undefined,null,true)).body.length,3);
+    assert.equal((await api('/asset-custodians/1/assets')).body.assets.length,0);
+  } finally {
+    if (server) await new Promise<void>(resolve => server.close(() => resolve()));
+    await closeDatabase?.();
+    await fixture.cleanup();
+  }
+});

@@ -1,4 +1,6 @@
 import { test } from "node:test";
+import {createHrScopeFixture,ownedFixtureDatabase} from '../testing/hrScopeFixture';
+import type {RequestScope} from '../domain/organizationAccess';
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -20,12 +22,15 @@ import {
 } from "../db/schema/attendanceWorkspace";
 import { attendanceBatches, attendanceRecords } from "../db/schema/attendance";
 import {
-  loadAttendanceWorkspace,
-  executeAttendanceCommand,
+  loadAttendanceWorkspace as rawLoadWorkspace,
+  executeAttendanceCommand as rawExecuteCommand,
 } from "./attendanceWorkspace";
 import { repairOfficeShiftConfiguration } from "../scripts/repairOfficeShiftConfiguration";
 import type { AuditContext } from "../domain/hrAudit";
 import type { ServerAttendanceCommand } from "../domain/attendanceCommands";
+let fixtureScope:RequestScope;
+const loadAttendanceWorkspace=(tx:any,context:AuditContext)=>rawLoadWorkspace(tx,context,fixtureScope);
+const executeAttendanceCommand=(tx:any,context:AuditContext,command:ServerAttendanceCommand,revision?:number)=>rawExecuteCommand(tx,context,command,revision,fixtureScope);
 
 const migrations = path.resolve(__dirname, "../../drizzle");
 
@@ -43,14 +48,14 @@ test("Attendance Workspace & Commands Integration Tests", async (t) => {
   await owner.query(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO "${runtimeRole}"`);
   await owner.query(`REVOKE UPDATE, DELETE, TRUNCATE ON hr_audit_events, hr_audit_targets, hr_mutation_receipts FROM "${runtimeRole}"`);
 
-  const adminDb = drizzle(owner);
-  const db = drizzle(runtime);
+  let adminDb = drizzle(owner);
+  let db = drizzle(runtime);
 
   const [role] = await adminDb
     .insert(roles)
     .values({
-      name: "HR Admin",
-      code: "hr_admin",
+      name: "SuperAdmin",
+      code: "super_admin",
       isSystem: true,
     })
     .returning();
@@ -92,6 +97,10 @@ test("Attendance Workspace & Commands Integration Tests", async (t) => {
     },
     operationId: randomUUID(),
   };
+  const hr=await createHrScopeFixture(adminDb,dept);
+  fixtureScope=hr.scope;
+  db=ownedFixtureDatabase(db,fixtureScope,dept.id);
+  adminDb=ownedFixtureDatabase(adminDb,fixtureScope,dept.id);
 
   await t.test("empty database returns empty collections without dummy/mock rows", async () => {
     const ws = await db.transaction(async (tx) => {

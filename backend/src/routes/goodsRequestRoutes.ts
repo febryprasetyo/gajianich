@@ -3,7 +3,7 @@ import multer from 'multer';
 import { randomUUID } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import path from 'node:path';
-import { and, desc, eq, getTableColumns, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, getTableColumns, inArray, sql, or, isNull } from 'drizzle-orm';
 import { db } from '../db';
 import {
   goodsRequests,
@@ -13,7 +13,7 @@ import {
   goodsRequestSignedDocuments,
 } from '../db/schema/goodsRequests';
 import { users } from '../db/schema/users';
-import { authenticateToken, requirePermission, AuthenticatedRequest } from '../middleware/auth';
+import { authenticateToken, requirePermission } from '../middleware/auth';
 import {
   GoodsInputError,
   GoodsRequestStatus,
@@ -27,6 +27,9 @@ import {
   saveSignedDocument,
 } from '../services/goodsEvidence';
 
+import { requireOrganizationScope, type OrganizationScopedRequest } from '../middleware/organizationScope';
+import { organizations } from '../db/schema/organizations';
+import { resolveDocumentProfile, DocumentProfileUnavailableError } from '../services/documentProfile';
 const router = Router();
 router.use(authenticateToken);
 const view = requirePermission('ga.requests.view');
@@ -52,14 +55,30 @@ const uploadSigned = multer({
   },
 }).single('document');
 
-const asyncRoute = (handler: (req: AuthenticatedRequest, res: Response) => Promise<unknown>) =>
-  (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+const asyncRoute = (handler: (req: OrganizationScopedRequest, res: Response) => Promise<unknown>) =>
+  (req: OrganizationScopedRequest, res: Response, next: NextFunction) => {
     Promise.resolve(handler(req, res)).catch(next);
   };
 
+const readScope = requireOrganizationScope('ga', 'read');
+const writeScope = requireOrganizationScope('ga', 'write');
+const ownerScope = (req: OrganizationScopedRequest) => {
+ const scope = req.organizationScope!;
+ const mapped = scope.groupIds.length ? inArray(goodsRequests.groupId,scope.groupIds) : sql`false`;
+ return scope.includeUnmapped ? or(mapped,isNull(goodsRequests.groupId))! : mapped;
+};
+async function destination(req: OrganizationScopedRequest, raw: any) {
+ const groupId = req.organizationScope!.selectedGroupId!;
+ if (raw.groupId !== undefined && raw.groupId !== groupId) throw new GoodsInputError('Kelompok tujuan tidak sesuai pilihan aktif.');
+ const organizationId = Number(raw.organizationId);
+ if (!Number.isSafeInteger(organizationId) || organizationId <= 0) throw new GoodsInputError('Pilih organisasi tujuan.');
+ const [organization] = await db.select().from(organizations).where(and(eq(organizations.id,organizationId),eq(organizations.groupId,groupId),eq(organizations.isActive,true)));
+ if (!organization) throw new GoodsInputError('Organisasi tujuan tidak tersedia dalam kelompok aktif.');
+ return {groupId,organizationId};
+}
 const validId = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
-router.get('/', view, asyncRoute(async (req, res) => {
+router.get('/', view, readScope, asyncRoute(async (req, res) => {
   const page = Math.max(1, Math.min(100000, Math.floor(Number(req.query.page)) || 1));
   const limit = 20;
   const statusFilter = typeof req.query.status === 'string' && req.query.status.trim() !== ''
@@ -77,7 +96,7 @@ router.get('/', view, asyncRoute(async (req, res) => {
       where i.request_id = ${goodsRequests.id} and strpos(lower(i.name), lower(${search})) > 0
     )
   )` : undefined;
-  const whereClause = and(statusFilter ? eq(goodsRequests.status, statusFilter) : undefined, searchClause);
+  const whereClause = and(ownerScope(req), statusFilter ? eq(goodsRequests.status, statusFilter) : undefined, searchClause);
 
   const [items, [total]] = await Promise.all([
     db.select({
@@ -102,7 +121,12 @@ router.get('/', view, asyncRoute(async (req, res) => {
   res.json({ items, total: total.count, page, pageSize: limit });
 }));
 
-router.get('/:id', view, asyncRoute(async (req, res) => {
+router.get('/organizations', view, readScope, asyncRoute(async (req,res) => {
+ const groups = req.organizationScope!.groupIds;
+ res.json(groups.length ? await db.select({id:organizations.id,groupId:organizations.groupId,name:organizations.name,code:organizations.code}).from(organizations).where(and(inArray(organizations.groupId,groups),eq(organizations.isActive,true))) : []);
+}));
+
+router.get('/:id', view, readScope, asyncRoute(async (req, res) => {
   if (!validId(req.params.id)) return res.status(404).json({ error: 'Pengajuan tidak ditemukan.' });
   const [request] = await db.select({
     ...getTableColumns(goodsRequests),
@@ -110,7 +134,7 @@ router.get('/:id', view, asyncRoute(async (req, res) => {
   })
     .from(goodsRequests)
     .leftJoin(users, eq(goodsRequests.createdBy, users.id))
-    .where(eq(goodsRequests.id, req.params.id));
+    .where(and(eq(goodsRequests.id,req.params.id),ownerScope(req)));
 
   if (!request) return res.status(404).json({ error: 'Pengajuan tidak ditemukan.' });
 
@@ -141,8 +165,15 @@ router.get('/:id', view, asyncRoute(async (req, res) => {
     .where(eq(goodsRequestSignedDocuments.requestId, request.id))
     .orderBy(desc(goodsRequestSignedDocuments.createdAt));
 
+  let documentProfilePreview = null;
+  let documentProfileUnavailable = !request.documentProfileSnapshot;
+  if (request.status === 'draft' && !request.documentProfileSnapshot && request.groupId && request.organizationId) {
+    try { documentProfilePreview = await resolveDocumentProfile(db,{groupId:request.groupId,organizationId:request.organizationId,kind:'GA'}); documentProfileUnavailable = false; }
+    catch (error) { if (!(error instanceof DocumentProfileUnavailableError)) throw error; }
+  }
   res.json({
     ...request,
+    documentProfilePreview, documentProfileUnavailable,
     items: items.map(item => ({
       ...item,
       attachments: attachments.filter(file => file.itemId === item.id),
@@ -151,8 +182,10 @@ router.get('/:id', view, asyncRoute(async (req, res) => {
   });
 }));
 
-router.get('/:id/history', view, asyncRoute(async (req, res) => {
-  if (!validId(req.params.id)) return res.status(404).json({ error: 'Pengajuan tidak ditemukan.' });
+router.get('/:id/history', view, readScope, asyncRoute(async (req, res) => {
+ if (!validId(req.params.id)) return res.status(404).json({error:'Pengajuan tidak ditemukan.'});
+ const [parent] = await db.select({id:goodsRequests.id}).from(goodsRequests).where(and(eq(goodsRequests.id,req.params.id),ownerScope(req)));
+ if (!parent) return res.status(404).json({error:'Pengajuan tidak ditemukan.'});
 
   const logs = await db.select({
     id: goodsRequestStatusLogs.id,
@@ -171,7 +204,10 @@ router.get('/:id/history', view, asyncRoute(async (req, res) => {
   res.json(logs);
 }));
 
-router.get('/:id/evidence/:attachmentId', view, asyncRoute(async (req, res) => {
+router.get('/:id/evidence/:attachmentId', view, readScope, asyncRoute(async (req, res) => {
+ if (!validId(req.params.id)) return res.status(404).json({error:'Pengajuan tidak ditemukan.'});
+ const [parent] = await db.select({id:goodsRequests.id}).from(goodsRequests).where(and(eq(goodsRequests.id,req.params.id),ownerScope(req)));
+ if (!parent) return res.status(404).json({error:'Pengajuan tidak ditemukan.'});
   if (!validId(req.params.id) || !validId(req.params.attachmentId)) {
     return res.status(404).json({ error: 'Lampiran tidak ditemukan.' });
   }
@@ -199,9 +235,9 @@ router.get('/:id/evidence/:attachmentId', view, asyncRoute(async (req, res) => {
   });
 }));
 
-router.post('/:id/signed-document', create, uploadSigned, asyncRoute(async (req, res) => {
+router.post('/:id/signed-document', create, writeScope, uploadSigned, asyncRoute(async (req, res) => {
   if (!validId(req.params.id)) return res.status(404).json({ error: 'Pengajuan tidak ditemukan.' });
-  const [request] = await db.select().from(goodsRequests).where(eq(goodsRequests.id, req.params.id));
+  const [request] = await db.select().from(goodsRequests).where(and(eq(goodsRequests.id,req.params.id),ownerScope(req)));
   if (!request) return res.status(404).json({ error: 'Pengajuan tidak ditemukan.' });
 
   const file = req.file;
@@ -211,6 +247,7 @@ router.post('/:id/signed-document', create, uploadSigned, asyncRoute(async (req,
   const stored = await saveSignedDocument(directory, file.buffer, file.originalname);
   const documentId = randomUUID();
 
+  try {
   await db.insert(goodsRequestSignedDocuments).values({
     id: documentId,
     requestId: request.id,
@@ -220,10 +257,14 @@ router.post('/:id/signed-document', create, uploadSigned, asyncRoute(async (req,
     uploadedBy: req.user!.userId,
   });
 
+  } catch (error) { await rm(path.join(directory,stored.storageKey),{force:true}); throw error; }
   res.status(201).json({ id: documentId, fileName: file.originalname, size: stored.size });
 }));
 
-router.get('/:id/signed-document/:docId', view, asyncRoute(async (req, res) => {
+router.get('/:id/signed-document/:docId', view, readScope, asyncRoute(async (req, res) => {
+ if (!validId(req.params.id)) return res.status(404).json({error:'Pengajuan tidak ditemukan.'});
+ const [parent] = await db.select({id:goodsRequests.id}).from(goodsRequests).where(and(eq(goodsRequests.id,req.params.id),ownerScope(req)));
+ if (!parent) return res.status(404).json({error:'Pengajuan tidak ditemukan.'});
   if (!validId(req.params.id) || !validId(req.params.docId)) {
     return res.status(404).json({ error: 'Dokumen tidak ditemukan.' });
   }
@@ -250,9 +291,9 @@ router.get('/:id/signed-document/:docId', view, asyncRoute(async (req, res) => {
   });
 }));
 
-router.post('/:id/status', create, asyncRoute(async (req, res) => {
+router.post('/:id/status', create, writeScope, asyncRoute(async (req, res) => {
   if (!validId(req.params.id)) return res.status(404).json({ error: 'Pengajuan tidak ditemukan.' });
-  const [request] = await db.select().from(goodsRequests).where(eq(goodsRequests.id, req.params.id));
+  const [request] = await db.select().from(goodsRequests).where(and(eq(goodsRequests.id,req.params.id),ownerScope(req)));
   if (!request) return res.status(404).json({ error: 'Pengajuan tidak ditemukan.' });
 
   const toStatus = req.body.toStatus as GoodsRequestStatus;
@@ -280,8 +321,15 @@ router.post('/:id/status', create, asyncRoute(async (req, res) => {
   }
 
   await db.transaction(async tx => {
+    const [locked] = await tx.select().from(goodsRequests).where(and(eq(goodsRequests.id,request.id),ownerScope(req))).for('update');
+    if (!locked || locked.status !== request.status || locked.version !== request.version) throw new GoodsInputError('Pengajuan telah berubah. Buka kembali rincian pengajuan.');
+    let snapshot = request.documentProfileSnapshot;
+    if (!snapshot && !['draft','rejected','cancelled'].includes(toStatus)) {
+      if (request.status !== 'draft' || !request.groupId || !request.organizationId) throw new DocumentProfileUnavailableError();
+      snapshot = await resolveDocumentProfile(tx,{groupId:request.groupId,organizationId:request.organizationId,kind:'GA'});
+    }
     await tx.update(goodsRequests)
-      .set({ status: toStatus })
+      .set({status:toStatus,documentProfileSnapshot:snapshot})
       .where(eq(goodsRequests.id, request.id));
 
     await tx.insert(goodsRequestStatusLogs).values({
@@ -296,7 +344,7 @@ router.post('/:id/status', create, asyncRoute(async (req, res) => {
   res.json({ success: true, status: toStatus });
 }));
 
-router.post('/', create, upload, asyncRoute(async (req, res) => {
+router.post('/', create, writeScope, upload, asyncRoute(async (req, res) => {
   const files = (req.files || []) as Express.Multer.File[];
   let raw: any;
   try {
@@ -305,6 +353,7 @@ router.post('/', create, upload, asyncRoute(async (req, res) => {
     throw new GoodsInputError('Data pengajuan tidak valid.');
   }
 
+  const owner = await destination(req, raw);
   const isDraft = raw.isDraft === true || raw.isDraft === 'true';
   const input = validateGoodsRequest(raw, files.map(file => file.originalname), isDraft);
   const requestId = randomUUID();
@@ -320,6 +369,7 @@ router.post('/', create, upload, asyncRoute(async (req, res) => {
     await db.transaction(async tx => {
       await tx.insert(goodsRequests).values({
         id: requestId,
+        ...owner,
         title: input.title,
         purpose: input.purpose,
         status: input.status,
@@ -372,9 +422,9 @@ router.post('/', create, upload, asyncRoute(async (req, res) => {
 }));
 
 
-router.put('/:id', create, upload, asyncRoute(async (req, res) => {
+router.put('/:id', create, writeScope, upload, asyncRoute(async (req, res) => {
   if (!validId(req.params.id)) return res.status(404).json({ error: 'Pengajuan tidak ditemukan.' });
-  const [request] = await db.select().from(goodsRequests).where(eq(goodsRequests.id, req.params.id));
+  const [request] = await db.select().from(goodsRequests).where(and(eq(goodsRequests.id,req.params.id),ownerScope(req)));
   if (!request) return res.status(404).json({ error: 'Pengajuan tidak ditemukan.' });
 
   if (!isRequestEditable(request.status)) {
@@ -389,6 +439,8 @@ router.put('/:id', create, upload, asyncRoute(async (req, res) => {
     throw new GoodsInputError('Data pengajuan tidak valid.');
   }
 
+  const owner = await destination(req,raw);
+  if (owner.groupId !== request.groupId || owner.organizationId !== request.organizationId) throw new GoodsInputError('Organisasi pengajuan tidak dapat dipindahkan.');
   const existingItems = await db.select().from(goodsRequestItems).where(eq(goodsRequestItems.requestId, request.id));
   const existingAtts = existingItems.length
     ? await db.select().from(goodsRequestAttachments).where(inArray(goodsRequestAttachments.itemId, existingItems.map(i => i.id)))
@@ -403,14 +455,18 @@ router.put('/:id', create, upload, asyncRoute(async (req, res) => {
   const directory = path.join(GOODS_STORAGE_ROOT, request.id);
 
   const evidence = new Map<string, { storageKey: string; size: number }>();
+  const nextVersion = (request.version || 1) + 1;
+  const newStorageKeys: string[] = [];
+  try {
   for (const file of files) {
     const stored = await saveGoodsEvidence(directory, file.buffer);
+    newStorageKeys.push(stored.storageKey);
     evidence.set(file.originalname, { ...stored, storageKey: request.id + '/' + stored.storageKey });
   }
 
-  const nextVersion = (request.version || 1) + 1;
-
   await db.transaction(async tx => {
+    const [locked] = await tx.select().from(goodsRequests).where(and(eq(goodsRequests.id,request.id),ownerScope(req))).for('update');
+    if (!locked || locked.status !== request.status || locked.version !== request.version) throw new GoodsInputError('Pengajuan telah berubah. Buka kembali rincian pengajuan.');
     await tx.update(goodsRequests)
       .set({
         title: input.title,
@@ -470,19 +526,29 @@ router.put('/:id', create, upload, asyncRoute(async (req, res) => {
     }
   });
 
+  } catch (error) {
+    await Promise.all(newStorageKeys.map(key => rm(path.join(directory,key),{force:true})));
+    throw error;
+  }
+  const retainedKeys = new Set(input.items.flatMap(item => item.attachmentKeys));
+  await Promise.all(existingAtts.filter(att => !retainedKeys.has(att.id)).map(att => rm(path.join(GOODS_STORAGE_ROOT,att.storageKey),{force:true}).catch(error => console.error('GA unused evidence cleanup failed',error))));
   res.json({ success: true, id: request.id, version: nextVersion });
 }));
 
-router.delete('/:id', create, asyncRoute(async (req, res) => {
+router.delete('/:id', create, writeScope, asyncRoute(async (req, res) => {
   if (!validId(req.params.id)) return res.status(404).json({ error: 'Pengajuan tidak ditemukan.' });
-  const [request] = await db.select().from(goodsRequests).where(eq(goodsRequests.id, req.params.id));
+  const [request] = await db.select().from(goodsRequests).where(and(eq(goodsRequests.id,req.params.id),ownerScope(req)));
   if (!request) return res.status(404).json({ error: 'Pengajuan tidak ditemukan.' });
 
   if (!isRequestEditable(request.status)) {
     return res.status(403).json({ error: 'Pengajuan yang sudah disetujui atau diproses tidak dapat dihapus.' });
   }
 
-  await db.delete(goodsRequests).where(eq(goodsRequests.id, request.id));
+  await db.transaction(async tx => {
+    const [locked] = await tx.select().from(goodsRequests).where(and(eq(goodsRequests.id,request.id),ownerScope(req))).for('update');
+    if (!locked || !isRequestEditable(locked.status)) throw new GoodsInputError('Pengajuan telah berubah dan tidak dapat dihapus.');
+    await tx.delete(goodsRequests).where(eq(goodsRequests.id, request.id));
+  });
 
   const directory = path.join(GOODS_STORAGE_ROOT, request.id);
   await rm(directory, { recursive: true, force: true }).catch(() => {});
@@ -496,6 +562,7 @@ router.use((error: unknown, _req: Request, res: Response, _next: NextFunction) =
       error: 'Lampiran melebihi batas: maksimal 3 gambar per item, 500 KB per gambar, dan 20 item.',
     });
   }
+  if (error instanceof DocumentProfileUnavailableError) return res.status(409).json({error:error.message});
   if (error instanceof GoodsInputError) return res.status(400).json({ error: error.message });
   console.error('GA request failed', error);
   res.status(500).json({ error: 'Pengajuan belum dapat diproses. Coba kembali; data formulir tetap tersedia.' });

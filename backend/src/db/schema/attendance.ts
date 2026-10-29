@@ -1,8 +1,11 @@
-import { pgTable, bigint, varchar, integer, timestamp, boolean, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, bigint, varchar, integer, timestamp, boolean, uniqueIndex, foreignKey } from 'drizzle-orm/pg-core';
 import { employees } from './employees';
 import { users } from './users';
+import { organizationGroups, organizations } from './organizations';
 
 export const attendanceBatches = pgTable('attendance_batches', {
+  groupId: bigint('group_id', {mode: 'number'}).references(() => organizationGroups.id, {onDelete: 'restrict'}),
+  organizationId: bigint('organization_id', {mode: 'number'}).references(() => organizations.id, {onDelete: 'restrict'}),
   id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
   filename: varchar('filename', { length: 255 }).notNull(),
   sourceId: integer('source_id').default(1).notNull(),
@@ -16,9 +19,13 @@ export const attendanceBatches = pgTable('attendance_batches', {
   createdById: bigint('created_by_id', { mode: 'number' }).references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   committedAt: timestamp('committed_at'),
-});
+}, (table) => [
+  foreignKey({name:'attendanceBatches_organization_group_fk',columns:[table.organizationId,table.groupId],foreignColumns:[organizations.id,organizations.groupId]}).onDelete('restrict'),
+]);
 
 export const attendanceRecords = pgTable('attendance_records', {
+  groupId: bigint('group_id', {mode: 'number'}).references(() => organizationGroups.id, {onDelete: 'restrict'}),
+  organizationId: bigint('organization_id', {mode: 'number'}).references(() => organizations.id, {onDelete: 'restrict'}),
   id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
   employeeId: bigint('employee_id', { mode: 'number' }).notNull().references(() => employees.id, { onDelete: 'cascade' }),
   workDate: varchar('work_date', { length: 10 }).notNull(), // 'YYYY-MM-DD'
@@ -40,5 +47,6 @@ export const attendanceRecords = pgTable('attendance_records', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => [
+  foreignKey({name:'attendanceRecords_organization_group_fk',columns:[table.organizationId,table.groupId],foreignColumns:[organizations.id,organizations.groupId]}).onDelete('restrict'),
   uniqueIndex('uq_attendance_employee_date').on(table.employeeId, table.workDate),
 ]);

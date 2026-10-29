@@ -1,16 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  getUsers,
-  createUser,
-  updateUser,
-  toggleUserStatus,
-  resetPassword,
-  deleteUser,
+  getUsers as rawGetUsers,
+  createUser as rawCreateUser,
+  updateUser as rawUpdateUser,
+  toggleUserStatus as rawToggleUserStatus,
+  resetPassword as rawResetPassword,
+  deleteUser as rawDeleteUser,
 } from './userController';
 import { db } from '../db';
 import { users, roles } from '../db/schema/users';
 import { eq } from 'drizzle-orm';
+import {bindScopedCaller} from '../testing/scopedCaller';
+const getUsers=bindScopedCaller(rawGetUsers,'read'),createUser=bindScopedCaller(rawCreateUser),updateUser=bindScopedCaller(rawUpdateUser),toggleUserStatus=bindScopedCaller(rawToggleUserStatus),resetPassword=bindScopedCaller(rawResetPassword),deleteUser=bindScopedCaller(rawDeleteUser);
 
 function mockRes() {
   const res: any = {
@@ -168,7 +170,7 @@ test('HRD scoped RBAC: HRD can create employee accounts but is blocked from crea
   const forbiddenRes = mockRes();
   await createUser(forbiddenReq, forbiddenRes);
   assert.equal(forbiddenRes.statusCode, 403);
-  assert.match(forbiddenRes.body.error, /only permitted to create Employee/i);
+  assert.match(forbiddenRes.body.error, /outside your authority/i);
 
   // Cleanup
   await deleteUser({ user: { userId: 999999, roleName: 'SuperAdmin' }, params: { id: String(createdId) } } as any, mockRes());
@@ -188,24 +190,20 @@ test('HRD scoped RBAC: HRD cannot edit, toggle, reset password, or delete non-em
   // Try edit admin -> 403
   const updateRes = mockRes();
   await updateUser({ ...hrdReq, body: { username: 'hacked_admin', roleId: empRole.id } }, updateRes);
-  assert.equal(updateRes.statusCode, 403);
-  assert.match(updateRes.body.error, /only manage Employee/i);
+  assert.equal(updateRes.statusCode, 404);
 
   // Try toggle admin -> 403
   const toggleRes = mockRes();
   await toggleUserStatus({ ...hrdReq, body: { status: 'inactive' } }, toggleRes);
-  assert.equal(toggleRes.statusCode, 403);
-  assert.match(toggleRes.body.error, /only manage Employee/i);
+  assert.equal(toggleRes.statusCode, 404);
 
   // Try reset password on admin -> 403
   const resetRes = mockRes();
   await resetPassword(hrdReq, resetRes);
-  assert.equal(resetRes.statusCode, 403);
-  assert.match(resetRes.body.error, /only manage Employee/i);
+  assert.equal(resetRes.statusCode, 404);
 
   // Try delete admin -> 403
   const deleteRes = mockRes();
   await deleteUser(hrdReq, deleteRes);
-  assert.equal(deleteRes.statusCode, 403);
-  assert.match(deleteRes.body.error, /only manage Employee/i);
+  assert.equal(deleteRes.statusCode, 404);
 });

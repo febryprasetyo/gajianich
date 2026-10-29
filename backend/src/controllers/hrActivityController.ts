@@ -1,3 +1,4 @@
+import {requireHrScope} from '../services/hrOrganizationScope';
 import type { Request, Response } from "express";
 import { db } from "../db";
 import { parseHrActivityQuery } from "../domain/hrActivityQuery";
@@ -12,7 +13,7 @@ export async function getActivities(req: Request, res: Response) {
   try {
     const targetDb = (req as any).db || db;
     const query = parseHrActivityQuery(req.query);
-    const result = await listHrActivities(query, targetDb);
+    const result = await listHrActivities(query, targetDb,requireHrScope(req as any));
 
     return res.status(200).json({
       success: true,
@@ -41,7 +42,7 @@ export async function getActors(req: Request, res: Response) {
     const cursor = typeof req.query.cursor === "string" ? req.query.cursor : undefined;
     const limit = req.query.limit ? Number(req.query.limit) : 25;
 
-    const result = await listHrActivityActors(q, cursor, limit, targetDb);
+    const result = await listHrActivityActors(q, cursor, limit, targetDb,requireHrScope(req as any));
 
     return res.status(200).json({
       success: true,
@@ -62,7 +63,7 @@ export async function getActivityById(req: Request, res: Response) {
     const targetDb = (req as any).db || db;
     const id = req.params.id;
 
-    const result = await getHrActivity(id, targetDb);
+    const result = await getHrActivity(id, targetDb,requireHrScope(req as any));
     if (!result) {
       return res.status(404).json({
         success: false,
@@ -93,7 +94,7 @@ export async function getActivityTargets(req: Request, res: Response) {
     const cursor = typeof req.query.cursor === "string" ? req.query.cursor : undefined;
     const limit = req.query.limit ? Number(req.query.limit) : 50;
 
-    const result = await listHrActivityTargets(id, cursor, limit, targetDb);
+    const result = await listHrActivityTargets(id, cursor, limit, targetDb,requireHrScope(req as any));
 
     return res.status(200).json({
       success: true,

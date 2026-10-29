@@ -14,6 +14,7 @@ import {
   deleteVendor,
 } from '../controllers/masterController';
 import { authenticateToken, requirePermission } from '../middleware/auth';
+import {requireOrganizationScope,requireGlobalAdministrator} from '../middleware/organizationScope';
 
 const router = Router();
 
@@ -27,16 +28,16 @@ const viewMasterOrAttendance = requirePermission(['master.view', 'attendance.vie
 const manageMasterOrAttendance = requirePermission(['master.manage', 'attendance.manage']);
 
 // --- Departments ---
-router.get('/departments', viewMasterOrAttendance, getDepartments);
-router.post('/departments', manageMasterOrAttendance, createDepartment);
-router.put('/departments/:id', manageMasterOrAttendance, updateDepartment);
-router.delete('/departments/:id', manageMasterOrAttendance, deleteDepartment);
+router.get('/departments', viewMasterOrAttendance,requireOrganizationScope('hr','read'), getDepartments);
+router.post('/departments', manageMasterOrAttendance,requireGlobalAdministrator, createDepartment);
+router.put('/departments/:id', manageMasterOrAttendance,requireGlobalAdministrator, updateDepartment);
+router.delete('/departments/:id', manageMasterOrAttendance,requireGlobalAdministrator, deleteDepartment);
 
 // --- Locations ---
-router.get('/locations', viewMasterOrAttendance, getLocations);
-router.post('/locations', manageMasterOrAttendance, createLocation);
-router.put('/locations/:id', manageMasterOrAttendance, updateLocation);
-router.delete('/locations/:id', manageMasterOrAttendance, deleteLocation);
+router.get('/locations', viewMasterOrAttendance,requireOrganizationScope('hr','read'), getLocations);
+router.post('/locations', manageMasterOrAttendance,requireGlobalAdministrator, createLocation);
+router.put('/locations/:id', manageMasterOrAttendance,requireGlobalAdministrator, updateLocation);
+router.delete('/locations/:id', manageMasterOrAttendance,requireGlobalAdministrator, deleteLocation);
 
 // --- Vendors ---
 router.get('/vendors', viewMaster, getVendors);

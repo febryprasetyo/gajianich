@@ -7,6 +7,7 @@ import { ArrowLeft, Loader2, Plus, Printer, Save, Trash2 } from 'lucide-react';
 import { GoodsDocumentHeading } from './GoodsRequestDocument';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/context/AuthContext';
+import { useOrganizationScope } from '@/context/OrganizationScopeContext';
 import { api } from '@/lib/api';
 import {
   capitalizeWords,
@@ -57,6 +58,14 @@ export default function GoodsRequestForm({ initialData }: GoodsRequestFormProps 
   const isEditMode = Boolean(initialData?.id);
   const { user } = useAuth();
   const router = useRouter();
+  const {selectedGroupId} = useOrganizationScope();
+  const [organizations,setOrganizations] = useState<Array<{id:number;groupId:number;name:string}>>([]);
+  const [organizationId,setOrganizationId] = useState<number | null>(initialData?.organizationId ?? null);
+  useEffect(() => {
+    let active = true;
+    api.get<Array<{id:number;groupId:number;name:string}>>(`${GA_API_PATH}/organizations`).then(rows => {if(active) setOrganizations(rows);}).catch(() => {if(active) setOrganizations([]);});
+    return () => {active = false;};
+  },[selectedGroupId]);
 
   const [identity, setIdentity] = useState({
     requestDate: initialData?.requestDate || new Intl.DateTimeFormat('en-CA', {
@@ -190,7 +199,10 @@ export default function GoodsRequestForm({ initialData }: GoodsRequestFormProps 
 
     try {
       const form = new FormData();
+      if (!selectedGroupId || !organizationId) throw new Error('Pilih kelompok aktif dan organisasi tujuan sebelum menyimpan.');
       const payload = {
+        groupId:selectedGroupId,
+        organizationId,
         title: finalTitle,
         purpose: finalPurpose,
         isDraft,
@@ -237,7 +249,7 @@ export default function GoodsRequestForm({ initialData }: GoodsRequestFormProps 
 
   return (
     <DashboardLayout>
-      <main className="mx-auto min-w-0 max-w-5xl space-y-4 pb-6">
+      <main className="min-w-0 space-y-6 pb-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
             href={isEditMode ? `${GA_BASE_PATH}/${initialData!.id}` : GA_BASE_PATH}
@@ -254,7 +266,16 @@ export default function GoodsRequestForm({ initialData }: GoodsRequestFormProps 
             role="group" aria-label="Lembar permintaan barang"
             className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden"
           >
-            <GoodsDocumentHeading headingColorClass="text-black" />
+            <GoodsDocumentHeading headingColorClass="text-black" profile={initialData?.documentProfileSnapshot || initialData?.documentProfilePreview} />
+            <div className="space-y-2 border-b border-slate-200 p-4 text-xs">
+              <label htmlFor="ga-organization" className="font-semibold text-slate-800">Organisasi tujuan</label>
+              <select id="ga-organization" value={organizationId ?? ''} disabled={isEditMode || !selectedGroupId} onChange={e => setOrganizationId(e.target.value ? Number(e.target.value) : null)} className={inputClass} required>
+                <option value="">Pilih organisasi dalam kelompok aktif</option>
+                {organizations.filter(o => o.groupId === selectedGroupId).map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+              </select>
+              {!selectedGroupId && <p className="text-amber-800">Pilih satu kelompok tujuan pada pemilih kelompok.</p>}
+              {selectedGroupId && organizations.length === 0 && <p className="text-amber-800">Organisasi resmi belum dikonfigurasi untuk kelompok ini.</p>}
+            </div>
             <div className="space-y-3 border-b border-slate-200 p-4 text-xs sm:p-6">
               {([
                 ['requestDate', 'Tanggal', 'date'],

@@ -1,3 +1,4 @@
+import {requireOrganizationScope} from '../middleware/organizationScope';
 import { Router } from 'express';
 import { authenticateToken, requirePermission } from '../middleware/auth';
 import {
@@ -19,6 +20,7 @@ router.get(
   '/workspace',
   authenticateToken,
   requirePermission(['attendance.view', 'attendance.manage', 'attendance.import']),
+  requireOrganizationScope('hr', 'read'),
   getAttendanceWorkspace
 );
 
@@ -26,6 +28,7 @@ router.post(
   '/commands',
   authenticateToken,
   requirePermission(['attendance.view', 'attendance.manage', 'attendance.import']),
+  requireOrganizationScope('hr', 'write'),
   postAttendanceCommand
 );
 
@@ -34,6 +37,7 @@ router.get(
   '/records',
   authenticateToken,
   requirePermission(['attendance.view', 'attendance.manage', 'attendance.import']),
+  requireOrganizationScope('hr', 'read'),
   getAttendanceRecords
 );
 
@@ -41,6 +45,7 @@ router.get(
   '/batches',
   authenticateToken,
   requirePermission(['attendance.view', 'attendance.manage', 'attendance.import']),
+  requireOrganizationScope('hr', 'read'),
   getAttendanceBatches
 );
 
@@ -48,6 +53,7 @@ router.get(
   '/activity',
   authenticateToken,
   requirePermission(['attendance.view', 'attendance.manage', 'attendance.import']),
+  requireOrganizationScope('hr', 'read'),
   getAttendanceActivity
 );
 
@@ -55,6 +61,7 @@ router.put(
   '/records',
   authenticateToken,
   requirePermission(['attendance.manage']),
+  requireOrganizationScope('hr', 'write'),
   saveAttendanceRecord
 );
 
@@ -63,6 +70,7 @@ router.post(
   '/commit-batch',
   authenticateToken,
   requirePermission(['attendance.import', 'attendance.manage']),
+  requireOrganizationScope('hr', 'write'),
   commitAttendanceBatch
 );
 

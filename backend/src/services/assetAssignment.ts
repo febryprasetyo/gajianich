@@ -5,6 +5,7 @@ import { assets, assetAssignmentHistory } from '../db/schema/assets';
 import { assetCustodians } from '../db/schema/assetCustodians';
 import { locations } from '../db/schema/master';
 import { auditLogs } from '../db/schema/system';
+import { locationOrganizationMappings } from '../db/schema/organizations';
 import { CustodianError } from '../domain/assetCustodian';
 
 export type AssetTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -53,9 +54,11 @@ export async function writeAssetAssignment(
     conditionOnReturn: input.conditionOnReturn ?? existing.condition,
     returnNotes: input.returnNotes ?? 'Asset reassigned / returned',
   }).where(and(eq(assetAssignmentHistory.assetId, existing.id), isNull(assetAssignmentHistory.returnedAt)));
+  const [mapping] = locationId === null ? [] : await tx.select().from(locationOrganizationMappings).where(eq(locationOrganizationMappings.locationId,locationId));
   if (custodian) {
     await tx.insert(assetAssignmentHistory).values({
       assetId: existing.id,
+      groupId: mapping?.groupId ?? null,
       custodianId: custodian.id,
       custodianNameSnapshot: custodian.displayName,
       locationNameSnapshot: location?.name ?? null,
@@ -79,7 +82,7 @@ export async function writeAssetAssignment(
     entity: 'ASSET',
     entityId: existing.id,
     oldValues: { currentCustodianId: existing.currentCustodianId, locationId: existing.locationId, status: existing.status },
-    newValues: { currentCustodianId: custodian?.id ?? null, custodianName: custodian?.displayName ?? null, locationId, status: updated.status },
+    newValues: { groupId:mapping?.groupId ?? null, currentCustodianId: custodian?.id ?? null, custodianName: custodian?.displayName ?? null, locationId, status: updated.status },
   });
   return updated;
 }

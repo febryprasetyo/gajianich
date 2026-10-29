@@ -21,7 +21,7 @@ test('directory authorizes mutations, acknowledges concurrent duplicates, links 
   let categoryId: number | undefined;
   let assetId: number | undefined;
   async function api(path = '', method = 'GET', body?: unknown, role = 'SuperAdmin') {
-    const r = await fetch(base + path, { method, headers: { Authorization: `Bearer ${tokens[role]}`, 'Content-Type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+    const r = await fetch(base + path, { method, headers: { ...operator.headers(tokens[role]), 'Content-Type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(method==='POST'&&path===''?{locationId:operator.locationId,...body as object}:body) }) });
     const result = { status: r.status, body: await r.json() as any };
     if (method === 'POST' && r.status === 201 && result.body.id)
       ids.push(result.body.id);
@@ -46,7 +46,7 @@ test('directory authorizes mutations, acknowledges concurrent duplicates, links 
     assert.equal(search.status, 200);
     assert.ok(search.body.custodians.some((c: any) => c.id === first.body.id));
     assert.ok(Array.isArray(search.body.employees));
-    const [employee] = await db.insert(employees).values({ employeeCode: `C${suffix}`, fullName: `Custodian Budi ${suffix}`, email: `c${suffix}@test.example` }).returning();
+    const [employee] = await db.insert(employees).values({ departmentId:operator.departmentId, employeeCode: `C${suffix}`, fullName: `Custodian Budi ${suffix}`, email: `c${suffix}@test.example` }).returning();
     employeeIds.push(employee.id);
     const hrdDuplicate = await api('', 'POST', { displayName: employee.fullName });
     assert.equal(hrdDuplicate.status, 409);
@@ -62,7 +62,7 @@ test('directory authorizes mutations, acknowledges concurrent duplicates, links 
     assert.ok(resolved.every(r => r.status === 200 && r.body.id === first.body.id));
     const [category] = await db.insert(assetCategories).values({ name: `Custodian fixture ${suffix}`, codePrefix: `C${suffix}`.slice(0, 20) }).returning();
     categoryId = category.id;
-    const [asset] = await db.insert(assets).values({ assetCode: `C${suffix}`, name: 'Fixture', categoryId: category.id, currentCustodianId: second.body.id, status: 'Assigned' }).returning();
+    const [asset] = await db.insert(assets).values({ locationId:operator.locationId, assetCode: `C${suffix}`, name: 'Fixture', categoryId: category.id, currentCustodianId: second.body.id, status: 'Assigned' }).returning();
     assetId = asset.id;
     const [history] = await db.insert(assetAssignmentHistory).values({ assetId: asset.id, custodianId: second.body.id, custodianNameSnapshot: 'Original immutable name', locationNameSnapshot: 'Original location', assignedByUserId: operator.userId }).returning();
     assert.equal((await api(`/${second.body.id}`, 'PATCH', { recordStatus: 'INACTIVE' })).status, 409);

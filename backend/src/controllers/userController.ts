@@ -3,10 +3,13 @@ import { AuthenticatedRequest } from '../middleware/auth';
 import { db } from '../db';
 import { users, roles } from '../db/schema/users';
 import { employees } from '../db/schema/employees';
-import { eq, and, ne, sql } from 'drizzle-orm';
+import { eq, and, ne, sql,or,isNull } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
 import { z } from 'zod';
 import { generateSecureTemporaryPassword, validatePasswordStrength } from '../domain/passwordPolicy';
+import { accountAccess, accountListPredicate, assertAccountTarget, validateAccountAssignment, withAccountMutation, replaceAccountGroups } from '../services/userOrganizationScope';
+import type { OrganizationScopedRequest } from '../middleware/organizationScope';
+import { userOrganizationGroupAccess } from '../db/schema/organizations';
 
 const createUserSchema = z.object({
   username: z.string().min(3).max(100),
@@ -14,6 +17,7 @@ const createUserSchema = z.object({
   password: z.string().optional(),
   roleId: z.number().int().positive(),
   employeeId: z.number().int().positive().nullable().optional(),
+  groupIds: z.array(z.number().int().positive()).optional(),
   status: z.enum(['active', 'inactive']).default('active'),
 });
 
@@ -22,6 +26,7 @@ const updateUserSchema = z.object({
   email: z.string().email().max(255).optional().or(z.literal("")).nullable(),
   roleId: z.number().int().positive(),
   employeeId: z.number().int().positive().nullable().optional(),
+  groupIds: z.array(z.number().int().positive()).optional(),
   status: z.enum(['active', 'inactive']).optional(),
 });
 
@@ -35,7 +40,7 @@ const resetPasswordSchema = z.object({
 
 export function isCallerHrd(req: AuthenticatedRequest): boolean {
   const normRole = (req.user?.roleName || '').toLowerCase().replace(/[\s_-]+/g, '');
-  return normRole === 'hrattendance' || normRole === 'hrd';
+  return normRole.startsWith('hrattendance') || normRole === 'hrd';
 }
 
 async function isLastActiveSuperAdmin(userId: number): Promise<boolean> {
@@ -47,9 +52,8 @@ async function isLastActiveSuperAdmin(userId: number): Promise<boolean> {
     .where(
       and(
         eq(users.status, 'active'),
-        superAdminRole
-          ? eq(users.roleId, superAdminRole.id)
-          : eq(users.role, 'SuperAdmin')
+        or(superAdminRole ? eq(users.roleId,superAdminRole.id):undefined,
+          and(isNull(users.roleId),sql`replace(lower(${users.role}),'_','')='superadmin'`))
       )
     );
 
@@ -59,6 +63,8 @@ async function isLastActiveSuperAdmin(userId: number): Promise<boolean> {
 export async function getUsers(req: AuthenticatedRequest, res: Response) {
   try {
     const isHrd = isCallerHrd(req);
+    const access = await accountAccess(req);
+    const predicate = accountListPredicate(access, (req as OrganizationScopedRequest).organizationScope?.selectedGroupId ?? null);
     const query = db
       .select({
         id: users.id,
@@ -82,18 +88,20 @@ export async function getUsers(req: AuthenticatedRequest, res: Response) {
       .leftJoin(employees, eq(users.employeeId, employees.id));
 
     const userRows = isHrd
-      ? await query.where(eq(roles.code, 'employee')).orderBy(users.id)
-      : await query.orderBy(users.id);
+      ? await query.where(and(predicate,eq(roles.code, 'employee'))).orderBy(users.id)
+      : await query.where(predicate).orderBy(users.id);
+    const memberships = await db.select().from(userOrganizationGroupAccess);
 
-    return res.status(200).json({ users: userRows });
+    return res.status(200).json({ users: userRows.map(user=>({...user,groupIds:memberships.filter(m=>m.userId===user.id).map(m=>m.groupId)})) });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message || 'Internal server error' });
+    return res.status(err.statusCode || 500).json({ error: err.message || 'Internal server error' });
   }
 }
 
 export async function createUser(req: AuthenticatedRequest, res: Response) {
   try {
     const parsed = createUserSchema.parse(req.body);
+    await validateAccountAssignment(req,parsed);
     const cleanUsername = parsed.username.trim();
 
     // Determine email (fallback to employee email or @gajianich.internal)
@@ -158,7 +166,9 @@ export async function createUser(req: AuthenticatedRequest, res: Response) {
 
     const passwordHash = await bcrypt.hash(rawPassword, 10);
 
-    const [inserted] = await db
+    const inserted = await db.transaction(async tx => {
+    const groupIds=await validateAccountAssignment(req,parsed,[],tx);
+    const [created] = await tx
       .insert(users)
       .values({
         username: parsed.username,
@@ -181,6 +191,9 @@ export async function createUser(req: AuthenticatedRequest, res: Response) {
         mustChangePassword: users.mustChangePassword,
         createdAt: users.createdAt,
       });
+    await replaceAccountGroups(tx,created.id,groupIds);
+    return {...created,groupIds};
+    });
 
     return res.status(201).json({
       message: 'User created successfully',
@@ -191,7 +204,7 @@ export async function createUser(req: AuthenticatedRequest, res: Response) {
     if (err instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation failed', details: err.issues });
     }
-    return res.status(500).json({ error: err.message || 'Internal server error' });
+    return res.status(err.statusCode || 500).json({ error: err.message || 'Internal server error' });
   }
 }
 
@@ -201,6 +214,7 @@ export async function updateUser(req: AuthenticatedRequest, res: Response) {
     if (isNaN(userId)) {
       return res.status(400).json({ error: 'Invalid user ID' });
     }
+    const ownership = await assertAccountTarget(req,userId);
 
     const existing = (
       await db
@@ -221,6 +235,7 @@ export async function updateUser(req: AuthenticatedRequest, res: Response) {
     }
 
     const parsed = updateUserSchema.parse(req.body);
+    await validateAccountAssignment(req,parsed,ownership.groupIds);
     const cleanUsername = parsed.username.trim();
 
     let finalEmail = parsed.email?.trim() || existingUser.email;
@@ -287,7 +302,9 @@ export async function updateUser(req: AuthenticatedRequest, res: Response) {
       }
     }
 
-    const [updated] = await db
+    const updated = await withAccountMutation(req,userId,async tx=>{
+    const groupIds=await validateAccountAssignment(req,parsed,ownership.groupIds,tx);
+    const [changed] = await tx
       .update(users)
       .set({
         username: parsed.username,
@@ -309,13 +326,16 @@ export async function updateUser(req: AuthenticatedRequest, res: Response) {
         status: users.status,
         updatedAt: users.updatedAt,
       });
+    await replaceAccountGroups(tx,userId,groupIds);
+    return {...changed,groupIds};
+    });
 
     return res.status(200).json({ message: 'User updated successfully', user: updated });
   } catch (err: any) {
     if (err instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation failed', details: err.issues });
     }
-    return res.status(500).json({ error: err.message || 'Internal server error' });
+    return res.status(err.statusCode || 500).json({ error: err.message || 'Internal server error' });
   }
 }
 
@@ -325,6 +345,7 @@ export async function toggleUserStatus(req: AuthenticatedRequest, res: Response)
     if (isNaN(userId)) {
       return res.status(400).json({ error: 'Invalid user ID' });
     }
+    await assertAccountTarget(req,userId);
 
     const existing = (
       await db
@@ -359,7 +380,7 @@ export async function toggleUserStatus(req: AuthenticatedRequest, res: Response)
       }
     }
 
-    const [updated] = await db
+    const [updated] = await withAccountMutation(req,userId,tx=>tx
       .update(users)
       .set({
         status: parsed.status,
@@ -370,14 +391,14 @@ export async function toggleUserStatus(req: AuthenticatedRequest, res: Response)
         id: users.id,
         status: users.status,
         updatedAt: users.updatedAt,
-      });
+      }));
 
     return res.status(200).json({ message: `User status changed to ${parsed.status}`, user: updated });
   } catch (err: any) {
     if (err instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation failed', details: err.issues });
     }
-    return res.status(500).json({ error: err.message || 'Internal server error' });
+    return res.status(err.statusCode || 500).json({ error: err.message || 'Internal server error' });
   }
 }
 
@@ -387,6 +408,7 @@ export async function resetPassword(req: AuthenticatedRequest, res: Response) {
     if (isNaN(userId)) {
       return res.status(400).json({ error: 'Invalid user ID' });
     }
+    await assertAccountTarget(req,userId);
 
     const existing = (
       await db
@@ -419,14 +441,14 @@ export async function resetPassword(req: AuthenticatedRequest, res: Response) {
 
     const passwordHash = await bcrypt.hash(rawPassword, 10);
 
-    await db
+    await withAccountMutation(req,userId,tx=>tx
       .update(users)
       .set({
         passwordHash,
         mustChangePassword: true,
         updatedAt: new Date(),
       })
-      .where(eq(users.id, userId));
+      .where(eq(users.id, userId)));
 
     return res.status(200).json({
       message: 'User password reset successfully',
@@ -436,7 +458,7 @@ export async function resetPassword(req: AuthenticatedRequest, res: Response) {
     if (err instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation failed', details: err.issues });
     }
-    return res.status(500).json({ error: err.message || 'Internal server error' });
+    return res.status(err.statusCode || 500).json({ error: err.message || 'Internal server error' });
   }
 }
 
@@ -446,6 +468,7 @@ export async function deleteUser(req: AuthenticatedRequest, res: Response) {
     if (isNaN(userId)) {
       return res.status(400).json({ error: 'Invalid user ID' });
     }
+    await assertAccountTarget(req,userId);
 
     const existing = (
       await db
@@ -475,7 +498,7 @@ export async function deleteUser(req: AuthenticatedRequest, res: Response) {
       return res.status(400).json({ error: 'Cannot delete the last active SuperAdmin account' });
     }
 
-    await db.delete(users).where(eq(users.id, userId));
+    await withAccountMutation(req,userId,tx=>tx.delete(users).where(eq(users.id, userId)));
 
     return res.status(200).json({ message: 'User deleted successfully' });
   } catch (err: any) {
@@ -484,6 +507,6 @@ export async function deleteUser(req: AuthenticatedRequest, res: Response) {
         error: 'Tidak dapat menghapus pengguna karena masih memiliki riwayat data terkait (seperti permohonan pengadaan barang, log transaksi, atau audit). Silakan nonaktifkan akun terlebih dahulu.',
       });
     }
-    return res.status(500).json({ error: err.message || 'Internal server error' });
+    return res.status(err.statusCode || 500).json({ error: err.message || 'Internal server error' });
   }
 }

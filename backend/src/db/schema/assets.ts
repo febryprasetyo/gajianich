@@ -4,6 +4,7 @@ import { locations } from './master';
 import { employees } from './employees';
 import { users } from './users';
 import { assetCustodians } from './assetCustodians';
+import { organizationGroups } from './organizations';
 
 export const assetCategories = pgTable('asset_categories', {
   id: bigint('id', { mode: 'number' }).generatedAlwaysAsIdentity().primaryKey(),
@@ -41,6 +42,7 @@ export const assetAssignmentHistory = pgTable('asset_assignment_history', {
   id: bigint('id', { mode: 'number' }).generatedAlwaysAsIdentity().primaryKey(),
   assetId: bigint('asset_id', { mode: 'number' }).references(() => assets.id, { onDelete: 'cascade' }).notNull(),
   custodianId: bigint('custodian_id', { mode: 'number' }).references(() => assetCustodians.id),
+  groupId: bigint('group_id', { mode: 'number' }).references(() => organizationGroups.id),
   custodianNameSnapshot: varchar('custodian_name_snapshot', { length: 150 }),
   locationNameSnapshot: varchar('location_name_snapshot', { length: 100 }),
   employeeId: bigint('employee_id', { mode: 'number' }).references(() => employees.id),

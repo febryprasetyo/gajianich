@@ -1,6 +1,7 @@
+import {employeeScopePredicate,requireHrScope} from '../services/hrOrganizationScope';
 import { Request, Response } from 'express';
 import ExcelJS from 'exceljs';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db } from '../db';
 import { employees } from '../db/schema/employees';
 import { departments, locations } from '../db/schema/master';
@@ -123,9 +124,9 @@ export async function exportEmployeesToExcel(req: Request, res: Response) {
 
     let list: any[] = [];
     if (statusFilter) {
-      list = await query.where(eq(employees.status, statusFilter));
+      list = await query.where(and(eq(employees.status, statusFilter),employeeScopePredicate(requireHrScope(req as any))));
     } else {
-      list = await query;
+      list = await query.where(employeeScopePredicate(requireHrScope(req as any)));
     }
 
     const buffer = await generateEmployeesWorkbook(list);

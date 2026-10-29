@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { documentProfileForRender } from '@/lib/organizationDocumentProfile';
 import Link from 'next/link';
 import { ArrowLeft, Printer } from 'lucide-react';
 import type { FullLeaveDocumentData } from '@/types/leaves';
@@ -16,9 +17,11 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export function LeaveFormF4NewDocument({ data }: { data: FullLeaveDocumentData }) {
+  const profile = documentProfileForRender(data,'LEAVE');
+  if (!profile || profile.layoutKey !== 'cmc-leave-f4-new-v1') return <div role="status" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Profil dokumen resmi belum tersedia. Pratinjau dan cetak ditahan sampai identitas dan format organisasi disahkan.<Link href="/dashboard/leaves" className="mt-3 block underline">Kembali ke daftar cuti</Link></div>;
   const historyItems = data.detailedHistoryItems ?? data.historyItems;
   const history = Array.from({ length: Math.max(5, historyItems?.length || 0) }, (_, index) => historyItems?.[index]);
-  const approvalLabels = ['Pemohon', 'Atasan Langsung', 'HRD', 'Atasan dari Atasan Langsung'];
+  const approvalLabels = profile.signatories.length ? profile.signatories.map(s => s.label) : ['Pemohon', 'Atasan Langsung', 'HRD', 'Atasan dari Atasan Langsung'];
 
   return (
     <div className="f4-new-view min-w-0 space-y-4">
@@ -39,16 +42,16 @@ export function LeaveFormF4NewDocument({ data }: { data: FullLeaveDocumentData }
           <div className="f4-new-letterhead">
             <div className="f4-new-company">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/images/logo-cmc.png" alt="Logo CMC" width={48} height={48} />
-              <strong>Cahaya Mas Cemerlang</strong>
+              <img src={profile.identity.logoAssetKey} alt={profile.identity.name} width={48} height={48} />
+              <strong>{profile.identity.name}</strong>
             </div>
             <div className="f4-new-document-code">
-              <div>Form Number : <strong>{data.formNumber || '001'}</strong></div>
-              <div>{data.revisionCode || 'REV. 170208-1-W'}</div>
+              <div>Form Number : <strong>{profile.labels.formNumber || data.formNumber}</strong></div>
+              <div>{profile.labels.revisionCode || data.revisionCode}</div>
             </div>
           </div>
           <div className="f4-new-title">
-            <h2>PERMOHONAN CUTI KARYAWAN</h2>
+            <h2>{profile.labels.title || 'PERMOHONAN CUTI KARYAWAN'}</h2>
             <div>No: {data.requestNumber}</div>
           </div>
 
@@ -112,7 +115,7 @@ export function LeaveFormF4NewDocument({ data }: { data: FullLeaveDocumentData }
               <thead><tr>{approvalLabels.map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
               <tbody>
                 <tr>{approvalLabels.map(label => <td key={label} className="f4-new-signature-space" />)}</tr>
-                <tr>{approvalLabels.map((label, index) => <td key={label}><div>Nama : {index === 0 ? <strong>{data.employee.fullName}</strong> : <span className="f4-new-write-line" />}</div><div>Tanggal : <span className="f4-new-write-line" /></div></td>)}</tr>
+                <tr>{approvalLabels.map((label, index) => <td key={label}><div>Nama : {index === 0 ? <strong>{data.employee.fullName}</strong> : profile.signatories[index]?.name || <span className="f4-new-write-line" />}</div><div>Tanggal : <span className="f4-new-write-line" /></div></td>)}</tr>
               </tbody>
             </table>
           </Section>

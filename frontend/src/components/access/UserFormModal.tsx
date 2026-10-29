@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import ModalShell from "@/components/ui/ModalShell";
+import {useOrganizationScope} from '@/context/OrganizationScopeContext';
 import { UserItem, RoleItem, UserFormData } from "@/lib/access/types";
 import {
   UserPlus,
@@ -37,6 +38,8 @@ export default function UserFormModal({
   isHrd = false,
 }: UserFormModalProps) {
   const isEdit = Boolean(initialData);
+  const {availableGroups,selectedGroupId}=useOrganizationScope();
+  const [groupIds,setGroupIds]=useState<number[]>(initialData?.groupIds??(selectedGroupId===null?[]:[selectedGroupId]));
 
   const defaultEmployeeRole = useMemo(() => {
     return (
@@ -66,11 +69,13 @@ export default function UserFormModal({
 
   useEffect(() => {
     if (initialData) {
+      setGroupIds(initialData.groupIds??[]);
       setUsername(initialData.username);
       setRoleId(initialData.roleId || defaultEmployeeRole?.id || roles[0]?.id || 1);
       setEmployeeId(initialData.employeeId || null);
       setStatus(initialData.status);
     } else {
+      setGroupIds(selectedGroupId===null?[]:[selectedGroupId]);
       setUsername("");
       setRoleId(defaultEmployeeRole?.id || roles[0]?.id || 1);
       setEmployeeId(null);
@@ -79,7 +84,7 @@ export default function UserFormModal({
     setError(null);
     setIsEmployeePickerOpen(false);
     setEmployeeSearchQuery("");
-  }, [initialData, roles, defaultEmployeeRole, isOpen]);
+  }, [initialData, roles, defaultEmployeeRole, isOpen,selectedGroupId]);
 
   // Close employee picker when clicking outside
   useEffect(() => {
@@ -153,6 +158,7 @@ export default function UserFormModal({
         roleId: Number(roleId),
         employeeId: employeeId ? Number(employeeId) : null,
         status,
+        groupIds,
       });
       onClose();
     } catch (err: any) {
@@ -200,6 +206,13 @@ export default function UserFormModal({
       }
     >
       <form id="user-form" onSubmit={handleSubmit} className="space-y-4">
+        <fieldset className="space-y-2 rounded-xl border border-slate-200 p-3">
+          <legend className="px-1 text-xs font-semibold text-slate-700">Cakupan akun</legend>
+          {availableGroups.map(group=><label key={group.id} className="flex items-center gap-2 text-xs text-slate-800">
+            <input type="checkbox" checked={groupIds.includes(group.id)} onChange={event=>setGroupIds(ids=>event.target.checked?[...ids,group.id]:ids.filter(id=>id!==group.id))} className="h-4 w-4 accent-emerald-700" />{group.code}
+          </label>)}
+          <p className="text-xs text-slate-600">Keanggotaan kelompok tidak menambah permission peran.</p>
+        </fieldset>
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs">
             {error}

@@ -1,4 +1,5 @@
 export interface UserItem {
+  groupIds?:number[];
   id: number;
   username: string;
   email?: string;
@@ -42,6 +43,7 @@ export interface ModuleGroup {
 }
 
 export interface UserFormData {
+  groupIds?:number[];
   username: string;
   email?: string;
   password?: string;

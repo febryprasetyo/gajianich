@@ -9,6 +9,8 @@ import { canManageCustodians } from '@/lib/assetCustodian';
 import { BRAND_NAME } from '@/lib/gajianichBrand';
 import { getDashboardHrefForUser, canAccessRoute } from '@/lib/access/routes';
 import NotificationBell from './NotificationBell';
+import OrganizationScopeSelector from './OrganizationScopeSelector';
+import {OrganizationScopeBoundary} from '@/context/OrganizationScopeContext';
 import {
   Building2,
   MapPin,
@@ -648,9 +650,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
 
             <div className="flex items-center gap-3">
+              <OrganizationScopeSelector />
               <NotificationBell />
               {/* User Profile Badge */}
-              <div className="flex items-center gap-3 pl-1">
+              <div className="hidden sm:flex items-center gap-3 pl-1">
                 <div className="flex items-center gap-2.5 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl text-xs">
                   <div className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
                   <span className="text-slate-700 font-medium hidden lg:inline truncate max-w-[160px]">{user.email}</span>
@@ -714,7 +717,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </div>
               </div>
             ) : (
-              children
+              <OrganizationScopeBoundary>{children}</OrganizationScopeBoundary>
             )}
           </main>
         </div>

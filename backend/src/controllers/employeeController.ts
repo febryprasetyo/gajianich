@@ -1,3 +1,4 @@
+import {employeeScopePredicate,requireHrScope,requireScopedEmployee,requireScopedDepartment} from '../services/hrOrganizationScope';
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { eq, ne, or, and } from 'drizzle-orm';
@@ -106,7 +107,8 @@ export async function getEmployees(req: Request, res: Response) {
       })
       .from(employees)
       .leftJoin(departments, eq(employees.departmentId, departments.id))
-      .leftJoin(locations, eq(employees.locationId, locations.id));
+      .leftJoin(locations, eq(employees.locationId, locations.id))
+      .where(employeeScopePredicate(requireHrScope(req as any)));
 
     return res.status(200).json(list);
   } catch (err: any) {
@@ -128,7 +130,7 @@ export async function getEmployeeById(req: Request, res: Response) {
       .from(employees)
       .leftJoin(departments, eq(employees.departmentId, departments.id))
       .leftJoin(locations, eq(employees.locationId, locations.id))
-      .where(eq(employees.id, id));
+      .where(and(eq(employees.id, id),employeeScopePredicate(requireHrScope(req as any))));
 
     if (list.length === 0) return res.status(404).json({ error: 'Employee not found' });
     return res.status(200).json(list[0]);
@@ -140,6 +142,7 @@ export async function getEmployeeById(req: Request, res: Response) {
 export async function createEmployee(req: Request, res: Response) {
   try {
     const parsed = normalizeEmployeeInput(createEmployeeSchema.parse(req.body) as any);
+    await requireScopedDepartment(requireHrScope(req as any), parsed.departmentId);
 
     const uniqueConditions: any[] = [eq(employees.employeeCode, parsed.employeeCode!)];
     if (parsed.email) uniqueConditions.push(eq(employees.email, parsed.email));
@@ -161,9 +164,9 @@ export async function createEmployee(req: Request, res: Response) {
 
     if ((req as any).user) {
       const context = await resolveAuditContext(req as any);
-      const requestHash = hashRequestPayload({ command: 'employee_create', body: parsed });
+      const requestHash = hashRequestPayload({ command: 'employee_create', scope:requireHrScope(req as any),body: parsed });
       const result = await runHrMutation(context, requestHash, async (tx) => {
-        return await mutateEmployee(tx, context, { type: 'CREATE', data: parsed });
+        return await mutateEmployee(tx, context, { type: 'CREATE', data: parsed },requireHrScope(req as any));
       });
       return res.status(201).json(result.employee);
     }
@@ -182,6 +185,8 @@ export async function updateEmployee(req: Request, res: Response) {
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid employee ID' });
 
     const parsed = updateEmployeeSchema.parse(req.body);
+    await requireScopedEmployee(requireHrScope(req as any), id);
+    if (parsed.departmentId !== undefined) await requireScopedDepartment(requireHrScope(req as any),parsed.departmentId);
 
     if (parsed.employeeCode || parsed.email) {
       const uniqueConditions = [];
@@ -206,9 +211,9 @@ export async function updateEmployee(req: Request, res: Response) {
 
     if ((req as any).user) {
       const context = await resolveAuditContext(req as any);
-      const requestHash = hashRequestPayload({ command: 'employee_update', id, body: parsed });
+      const requestHash = hashRequestPayload({ command: 'employee_update',scope:requireHrScope(req as any), id, body: parsed });
       const result = await runHrMutation(context, requestHash, async (tx) => {
-        return await mutateEmployee(tx, context, { type: 'UPDATE', id, data: parsed });
+        return await mutateEmployee(tx, context, { type: 'UPDATE', id, data: parsed },requireHrScope(req as any));
       });
       return res.status(200).json(result.employee);
     }
@@ -232,11 +237,12 @@ export async function deleteEmployee(req: Request, res: Response) {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid employee ID' });
 
+    await requireScopedEmployee(requireHrScope(req as any), id);
     if ((req as any).user) {
       const context = await resolveAuditContext(req as any);
-      const requestHash = hashRequestPayload({ command: 'employee_delete', id });
+      const requestHash = hashRequestPayload({ command: 'employee_delete',scope:requireHrScope(req as any), id });
       const result = await runHrMutation(context, requestHash, async (tx) => {
-        return await mutateEmployee(tx, context, { type: 'DELETE', id });
+        return await mutateEmployee(tx, context, { type: 'DELETE', id },requireHrScope(req as any));
       });
       return res.status(200).json({ message: 'Employee deleted successfully', employee: result.employee });
     }

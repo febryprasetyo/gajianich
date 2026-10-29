@@ -4,7 +4,8 @@ import { itTickets, ticketCategories, slaPolicies, ticketComments } from '../db/
 import { users } from '../db/schema/users';
 import { employees } from '../db/schema/employees';
 import { assets } from '../db/schema/assets';
-import { eq, ilike, or, and, desc, aliasedTable } from 'drizzle-orm';
+import { eq, ilike, or, and, desc, aliasedTable,isNull, sql } from 'drizzle-orm';
+import {assetScopePredicate} from '../services/assetOrganizationScope';
 import { z } from 'zod';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { DEFAULT_TICKET_CATEGORIES, shouldSeedDefaultTicketCategories } from '../domain/ticketCategories';
@@ -13,6 +14,10 @@ import { DEFAULT_TICKET_CATEGORIES, shouldSeedDefaultTicketCategories } from '..
 const reporterUser = aliasedTable(users, 'reporter_user');
 const assigneeUser = aliasedTable(users, 'assignee_user');
 const reporterEmployee = aliasedTable(employees, 'reporter_employee');
+
+function ticketScopePredicate(req: Request) {
+  return or(isNull(itTickets.assetId), sql`exists (select 1 from ${assets} where ${assets.id} = ${itTickets.assetId} and ${assetScopePredicate(req)})`);
+}
 
 // --- Zod Validation Schemas ---
 const createTicketSchema = z
@@ -151,7 +156,7 @@ export async function getTickets(req: Request, res: Response) {
   try {
     const { search, priority, status, categoryId, reporterId, assigneeId } = req.query;
 
-    const conditions = [];
+    const conditions = [or(isNull(itTickets.assetId),assetScopePredicate(req))];
 
     if (search && typeof search === 'string' && search.trim() !== '') {
       const searchPattern = `%${search.trim()}%`;
@@ -289,7 +294,7 @@ export async function getTicketById(req: Request, res: Response) {
       .leftJoin(reporterEmployee, eq(itTickets.reporterId, reporterEmployee.id))
       .leftJoin(assigneeUser, eq(itTickets.assigneeId, assigneeUser.id))
       .leftJoin(assets, eq(itTickets.assetId, assets.id))
-      .where(eq(itTickets.id, id));
+      .where(and(eq(itTickets.id, id),or(isNull(itTickets.assetId),assetScopePredicate(req))));
 
     if (ticketResult.length === 0) {
       return res.status(404).json({ error: 'Ticket not found' });
@@ -330,6 +335,10 @@ export async function getTicketById(req: Request, res: Response) {
  */
 export async function createTicket(req: AuthenticatedRequest, res: Response) {
   try {
+    if(req.body.assetId){
+      const [visible]=await db.select({id:assets.id}).from(assets).where(and(eq(assets.id,Number(req.body.assetId)),assetScopePredicate(req)));
+      if(!visible) return res.status(404).json({error:'Asset unavailable'});
+    }
     const parsed = createTicketSchema.parse(req.body);
 
     const subjectText = parsed.title || parsed.subject || '';
@@ -369,6 +378,10 @@ export async function createTicket(req: AuthenticatedRequest, res: Response) {
  */
 export async function updateTicket(req: Request, res: Response) {
   try {
+    if(req.body.assetId){
+      const [visible]=await db.select({id:assets.id}).from(assets).where(and(eq(assets.id,Number(req.body.assetId)),assetScopePredicate(req)));
+      if(!visible) return res.status(404).json({error:'Asset unavailable'});
+    }
     const id = Number(req.params.id);
     if (isNaN(id)) {
       return res.status(400).json({ error: 'Invalid ticket ID' });
@@ -421,7 +434,7 @@ export async function updateTicket(req: Request, res: Response) {
     const updatedList = await db
       .update(itTickets)
       .set(updatePayload)
-      .where(eq(itTickets.id, id))
+      .where(and(eq(itTickets.id, id), ticketScopePredicate(req)))
       .returning();
 
     if (updatedList.length === 0) {
@@ -452,7 +465,7 @@ export async function addTicketComment(req: AuthenticatedRequest, res: Response)
     const ticketCheck = await db
       .select({ id: itTickets.id })
       .from(itTickets)
-      .where(eq(itTickets.id, ticketId));
+      .where(and(eq(itTickets.id, ticketId), ticketScopePredicate(req)));
 
     if (ticketCheck.length === 0) {
       return res.status(404).json({ error: 'Ticket not found' });

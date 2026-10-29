@@ -1,3 +1,6 @@
+import type { RequestScope } from '../domain/organizationAccess';
+import { locationScopePredicate } from './assetOrganizationScope';
+import { locationOrganizationMappings } from '../db/schema/organizations';
 import { eq, sql, ilike, and, or, desc, isNull, inArray } from 'drizzle-orm';
 import { db } from '../db';
 import { assets, assetCategories, assetComputerSpecs, assetAccessories, assetAssignmentHistory } from '../db/schema/assets';
@@ -324,12 +327,11 @@ export async function processBatchHardwareAudit(
 export async function getHardwareAudits(
   statusFilter?: string,
   runner: any = db,
+  scope?: RequestScope,
 ): Promise<Array<HardwareAuditLog & { candidateAssets?: AuditCandidateAsset[]; matchedAsset?: any; peripherals?: HardwareAuditPeripheralRecord[] }>> {
   let query = runner.select().from(hardwareAuditLogs);
 
-  if (statusFilter && statusFilter.toUpperCase() !== 'ALL') {
-    query = query.where(eq(hardwareAuditLogs.status, statusFilter.toUpperCase()));
-  }
+  query = query.where(and(statusFilter && statusFilter.toUpperCase() !== 'ALL' ? eq(hardwareAuditLogs.status,statusFilter.toUpperCase()) : undefined,scope ? hardwareAuditScopePredicate(scope) : undefined));
 
   const rows: HardwareAuditLog[] = await query.orderBy(desc(hardwareAuditLogs.scannedAt), desc(hardwareAuditLogs.id));
 
@@ -360,13 +362,13 @@ export async function getHardwareAudits(
             serialNumber: assets.serialNumber,
           })
           .from(assets)
-          .where(eq(assets.id, audit.matchedAssetId));
+          .where(and(eq(assets.id, audit.matchedAssetId),scope?locationScopePredicate(scope,assets.locationId):undefined));
         matchedAsset = found || null;
       }
 
       let candidateAssets: AuditCandidateAsset[] = [];
       if (audit.status === 'PENDING') {
-        candidateAssets = await findCandidateAssetsForCustodian(audit.custodianName, runner);
+        candidateAssets = await findCandidateAssetsForCustodian(audit.custodianName, runner,scope);
       }
 
       return {
@@ -451,6 +453,7 @@ export async function linkAuditToAsset(
     .set({
       status: 'SYNCED_MANUAL',
       matchedAssetId: targetAsset.id,
+      groupId:(await runner.select().from(locationOrganizationMappings).where(eq(locationOrganizationMappings.locationId,targetAsset.locationId)))[0]?.groupId??null,
       updatedAt: new Date(),
     })
     .where(eq(hardwareAuditLogs.id, audit.id));
@@ -627,6 +630,7 @@ export async function createAssetFromAudit(
   if (matchedCustodian) {
     await runner.insert(assetAssignmentHistory).values({
       assetId: newAsset.id,
+      groupId: (await runner.select().from(locationOrganizationMappings).where(eq(locationOrganizationMappings.locationId,input.locationId!)))[0]?.groupId ?? null,
       custodianId: matchedCustodian.id,
       custodianNameSnapshot: matchedCustodian.displayName,
       assignedByUserId: actorUserId || null,
@@ -641,6 +645,7 @@ export async function createAssetFromAudit(
     .set({
       status: 'SYNCED_MANUAL',
       matchedAssetId: newAsset.id,
+      groupId:(await runner.select().from(locationOrganizationMappings).where(eq(locationOrganizationMappings.locationId,newAsset.locationId)))[0]?.groupId??null,
       updatedAt: new Date(),
     })
     .where(eq(hardwareAuditLogs.id, audit.id));
@@ -710,6 +715,7 @@ async function upsertAssetComputerSpecs(
 async function findCandidateAssetsForCustodian(
   custodianName: string,
   runner: any,
+  scope?:RequestScope,
 ): Promise<AuditCandidateAsset[]> {
   const trimmed = custodianName.trim().toLowerCase();
   if (!trimmed) return [];
@@ -743,7 +749,7 @@ async function findCandidateAssetsForCustodian(
     })
     .from(assets)
     .innerJoin(assetCategories, eq(assets.categoryId, assetCategories.id))
-    .where(inArray(assets.currentCustodianId, custodianIds));
+    .where(and(inArray(assets.currentCustodianId, custodianIds),scope ? locationScopePredicate(scope,assets.locationId) : undefined));
 
   if (assetRows.length === 0) return [];
 
@@ -785,3 +791,20 @@ async function syncPeripheralsToAssetAccessories(
   await runner.insert(assetAccessories).values(values);
 }
 
+
+export function hardwareAuditScopePredicate(scope: RequestScope) {
+  const owned=inArray(hardwareAuditLogs.groupId,scope.groupIds);
+  return scope.includeUnmapped ? or(owned,isNull(hardwareAuditLogs.groupId))! : owned;
+}
+
+// A shared agent key cannot establish a facility owner or authorize inventory changes.
+export async function queueHardwareAudit(payload: HardwareAuditPayload, runner: any = db) {
+  const { peripherals, hasPeripheral, hostname, osName, macAddresses, ...fields } = payload;
+  const [audit] = await runner.insert(hardwareAuditLogs).values({
+    ...fields, rawSpecs: payload.rawSpecs ? JSON.stringify(payload.rawSpecs) : null,
+    scannedAt: payload.scannedAt ? new Date(payload.scannedAt) : new Date(),
+    status:'PENDING',matchedAssetId:null,
+  }).returning({id:hardwareAuditLogs.id});
+  if (peripherals?.length) await runner.insert(hardwareAuditPeripherals).values(peripherals.map(p => ({...p,auditId:audit.id})));
+  return {auditId:audit.id,status:'PENDING',message:'Audit queued for authorized facility reconciliation'};
+}

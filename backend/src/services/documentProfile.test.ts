@@ -1,0 +1,27 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { createHrAuditTestDatabase } from '../testing/hrAuditDatabase';
+import { runMigrations } from '../db/migrate';
+import { createDocumentProfileFixture } from '../testing/documentProfileFixture';
+import { resolveDocumentProfile, DocumentProfileUnavailableError } from './documentProfile';
+test('profile identity and kind are scoped, missing MGM fails closed and prior snapshots survive profile updates',async t => {
+ const fixture = await createHrAuditTestDatabase(); t.after(()=>fixture.cleanup());
+ await runMigrations(fixture.ownerUrl,undefined,fixture.runtimeRole);
+ const owner = await createDocumentProfileFixture(fixture.owner);
+ const database = drizzle(fixture.owner);
+ const snapshot = await resolveDocumentProfile(database,owner);
+ assert.equal(snapshot.identity.name,'Arvirotech'); assert.equal(snapshot.layoutKey,'cmc-ga-v1');
+ const {rows:[mgm]} = await fixture.owner.query("INSERT INTO organization_groups(code,name) VALUES('MGM','MGM') RETURNING id");
+ await assert.rejects(resolveDocumentProfile(database,{...owner,groupId:Number(mgm.id)}),DocumentProfileUnavailableError);
+ await assert.rejects(resolveDocumentProfile(database,{...owner,kind:'LEAVE'}),DocumentProfileUnavailableError);
+ const {rows:[nextIdentity]} = await fixture.owner.query("INSERT INTO document_identity_versions(group_id,organization_id,version,name,logo_asset_key,approved_reference,is_active) VALUES($1,$2,2,'New approved name','/approved/arvirotech-v2.png','test-reference-v2',true) RETURNING id",[owner.groupId,owner.organizationId]);
+ await fixture.owner.query('UPDATE document_profiles SET identity_version_id=$1 WHERE organization_id=$2',[nextIdentity.id,owner.organizationId]);
+ const latest = await resolveDocumentProfile(database,owner);
+ assert.equal(latest.identity.name,'New approved name'); assert.equal(snapshot.identity.name,'Arvirotech');
+ await assert.rejects(fixture.owner.query('UPDATE document_identity_versions SET name=$1 WHERE id=$2',['Rewritten history',nextIdentity.id]),/immutable/i);
+ await assert.rejects(fixture.owner.query('DELETE FROM document_identity_versions WHERE id=$1',[nextIdentity.id]),/immutable/i);
+ const runtimeSnapshot=await resolveDocumentProfile(drizzle(fixture.runtime),owner);
+ assert.equal(runtimeSnapshot.identity.name,'New approved name','runtime role can read approved profile versions');
+ await assert.rejects(fixture.owner.query('UPDATE document_profiles SET group_id=$1 WHERE organization_id=$2',[mgm.id,owner.organizationId]),/foreign key/);
+});

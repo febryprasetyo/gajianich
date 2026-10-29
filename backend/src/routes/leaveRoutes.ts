@@ -1,3 +1,4 @@
+import {requireOrganizationScope} from '../middleware/organizationScope';
 import { Router } from 'express';
 import { authenticateToken, requirePermission } from '../middleware/auth';
 import {
@@ -26,6 +27,7 @@ router.use(authenticateToken);
 router.get(
   '/employees',
   requirePermission(['attendance.view', 'attendance.manage']),
+  requireOrganizationScope('hr', 'read'),
   getActiveEmployeesForLeaves
 );
 
@@ -33,16 +35,19 @@ router.get(
 router.get(
   '/balance-summary',
   requirePermission(['attendance.view', 'attendance.manage']),
+  requireOrganizationScope('hr', 'read'),
   getLeaveBalanceSummary
 );
 router.post(
   '/calculate-days',
   requirePermission(['attendance.view', 'attendance.manage']),
+  requireOrganizationScope('hr', 'read'),
   calculateWorkingDays
 );
 router.get(
   '/holidays',
   requirePermission(['attendance.view', 'attendance.manage']),
+  requireOrganizationScope('hr', 'read'),
   getHolidays
 );
 
@@ -50,31 +55,37 @@ router.get(
 router.get(
   '/requests',
   requirePermission(['attendance.view', 'attendance.manage']),
+  requireOrganizationScope('hr', 'read'),
   getLeaveRequests
 );
 router.get(
   '/requests/:id',
   requirePermission(['attendance.view', 'attendance.manage']),
+  requireOrganizationScope('hr', 'read'),
   getLeaveRequestById
 );
 router.post(
   '/requests',
   requirePermission(['attendance.manage']),
+  requireOrganizationScope('hr', 'write'),
   createLeaveRequest
 );
 router.put(
   '/requests/:id',
   requirePermission(['attendance.manage']),
+  requireOrganizationScope('hr', 'write'),
   updateLeaveRequest
 );
 router.patch(
   '/requests/:id/approve',
   requirePermission(['attendance.manage']),
+  requireOrganizationScope('hr', 'write'),
   approveLeaveRequest
 );
 router.delete(
   '/requests/:id',
   requirePermission(['attendance.manage']),
+  requireOrganizationScope('hr', 'write'),
   deleteLeaveRequestDraft
 );
 
@@ -82,21 +93,25 @@ router.delete(
 router.get(
   '/master/config',
   requirePermission(['attendance.view', 'attendance.manage']),
+  requireOrganizationScope('hr', 'read'),
   getAnnualLeaveConfig
 );
 router.post(
   '/master/config',
   requirePermission(['attendance.manage']),
+  requireOrganizationScope('hr', 'write'),
   saveAnnualLeaveConfig
 );
 router.get(
   '/master/balances',
   requirePermission(['attendance.view', 'attendance.manage']),
+  requireOrganizationScope('hr', 'read'),
   getMasterLeaveBalances
 );
 router.put(
   '/master/balances/:id',
   requirePermission(['attendance.manage']),
+  requireOrganizationScope('hr', 'write'),
   updateEmployeeLeaveBalance
 );
 

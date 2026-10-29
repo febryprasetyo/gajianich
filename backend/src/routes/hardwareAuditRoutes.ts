@@ -1,3 +1,4 @@
+import { requireOrganizationScope } from '../middleware/organizationScope';
 import { Router, Request, Response, NextFunction } from 'express';
 import {
   ingestHardwareAudit,
@@ -33,7 +34,7 @@ function agentOrUserAuth(req: Request, res: Response, next: NextFunction) {
   if (req.header('X-Agent-Key')) {
     return getAgentAuth()(req, res, next);
   }
-  return authenticateToken(req as any, res, next);
+  return authenticateToken(req as any,res,() => requirePermission('hardware_audits.manage')(req as any,res,() => requireOrganizationScope('assets','write')(req as any,res,next)));
 }
 
 // Ingestion endpoints (Agent tool or Web UI)
@@ -44,10 +45,10 @@ router.post('/batch-sync', agentOrUserAuth, batchSyncHardwareAudits);
 const viewAudits = requirePermission('hardware_audits.view');
 const manageAudits = requirePermission('hardware_audits.manage');
 
-router.get('/', authenticateToken, viewAudits, listHardwareAudits);
-router.post('/:id/link', authenticateToken, manageAudits, linkHardwareAudit);
-router.post('/:id/create-asset', authenticateToken, manageAudits, createAssetFromHardwareAudit);
-router.delete('/clear-synced', authenticateToken, manageAudits, clearSyncedHardwareAuditsRecord);
-router.delete('/:id', authenticateToken, manageAudits, deleteHardwareAuditRecord);
+router.get('/', authenticateToken, viewAudits, requireOrganizationScope('assets','read'), listHardwareAudits);
+router.post('/:id/link', authenticateToken, manageAudits, requireOrganizationScope('assets','write'), linkHardwareAudit);
+router.post('/:id/create-asset', authenticateToken, manageAudits, requireOrganizationScope('assets','write'), createAssetFromHardwareAudit);
+router.delete('/clear-synced', authenticateToken, manageAudits, requireOrganizationScope('assets','write'), clearSyncedHardwareAuditsRecord);
+router.delete('/:id', authenticateToken, manageAudits, requireOrganizationScope('assets','write'), deleteHardwareAuditRecord);
 
 export default router;

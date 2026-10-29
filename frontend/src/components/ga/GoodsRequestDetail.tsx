@@ -29,6 +29,7 @@ import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
 import { getStatusBadgeConfig, getStatusLabel, isRequestEditable } from '@/lib/ga/goodsRequestStatus';
 import { GoodsDocumentHeading, GoodsDocumentSignatures } from './GoodsRequestDocument';
 import './goodsRequestPrint.css';
+import { documentProfileForRender } from '@/lib/organizationDocumentProfile';
 
 interface GoodsRequestDetailProps {
   id: string;
@@ -54,6 +55,7 @@ export default function GoodsRequestDetail({ id, saved = false }: GoodsRequestDe
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
 
+  const documentProfile = request ? documentProfileForRender(request,'GA') : null;
   const editable = request ? isRequestEditable(request.status) : false;
 
   useEffect(() => {
@@ -144,7 +146,7 @@ export default function GoodsRequestDetail({ id, saved = false }: GoodsRequestDe
   }
 
   async function print() {
-    if (!request || imageLoading || imageError) return;
+    if (!request || !documentProfile || imageLoading || imageError) return;
     setPrintError('');
     try {
       await Promise.all(Array.from(document.querySelectorAll<HTMLImageElement>('.ga-request-document-area img')).map(image => image.decode()));
@@ -172,7 +174,7 @@ export default function GoodsRequestDetail({ id, saved = false }: GoodsRequestDe
 
   return (
     <DashboardLayout>
-      <main className="ga-request-detail mx-auto min-w-0 max-w-5xl space-y-4 pb-6">
+      <main className="ga-request-detail min-w-0 space-y-6 pb-6">
         {/* Navigation & Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
@@ -247,7 +249,7 @@ export default function GoodsRequestDetail({ id, saved = false }: GoodsRequestDe
                   )}
 
                   <button
-                    disabled={imageLoading || !!imageError}
+                    disabled={!documentProfile || imageLoading || !!imageError}
                     onClick={print}
                     className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-400 active:scale-95 disabled:opacity-50 transition"
                   >
@@ -280,14 +282,15 @@ export default function GoodsRequestDetail({ id, saved = false }: GoodsRequestDe
           </div>
         ) : request && (
           <div className="ga-request-document-area space-y-6">
-            <article
+            {!documentProfile && <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Profil dokumen resmi belum tersedia. Pratinjau dan cetak ditahan sampai identitas dan format organisasi disahkan.</p>}
+            {documentProfile && <article
               role="group"
               aria-label="Lembar permintaan barang"
               className="ga-request-document w-full min-w-0 bg-white border border-slate-200/90 rounded-2xl shadow-xs p-5 sm:p-8 print:p-0 print:border-none print:shadow-none print:rounded-none print:max-w-none print:m-0"
             >
               {/* Boxed Formal Document Form */}
               <div className="ga-request-document-box border border-black bg-white text-black text-[11px]">
-                <GoodsDocumentHeading headingColorClass="text-black" />
+                <GoodsDocumentHeading headingColorClass="text-black" profile={documentProfile} />
 
                 {/* Form Info Identity */}
                 <div className="border-b border-black text-[11px] text-black pt-2.5 pb-2.5 sm:pt-3 sm:pb-3 print:pt-2 print:pb-2">
@@ -357,10 +360,10 @@ export default function GoodsRequestDetail({ id, saved = false }: GoodsRequestDe
 
                 {/* Signatures Table */}
                 <div className="overflow-x-auto">
-                  <GoodsDocumentSignatures requesterName={capitalizeWords(request.requesterName)} />
+                  <GoodsDocumentSignatures profile={documentProfile} requesterName={capitalizeWords(request.requesterName)} />
                 </div>
               </div>
-            </article>
+            </article>}
 
             {/* Price Evidence Gallery */}
             <div

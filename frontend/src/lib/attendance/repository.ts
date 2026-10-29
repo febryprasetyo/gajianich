@@ -1,5 +1,6 @@
 import type { AttendanceDataset, AttendanceRepository, AttendanceCommand } from './types';
 import { api } from '@/lib/api';
+import {organizationRequests} from '@/lib/access/organizationScope';
 
 /**
  * Generate RFC4122 version 4 UUID compliant string.
@@ -27,8 +28,10 @@ export function generateUuidV4(): string {
 export function createAttendanceRepository(_accountId?: number): AttendanceRepository {
   let current: AttendanceDataset | null = null;
   let queue: Promise<unknown> = Promise.resolve();
+  let cacheRevision=organizationRequests.revision;
 
   async function load(signal?: AbortSignal): Promise<AttendanceDataset> {
+    if(cacheRevision!==organizationRequests.revision){current=null;cacheRevision=organizationRequests.revision;}
     if (current) return structuredClone(current);
 
     const response = await api.get<{ success: boolean; data: AttendanceDataset }>(
@@ -62,7 +65,10 @@ export function createAttendanceRepository(_accountId?: number): AttendanceRepos
   return {
     load,
     async execute(command: AttendanceCommand): Promise<AttendanceDataset> {
+      const revision=organizationRequests.revision;
       const operation = queue.then(async () => {
+        if(revision!==organizationRequests.revision) throw new DOMException('Kelompok aktif telah berubah','AbortError');
+        if(cacheRevision!==revision){current=null;cacheRevision=revision;}
         // sync_employees is client-side metadata alignment with master employee cache
         if (command.type === 'sync_employees') {
           if (!current) {

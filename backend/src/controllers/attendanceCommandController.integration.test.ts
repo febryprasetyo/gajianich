@@ -46,6 +46,8 @@ test("Attendance Command Controller Integration Tests", async (t) => {
   await owner.query(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO "${runtimeRole}"`);
   await owner.query(`REVOKE UPDATE, DELETE, TRUNCATE ON hr_audit_events, hr_audit_targets, hr_mutation_receipts FROM "${runtimeRole}"`);
 
+  const {rows:[group]} = await owner.query("INSERT INTO organization_groups(code,name) VALUES('CMC','CMC') RETURNING id");
+  const organizationScope = {module:'hr',groupIds:[Number(group.id)],selectedGroupId:Number(group.id),includeUnmapped:false};
   const adminDb = drizzle(owner);
   const testDb = drizzle(runtime);
 
@@ -53,8 +55,8 @@ test("Attendance Command Controller Integration Tests", async (t) => {
   const [role] = await adminDb
     .insert(roles)
     .values({
-      name: "HR Admin",
-      code: "hr_admin",
+      name: "SuperAdmin",
+      code: "superadmin",
       description: "HR Admin",
       isSystem: true,
     })
@@ -74,6 +76,7 @@ test("Attendance Command Controller Integration Tests", async (t) => {
   await t.test("getAttendanceWorkspace returns success and clean workspace state", async () => {
     const req: any = {
       db: testDb,
+      organizationScope,
       user: { userId: testUser.id, role: "admin", permissions: ["attendance.view"] },
     };
     const res = mockRes();
@@ -90,6 +93,7 @@ test("Attendance Command Controller Integration Tests", async (t) => {
     const opId = randomUUID();
     const req: any = {
       db: testDb,
+      organizationScope,
       user: { userId: testUser.id, permissions: ["attendance.manage"] },
       headers: {
         "idempotency-key": opId,
@@ -144,6 +148,7 @@ test("Attendance Command Controller Integration Tests", async (t) => {
   await t.test("postAttendanceCommand rejects unauthorized command with 403", async () => {
     const req: any = {
       db: testDb,
+      organizationScope,
       user: { userId: testUser.id, permissions: ["attendance.view"] }, // lacks attendance.manage
       headers: {},
       body: {
@@ -164,6 +169,7 @@ test("Attendance Command Controller Integration Tests", async (t) => {
   await t.test("postAttendanceCommand rejects mismatched Idempotency-Key header with 400", async () => {
     const req: any = {
       db: testDb,
+      organizationScope,
       user: { userId: testUser.id, permissions: ["attendance.manage"] },
       headers: {
         "idempotency-key": randomUUID(),

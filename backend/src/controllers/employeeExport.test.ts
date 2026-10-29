@@ -69,7 +69,7 @@ test('exportEmployeesToExcel sets attachment headers', async () => {
   let statusCode = 0;
   let sentData: any = null;
 
-  const req: any = { query: {} };
+  const req: any = { query: {},organizationScope:{module:'hr',groupIds:[],selectedGroupId:null,includeUnmapped:true} };
   const res: any = {
     setHeader: (k: string, v: string) => {
       headers[k.toLowerCase()] = v;

@@ -1,3 +1,6 @@
+import {departmentOrganizationMappings} from '../db/schema/organizations';
+import {attendanceBatches,attendanceRecords} from '../db/schema/attendance';
+import {leaveRequests} from '../db/schema/leaves';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { db } from '../db';
@@ -96,6 +99,17 @@ export async function appendHrAudit(
 ): Promise<string> {
   try {
     const actorName = input.actor.name?.trim() || input.actor.username;
+    let groupId: number | null = typeof input.metadata?.groupId === 'number' ? input.metadata.groupId : null;
+    const entityId = Number(input.entityId);
+    if (!groupId && Number.isSafeInteger(entityId) && entityId > 0) {
+      if (input.entityType === 'employee') {
+        const [row] = await tx.select({groupId:departmentOrganizationMappings.groupId}).from(employees).innerJoin(departmentOrganizationMappings,eq(employees.departmentId,departmentOrganizationMappings.departmentId)).where(eq(employees.id,entityId));
+        groupId = row?.groupId ?? null;
+      } else {
+        const table = input.entityType === 'attendance_record' ? attendanceRecords : input.entityType === 'attendance_batch' ? attendanceBatches : input.entityType === 'leave_request' ? leaveRequests : null;
+        if (table) {const [row] = await tx.select({groupId:table.groupId}).from(table).where(eq(table.id,entityId));groupId = row?.groupId ?? null;}
+      }
+    }
     const [event] = await (tx as any)
       .insert(hrAuditEvents)
       .values({
@@ -109,7 +123,7 @@ export async function appendHrAudit(
         entityLabel: input.entityLabel,
         outcome: input.outcome,
         summary: input.summary,
-        metadata: input.metadata || {},
+        metadata: {...input.metadata,groupId},
         schemaVersion: 1,
       })
       .returning({ id: hrAuditEvents.id });

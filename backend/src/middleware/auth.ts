@@ -3,6 +3,7 @@ import { verifyToken, TokenPayload } from '../utils/jwt';
 import { db } from '../db';
 import { roles, permissions, rolePermissions } from '../db/schema/users';
 import { eq, and, or, inArray } from 'drizzle-orm';
+import { loadCurrentIdentity } from '../services/currentIdentity';
 
 export interface AuthenticatedRequest extends Request {
   user?: TokenPayload;
@@ -42,7 +43,7 @@ export async function getUserPermissions(roleId?: number, roleName?: string): Pr
   return rows.map((r) => r.code);
 }
 
-export function authenticateToken(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+export async function authenticateToken(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -50,8 +51,16 @@ export function authenticateToken(req: AuthenticatedRequest, res: Response, next
     return res.status(401).json({ error: 'Unauthorized: Access token missing' });
   }
 
+  let verified: TokenPayload;
   try {
-    const payload = verifyToken(token);
+    verified = verifyToken(token);
+  } catch {
+    return res.status(403).json({ error: 'Forbidden: Invalid or expired token' });
+  }
+  try {
+    const payload = await loadCurrentIdentity(verified.userId);
+    if (!payload) return res.status(403).json({ error: 'Forbidden: Account unavailable' });
+    payload.permissions = await getUserPermissions(payload.roleId, payload.roleName);
     req.user = payload;
     const path = (req.originalUrl || '').split('?')[0];
     const canCompletePasswordChange =
@@ -62,7 +71,7 @@ export function authenticateToken(req: AuthenticatedRequest, res: Response, next
     }
     next();
   } catch (err) {
-    return res.status(403).json({ error: 'Forbidden: Invalid or expired token' });
+    return res.status(503).json({ error: 'Authentication temporarily unavailable' });
   }
 }
 

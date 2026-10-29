@@ -22,6 +22,7 @@ Dokumen ini adalah **indeks utama roadmap**. Setiap item prioritas dipecah ke be
 | **12** | Download Presensi Mesin Absensi & Kalkulasi Shift (Solution Pattern) | **Dalam Proses** | [12-download-presensi-mesin-dan-kalkulasi-shift.md](./12-download-presensi-mesin-dan-kalkulasi-shift.md) | [Spec](../superpowers/specs/2026-10-27-attendance-machine-sync-design.md) \| [Plan](../superpowers/plans/2026-10-27-attendance-machine-sync.md) |
 | **13** | Master Desain Standar Global (Desktop & Future Pages) | **Selesai** | [13-master-desain-standar-global.md](./13-master-desain-standar-global.md) | [Spec](../superpowers/specs/2026-10-27-master-design-standard-design.md) \| [Plan](../superpowers/plans/2026-10-27-master-design-standard.md) |
 | **14** | Rebranding Total: Penggantian Kata ams & ams-app ke gajianich | **Selesai** | [14-rebrand-ams-ke-gajianich.md](./14-rebrand-ams-ke-gajianich.md) | [Spec](../superpowers/specs/2026-10-28-replace-ams-with-gajianich-design.md) \| [Plan](../superpowers/plans/2026-10-28-replace-ams-with-gajianich.md) |
+| **15** | Pemisahan CMC/MGM, Cakupan Akses & Identitas Dokumen | **Implementasi terverifikasi; menunggu aktivasi** | [15-cmc-mgm-organization-scope.md](./15-cmc-mgm-organization-scope.md) | [Spec](../superpowers/specs/2026-10-29-cmc-mgm-organization-scope-design.md) \| [Plan](../superpowers/plans/2026-10-29-cmc-mgm-organization-scope.md) |
 
 ---
 
@@ -162,3 +163,15 @@ Uji lima mesin selesai dengan hasil campuran: semua TCP 4370 terjangkau; 192.168
 - Penarikan 61.127 log riil dan impor 137 rekaman 26-28 Oktober 2026 ke attendance_device_raw_logs.
 - Perhitungan shift FIFO First-In Last-Out menghasilkan 115 transaksi presensi kerja lengkap.
 - Penanganan status mesin offline secara anggun dan elegan.
+
+## Checkpoint Perencanaan CMC/MGM — 29 Oktober 2026
+
+Fondasi backend Task 1-3 telah diimplementasikan dan diuji: preview manifest, schema/mapping/membership additive, serta autentikasi dan resolver scope terkini. Suite backend 393/393 lulus dan typecheck lulus. Migrasi 0026 pada development mempertahankan fingerprint 19 tabel terlindungi, 369 karyawan dan 1.684 record absensi; tanpa reset. Inventaris per induk CMC/MGM dan cuti/approval sama dikonfirmasi pengguna. **Task 4-10 serta isolasi operasional belum selesai**; katalog/mapping/membership belum diprovisikan. [Detail](./15-cmc-mgm-organization-scope.md), [checkpoint](../plan/2026-10-29-cmc-mgm-organization-scope-checkpoint.md), dan [runbook](../plan/2026-10-29-cmc-mgm-rollout-runbook.md). Tidak ada commit atau deploy produksi; checkbox commit tetap kosong.
+
+## Checkpoint Audit UI/UX — 29 Oktober 2026
+
+Audit sampel aset, tiket dan vendor pada 360/390/1440 px selesai; ditemukan sembilan rekomendasi, termasuk pemilih kelompok yang menutup menu mobile dan fokus Shift+Tab yang keluar dari modal. [Laporan, prioritas dan bukti browser](../plan/2026-10-29-ui-ux-design-audit.md). Status: audit selesai, perbaikan belum diimplementasikan. Kode produk tidak berubah; typecheck/lint/unit test tidak dijalankan untuk pekerjaan dokumentasi ini. Belum dibuat commit atau deployment.
+
+## Checkpoint CMC/MGM — integrasi akhir 29 Oktober 2026
+
+Scope HR/GA/inventaris/akun, dokumen berversi dan pemilih kelompok per tab tersedia. Backend 408/408, frontend 217/217, Chromium 2/2, typecheck, lint frontend dan build lulus. Migrasi development 0026–0029 mempertahankan fingerprint 19 tabel: 369 karyawan dan 1.684 absensi utuh. Aktivasi menunggu mapping/membership, bukti historis dan identitas/template resmi. [Checkpoint lengkap](../plan/2026-10-29-cmc-mgm-organization-scope-checkpoint.md), [runbook](../plan/2026-10-29-cmc-mgm-rollout-runbook.md). Tidak ada deploy produksi.

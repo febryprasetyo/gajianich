@@ -1,3 +1,5 @@
+import { assetRequestScope, assetScopePredicate, employeeAssetScopePredicate, locationScopePredicate, requireAssetLocation } from '../services/assetOrganizationScope';
+import { CustodianError, sendCustodianError } from '../domain/assetCustodian';
 import { Request, Response } from 'express';
 import { db } from '../db';
 import { softwareLicenses, licenseAllocations } from '../db/schema/licenses';
@@ -5,7 +7,7 @@ import { vendors } from '../db/schema/vendors';
 import { locations } from '../db/schema/master';
 import { employees } from '../db/schema/employees';
 import { assets } from '../db/schema/assets';
-import { eq, ilike, or, and, desc } from 'drizzle-orm';
+import { eq, ilike, or, and, desc, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 // --- Zod Schemas ---
@@ -55,7 +57,7 @@ export async function getLicenses(req: Request, res: Response) {
   try {
     const { search, licenseType, status, vendorId, locationId } = req.query;
 
-    const conditions = [];
+    const conditions = [locationScopePredicate(assetRequestScope(req),softwareLicenses.locationId)];
 
     if (search && typeof search === 'string' && search.trim() !== '') {
       const pattern = `%${search.trim()}%`;
@@ -66,7 +68,7 @@ export async function getLicenses(req: Request, res: Response) {
           ilike(softwareLicenses.notes, pattern),
           ilike(locations.name, pattern),
           ilike(locations.code, pattern)
-        )
+        )!
       );
     }
 
@@ -122,6 +124,7 @@ export async function getLicenses(req: Request, res: Response) {
 
     return res.status(200).json(list);
   } catch (err: any) {
+    if (sendCustodianError(res,err)) return;
     return res.status(500).json({ error: err.message || 'Internal server error' });
   }
 }
@@ -160,7 +163,7 @@ export async function getLicenseById(req: Request, res: Response) {
       .from(softwareLicenses)
       .leftJoin(vendors, eq(softwareLicenses.vendorId, vendors.id))
       .leftJoin(locations, eq(softwareLicenses.locationId, locations.id))
-      .where(eq(softwareLicenses.id, id))
+      .where(and(eq(softwareLicenses.id, id),locationScopePredicate(assetRequestScope(req),softwareLicenses.locationId)))
       .limit(1);
 
     if (licenseResult.length === 0) {
@@ -188,7 +191,7 @@ export async function getLicenseById(req: Request, res: Response) {
       .from(licenseAllocations)
       .leftJoin(employees, eq(licenseAllocations.employeeId, employees.id))
       .leftJoin(assets, eq(licenseAllocations.assetId, assets.id))
-      .where(eq(licenseAllocations.licenseId, id))
+      .where(and(eq(licenseAllocations.licenseId, id),allocationScope(req)))
       .orderBy(desc(licenseAllocations.id));
 
     return res.status(200).json({
@@ -196,6 +199,7 @@ export async function getLicenseById(req: Request, res: Response) {
       allocations,
     });
   } catch (err: any) {
+    if (sendCustodianError(res,err)) return;
     return res.status(500).json({ error: err.message || 'Internal server error' });
   }
 }
@@ -207,6 +211,7 @@ export async function getLicenseById(req: Request, res: Response) {
 export async function createLicense(req: Request, res: Response) {
   try {
     const parsed = createLicenseSchema.parse(req.body);
+    await requireAssetLocation(db,req,parsed.locationId);
 
     const [inserted] = await db
       .insert(softwareLicenses)
@@ -228,6 +233,7 @@ export async function createLicense(req: Request, res: Response) {
 
     return res.status(201).json(inserted);
   } catch (err: any) {
+    if (sendCustodianError(res,err)) return;
     if (err instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation failed', details: err.issues });
     }
@@ -251,13 +257,14 @@ export async function updateLicense(req: Request, res: Response) {
     const existing = await db
       .select()
       .from(softwareLicenses)
-      .where(eq(softwareLicenses.id, id))
+      .where(and(eq(softwareLicenses.id, id),locationScopePredicate(assetRequestScope(req),softwareLicenses.locationId)))
       .limit(1);
 
     if (existing.length === 0) {
       return res.status(404).json({ error: 'Software license not found' });
     }
 
+    await requireAssetLocation(db,req,parsed.locationId === undefined ? existing[0].locationId : parsed.locationId);
     const updatePayload: Record<string, any> = {};
     if (parsed.name !== undefined) updatePayload.name = parsed.name;
     if (parsed.licenseKey !== undefined) updatePayload.licenseKey = parsed.licenseKey;
@@ -274,11 +281,12 @@ export async function updateLicense(req: Request, res: Response) {
     const [updated] = await db
       .update(softwareLicenses)
       .set(updatePayload)
-      .where(eq(softwareLicenses.id, id))
+      .where(and(eq(softwareLicenses.id, id),locationScopePredicate(assetRequestScope(req),softwareLicenses.locationId)))
       .returning();
 
     return res.status(200).json(updated);
   } catch (err: any) {
+    if (sendCustodianError(res,err)) return;
     if (err instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation failed', details: err.issues });
     }
@@ -297,12 +305,14 @@ export async function deleteLicense(req: Request, res: Response) {
       return res.status(400).json({ error: 'Invalid software license ID' });
     }
 
+    const [parent] = await db.select({id:softwareLicenses.id}).from(softwareLicenses).where(and(eq(softwareLicenses.id,id),locationScopePredicate(assetRequestScope(req),softwareLicenses.locationId)));
+    if (!parent) return res.status(404).json({error:'Software license not found'});
     // Delete seat allocations first to prevent foreign key errors
     await db.delete(licenseAllocations).where(eq(licenseAllocations.licenseId, id));
 
     const deletedList = await db
       .delete(softwareLicenses)
-      .where(eq(softwareLicenses.id, id))
+      .where(and(eq(softwareLicenses.id, id),locationScopePredicate(assetRequestScope(req),softwareLicenses.locationId)))
       .returning();
 
     if (deletedList.length === 0) {
@@ -314,6 +324,7 @@ export async function deleteLicense(req: Request, res: Response) {
       license: deletedList[0],
     });
   } catch (err: any) {
+    if (sendCustodianError(res,err)) return;
     return res.status(500).json({ error: err.message || 'Internal server error' });
   }
 }
@@ -330,11 +341,13 @@ export async function allocateLicenseSeat(req: Request, res: Response) {
     }
 
     const parsed = allocateSeatSchema.parse(req.body);
+    if (parsed.assetId) { const [asset] = await db.select({id:assets.id}).from(assets).where(and(eq(assets.id,parsed.assetId),assetScopePredicate(req))); if (!asset) throw new CustodianError('Asset not found',404); }
+    if (parsed.employeeId) { const [employee] = await db.select({id:employees.id}).from(employees).where(and(eq(employees.id,parsed.employeeId),employeeAssetScopePredicate(assetRequestScope(req)))); if (!employee) throw new CustodianError('Employee not found',404); }
 
     const [license] = await db
       .select()
       .from(softwareLicenses)
-      .where(eq(softwareLicenses.id, id))
+      .where(and(eq(softwareLicenses.id, id),locationScopePredicate(assetRequestScope(req),softwareLicenses.locationId)))
       .limit(1);
 
     if (!license) {
@@ -359,10 +372,11 @@ export async function allocateLicenseSeat(req: Request, res: Response) {
     await db
       .update(softwareLicenses)
       .set({ usedSeats: newUsedSeats })
-      .where(eq(softwareLicenses.id, id));
+      .where(and(eq(softwareLicenses.id, id),locationScopePredicate(assetRequestScope(req),softwareLicenses.locationId)));
 
     return res.status(201).json(allocation);
   } catch (err: any) {
+    if (sendCustodianError(res,err)) return;
     if (err instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation failed', details: err.issues });
     }
@@ -386,14 +400,14 @@ export async function revokeLicenseSeat(req: Request, res: Response) {
     const [license] = await db
       .select()
       .from(softwareLicenses)
-      .where(eq(softwareLicenses.id, id))
+      .where(and(eq(softwareLicenses.id, id),locationScopePredicate(assetRequestScope(req),softwareLicenses.locationId)))
       .limit(1);
 
     if (!license) {
       return res.status(404).json({ error: 'Software license not found' });
     }
 
-    const conditions = [eq(licenseAllocations.licenseId, id)];
+    const conditions = [eq(licenseAllocations.licenseId, id),allocationScope(req)];
 
     if (allocationId) {
       const allocId = Number(allocationId);
@@ -425,13 +439,19 @@ export async function revokeLicenseSeat(req: Request, res: Response) {
     await db
       .update(softwareLicenses)
       .set({ usedSeats: newUsedSeats })
-      .where(eq(softwareLicenses.id, id));
+      .where(and(eq(softwareLicenses.id, id),locationScopePredicate(assetRequestScope(req),softwareLicenses.locationId)));
 
     return res.status(200).json({
       message: 'License seat allocation revoked successfully',
       allocation: deletedAllocation,
     });
   } catch (err: any) {
+    if (sendCustodianError(res,err)) return;
     return res.status(500).json({ error: err.message || 'Internal server error' });
   }
+}
+
+function allocationScope(req: Request) {
+  return and(sql`(${licenseAllocations.assetId} is null or exists (select 1 from ${assets} where ${assets.id}=${licenseAllocations.assetId} and ${assetScopePredicate(req)}))`,
+    sql`(${licenseAllocations.employeeId} is null or exists (select 1 from ${employees} where ${employees.id}=${licenseAllocations.employeeId} and ${employeeAssetScopePredicate(assetRequestScope(req))}))`)!;
 }

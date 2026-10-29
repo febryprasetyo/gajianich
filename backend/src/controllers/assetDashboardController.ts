@@ -1,3 +1,4 @@
+import { assetScopePredicate } from '../services/assetOrganizationScope';
 import { Request, Response } from 'express';
 import { db } from '../db';
 import { assets, assetCategories } from '../db/schema/assets';
@@ -137,7 +138,7 @@ export function formatPurchaseTrend(
   }));
 }
 
-export async function getAssetDashboardSummary(_req: Request, res: Response) {
+export async function getAssetDashboardSummary(req: Request, res: Response) {
   try {
     // 1. Fetch raw assets with joined details
     const rows = await db
@@ -164,7 +165,7 @@ export async function getAssetDashboardSummary(_req: Request, res: Response) {
       .leftJoin(assetCustodians, eq(assets.currentCustodianId, assetCustodians.id))
       .leftJoin(employees, eq(assetCustodians.employeeId, employees.id))
       .leftJoin(departments, eq(employees.departmentId, departments.id))
-      .orderBy(desc(assets.id));
+      .where(assetScopePredicate(req)).orderBy(desc(assets.id));
 
     // 2. Compute KPIs
     const kpis = computeAssetKpis(rows);

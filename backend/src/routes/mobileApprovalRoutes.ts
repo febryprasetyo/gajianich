@@ -1,3 +1,6 @@
+import {requireOrganizationScope} from '../middleware/organizationScope';
+import {requireHrScope,historicalScopePredicate} from '../services/hrOrganizationScope';
+import {loadCurrentIdentity} from '../services/currentIdentity';
 import { Router, Response } from 'express';
 import { z } from 'zod';
 import { readFile } from 'node:fs/promises';
@@ -7,8 +10,8 @@ import { attendanceShifts } from '../db/schema/attendanceWorkspace';
 import { attendanceSelfLogs } from '../db/schema/attendanceSelfLogs';
 import { attendanceFaceRequests } from '../db/schema/attendanceFaceRequests';
 import { users } from '../db/schema/users';
-import { eq, sql } from 'drizzle-orm';
-import { correctMobileAttendance, listFaceRequests, verifyFaceRequest } from '../services/mobileAttendanceService';
+import { and,eq, sql } from 'drizzle-orm';
+import { resolveEmployeeUser, correctMobileAttendance, listFaceRequests, verifyFaceRequest } from '../services/mobileAttendanceService';
 const router = Router();
 const review = requirePermission('attendance.mobile.verify');
 const handle = (fn: (req: AuthenticatedRequest, res: Response) => Promise<unknown>) => async (req: AuthenticatedRequest, res: Response) => {
@@ -19,19 +22,20 @@ router.post('/corrections', handle(async (req, res) => {
   const data = z.object({ logId: z.number().int().positive(), note: z.string().trim().min(1).max(2000) }).parse(req.body);
   res.json(await correctMobileAttendance(req.user!.userId, data.logId, data.note));
 }));
-router.get('/approval-settings', review, handle(async (_req, res) => { res.json({ data: await db.select().from(attendanceShifts).orderBy(attendanceShifts.id) }); }));
-router.put('/approval-settings/:id', review, handle(async (req, res) => {
+router.get('/approval-settings', review, requireOrganizationScope('hr','read'), handle(async (_req, res) => { res.json({ data: await db.select().from(attendanceShifts).orderBy(attendanceShifts.id) }); }));
+router.put('/approval-settings/:id', review, requireOrganizationScope('hr','write'), handle(async (req, res) => {
+  if (!(await loadCurrentIdentity(req.user!.userId))?.isGlobalAdministrator) {res.status(403).json({error:'Shared approval settings require global administrator'});return;}
   const id = z.coerce.number().int().positive().parse(req.params.id);
   const data = z.object({ autoApproveIn: z.boolean(), autoApproveOut: z.boolean() }).parse(req.body);
   const [shift] = await db.update(attendanceShifts).set({ ...data, updatedAt: new Date() }).where(eq(attendanceShifts.id, id)).returning();
   if (!shift) throw new Error('Shift tidak ditemukan.');
   res.json({ success: true, data: shift });
 }));
-router.get('/face-requests', review, handle(async (_req, res) => { res.json({ data: await listFaceRequests() }); }));
-router.post('/face-requests/:id/review', review, handle(async (req, res) => {
+router.get('/face-requests', review, requireOrganizationScope('hr','read'),handle(async (req, res) => { res.json({ data: await listFaceRequests(db,requireHrScope(req as any)) }); }));
+router.post('/face-requests/:id/review', review, requireOrganizationScope('hr','write'), handle(async (req, res) => {
   const id = z.coerce.number().int().positive().parse(req.params.id);
   const data = z.object({ status: z.enum(['APPROVED','REJECTED']), note: z.string().max(2000).default('') }).parse(req.body);
-  res.json(await verifyFaceRequest(req.user!.userId, id, data.status, data.note));
+  res.json(await verifyFaceRequest(req.user!.userId, id, data.status, data.note,db,requireHrScope(req as any)));
 }));
 router.get('/photos/:id', handle(async (req, res) => {
   const id = z.coerce.number().int().positive().parse(req.params.id);
@@ -39,17 +43,17 @@ router.get('/photos/:id', handle(async (req, res) => {
   if (!log?.photoUrl) { res.status(404).json({ error: 'Foto tidak tersedia atau sudah melewati masa penyimpanan.' }); return; }
   const [user] = await db.select().from(users).where(eq(users.id, req.user!.userId));
   const send = async () => { res.set('Cache-Control','no-store').json({ dataUrl: `data:image/webp;base64,${(await readFile(log.photoUrl!)).toString('base64')}` }); };
-  if (user?.employeeId === log.employeeId) { await send(); return; }
-  await review(req, res, () => { void send().catch(() => { res.status(404).json({ error: 'Foto tidak tersedia.' }); }); });
+  if (user?.employeeId === log.employeeId) {const {employee} = await resolveEmployeeUser(req.user!.userId); if (log.groupId !== employee.groupId) {res.status(404).json({error:'Photo unavailable'});return;} await send(); return; }
+  await review(req, res, () => {void requireOrganizationScope('hr','read')(req,res,()=>{void (async()=>{const [owned] = await db.select().from(attendanceSelfLogs).where(and(eq(attendanceSelfLogs.id,id),historicalScopePredicate(requireHrScope(req as any),attendanceSelfLogs.groupId))); if(!owned){res.status(404).json({error:'Photo unavailable'});return;} await send();})().catch(()=>res.status(404).json({error:'Photo unavailable'}));});});
 }));
-router.get('/badge-count', review, handle(async (_req, res) => {
+router.get('/badge-count', review,requireOrganizationScope('hr','read'), handle(async (req, res) => {
   const [attendanceCount, photoCount] = await Promise.all([
     db.select({ count: sql<number>`count(*)::int` })
       .from(attendanceSelfLogs)
-      .where(eq(attendanceSelfLogs.approvalStatus, 'PENDING')),
+      .where(and(eq(attendanceSelfLogs.approvalStatus, 'PENDING'),historicalScopePredicate(requireHrScope(req as any),attendanceSelfLogs.groupId))),
     db.select({ count: sql<number>`count(*)::int` })
       .from(attendanceFaceRequests)
-      .where(eq(attendanceFaceRequests.status, 'PENDING')),
+      .where(and(eq(attendanceFaceRequests.status, 'PENDING'),historicalScopePredicate(requireHrScope(req as any),attendanceFaceRequests.groupId))),
   ]);
 
   const pendingAttendance = Number(attendanceCount[0]?.count || 0);

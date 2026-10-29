@@ -1,3 +1,4 @@
+import { authorizeCustodianSelection, assetScopePredicate, assetRequestScope, authorizeAssetMutation, historyGroupPredicate, requireScopedAsset } from '../services/assetOrganizationScope';
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { db } from '../db';
@@ -12,7 +13,7 @@ import { lockCustodianDirectory, requireActiveCustodian, resolveCustodianSelecti
 import { hydrateAssetCustodians } from '../services/assetCustodianRead';
 import { assignmentActor, canCreateManualCustodian, writeAssetAssignment } from '../services/assetAssignment';
 import { departments, locations } from '../db/schema/master';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 // --- Zod Schemas ---
@@ -65,12 +66,14 @@ export async function assignAsset(req: AuthenticatedRequest, res: Response) {
       await lockCustodianDirectory(tx);
       const [existing] = await tx.select().from(assets).where(eq(assets.id, id)).for('update');
       if (!existing) throw new CustodianError('Asset not found', 404);
+      await authorizeAssetMutation(tx,req,existing,parsed.assignedToLocationId === undefined ? undefined : parsed.assignedToLocationId);
+      await authorizeCustodianSelection(tx,req,parsed,parsed.assignedToLocationId ?? existing.locationId);
       if (['Disposed', 'Lost', 'Maintenance'].includes(existing.status)) throw new CustodianError('This asset is not available for assignment', 409);
       const custodian = parsed.custodianId !== undefined || parsed.newCustodian !== undefined
-        ? await resolveCustodianSelection(tx, parsed, actorId, canCreateManualCustodian(req))
+        ? await resolveCustodianSelection(tx, parsed, actorId, canCreateManualCustodian(req),assetRequestScope(req))
         : existing.currentCustodianId ? await requireActiveCustodian(tx, existing.currentCustodianId) : null;
       const updated = await writeAssetAssignment(tx, existing, custodian, actorId, {
-        locationId: parsed.assignedToLocationId ?? existing.locationId ?? custodian?.locationId ?? null,
+        locationId: parsed.assignedToLocationId ?? existing.locationId,
         conditionOnAssign: parsed.conditionOnAssign,
         handoverNotes: parsed.handoverNotes,
         notes: parsed.notes,
@@ -94,7 +97,7 @@ export async function unassignAsset(req: AuthenticatedRequest, res: Response) {
     const actorId = assignmentActor(req);
     const updated = await db.transaction(async tx => {
       await lockCustodianDirectory(tx);
-      const [existing] = await tx.select().from(assets).where(eq(assets.id, id)).for('update');
+      const [existing] = await tx.select().from(assets).where(and(eq(assets.id, id),assetScopePredicate(req))).for('update');
       if (!existing) throw new CustodianError('Asset not found', 404);
       const asset = await writeAssetAssignment(tx, existing, null, actorId, {
         conditionOnReturn: parsed.conditionOnReturn,
@@ -113,138 +116,48 @@ export async function unassignAsset(req: AuthenticatedRequest, res: Response) {
 export async function logMaintenance(req: AuthenticatedRequest, res: Response) {
   try {
     const id = Number(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: 'Invalid asset ID' });
-    }
-
-    const [existingAsset] = await db
-      .select()
-      .from(assets)
-      .where(eq(assets.id, id));
-
-    if (!existingAsset) {
-      return res.status(404).json({ error: 'Asset not found' });
-    }
-
+    if (!Number.isSafeInteger(id) || id <= 0) throw new CustodianError('Invalid asset ID');
     const parsed = logMaintenanceSchema.parse(req.body);
-
-    const [maintenanceRecord] = await db
-      .insert(assetMaintenances)
-      .values({
-        assetId: id,
-        maintenanceType: parsed.maintenanceType,
-        title: parsed.title || `${parsed.maintenanceType} - ${existingAsset.name}`,
-        description: parsed.description || null,
-        cost: parsed.cost || 0,
-        performedById: parsed.performedById || req.user?.userId || null,
-        vendorId: parsed.vendorId || null,
-        scheduledAt: parsed.scheduledAt ? new Date(parsed.scheduledAt) : null,
-        completedAt: parsed.completedAt ? new Date(parsed.completedAt) : new Date(),
-        status: parsed.status || 'Completed',
-      })
-      .returning();
-
-    // Update asset status to Maintenance if in progress, or restore
-    const targetStatus = parsed.status === 'In Progress' ? 'Maintenance' : existingAsset.status;
-
-    const [updatedAsset] = await db
-      .update(assets)
-      .set({
-        status: targetStatus,
-        updatedAt: new Date(),
-      })
-      .where(eq(assets.id, id))
-      .returning();
-
-    // Log audit action
-    await db.insert(auditLogs).values({
-      userId: req.user?.userId || null,
-      action: 'MAINTENANCE',
-      entity: 'ASSET',
-      entityId: id,
-      oldValues: { status: existingAsset.status },
-      newValues: {
-        status: updatedAsset.status,
-        maintenanceId: maintenanceRecord.id,
-        maintenanceType: parsed.maintenanceType,
-      },
-      ipAddress: req.ip || null,
-      userAgent: req.get('user-agent') || null,
+    const result = await db.transaction(async tx => {
+      const existingAsset = await requireScopedAsset(tx,req,id);
+      const groupId = assetRequestScope(req).selectedGroupId;
+      const [maintenance] = await tx.insert(assetMaintenances).values({
+        assetId:id,groupId,maintenanceType:parsed.maintenanceType,
+        title:parsed.title || `${parsed.maintenanceType} - ${existingAsset.name}`,
+        description:parsed.description ?? null,cost:parsed.cost ?? 0,
+        performedById:req.user!.userId,vendorId:parsed.vendorId ?? null,
+        scheduledAt:parsed.scheduledAt ? new Date(parsed.scheduledAt) : null,
+        completedAt:parsed.completedAt ? new Date(parsed.completedAt) : new Date(),status:parsed.status,
+      }).returning();
+      const [asset] = await tx.update(assets).set({status:parsed.status === 'In Progress' ? 'Maintenance' : existingAsset.status,updatedAt:new Date()}).where(eq(assets.id,id)).returning();
+      await tx.insert(auditLogs).values({userId:req.user!.userId,action:'MAINTENANCE',entity:'ASSET',entityId:id,
+        oldValues:{status:existingAsset.status},newValues:{groupId,status:asset.status,maintenanceId:maintenance.id,maintenanceType:parsed.maintenanceType}});
+      return {maintenance,asset};
     });
-
-    return res.status(201).json({
-      message: 'Maintenance logged successfully',
-      maintenance: maintenanceRecord,
-      asset: updatedAsset,
-    });
-  } catch (err: any) {
-    if (err instanceof z.ZodError) {
-      return res.status(400).json({ error: 'Validation failed', details: err.issues });
-    }
-    return res.status(500).json({ error: 'Asset operation failed' });
+    return res.status(201).json({message:'Maintenance logged successfully',...result});
+  } catch (err) {
+    if (sendCustodianError(res,err)) return;
+    return res.status(500).json({error:'Asset operation failed'});
   }
 }
 
 export async function disposeAsset(req: AuthenticatedRequest, res: Response) {
   try {
     const id = Number(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: 'Invalid asset ID' });
-    }
-
-    const [existingAsset] = await db
-      .select()
-      .from(assets)
-      .where(eq(assets.id, id));
-
-    if (!existingAsset) {
-      return res.status(404).json({ error: 'Asset not found' });
-    }
-
+    if (!Number.isSafeInteger(id) || id <= 0) throw new CustodianError('Invalid asset ID');
     const parsed = disposeAssetSchema.parse(req.body);
-
-    const disposeNote = parsed.reason || parsed.notes || 'Asset disposed';
-    const updatedNotes = existingAsset.notes
-      ? `${existingAsset.notes} | Disposed: ${disposeNote}`
-      : `Disposed: ${disposeNote}`;
-
-    const [updatedAsset] = await db
-      .update(assets)
-      .set({
-        status: 'Disposed',
-        notes: updatedNotes,
-        updatedAt: new Date(),
-      })
-      .where(eq(assets.id, id))
-      .returning();
-
-    // Log audit action
-    await db.insert(auditLogs).values({
-      userId: req.user?.userId || null,
-      action: 'DISPOSE',
-      entity: 'ASSET',
-      entityId: id,
-      oldValues: {
-        status: existingAsset.status,
-        notes: existingAsset.notes,
-      },
-      newValues: {
-        status: 'Disposed',
-        reason: disposeNote,
-      },
-      ipAddress: req.ip || null,
-      userAgent: req.get('user-agent') || null,
+    const asset = await db.transaction(async tx => {
+      const existing = await requireScopedAsset(tx,req,id);
+      const reason = parsed.reason || parsed.notes || 'Asset disposed';
+      const [updated] = await tx.update(assets).set({status:'Disposed',notes:existing.notes ? `${existing.notes} | Disposed: ${reason}` : `Disposed: ${reason}`,updatedAt:new Date()}).where(eq(assets.id,id)).returning();
+      await tx.insert(auditLogs).values({userId:req.user!.userId,action:'DISPOSE',entity:'ASSET',entityId:id,
+        oldValues:{status:existing.status,notes:existing.notes},newValues:{groupId:assetRequestScope(req).selectedGroupId,status:'Disposed',reason}});
+      return updated;
     });
-
-    return res.status(200).json({
-      message: 'Asset disposed successfully',
-      asset: updatedAsset,
-    });
-  } catch (err: any) {
-    if (err instanceof z.ZodError) {
-      return res.status(400).json({ error: 'Validation failed', details: err.issues });
-    }
-    return res.status(500).json({ error: 'Asset operation failed' });
+    return res.status(200).json({message:'Asset disposed successfully',asset});
+  } catch (err) {
+    if (sendCustodianError(res,err)) return;
+    return res.status(500).json({error:'Asset operation failed'});
   }
 }
 
@@ -258,7 +171,7 @@ export async function getAssetHistory(req: AuthenticatedRequest, res: Response) 
     const [existingAsset] = await db
       .select()
       .from(assets)
-      .where(eq(assets.id, id));
+      .where(and(eq(assets.id, id),assetScopePredicate(req)));
 
     if (!existingAsset) {
       return res.status(404).json({ error: 'Asset not found' });
@@ -291,7 +204,7 @@ export async function getAssetHistory(req: AuthenticatedRequest, res: Response) 
       .leftJoin(employees, eq(assetCustodians.employeeId, employees.id))
       .leftJoin(departments, eq(employees.departmentId, departments.id))
       .leftJoin(users, eq(assetAssignmentHistory.assignedByUserId, users.id))
-      .where(eq(assetAssignmentHistory.assetId, id))
+      .where(and(eq(assetAssignmentHistory.assetId, id),historyGroupPredicate(assetRequestScope(req),assetAssignmentHistory.groupId)))
       .orderBy(desc(assetAssignmentHistory.assignedAt));
 
     // 2. Fetch Maintenance Records
@@ -313,7 +226,7 @@ export async function getAssetHistory(req: AuthenticatedRequest, res: Response) 
       })
       .from(assetMaintenances)
       .leftJoin(users, eq(assetMaintenances.performedById, users.id))
-      .where(eq(assetMaintenances.assetId, id))
+      .where(and(eq(assetMaintenances.assetId, id),historyGroupPredicate(assetRequestScope(req),assetMaintenances.groupId)))
       .orderBy(desc(assetMaintenances.createdAt));
 
     // 3. Fetch Audit Log Records
@@ -333,7 +246,7 @@ export async function getAssetHistory(req: AuthenticatedRequest, res: Response) 
       })
       .from(auditLogs)
       .leftJoin(users, eq(auditLogs.userId, users.id))
-      .where(and(eq(auditLogs.entity, 'ASSET'), eq(auditLogs.entityId, id)))
+      .where(and(eq(auditLogs.entity, 'ASSET'), eq(auditLogs.entityId, id),historyGroupPredicate(assetRequestScope(req),sql`(${auditLogs.newValues}->>'groupId')::bigint` as any)))
       .orderBy(desc(auditLogs.createdAt));
 
     return res.status(200).json({
@@ -343,6 +256,7 @@ export async function getAssetHistory(req: AuthenticatedRequest, res: Response) 
       auditLogs: logs,
     });
   } catch (err: any) {
+    if (sendCustodianError(res,err)) return;
     return res.status(500).json({ error: 'Asset operation failed' });
   }
 }

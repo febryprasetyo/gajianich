@@ -1,6 +1,8 @@
 import { Response } from "express";
 import { AuthenticatedRequest, getUserPermissions } from "../../middleware/auth";
 import { pool } from "../../db";
+import {loadGroupAccess} from '../../services/organizationScope';
+import {parseGroupSelection,resolveRequestScope} from '../../domain/organizationAccess';
 import {
   CreateTicketSchema,
   UpdateTicketSchema,
@@ -38,6 +40,7 @@ export async function resolveTicketActor(req: AuthenticatedRequest): Promise<Tic
   }
 
   return {
+    organizationScope:resolveRequestScope({access:await loadGroupAccess(user.userId),module:'assets',mode:'read',selectedGroupId:parseGroupSelection(req.headers['x-organization-group-id'])}),
     userId: user.userId,
     username: user.username || "",
     name,
@@ -121,7 +124,7 @@ export async function getTicketDetailHandler(req: AuthenticatedRequest, res: Res
       return;
     }
 
-    const ticket = await getTicketById(rawId);
+    const ticket = await getTicketById(rawId,await resolveTicketActor(req));
     res.json({ success: true, data: ticket });
   } catch (err: any) {
     if (err.message === "Tiket tidak ditemukan") {

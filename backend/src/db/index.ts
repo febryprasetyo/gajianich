@@ -4,6 +4,8 @@ import { loadEnv } from '../config/env';
 
 import * as goodsRequestsSchema from './schema/goodsRequests';
 import * as usersSchema from './schema/users';
+import * as organizationsSchema from './schema/organizations';
+import * as documentProfilesSchema from './schema/documentProfiles';
 import * as masterSchema from './schema/master';
 import * as vendorsSchema from './schema/vendors';
 import * as employeesSchema from './schema/employees';
@@ -46,6 +48,8 @@ export const pool = {
 export const db = drizzle(getPool(), {
   schema: {
     ...usersSchema,
+    ...organizationsSchema,
+    ...documentProfilesSchema,
     ...goodsRequestsSchema,
     ...masterSchema,
     ...vendorsSchema,
@@ -90,6 +94,8 @@ export async function closeDatabase(): Promise<void> {
 
 export {
   usersSchema,
+  organizationsSchema,
+  documentProfilesSchema,
   masterSchema,
   vendorsSchema,
   employeesSchema,

@@ -26,6 +26,8 @@ test('HR Master Mutations & Audit Integration Tests', async (t) => {
   await owner.query(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO "${runtimeRole}"`);
   await owner.query(`REVOKE UPDATE, DELETE, TRUNCATE ON hr_audit_events, hr_audit_targets, hr_mutation_receipts FROM "${runtimeRole}"`);
 
+  const {rows:[group]} = await owner.query("INSERT INTO organization_groups(code,name) VALUES('CMC','CMC') RETURNING id");
+  const scope = {module:'hr' as const,groupIds:[Number(group.id)],selectedGroupId:Number(group.id),includeUnmapped:false};
   const adminDb = drizzle(owner);
   const [role] = await adminDb.insert(roles).values({
     name: 'HR Manager',
@@ -142,6 +144,7 @@ test('HR Master Mutations & Audit Integration Tests', async (t) => {
 
   await t.test('mutateEmployee CREATE/UPDATE/DELETE and snapshot sanitization', async () => {
     const [dept] = await db.insert(departments).values({ name: 'HR Operations', code: 'HROPS' }).returning();
+    await owner.query("INSERT INTO department_organization_mappings(department_id,group_id,approval_reference) VALUES($1,$2,'test-approved')",[dept.id,group.id]);
 
     // 1. CREATE employee
     const resCreate = await db.transaction(async (tx) => {
@@ -158,7 +161,7 @@ test('HR Master Mutations & Audit Integration Tests', async (t) => {
           npwp: '01.234.567.8-901.000', // sensitive!
           bankAccount: '123456789', // sensitive!
         },
-      });
+      },scope);
     });
     assert.ok(resCreate.employee.id);
     assert.ok(resCreate.eventId);
@@ -182,7 +185,7 @@ test('HR Master Mutations & Audit Integration Tests', async (t) => {
         data: {
           position: 'Lead HR Specialist',
         },
-      });
+      },scope);
     });
     assert.equal(resUpdate.employee.position, 'Lead HR Specialist');
     assert.ok(resUpdate.eventId);
@@ -192,7 +195,7 @@ test('HR Master Mutations & Audit Integration Tests', async (t) => {
       return await mutateEmployee(tx, { ...context, operationId: randomUUID() }, {
         type: 'DELETE',
         id: empId,
-      });
+      },scope);
     });
     assert.ok(resDelete.eventId);
     const [delTarget] = await db.select().from(hrAuditTargets).where(eq(hrAuditTargets.eventId, BigInt(resDelete.eventId)));

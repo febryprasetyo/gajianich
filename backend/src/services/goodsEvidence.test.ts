@@ -13,6 +13,8 @@ test('compresses raster proof into WebP and rejects invalid images', async () =>
     const metadata = await sharp(await readFile(path.join(root, stored.storageKey))).metadata();
     assert.equal(metadata.format, 'webp');
     assert.ok(stored.size > 0);
+    const repeated = await saveGoodsEvidence(root,image);
+    assert.notEqual(repeated.storageKey,stored.storageKey,'rollback cleanup must own only this upload');
     await assert.rejects(() => saveGoodsEvidence(root, Buffer.from('<svg></svg>')), /gambar/);
     await assert.rejects(() => saveGoodsEvidence(root, Buffer.from('not an image')), /gambar/);
   } finally { await rm(root, { recursive: true, force: true }); }

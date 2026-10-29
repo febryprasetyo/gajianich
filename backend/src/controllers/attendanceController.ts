@@ -1,3 +1,4 @@
+import {historicalScopePredicate,requireHrScope,requireScopedEmployee} from '../services/hrOrganizationScope';
 import { approvedAttendanceRecords } from '../services/approvedAttendanceRecords';
 import { Request, Response } from 'express';
 import { db } from '../db';
@@ -74,7 +75,7 @@ export async function getAttendanceRecords(req: Request, res: Response) {
   try {
     const { startDate, endDate, employeeId } = req.query;
 
-    const conditions: any[] = [];
+    const conditions: any[] = [historicalScopePredicate(requireHrScope(req as any),attendanceRecords.groupId)];
     if (startDate && typeof startDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
       conditions.push(gte(attendanceRecords.workDate, startDate));
     }
@@ -101,12 +102,12 @@ export async function getAttendanceRecords(req: Request, res: Response) {
   }
 }
 
-export async function getAttendanceBatches(_req: Request, res: Response) {
+export async function getAttendanceBatches(req: Request, res: Response) {
   try {
     const batches = await db
       .select()
       .from(attendanceBatches)
-      .where(ne(attendanceBatches.filename, 'MANUAL_ENTRY'))
+      .where(and(ne(attendanceBatches.filename, 'MANUAL_ENTRY'),historicalScopePredicate(requireHrScope(req as any),attendanceBatches.groupId)))
       .orderBy(desc(attendanceBatches.createdAt))
       .limit(50);
 
@@ -125,6 +126,7 @@ export async function saveAttendanceRecord(req: Request, res: Response) {
     const userId = Number((req as any).user?.userId) || null;
 
     const saved = await db.transaction(async (tx) => {
+      const owner = await requireScopedEmployee(requireHrScope(req as any),normalized.employeeId,tx);
       const [before] = await tx
         .select()
         .from(attendanceRecords)
@@ -134,9 +136,10 @@ export async function saveAttendanceRecord(req: Request, res: Response) {
         ))
         .limit(1);
 
+      if (before && before.groupId !== owner.groupId) throw new Error("Historical attendance ownership does not match destination");
       const [record] = await tx
         .insert(attendanceRecords)
-        .values({ ...normalized, sourceBatchId: null, revision: 1, createdAt: new Date(), updatedAt: new Date() })
+        .values({ ...normalized, groupId:owner.groupId, organizationId:owner.organizationId, sourceBatchId: null, revision: 1, createdAt: new Date(), updatedAt: new Date() })
         .onConflictDoUpdate({
           target: [attendanceRecords.employeeId, attendanceRecords.workDate],
           set: {
@@ -180,7 +183,7 @@ export async function saveAttendanceRecord(req: Request, res: Response) {
   }
 }
 
-export async function getAttendanceActivity(_req: Request, res: Response) {
+export async function getAttendanceActivity(req: Request, res: Response) {
   try {
     const rows = await db
       .select({
@@ -196,7 +199,7 @@ export async function getAttendanceActivity(_req: Request, res: Response) {
       .leftJoin(users, eq(auditLogs.userId, users.id))
       .leftJoin(attendanceRecords, eq(auditLogs.entityId, attendanceRecords.id))
       .leftJoin(employees, eq(attendanceRecords.employeeId, employees.id))
-      .where(eq(auditLogs.entity, 'ATTENDANCE'))
+      .where(and(eq(auditLogs.entity, 'ATTENDANCE'),historicalScopePredicate(requireHrScope(req as any),attendanceRecords.groupId)))
       .orderBy(desc(auditLogs.createdAt))
       .limit(500);
 
@@ -230,9 +233,18 @@ export async function commitAttendanceBatch(req: Request, res: Response) {
     const userId = (req as any).user?.id ? Number((req as any).user.id) : null;
 
     const result = await db.transaction(async (tx) => {
+      const scope = requireHrScope(req as any);
+      const owners = new Map<number, any>();
+      for (const record of normalizedRecords) {
+        const owner = await requireScopedEmployee(scope,record.employeeId,tx);
+        owners.set(record.employeeId,owner);
+        const [previous] = await tx.select().from(attendanceRecords).where(and(eq(attendanceRecords.employeeId,record.employeeId),eq(attendanceRecords.workDate,record.workDate)));
+        if (previous && previous.groupId !== owner.groupId) throw new Error("Historical attendance ownership does not match destination");
+      }
       const [batch] = await tx
         .insert(attendanceBatches)
         .values({
+          groupId:scope.selectedGroupId,
           filename: String(filename || 'IMPORT_ATTENDANCE.xlsx'),
           sourceId: Number(sourceId) || 1,
           fileHash: fileHash ? String(fileHash) : null,
@@ -257,6 +269,7 @@ export async function commitAttendanceBatch(req: Request, res: Response) {
           .values(
             chunk.map((rec) => ({
               ...rec,
+              groupId: owners.get(rec.employeeId).groupId, organizationId:owners.get(rec.employeeId).organizationId,
               sourceBatchId: batch.id,
               revision: 1,
               createdAt: new Date(),

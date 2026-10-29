@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticateToken, requirePermission } from '../middleware/auth';
+import {requireGlobalAdministrator} from '../middleware/organizationScope';
 import {
   getRoles,
   getPermissionsCatalog,
@@ -11,7 +12,7 @@ import {
 
 const router = Router();
 
-const roleManageAuth = [authenticateToken, requirePermission('access.roles.manage')];
+const roleManageAuth = [authenticateToken, requirePermission('access.roles.manage'),requireGlobalAdministrator];
 const roleViewAuth = [
   authenticateToken,
   requirePermission(['access.roles.manage', 'access.users.view', 'access.users.manage']),

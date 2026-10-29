@@ -54,11 +54,7 @@ export default function EmployeeDirectoryPage({ basePath = '/dashboard/attendanc
   const handleExport = async () => {
     try {
       setIsExporting(true);
-      const res = await fetch('/api/v1/employees/export', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      });
-      if (!res.ok) throw new Error('Gagal mengekspor data');
-      const blob = await res.blob();
+      const blob = await api.download('/employees/export');
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url;
       a.download = `karyawan-${new Date().toISOString().slice(0,10)}.xlsx`;

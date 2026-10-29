@@ -1,7 +1,9 @@
 import { pgTable, bigint, varchar, timestamp, text, integer } from 'drizzle-orm/pg-core';
 import { assets } from './assets';
+import {organizationGroups} from './organizations';
 
 export const hardwareAuditLogs = pgTable('hardware_audit_logs', {
+  groupId:bigint('group_id',{mode:'number'}).references(()=>organizationGroups.id),
   id: bigint('id', { mode: 'number' }).generatedAlwaysAsIdentity().primaryKey(),
   custodianName: varchar('custodian_name', { length: 150 }).notNull(),
   serialNumber: varchar('serial_number', { length: 100 }),

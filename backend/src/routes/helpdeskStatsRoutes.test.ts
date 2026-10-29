@@ -31,7 +31,7 @@ test("Helpdesk Stats & KPI API integration tests", async (t) => {
       "INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id",
       ["admin_stat_" + Date.now(), "admin_stat_" + Date.now() + "@test.com", "hash"]
     );
-    adminUserId = adminUserRes.rows[0].id;
+    adminUserId = Number(adminUserRes.rows[0].id);
   } finally {
     client.release();
   }

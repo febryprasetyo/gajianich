@@ -1,3 +1,4 @@
+import { organizationGroups } from './organizations';
 import { pgTable, bigint, varchar, timestamp, text, integer, boolean } from 'drizzle-orm/pg-core';
 import { users } from './users';
 import { assets } from './assets';
@@ -48,6 +49,7 @@ export const ticketComments = pgTable('ticket_comments', {
 });
 
 export const assetMaintenances = pgTable('asset_maintenances', {
+  groupId: bigint('group_id', { mode: 'number' }).references(() => organizationGroups.id),
   id: bigint('id', { mode: 'number' }).generatedAlwaysAsIdentity().primaryKey(),
   assetId: bigint('asset_id', { mode: 'number' }).references(() => assets.id, { onDelete: 'cascade' }).notNull(),
   maintenanceType: varchar('maintenance_type', { length: 30 }).notNull(), // Preventive, Corrective

@@ -1,3 +1,5 @@
+import type { RequestScope } from '../domain/organizationAccess';
+import { custodianScopePredicate, locationScopePredicate, employeeAssetScopePredicate } from './assetOrganizationScope';
 import { and, asc, eq, getTableColumns, inArray, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { assetCustodians } from '../db/schema/assetCustodians';
@@ -67,12 +69,12 @@ export async function requireActiveCustodian(tx: CustodianTransaction, custodian
   return custodian;
 }
 
-export async function createManualCustodian(tx: CustodianTransaction, input: ManualCustodianInput, actorUserId: number): Promise<Custodian> {
+export async function createManualCustodian(tx: CustodianTransaction, input: ManualCustodianInput, actorUserId: number, scope?: RequestScope): Promise<Custodian> {
   const parsed = manualCustodianSchema.parse(input);
   await lockCustodianDirectory(tx);
   await requireLocation(tx, parsed.locationId);
-  const custodians = await tx.select().from(assetCustodians).where(eq(assetCustodians.recordStatus, 'ACTIVE'));
-  const employeeCandidates = await listEmployeeCandidates(tx);
+  const custodians = await tx.select().from(assetCustodians).where(and(eq(assetCustodians.recordStatus, 'ACTIVE'),scope ? custodianScopePredicate(scope) : undefined));
+  const employeeCandidates = await listEmployeeCandidates(tx,scope);
   const candidates = [
     ...findCustodianCandidates(parsed.displayName, custodians).map(custodian => ({ ...custodian, candidateType: 'CUSTODIAN' as const })),
     ...findCustodianCandidates(parsed.displayName, employeeCandidates.filter(employee => employee.custodianId === null))
@@ -127,7 +129,7 @@ export async function resolveEmployeeCustodian(tx: CustodianTransaction, employe
 export async function resolveCustodianSelection(tx: CustodianTransaction, selection: {
   custodianId?: number | null;
   newCustodian?: ManualCustodianInput;
-}, actorUserId: number, canCreateManual: boolean): Promise<Custodian> {
+}, actorUserId: number, canCreateManual: boolean, scope?:RequestScope): Promise<Custodian> {
   const hasId = selection.custodianId != null;
   const hasNew = selection.newCustodian !== undefined;
   if (hasId === hasNew || (hasNew && Object.prototype.hasOwnProperty.call(selection, 'custodianId'))) {
@@ -137,7 +139,7 @@ export async function resolveCustodianSelection(tx: CustodianTransaction, select
     if (!canCreateManual) {
       throw new CustodianError('Only administrators can create manual custodians', 403);
     }
-    return createManualCustodian(tx, selection.newCustodian!, actorUserId);
+    return createManualCustodian(tx, selection.newCustodian!, actorUserId,scope);
   }
   return requireActiveCustodian(tx, selection.custodianId!);
 }
@@ -234,7 +236,7 @@ export async function mergeCustodians(tx: CustodianTransaction, sourceId: number
   return custodian;
 }
 
-export async function listEmployeeCandidates(queryDb: CustodianTransaction | typeof db = db) {
+export async function listEmployeeCandidates(queryDb: CustodianTransaction | typeof db = db, scope?: RequestScope) {
   return queryDb.select({
     id: employees.id,
     employeeCode: employees.employeeCode,
@@ -251,25 +253,25 @@ export async function listEmployeeCandidates(queryDb: CustodianTransaction | typ
       eq(assetCustodians.employeeId, employees.id),
       eq(assetCustodians.recordStatus, 'ACTIVE'),
     ))
-    .where(sql`lower(${employees.status}) = 'active'`)
+    .where(and(sql`lower(${employees.status}) = 'active'`,scope ? employeeAssetScopePredicate(scope) : undefined))
     .orderBy(asc(employees.fullName));
 }
 
-export async function searchCustodians(search: string, status: string) {
+export async function searchCustodians(search: string, status: string, scope?: RequestScope) {
   const normalized = normalizeCustodianName(search);
   const [custodians, employeeCandidates] = await Promise.all([
     db.select({
       ...getTableColumns(assetCustodians),
       employeeCode: employees.employeeCode,
       locationName: locations.name,
-      assignedAssetCount: sql<number>`(SELECT count(*)::int FROM assets WHERE assets.current_custodian_id = ${assetCustodians.id})`.as('assigned_asset_count'),
+      assignedAssetCount: sql<number>`(SELECT count(*)::int FROM assets WHERE assets.current_custodian_id = ${assetCustodians.id} and ${scope ? locationScopePredicate(scope,assets.locationId) : sql`true`})`.as('assigned_asset_count'),
     })
       .from(assetCustodians)
       .leftJoin(employees, eq(assetCustodians.employeeId, employees.id))
       .leftJoin(locations, eq(assetCustodians.locationId, locations.id))
-      .where(status === 'ALL' ? undefined : eq(assetCustodians.recordStatus, status))
+      .where(and(status === 'ALL' ? undefined : eq(assetCustodians.recordStatus, status),scope ? custodianScopePredicate(scope) : undefined))
       .orderBy(asc(assetCustodians.displayName)),
-    listEmployeeCandidates(),
+    listEmployeeCandidates(db,scope),
   ]);
   return {
     custodians: custodians.filter(c => !normalized || c.normalizedName.includes(normalized) || c.employeeCode?.toLowerCase().includes(normalized)),
@@ -277,13 +279,14 @@ export async function searchCustodians(search: string, status: string) {
   };
 }
 
-export async function reconciliationCandidates() {
+export async function reconciliationCandidates(scope?: RequestScope) {
   const [custodians, candidates] = await Promise.all([
     db.select().from(assetCustodians).where(and(
       eq(assetCustodians.recordStatus, 'ACTIVE'),
       eq(assetCustodians.verificationStatus, 'UNVERIFIED'),
+      scope ? custodianScopePredicate(scope) : undefined,
     )),
-    listEmployeeCandidates(),
+    listEmployeeCandidates(db,scope),
   ]);
   return custodians.map(custodian => ({
     custodian,
@@ -292,7 +295,7 @@ export async function reconciliationCandidates() {
 }
 
 
-export async function getCustodianAssets(custodianId: number) {
+export async function getCustodianAssets(custodianId: number, scope?: RequestScope) {
   const [custodian] = await db.select({
     ...getTableColumns(assetCustodians),
     employeeCode: employees.employeeCode,
@@ -301,7 +304,7 @@ export async function getCustodianAssets(custodianId: number) {
     .from(assetCustodians)
     .leftJoin(employees, eq(assetCustodians.employeeId, employees.id))
     .leftJoin(locations, eq(assetCustodians.locationId, locations.id))
-    .where(eq(assetCustodians.id, custodianId));
+    .where(and(eq(assetCustodians.id, custodianId),scope ? custodianScopePredicate(scope) : undefined));
 
   if (!custodian) {
     throw new CustodianError('Custodian not found', 404);
@@ -324,7 +327,7 @@ export async function getCustodianAssets(custodianId: number) {
     .from(assets)
     .leftJoin(assetCategories, eq(assets.categoryId, assetCategories.id))
     .leftJoin(locations, eq(assets.locationId, locations.id))
-    .where(eq(assets.currentCustodianId, custodianId))
+    .where(and(eq(assets.currentCustodianId, custodianId),scope ? locationScopePredicate(scope,assets.locationId) : undefined))
     .orderBy(asc(assets.name));
 
   const assetIds = assignedAssets.map(a => a.id);

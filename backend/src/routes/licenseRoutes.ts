@@ -1,3 +1,4 @@
+import { requireOrganizationScope } from '../middleware/organizationScope';
 import { Router } from 'express';
 import {
   getLicenses,
@@ -18,12 +19,12 @@ router.use(authenticateToken);
 const viewLicenses = requirePermission('licenses.view');
 const manageLicenses = requirePermission('licenses.manage');
 
-router.get('/', viewLicenses, getLicenses);
-router.get('/:id', viewLicenses, getLicenseById);
-router.post('/', manageLicenses, createLicense);
-router.put('/:id', manageLicenses, updateLicense);
-router.delete('/:id', manageLicenses, deleteLicense);
-router.post('/:id/allocate', manageLicenses, allocateLicenseSeat);
-router.post('/:id/revoke', manageLicenses, revokeLicenseSeat);
+router.get('/', viewLicenses, requireOrganizationScope('assets','read'), getLicenses);
+router.get('/:id', viewLicenses, requireOrganizationScope('assets','read'), getLicenseById);
+router.post('/', manageLicenses, requireOrganizationScope('assets','write'), createLicense);
+router.put('/:id', manageLicenses, requireOrganizationScope('assets','write'), updateLicense);
+router.delete('/:id', manageLicenses, requireOrganizationScope('assets','write'), deleteLicense);
+router.post('/:id/allocate', manageLicenses, requireOrganizationScope('assets','write'), allocateLicenseSeat);
+router.post('/:id/revoke', manageLicenses, requireOrganizationScope('assets','write'), revokeLicenseSeat);
 
 export default router;

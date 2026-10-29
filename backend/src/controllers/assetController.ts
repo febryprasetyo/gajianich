@@ -1,3 +1,4 @@
+import { authorizeCustodianSelection, assetRequestScope, assetScopePredicate, requireAssetLocation, authorizeAssetMutation, requireScopedAsset } from '../services/assetOrganizationScope';
 import { Request, Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { db } from '../db';
@@ -164,6 +165,7 @@ export async function getCategories(req: Request, res: Response) {
     const categories = await db.select().from(assetCategories).orderBy(assetCategories.id);
     return res.status(200).json(categories);
   } catch (err: any) {
+    if (sendCustodianError(res, err)) return;
     return res.status(500).json({ error: err.message || 'Internal server error' });
   }
 }
@@ -187,6 +189,7 @@ export async function createCategory(req: Request, res: Response) {
 
     return res.status(201).json(inserted);
   } catch (err: any) {
+    if (sendCustodianError(res, err)) return;
     if (err instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation failed', details: err.issues });
     }
@@ -223,6 +226,7 @@ export async function updateCategory(req: Request, res: Response) {
 
     return res.status(200).json(updated);
   } catch (err: any) {
+    if (sendCustodianError(res, err)) return;
     if (err instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation failed', details: err.issues });
     }
@@ -261,6 +265,7 @@ export async function deleteCategory(req: Request, res: Response) {
 
     return res.status(200).json({ message: 'Equipment type deleted successfully', equipmentType: deleted });
   } catch (err: any) {
+    if (sendCustodianError(res, err)) return;
     if (isDatabaseError(err, '23503')) {
       return res.status(409).json({ error: 'Equipment type is still used by inventory and cannot be deleted' });
     }
@@ -273,7 +278,7 @@ export async function getAssets(req: Request, res: Response) {
   try {
     const { search, categoryId, locationId, status } = req.query;
 
-    const conditions = [];
+    const conditions = [assetScopePredicate(req)];
 
     if (search && typeof search === 'string' && search.trim() !== '') {
       const searchPattern = `%${search.trim()}%`;
@@ -284,7 +289,7 @@ export async function getAssets(req: Request, res: Response) {
           ilike(assets.serialNumber, searchPattern),
           ilike(assetCustodians.displayName, searchPattern),
           ilike(employees.employeeCode, searchPattern)
-        )
+        )!
       );
     }
 
@@ -340,6 +345,7 @@ export async function getAssets(req: Request, res: Response) {
     const result = await hydrateAssetsWithDetails(rows);
     return res.status(200).json(result);
   } catch (err: any) {
+    if (sendCustodianError(res, err)) return;
     return res.status(500).json({ error: 'Asset operation failed' });
   }
 }
@@ -377,7 +383,7 @@ export async function getAssetById(req: Request, res: Response) {
       .leftJoin(locations, eq(assets.locationId, locations.id))
       .leftJoin(assetCustodians, eq(assets.currentCustodianId, assetCustodians.id))
       .leftJoin(employees, eq(assetCustodians.employeeId, employees.id))
-      .where(eq(assets.id, id));
+      .where(and(eq(assets.id, id),assetScopePredicate(req)));
 
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Asset not found' });
@@ -386,6 +392,7 @@ export async function getAssetById(req: Request, res: Response) {
     const hydrated = await hydrateAssetsWithDetails(rows);
     return res.status(200).json(hydrated[0]);
   } catch (err: any) {
+    if (sendCustodianError(res, err)) return;
     return res.status(500).json({ error: 'Asset operation failed' });
   }
 }
@@ -398,6 +405,7 @@ export async function createAsset(req: AuthenticatedRequest, res: Response) {
 
     const result = await db.transaction(async (tx) => {
       await lockCustodianDirectory(tx);
+      await requireAssetLocation(tx,req,parsed.locationId);
       const [category] = await tx
         .select()
         .from(assetCategories)
@@ -417,7 +425,7 @@ export async function createAsset(req: AuthenticatedRequest, res: Response) {
           .limit(1);
 
         if (existingSerial) {
-          throw new Error(`Serial number "${normSerial}" is already registered on asset "${existingSerial.assetCode}". Each device must have a unique serial number.`);
+          throw new Error(`Serial number is already registered. Each device must have a unique serial number.`);
         }
       }
 
@@ -426,8 +434,9 @@ export async function createAsset(req: AuthenticatedRequest, res: Response) {
         code = await generateAssetCode(parsed.categoryId, tx);
       }
 
+      await authorizeCustodianSelection(tx,req,parsed,parsed.locationId);
       const custodian = parsed.custodianId != null || parsed.newCustodian
-        ? await resolveCustodianSelection(tx, parsed, actorId, canCreateManualCustodian(req))
+        ? await resolveCustodianSelection(tx, parsed, actorId, canCreateManualCustodian(req),assetRequestScope(req))
         : null;
       if (parsed.status === 'Assigned' && !custodian) throw new CustodianError('Assigned assets require a custodian');
       if (custodian && !['Assigned', 'Available'].includes(parsed.status)) throw new CustodianError('A new holder requires an available asset');
@@ -448,13 +457,13 @@ export async function createAsset(req: AuthenticatedRequest, res: Response) {
 
       if (custodian) {
         await writeAssetAssignment(tx, inserted, custodian, actorId, {
-          locationId: parsed.locationId ?? custodian.locationId ?? null,
+          locationId: parsed.locationId ?? null,
           handoverNotes: parsed.notes,
         });
       }
       await tx.insert(auditLogs).values({
         userId: actorId, action: 'CREATE', entity: 'ASSET', entityId: inserted.id,
-        newValues: { assetCode: inserted.assetCode, currentCustodianId: custodian?.id ?? null },
+        newValues: { groupId:assetRequestScope(req).selectedGroupId, assetCode: inserted.assetCode, currentCustodianId: custodian?.id ?? null },
       });
 
       const repository: AssetDetailsRepository = {
@@ -514,6 +523,7 @@ export async function createAsset(req: AuthenticatedRequest, res: Response) {
     return res.status(201).json(result);
   } catch (err: any) {
     if (sendCustodianError(res, err)) return;
+    if (sendCustodianError(res, err)) return;
     if (err instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation failed', details: err.issues });
     }
@@ -550,6 +560,8 @@ export async function updateAsset(req: AuthenticatedRequest, res: Response) {
         return null;
       }
 
+      await authorizeAssetMutation(tx,req,existing,parsed.locationId);
+
       const effectiveCategoryId = parsed.categoryId ?? existing.categoryId;
       const [category] = await tx
         .select()
@@ -566,8 +578,9 @@ export async function updateAsset(req: AuthenticatedRequest, res: Response) {
         throw new CustodianError('This asset is not available for assignment', 409);
       }
       if (selectionChanged) {
+        await authorizeCustodianSelection(tx,req,parsed,parsed.locationId === undefined ? existing.locationId : parsed.locationId);
         const custodian = custodianId != null || newCustodian
-          ? await resolveCustodianSelection(tx, parsed, actorId, canCreateManualCustodian(req))
+          ? await resolveCustodianSelection(tx, parsed, actorId, canCreateManualCustodian(req),assetRequestScope(req))
           : null;
         if (parsed.status && !['Assigned', 'Available'].includes(parsed.status)) throw new CustodianError('Change holder and lifecycle status separately');
         await writeAssetAssignment(tx, existing, custodian, actorId, {
@@ -599,7 +612,7 @@ export async function updateAsset(req: AuthenticatedRequest, res: Response) {
             .limit(1);
 
           if (existingSerial) {
-            throw new Error(`Serial number "${normSerial}" is already registered on asset "${existingSerial.assetCode}". Each device must have a unique serial number.`);
+            throw new Error(`Serial number is already registered. Each device must have a unique serial number.`);
           }
         }
       }
@@ -670,8 +683,8 @@ export async function updateAsset(req: AuthenticatedRequest, res: Response) {
 
       await tx.insert(auditLogs).values({
         userId: actorId, action: 'UPDATE', entity: 'ASSET', entityId: id,
-        oldValues: { name: existing.name, currentCustodianId: existing.currentCustodianId },
-        newValues: { ...baseUpdateFields },
+        oldValues: { name: existing.name, currentCustodianId: existing.currentCustodianId, locationId: existing.locationId },
+        newValues: { ...baseUpdateFields, groupId:assetRequestScope(req).selectedGroupId },
       });
 
       const rows = await tx
@@ -713,6 +726,7 @@ export async function updateAsset(req: AuthenticatedRequest, res: Response) {
     return res.status(200).json(result);
   } catch (err: any) {
     if (sendCustodianError(res, err)) return;
+    if (sendCustodianError(res, err)) return;
     if (err instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation failed', details: err.issues });
     }
@@ -733,6 +747,7 @@ export async function deleteAsset(req: Request, res: Response) {
     }
 
     const deletedAsset = await db.transaction(async (tx) => {
+      await requireScopedAsset(tx,req,id);
       // Proactively clean up child records and decouple references
       await tx.delete(assetAssignmentHistory).where(eq(assetAssignmentHistory.assetId, id));
       await tx.delete(assetAccessories).where(eq(assetAccessories.assetId, id));
@@ -759,6 +774,7 @@ export async function deleteAsset(req: Request, res: Response) {
 
     return res.status(200).json({ message: 'Asset deleted successfully', asset: deletedAsset });
   } catch (err: any) {
+    if (sendCustodianError(res, err)) return;
     console.error('Failed to delete asset:', err);
     return res.status(500).json({ error: err.message || 'Asset operation failed' });
   }

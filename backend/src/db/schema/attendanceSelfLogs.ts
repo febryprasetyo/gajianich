@@ -1,3 +1,4 @@
+import {organizationGroups} from './organizations';
 import {
   pgTable,
   bigint,
@@ -15,7 +16,8 @@ import { users } from './users';
 export const attendanceSelfLogs = pgTable(
   'attendance_self_logs',
   {
-    id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+    groupId: bigint('group_id', {mode:'number'}).references(() => organizationGroups.id,{onDelete:'restrict'}),
+  id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
     employeeId: bigint('employee_id', { mode: 'number' })
       .notNull()
       .references(() => employees.id, { onDelete: 'cascade' }),

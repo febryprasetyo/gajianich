@@ -1,3 +1,7 @@
+import type {RequestScope} from '../domain/organizationAccess';
+import {employeeScopePredicate,historicalScopePredicate,requireHrScope,requireScopedEmployee,requireScopedDepartment} from './hrOrganizationScope';
+import {departmentOrganizationMappings,locationOrganizationMappings} from '../db/schema/organizations';
+import {loadCurrentIdentity} from './currentIdentity';
 import { eq, and, sql, asc, inArray } from "drizzle-orm";
 import { db } from "../db";
 import { approvedAttendanceRecords } from "./approvedAttendanceRecords";
@@ -99,8 +103,10 @@ async function checkDateUnlocked(tx: any, date: string): Promise<void> {
 
 export async function loadAttendanceWorkspace(
   tx: AuditTx,
-  context: AuditContext
+  context: AuditContext,
+  scope?: RequestScope
 ): Promise<AttendanceDataset> {
+  scope = requireHrScope({organizationScope:scope});
   const [
     deptRows,
     locRows,
@@ -117,19 +123,19 @@ export async function loadAttendanceWorkspace(
     assignRows,
     strictSetting,
   ] = await Promise.all([
-    tx.select().from(departments),
-    tx.select().from(locations),
+    tx.select().from(departments).where(sql`exists(select 1 from ${departmentOrganizationMappings} where ${departmentOrganizationMappings.departmentId} = ${departments.id} and ${inArray(departmentOrganizationMappings.groupId,scope.groupIds)})`),
+    tx.select().from(locations).where(sql`exists(select 1 from ${locationOrganizationMappings} where ${locationOrganizationMappings.locationId} = ${locations.id} and ${inArray(locationOrganizationMappings.groupId,scope.groupIds)})`),
     tx.select().from(attendanceSources),
-    tx.select().from(employees),
-    tx.select().from(attendanceIdentities),
-    tx.select().from(attendanceRecords).orderBy(asc(attendanceRecords.workDate)),
-    tx.select().from(attendanceBatches),
-    tx.select().from(attendanceImportRows),
-    tx.select().from(attendanceRevisions),
+    tx.select().from(employees).where(employeeScopePredicate(scope)),
+    tx.select().from(attendanceIdentities).where(sql`${attendanceIdentities.employeeId} in (select ${employees.id} from ${employees} where ${employeeScopePredicate(scope)})`),
+    tx.select().from(attendanceRecords).where(historicalScopePredicate(scope,attendanceRecords.groupId)).orderBy(asc(attendanceRecords.workDate)),
+    tx.select().from(attendanceBatches).where(historicalScopePredicate(scope,attendanceBatches.groupId)),
+    tx.select().from(attendanceImportRows).where(sql`${attendanceImportRows.batchId} in (select ${attendanceBatches.id} from ${attendanceBatches} where ${historicalScopePredicate(scope,attendanceBatches.groupId)})`),
+    tx.select().from(attendanceRevisions).where(sql`${attendanceRevisions.recordId} in (select ${attendanceRecords.id} from ${attendanceRecords} where ${historicalScopePredicate(scope,attendanceRecords.groupId)})`),
     tx.select().from(attendanceGrants),
     tx.select().from(attendanceLocks),
     tx.select().from(attendanceShifts),
-    tx.select().from(attendanceShiftAssignments),
+    tx.select().from(attendanceShiftAssignments).where(sql`(${attendanceShiftAssignments.employeeId} in (select ${employees.id} from ${employees} where ${employeeScopePredicate(scope)})) or (${attendanceShiftAssignments.departmentId} in (select ${departmentOrganizationMappings.departmentId} from ${departmentOrganizationMappings} where ${inArray(departmentOrganizationMappings.groupId,scope.groupIds)}))`),
     tx.select().from(systemSettings).where(eq(systemSettings.key, "attendance_strict_integrity")).limit(1),
   ]);
 
@@ -272,8 +278,34 @@ export async function executeAttendanceCommand(
   tx: AuditTx,
   context: AuditContext,
   command: ServerAttendanceCommand,
-  expectedBatchRevision?: number
+  expectedBatchRevision?: number,
+  scope?: RequestScope
 ): Promise<{ changed: boolean; eventId: string | null; data: AttendanceDataset }> {
+  scope = requireHrScope({organizationScope:scope});
+  if (scope.selectedGroupId === null) throw new ValidationError('Choose a destination group');
+  const writableScope = {...scope,includeUnmapped:false};
+  if (['source','shift','grant','delete_grant','lock','set_strict_integrity'].includes(command.type)) {
+    if (!(await loadCurrentIdentity(Number(context.actor.id),tx))?.isGlobalAdministrator) throw Object.assign(new Error('Shared attendance definitions require global administrator'),{statusCode:403});
+  }
+  if ('batchId' in command) {
+    const [batch] = await tx.select().from(attendanceBatches).where(and(eq(attendanceBatches.id,command.batchId),historicalScopePredicate(writableScope,attendanceBatches.groupId))).for('update');
+    if (!batch) throw new ValidationError('Batch unavailable in destination group');
+  }
+  if (command.type === 'correct') {
+    const [record] = await tx.select().from(attendanceRecords).where(and(eq(attendanceRecords.id,command.recordId),historicalScopePredicate(writableScope,attendanceRecords.groupId))).for('update');
+    if (!record) throw new ValidationError('Record unavailable in destination group');
+  }
+  if (command.type === 'record_attendance' || (command.type === 'review' && command.employeeId)) await requireScopedEmployee(writableScope,command.employeeId!,tx);
+  if (command.type === 'identity') await requireScopedEmployee(writableScope,command.value.employeeId,tx);
+  if (command.type === 'delete_identity') {
+    const [identity] = await tx.select().from(attendanceIdentities).where(eq(attendanceIdentities.id,command.id));
+    if (!identity) throw new ValidationError('Identity unavailable');
+    await requireScopedEmployee(writableScope,identity.employeeId,tx);
+  }
+  if (command.type === 'assign_shift') {
+    if (command.assignment.employeeId) await requireScopedEmployee(writableScope,command.assignment.employeeId,tx);
+    else await requireScopedDepartment(writableScope,command.assignment.departmentId,tx);
+  }
   let eventId: string | null = null;
 
   switch (command.type) {
@@ -742,8 +774,8 @@ export async function executeAttendanceCommand(
         throw err;
       }
 
-      const employeeRows = await tx.select().from(employees);
-      const identities = await tx.select().from(attendanceIdentities);
+      const employeeRows = await tx.select().from(employees).where(employeeScopePredicate(scope));
+      const identities = await tx.select().from(attendanceIdentities).where(sql`${attendanceIdentities.employeeId} in (select ${employees.id} from ${employees} where ${employeeScopePredicate(scope)})`);
       const resolvedRows = command.rows.map(row => {
         const employeeId = resolveImportEmployee(row.externalNoId, command.sourceId ?? 1, employeeRows, identities);
         if (row.reviewStatus === "SKIPPED") return { ...row, employeeId };
@@ -754,6 +786,7 @@ export async function executeAttendanceCommand(
       const [batch] = await tx
         .insert(attendanceBatches)
         .values({
+          groupId:scope.selectedGroupId,
           filename: command.filename,
           sourceId: command.sourceId ?? 1,
           fileHash: command.fileHash || null,
@@ -897,7 +930,7 @@ export async function executeAttendanceCommand(
         }
         await lockWorkDates(tx, workDates);
 
-        const employeeRows = await tx.select().from(employees);
+        const employeeRows = await tx.select().from(employees).where(employeeScopePredicate(scope));
         const shifts = await tx.select().from(attendanceShifts);
         const assignments = await tx.select().from(attendanceShiftAssignments);
         // Commit active rows into attendanceRecords
@@ -916,6 +949,8 @@ export async function executeAttendanceCommand(
               )
             );
 
+          const owner = await requireScopedEmployee(scope,r.employeeId,tx);
+          if (existingRec && existingRec.groupId !== owner.groupId) throw new ValidationError("Historical attendance ownership mismatch");
           if (existingRec) {
             await tx
               .update(attendanceRecords)
@@ -934,6 +969,7 @@ export async function executeAttendanceCommand(
               .where(eq(attendanceRecords.id, existingRec.id));
           } else {
             await tx.insert(attendanceRecords).values({
+              groupId:owner.groupId,organizationId:owner.organizationId,
               employeeId: r.employeeId,
               workDate: r.workDate,
               scanIn: r.scanIn,
@@ -1092,6 +1128,8 @@ export async function executeAttendanceCommand(
           )
         );
 
+      const owner = await requireScopedEmployee(scope,command.employeeId,tx);
+      if (existing && existing.groupId !== owner.groupId) throw new ValidationError("Historical attendance ownership mismatch");
       const dutyValues = command.attendanceStatus === "DINAS_LUAR"
         ? await fieldDutyValues(tx, command.employeeId, command.workDate, command.shiftId)
         : await employeeScheduleValues(tx, command.employeeId, command.workDate, command.shiftId);
@@ -1115,6 +1153,7 @@ export async function executeAttendanceCommand(
         const [inserted] = await tx
           .insert(attendanceRecords)
           .values({
+            groupId:owner.groupId,organizationId:owner.organizationId,
             employeeId: command.employeeId,
             workDate: command.workDate,
             attendanceStatus: command.attendanceStatus,
@@ -1142,6 +1181,6 @@ export async function executeAttendanceCommand(
     }
   }
 
-  const data = await loadAttendanceWorkspace(tx, context);
+  const data = await loadAttendanceWorkspace(tx, context,scope);
   return { changed: true, eventId, data };
 }

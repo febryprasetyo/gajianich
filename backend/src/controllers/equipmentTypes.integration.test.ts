@@ -33,9 +33,9 @@ test('IT equipment type API enforces roles, validation, uniqueness, and referenc
       method,
       headers: {
         'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(token ? operator.headers(token) : {}),
       },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : JSON.stringify(path==='/assets'&&method==='POST'?{locationId:operator.locationId,...body as object}:body),
     });
     return {
       status: response.status,

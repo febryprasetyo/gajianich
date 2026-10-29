@@ -33,6 +33,7 @@ test("HR Activity Query & Read API Integration Tests", async (t) => {
 
   const adminDb = drizzle(owner);
   const testDb = drizzle(runtime);
+  const scope = {module:"hr" as const,groupIds:[],includeUnmapped:true,selectedGroupId:null};
 
   // Seed sample actors and audit events
   const [user1] = await adminDb
@@ -129,7 +130,7 @@ test("HR Activity Query & Read API Integration Tests", async (t) => {
       endDate: "2026-10-12",
     });
 
-    const result = await listHrActivities(query, testDb);
+    const result = await listHrActivities(query, testDb,scope);
     assert.strictEqual(result.items.length, 2);
     const ids = result.items.map((i) => i.id);
     assert.ok(ids.includes(String(event2.id)));
@@ -144,7 +145,7 @@ test("HR Activity Query & Read API Integration Tests", async (t) => {
       q: "100%", // should match event2 literal '100% Valid'
     });
 
-    const result = await listHrActivities(query, testDb);
+    const result = await listHrActivities(query, testDb,scope);
     assert.strictEqual(result.items.length, 1);
     assert.strictEqual(result.items[0].id, String(event2.id));
   });
@@ -156,7 +157,7 @@ test("HR Activity Query & Read API Integration Tests", async (t) => {
       limit: 2,
     });
 
-    const page1 = await listHrActivities(queryPage1, testDb);
+    const page1 = await listHrActivities(queryPage1, testDb,scope);
     assert.strictEqual(page1.items.length, 2);
     assert.ok(page1.nextCursor);
 
@@ -168,27 +169,27 @@ test("HR Activity Query & Read API Integration Tests", async (t) => {
       cursor: page1.nextCursor,
     });
 
-    const page2 = await listHrActivities(queryPage2, testDb);
+    const page2 = await listHrActivities(queryPage2, testDb,scope);
     assert.strictEqual(page2.items.length, 1);
     assert.strictEqual(page2.nextCursor, null);
     assert.strictEqual(page2.items[0].id, String(event1.id));
   });
 
   await t.test("getHrActivity returns detail with first 50 targets and nextTargetCursor", async () => {
-    const detail = await getHrActivity(String(event3.id), testDb);
+    const detail = await getHrActivity(String(event3.id), testDb,scope);
     assert.ok(detail);
     assert.strictEqual(detail.event.id, String(event3.id));
     assert.strictEqual(detail.targets.length, 50);
     assert.ok(detail.nextTargetCursor);
 
     // Fetch next targets page
-    const nextTargets = await listHrActivityTargets(String(event3.id), detail.nextTargetCursor, 50, testDb);
+    const nextTargets = await listHrActivityTargets(String(event3.id), detail.nextTargetCursor, 50, testDb,scope);
     assert.strictEqual(nextTargets.targets.length, 10);
     assert.strictEqual(nextTargets.nextCursor, null);
   });
 
   await t.test("listHrActivityActors returns distinct list of all actors", async () => {
-    const actors = await listHrActivityActors(undefined, undefined, 25, testDb);
+    const actors = await listHrActivityActors(undefined, undefined, 25, testDb,scope);
     assert.strictEqual(actors.items.length, 2);
     const usernames = actors.items.map((a) => a.username);
     assert.ok(usernames.includes("hr_admin_1"));

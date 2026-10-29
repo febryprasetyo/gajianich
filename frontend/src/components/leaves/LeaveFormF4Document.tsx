@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { documentProfileForRender } from '@/lib/organizationDocumentProfile';
 import type { FullLeaveDocumentData } from '@/types/leaves';
 import { Printer, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -12,6 +13,8 @@ interface LeaveFormF4DocumentProps {
 }
 
 export function LeaveFormF4Document({ data, backHref = '/dashboard/leaves', printActions }: LeaveFormF4DocumentProps) {
+  const profile = documentProfileForRender(data,'LEAVE');
+  if (!profile || profile.layoutKey !== 'cmc-leave-f4-v1') return <div role="status" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Profil dokumen resmi belum tersedia. Pratinjau dan cetak ditahan sampai identitas dan format organisasi disahkan.<Link href="/dashboard/leaves" className="mt-3 block underline">Kembali ke daftar cuti</Link></div>;
   const handlePrint = () => {
     window.print();
   };
@@ -118,26 +121,26 @@ export function LeaveFormF4Document({ data, backHref = '/dashboard/leaves', prin
         <div className="flex items-center justify-between pb-2 border-b border-black mb-2">
           <div className="flex items-center gap-3">
             <img
-              src="/images/logo-cmc.png"
-              alt="Logo CMC"
+              src={profile.identity.logoAssetKey}
+              alt={profile.identity.name}
               className="h-10 w-auto object-contain"
               onError={(e) => {
                 (e.target as HTMLElement).style.display = 'none';
               }}
             />
             <div>
-              <span className="text-base font-bold tracking-tight text-black block">Cahaya Mas Cemerlang</span>
+              <span className="text-base font-bold tracking-tight text-black block">{profile.identity.name}</span>
             </div>
           </div>
           <div className="text-right text-[10.5px] leading-tight font-sans">
-            <div>Form Number : <span className="font-semibold">{data.formNumber || '001'}</span></div>
-            <div className="text-[9.5px] text-gray-700">{data.revisionCode || 'REV. 170208-1-W'}</div>
+            <div>Form Number : <span className="font-semibold">{profile.labels.formNumber || data.formNumber}</span></div>
+            <div className="text-[9.5px] text-gray-700">{profile.labels.revisionCode || data.revisionCode}</div>
           </div>
         </div>
 
         {/* Judul Utama Box */}
         <div className="border-2 border-black py-1 text-center font-bold text-sm tracking-wider uppercase mb-2 bg-[#f8f8f8]">
-          PERMOHONAN CUTI KARYAWAN
+          {profile.labels.title || 'PERMOHONAN CUTI KARYAWAN'}
         </div>
 
         {/* 2. Seksi DATA KARYAWAN */}
@@ -396,10 +399,10 @@ export function LeaveFormF4Document({ data, backHref = '/dashboard/leaves', prin
           <table className="table-f4 text-[10px] text-center border-t-0">
             <thead>
               <tr className="bg-slate-50 font-semibold">
-                <td className="w-[25%] py-1">Pemohon</td>
-                <td className="w-[25%] py-1">Atasan Langsung</td>
-                <td className="w-[25%] py-1">HRD</td>
-                <td className="w-[25%] py-1">Atasan dari Atasan Langsung</td>
+                <td className="w-[25%] py-1">{profile.signatories[0]?.label || 'Pemohon'}</td>
+                <td className="w-[25%] py-1">{profile.signatories[1]?.label || 'Atasan Langsung'}</td>
+                <td className="w-[25%] py-1">{profile.signatories[2]?.label || 'HRD'}</td>
+                <td className="w-[25%] py-1">{profile.signatories[3]?.label || 'Atasan dari Atasan Langsung'}</td>
               </tr>
             </thead>
             <tbody>
@@ -417,15 +420,15 @@ export function LeaveFormF4Document({ data, backHref = '/dashboard/leaves', prin
                   <div>Tanggal : <span className="text-gray-400">..........................</span></div>
                 </td>
                 <td className="p-1.5">
-                  <div>Nama : <span className="text-gray-400">...................................</span></div>
+                  <div>Nama : <span className="text-gray-400">{profile.signatories[1]?.name || '...................................'}</span></div>
                   <div>Tanggal : <span className="text-gray-400">..........................</span></div>
                 </td>
                 <td className="p-1.5">
-                  <div>Nama : <span className="text-gray-400">...................................</span></div>
+                  <div>Nama : <span className="text-gray-400">{profile.signatories[2]?.name || '...................................'}</span></div>
                   <div>Tanggal : <span className="text-gray-400">..........................</span></div>
                 </td>
                 <td className="p-1.5">
-                  <div>Nama : <span className="text-gray-400">...................................</span></div>
+                  <div>Nama : <span className="text-gray-400">{profile.signatories[3]?.name || '...................................'}</span></div>
                   <div>Tanggal : <span className="text-gray-400">..........................</span></div>
                 </td>
               </tr>

@@ -8,11 +8,13 @@ import {
   addTicketComment,
 } from '../controllers/ticketController';
 import { authenticateToken, requirePermission } from '../middleware/auth';
+import {requireOrganizationScope} from '../middleware/organizationScope';
 
 const router = Router();
 
 // Protect all ticket routes with authentication
 router.use(authenticateToken);
+router.use(requireOrganizationScope('assets','read'));
 
 const viewTickets = requirePermission('tickets.view');
 const createTickets = requirePermission('tickets.create');

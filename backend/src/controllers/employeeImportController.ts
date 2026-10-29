@@ -1,3 +1,7 @@
+import {employeeScopePredicate,requireHrScope,requireScopedDepartment} from '../services/hrOrganizationScope';
+import {departmentOrganizationMappings} from '../db/schema/organizations';
+import {eq,and,inArray} from 'drizzle-orm';
+import type {RequestScope} from '../domain/organizationAccess';
 import { Request, Response } from 'express';
 import { createHash } from 'node:crypto';
 import { db } from '../db';
@@ -25,13 +29,13 @@ export async function downloadEmployeeTemplate(_req: Request, res: Response) {
   }
 }
 
-async function loadEmployeeImportLookups(runner: any): Promise<{
+async function loadEmployeeImportLookups(runner: any, scope: RequestScope): Promise<{
   lookups: EmployeeImportLookups;
   deptMap: Map<string, number>;
 }> {
   const [empRows, deptRows] = await Promise.all([
-    runner.select({ code: employees.employeeCode, email: employees.email }).from(employees),
-    runner.select({ id: departments.id, name: departments.name, code: departments.code }).from(departments),
+    runner.select({ code: employees.employeeCode, email: employees.email }).from(employees).where(employeeScopePredicate(scope)),
+    runner.select({ id: departments.id, name: departments.name, code: departments.code }).from(departments).innerJoin(departmentOrganizationMappings,eq(departments.id,departmentOrganizationMappings.departmentId)).where(inArray(departmentOrganizationMappings.groupId,scope.groupIds)),
   ]);
 
   const existingEmployeeCodes = new Set<string>();
@@ -78,7 +82,7 @@ export async function previewEmployeeImport(req: Request, res: Response) {
       return res.status(400).json({ error: 'File Excel kosong atau tidak memiliki baris data karyawan' });
     }
 
-    const { lookups } = await loadEmployeeImportLookups(db);
+    const { lookups } = await loadEmployeeImportLookups(db, requireHrScope(req as any));
     const validationResult = validateEmployeeImport(rows, lookups);
 
     return res.status(200).json(validationResult);
@@ -122,36 +126,19 @@ export async function commitEmployeeImport(req: Request, res: Response) {
     }
 
     const executeImport = async (tx: any) => {
-      const { lookups, deptMap } = await loadEmployeeImportLookups(tx);
+      const { lookups, deptMap } = await loadEmployeeImportLookups(tx, requireHrScope(req as any));
       const validation = validateEmployeeImport(rows, lookups);
 
       if (!validation.valid || validation.summary.errorCount > 0) {
         throw new Error(`Validation failed: ${validation.summary.errorCount} error(s) found in workbook`);
       }
 
-      // Existing department codes for generating unique codes
-      const existingCodes = new Set<string>();
-      const existingDepts = await tx.select({ code: departments.code }).from(departments);
-      existingDepts.forEach((d: any) => existingCodes.add(d.code));
-
-      // Auto-create new departments
-      let createdDeptCount = 0;
-      for (const deptName of validation.summary.newDepartments) {
-        const code = generateDepartmentCode(deptName, existingCodes);
-        const [insertedDept] = await tx
-          .insert(departments)
-          .values({
-            name: deptName,
-            code,
-          })
-          .returning({ id: departments.id });
-        deptMap.set(deptName.trim().toUpperCase(), insertedDept.id);
-        createdDeptCount++;
-      }
-
+      if (validation.summary.newDepartments.length) throw Object.assign(new Error('Import requires existing departments mapped to the destination group'),{statusCode:400});
+      const createdDeptCount = 0;
       // Insert employees
       for (const r of rows) {
         const deptId = r.organization ? deptMap.get(r.organization.trim().toUpperCase()) || null : null;
+        await requireScopedDepartment(requireHrScope(req as any),deptId,tx);
         await tx.insert(employees).values({
           employeeCode: r.employeeCode,
           fullName: r.fullName,
@@ -200,7 +187,7 @@ export async function commitEmployeeImport(req: Request, res: Response) {
     if ((req as any).user) {
       const context = await resolveAuditContext(req as any);
       const fileChecksum = createHash('sha256').update(req.file.buffer).digest('hex');
-      const requestHash = hashRequestPayload({ command: 'employee.import', count: rows.length, checksum: fileChecksum });
+      const requestHash = hashRequestPayload({ command: 'employee.import',scope:requireHrScope(req as any), count: rows.length, checksum: fileChecksum });
 
       const result = await runHrMutation(context, requestHash, async (tx) => {
         const importSummary = await executeImport(tx);
@@ -215,6 +202,7 @@ export async function commitEmployeeImport(req: Request, res: Response) {
           outcome: 'SUCCESS',
           summary: `Berhasil mengimpor ${importSummary.importedCount} data karyawan dan menambahkan ${importSummary.createdDepartmentsCount} departemen baru`,
           metadata: {
+            groupId:requireHrScope(req as any).selectedGroupId,
             importedCount: importSummary.importedCount,
             createdDepartmentsCount: importSummary.createdDepartmentsCount,
           },

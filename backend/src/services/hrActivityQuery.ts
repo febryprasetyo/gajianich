@@ -1,3 +1,12 @@
+import type {RequestScope} from '../domain/organizationAccess';
+import {requireHrScope} from './hrOrganizationScope';
+import {inArray} from 'drizzle-orm';
+function auditScope(scope?:RequestScope) {
+ const checked = requireHrScope({organizationScope:scope});
+ const column = sql`(${hrAuditEvents.metadata}->>'groupId')::bigint`;
+ const mapped = checked.groupIds.length ? sql`${column} in (${sql.join(checked.groupIds.map(id=>sql`${id}`),sql`,`)})` : sql`false`;
+ return checked.includeUnmapped ? or(mapped,sql`${column} is null`)! : mapped;
+}
 import { and, desc, asc, eq, gte, lt, or, sql, ilike } from "drizzle-orm";
 import { db } from "../db";
 import { hrAuditEvents, hrAuditTargets } from "../db/schema/hrAudit";
@@ -45,9 +54,11 @@ export interface HrActivityDetail {
 
 export async function listHrActivities(
   query: ParsedHrActivityQuery,
-  database: any = db
+  database: any = db,
+  scope?: RequestScope
 ): Promise<{ items: HrActivitySummary[]; nextCursor: string | null }> {
   const conditions = [
+    auditScope(scope),
     gte(hrAuditEvents.occurredAt, query.dateFrom),
     lt(hrAuditEvents.occurredAt, query.dateTo),
   ];
@@ -144,7 +155,8 @@ export async function listHrActivities(
 
 export async function getHrActivity(
   id: string,
-  database: any = db
+  database: any = db,
+  scope?: RequestScope
 ): Promise<HrActivityDetail | null> {
   let eventBigInt: bigint;
   try {
@@ -156,7 +168,7 @@ export async function getHrActivity(
   const [row] = await database
     .select()
     .from(hrAuditEvents)
-    .where(eq(hrAuditEvents.id, eventBigInt))
+    .where(and(eq(hrAuditEvents.id, eventBigInt),auditScope(scope)))
     .limit(1);
 
   if (!row) {
@@ -213,7 +225,8 @@ export async function listHrActivityTargets(
   id: string,
   cursor?: string,
   limit = 50,
-  database: any = db
+  database: any = db,
+  scope?: RequestScope
 ): Promise<{ targets: HrActivityTargetSummary[]; nextCursor: string | null }> {
   let eventBigInt: bigint;
   try {
@@ -224,6 +237,8 @@ export async function listHrActivityTargets(
     throw err;
   }
 
+  const parent = await getHrActivity(id,database,scope);
+  if (!parent) return {targets:[],nextCursor:null};
   const conditions = [eq(hrAuditTargets.eventId, eventBigInt)];
 
   if (cursor) {
@@ -271,9 +286,10 @@ export async function listHrActivityActors(
   q?: string,
   cursor?: string,
   limit = 25,
-  database: any = db
+  database: any = db,
+  scope?: RequestScope
 ): Promise<{ items: HrActivityActor[]; nextCursor: string | null }> {
-  const conditions: any[] = [];
+  const conditions: any[] = [auditScope(scope)];
 
   if (q && q.trim().length > 0) {
     const escaped = escapeIlike(q.trim());

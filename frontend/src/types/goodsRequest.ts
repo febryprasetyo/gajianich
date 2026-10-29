@@ -1,3 +1,4 @@
+import type { DocumentProfileSnapshot } from './documentProfile';
 export type GoodsRequestStatus =
   | 'draft'
   | 'ready_to_print'
@@ -47,6 +48,11 @@ export interface StatusLog {
 }
 
 export interface GoodsRequest {
+  groupId?: number | null;
+  organizationId?: number | null;
+  documentProfileSnapshot?: DocumentProfileSnapshot | null;
+  documentProfilePreview?: DocumentProfileSnapshot | null;
+  documentProfileUnavailable?: boolean;
   id: string;
   title: string;
   purpose: string;

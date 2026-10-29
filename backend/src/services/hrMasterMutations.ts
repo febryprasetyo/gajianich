@@ -1,3 +1,5 @@
+import type {RequestScope} from '../domain/organizationAccess';
+import {requireHrScope,requireScopedEmployee,requireScopedDepartment} from './hrOrganizationScope';
 import { eq, sql } from 'drizzle-orm';
 import { departments, locations } from '../db/schema/master';
 import { employees } from '../db/schema/employees';
@@ -218,8 +220,12 @@ export async function mutateLocation(
 export async function mutateEmployee(
   tx: AuditTx,
   context: AuditContext,
-  command: EmployeeCommand
+  command: EmployeeCommand,
+  scope?: RequestScope
 ): Promise<{ employee: any; eventId: string | null }> {
+  scope = requireHrScope({organizationScope:scope});
+  if (command.type !== 'CREATE') await requireScopedEmployee(scope,command.id,tx);
+  if (command.type === 'CREATE' || (command.type === 'UPDATE' && command.data.departmentId !== undefined)) await requireScopedDepartment(scope,command.data.departmentId,tx);
   if (command.type === 'CREATE') {
     const [inserted] = await (tx as any).insert(employees).values(command.data).returning();
     const label = `${inserted.employeeCode} - ${inserted.fullName}`;

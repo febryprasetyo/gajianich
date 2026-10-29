@@ -39,7 +39,7 @@ test('hardware registration hides SQL details when a database uniqueness race re
   const { db } = await import('../db');
   const { createAssetFromHardwareAudit } = await import('./hardwareAuditController');
   const failure = new Error('Failed query: insert into assets params: private notes', { cause: { code: '23505' } });
-  const mocked = t.mock.method(db, 'select', () => { throw failure; });
+  const mocked = t.mock.method(db, 'transaction', () => { throw failure; });
   let status = 0;
   let body: any;
   const response = { status(code: number) { status = code; return this; }, json(value: unknown) { body = value; return this; } };

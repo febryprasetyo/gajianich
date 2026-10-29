@@ -2,7 +2,9 @@ import { Request, Response } from 'express';
 import { db } from '../db';
 import { departments, locations } from '../db/schema/master';
 import { vendors } from '../db/schema/vendors';
-import { eq } from 'drizzle-orm';
+import { eq,getTableColumns } from 'drizzle-orm';
+import {departmentOrganizationMappings,locationOrganizationMappings} from '../db/schema/organizations';
+import {requireHrScope,historicalScopePredicate} from '../services/hrOrganizationScope';
 import { z } from 'zod';
 import { resolveAuditContext } from '../services/hrAudit';
 import { runHrMutation } from '../services/hrMutation';
@@ -49,7 +51,8 @@ const updateVendorSchema = createVendorSchema.partial();
 // --- Department Controllers ---
 export async function getDepartments(req: Request, res: Response) {
   try {
-    const list = await db.select().from(departments);
+    const scope=requireHrScope(req as any);
+    const list = await db.select(getTableColumns(departments)).from(departments).leftJoin(departmentOrganizationMappings,eq(departmentOrganizationMappings.departmentId,departments.id)).where(historicalScopePredicate(scope,departmentOrganizationMappings.groupId));
     return res.status(200).json(list);
   } catch (err: any) {
     return res.status(500).json({ error: err.message || 'Internal server error' });
@@ -165,7 +168,8 @@ export async function deleteDepartment(req: Request, res: Response) {
 // --- Location Controllers ---
 export async function getLocations(req: Request, res: Response) {
   try {
-    const list = await db.select().from(locations);
+    const scope=requireHrScope(req as any);
+    const list = await db.select(getTableColumns(locations)).from(locations).leftJoin(locationOrganizationMappings,eq(locationOrganizationMappings.locationId,locations.id)).where(historicalScopePredicate(scope,locationOrganizationMappings.groupId));
     return res.status(200).json(list);
   } catch (err: any) {
     return res.status(500).json({ error: err.message || 'Internal server error' });

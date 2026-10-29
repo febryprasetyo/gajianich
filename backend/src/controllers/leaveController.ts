@@ -1,3 +1,6 @@
+import {employeeScopePredicate,historicalScopePredicate,requireHrScope,requireScopedEmployee} from '../services/hrOrganizationScope';
+import {resolveDocumentProfile} from '../services/documentProfile';
+import {loadCurrentIdentity} from '../services/currentIdentity';
 import { resolveAuditContext, appendHrAudit } from '../services/hrAudit';
 import { sanitizeAuditTarget } from '../domain/hrAudit';
 import { Request, Response } from 'express';
@@ -137,7 +140,7 @@ export async function getActiveEmployeesForLeaves(req: Request, res: Response) {
       })
       .from(employees)
       .leftJoin(departments, eq(employees.departmentId, departments.id))
-      .where(eq(employees.status, 'Active'))
+      .where(and(eq(employees.status, 'Active'),employeeScopePredicate(requireHrScope(req as any))))
       .orderBy(employees.fullName);
 
     return res.status(200).json(list);
@@ -157,6 +160,7 @@ export async function getLeaveBalanceSummary(req: Request, res: Response) {
       return res.status(400).json({ error: 'employeeId query parameter is required' });
     }
 
+    await requireScopedEmployee(requireHrScope(req as any),employeeId);
     const employee = await getEmployeeProfile(employeeId);
     if (!employee) {
       return res.status(404).json({ error: 'Karyawan tidak ditemukan' });
@@ -182,13 +186,14 @@ export async function getLeaveBalanceSummary(req: Request, res: Response) {
     let [balance] = await db
       .select()
       .from(leaveBalances)
-      .where(and(eq(leaveBalances.employeeId, employeeId), eq(leaveBalances.year, year)));
+      .where(and(eq(leaveBalances.employeeId, employeeId), eq(leaveBalances.year, year),historicalScopePredicate(requireHrScope(req as any),leaveBalances.groupId)));
 
     if (!balance) {
       const [inserted] = await db
         .insert(leaveBalances)
         .values({
           employeeId,
+          groupId: (await requireScopedEmployee(requireHrScope(req as any),employeeId)).groupId,
           year,
           baseQuota: effectiveBaseQuota,
           collectiveLeaveDeduction: effectiveCollectiveLeaveDays,
@@ -221,6 +226,7 @@ export async function getLeaveBalanceSummary(req: Request, res: Response) {
       .from(leaveRequests)
       .where(
         and(
+          historicalScopePredicate(requireHrScope(req as any),leaveRequests.groupId),
           eq(leaveRequests.employeeId, employeeId),
           eq(leaveRequests.balanceYear, year),
           eq(leaveRequests.status, 'APPROVED')
@@ -324,6 +330,8 @@ export async function createLeaveRequest(req: Request, res: Response) {
     }
 
     const data = parsed.data;
+    const owner = await requireScopedEmployee(requireHrScope(req as any),data.employeeId);
+    if (data.handoverToEmployeeId) await requireScopedEmployee(requireHrScope(req as any),data.handoverToEmployeeId);
     const employee = await getEmployeeProfile(data.employeeId);
     if (!employee) {
       return res.status(404).json({ error: 'Karyawan pemohon tidak ditemukan' });
@@ -370,11 +378,13 @@ export async function createLeaveRequest(req: Request, res: Response) {
       .from(leaveBalances)
       .where(and(eq(leaveBalances.employeeId, data.employeeId), eq(leaveBalances.year, startYear)));
 
+    if (balance && balance.groupId !== owner.groupId) throw new Error('Historical leave balance ownership unresolved or different');
     if (!balance) {
       const [inserted] = await db
         .insert(leaveBalances)
         .values({
           employeeId: data.employeeId,
+          groupId: owner.groupId,
           year: startYear,
           baseQuota: effectiveBaseQuota,
           collectiveLeaveDeduction: effectiveCollectiveLeaveDays,
@@ -421,10 +431,13 @@ export async function createLeaveRequest(req: Request, res: Response) {
 
     // Database transaction
     const createdRequest = await db.transaction(async (tx) => {
+      if (!owner.organizationId) throw new Error("Employee document identity is unresolved");
+      const documentProfileSnapshot = await resolveDocumentProfile(tx,{kind:"LEAVE",groupId:owner.groupId,organizationId:owner.organizationId});
       const [leaveReq] = await tx
         .insert(leaveRequests)
         .values({
           requestNumber,
+          groupId: owner.groupId, organizationId: owner.organizationId, documentProfileSnapshot,
           employeeId: data.employeeId,
           leaveType: data.leaveType,
           specialLeaveReason: data.specialLeaveReason || null,
@@ -526,7 +539,7 @@ export async function getLeaveRequestById(req: Request, res: Response) {
     const [request] = await db
       .select()
       .from(leaveRequests)
-      .where(eq(leaveRequests.id, id));
+      .where(and(eq(leaveRequests.id, id),historicalScopePredicate(requireHrScope(req as any),leaveRequests.groupId)));
 
     if (!request) {
       return res.status(404).json({ error: 'Data permohonan cuti tidak ditemukan' });
@@ -553,6 +566,7 @@ export async function getLeaveRequestById(req: Request, res: Response) {
       .from(leaveRequests)
       .where(
         and(
+          historicalScopePredicate(requireHrScope(req as any),leaveRequests.groupId),
           eq(leaveRequests.employeeId, request.employeeId),
           eq(leaveRequests.balanceYear, request.balanceYear),
           eq(leaveRequests.leaveType, 'ANNUAL'),
@@ -598,6 +612,7 @@ export async function getLeaveRequestById(req: Request, res: Response) {
     return res.status(200).json({
       id: request.id,
       requestNumber: request.requestNumber,
+      groupId:request.groupId, organizationId:request.organizationId, documentProfileSnapshot:request.documentProfileSnapshot,
       status: request.status,
       formNumber: '001',
       revisionCode: 'REV. 170208-1-W',
@@ -693,9 +708,7 @@ export async function getLeaveRequests(req: Request, res: Response) {
       .leftJoin(employees, eq(leaveRequests.employeeId, employees.id))
       .$dynamic();
 
-    if (year && !isNaN(year)) {
-      query = query.where(eq(leaveRequests.balanceYear, year));
-    }
+    query = query.where(and(historicalScopePredicate(requireHrScope(req as any),leaveRequests.groupId),year && !isNaN(year) ? eq(leaveRequests.balanceYear, year) : undefined));
 
     const records = await query.orderBy(desc(leaveRequests.createdAt));
 
@@ -718,7 +731,7 @@ export async function updateLeaveRequest(req: Request, res: Response) {
     const [request] = await db
       .select()
       .from(leaveRequests)
-      .where(eq(leaveRequests.id, id));
+      .where(and(eq(leaveRequests.id, id),historicalScopePredicate(requireHrScope(req as any),leaveRequests.groupId)));
 
     if (!request) {
       return res.status(404).json({ error: 'Data permohonan cuti tidak ditemukan' });
@@ -739,6 +752,7 @@ export async function updateLeaveRequest(req: Request, res: Response) {
     }
 
     const data = parseResult.data;
+    if (data.handoverToEmployeeId) await requireScopedEmployee(requireHrScope(req as any),data.handoverToEmployeeId);
     const startYear = Number(data.startDate.split('-')[0]);
     const currentYear = new Date().getFullYear();
 
@@ -827,7 +841,7 @@ export async function updateLeaveRequest(req: Request, res: Response) {
           snapshotRemainingAfter: snapshotRemaining,
           updatedAt: new Date(),
         })
-        .where(eq(leaveRequests.id, id));
+        .where(and(eq(leaveRequests.id, id),historicalScopePredicate(requireHrScope(req as any),leaveRequests.groupId)));
 
       if (auditContext) {
         const target = sanitizeAuditTarget('leave_request', request, { ...request, ...data }, {
@@ -874,7 +888,7 @@ export async function approveLeaveRequest(req: Request, res: Response) {
     const [request] = await db
       .select()
       .from(leaveRequests)
-      .where(eq(leaveRequests.id, id));
+      .where(and(eq(leaveRequests.id, id),historicalScopePredicate(requireHrScope(req as any),leaveRequests.groupId)));
 
     if (!request) {
       return res.status(404).json({ error: "Data permohonan cuti tidak ditemukan" });
@@ -904,7 +918,7 @@ export async function approveLeaveRequest(req: Request, res: Response) {
           status: "APPROVED",
           updatedAt: new Date(),
         })
-        .where(eq(leaveRequests.id, id));
+        .where(and(eq(leaveRequests.id, id),historicalScopePredicate(requireHrScope(req as any),leaveRequests.groupId)));
 
       await tx
         .update(leaveApprovals)
@@ -962,7 +976,7 @@ export async function deleteLeaveRequestDraft(req: Request, res: Response) {
     const [request] = await db
       .select()
       .from(leaveRequests)
-      .where(eq(leaveRequests.id, id));
+      .where(and(eq(leaveRequests.id, id),historicalScopePredicate(requireHrScope(req as any),leaveRequests.groupId)));
 
     if (!request) {
       return res.status(404).json({ error: "Data permohonan cuti tidak ditemukan" });
@@ -1011,7 +1025,7 @@ export async function deleteLeaveRequestDraft(req: Request, res: Response) {
 
       await tx
         .delete(leaveRequests)
-        .where(eq(leaveRequests.id, id));
+        .where(and(eq(leaveRequests.id, id),historicalScopePredicate(requireHrScope(req as any),leaveRequests.groupId)));
 
       if (auditContext) {
         const target = sanitizeAuditTarget('leave_request', request, null, {
@@ -1091,6 +1105,7 @@ export async function getAnnualLeaveConfig(req: Request, res: Response) {
 
 export async function saveAnnualLeaveConfig(req: Request, res: Response) {
   try {
+    if (!(await loadCurrentIdentity((req as any).user?.userId))?.isGlobalAdministrator) return res.status(403).json({error:"Shared leave policy requires global administrator"});
     const parseResult = annualLeaveConfigSchema.safeParse(req.body);
     if (!parseResult.success) {
       return res.status(400).json({
@@ -1150,7 +1165,7 @@ export async function saveAnnualLeaveConfig(req: Request, res: Response) {
       const activeEmployees = await tx
         .select({ id: employees.id })
         .from(employees)
-        .where(eq(employees.status, 'Active'));
+        .where(and(eq(employees.status, 'Active'),employeeScopePredicate(requireHrScope(req as any))));
 
       // 3. Ambil saldo tahun berjalan (N) dan tahun sebelumnya (N - 1)
       const currentBalances = await tx
@@ -1268,12 +1283,12 @@ export async function getMasterLeaveBalances(req: Request, res: Response) {
       })
       .from(employees)
       .leftJoin(departments, eq(employees.departmentId, departments.id))
-      .where(eq(employees.status, 'Active'));
+      .where(and(eq(employees.status, 'Active'),employeeScopePredicate(requireHrScope(req as any))));
 
     const balances = await db
       .select()
       .from(leaveBalances)
-      .where(eq(leaveBalances.year, year));
+      .where(and(eq(leaveBalances.year, year),historicalScopePredicate(requireHrScope(req as any),leaveBalances.groupId)));
 
     const balanceMap = new Map<number, typeof balances[0]>();
     balances.forEach((b) => balanceMap.set(b.employeeId, b));
@@ -1394,7 +1409,7 @@ export async function updateEmployeeLeaveBalance(req: Request, res: Response) {
     const [existing] = await db
       .select()
       .from(leaveBalances)
-      .where(eq(leaveBalances.id, id));
+      .where(and(eq(leaveBalances.id, id),historicalScopePredicate(requireHrScope(req as any),leaveBalances.groupId)));
 
     if (!existing) {
       return res.status(404).json({ error: 'Data saldo cuti tidak ditemukan' });
@@ -1424,7 +1439,7 @@ export async function updateEmployeeLeaveBalance(req: Request, res: Response) {
     const [updated] = await db
       .update(leaveBalances)
       .set(updatePayload)
-      .where(eq(leaveBalances.id, id))
+      .where(and(eq(leaveBalances.id, id),historicalScopePredicate(requireHrScope(req as any),leaveBalances.groupId)))
       .returning();
 
     if (auditContext) {

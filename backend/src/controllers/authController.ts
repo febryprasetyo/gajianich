@@ -7,6 +7,7 @@ import bcrypt from 'bcrypt';
 import { generateToken } from '../utils/jwt';
 import { z } from 'zod';
 import { validatePasswordStrength } from '../domain/passwordPolicy';
+import { loadOrganizationAccess } from '../services/organizationScope';
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Username is required'),
@@ -171,11 +172,13 @@ export async function me(req: AuthenticatedRequest, res: Response) {
   if (!req.user) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
-  const userPermissions = await getUserPermissions(req.user.roleId, req.user.roleName);
-  return res.status(200).json({
-    user: {
-      ...req.user,
-      permissions: userPermissions,
-    },
-  });
+  try {
+    const userPermissions = await getUserPermissions(req.user.roleId, req.user.roleName);
+    const access = await loadOrganizationAccess(req.user.userId);
+    return res.status(200).json({
+      user: { ...req.user, permissions: userPermissions, ...access },
+    });
+  } catch {
+    return res.status(503).json({ error: 'Account access temporarily unavailable' });
+  }
 }

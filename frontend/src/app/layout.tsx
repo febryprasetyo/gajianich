@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import {OrganizationScopeProvider} from '@/context/OrganizationScopeContext';
 import { BRAND_DESCRIPTION, BRAND_NAME } from '@/lib/gajianichBrand';
 
 export const metadata: Metadata = {
@@ -31,7 +32,7 @@ export default function RootLayout({
       style={{ colorScheme: 'light' }}
     >
       <body className="min-h-full flex flex-col bg-[#F8FAFC] text-[#0F172A]">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider><OrganizationScopeProvider>{children}</OrganizationScopeProvider></AuthProvider>
       </body>
     </html>
   );

@@ -8,12 +8,13 @@ import { assetCustodians } from '../db/schema/assetCustodians';
 import { assetAssignmentHistory, assetCategories, assets } from '../db/schema/assets';
 import { auditLogs } from '../db/schema/system';
 import { buildAssetImportTemplate } from '../services/assetWorkbook';
-import { generateToken } from '../utils/jwt';
+import {createTestOperator} from '../testing/testOperator';
 
 test('XLSX preview is read-only and commit creates a manual holder with immutable assignment snapshots', async () => {
   const server = createApp().listen(0);
   const base = 'http://127.0.0.1:' + (server.address() as { port: number }).port + '/api/v1/assets/import';
-  const token = generateToken({ userId: 1, email: 'import-test@example.com', roleId: 1, roleName: 'ITAdmin' });
+  const operator=await createTestOperator();
+  const token = operator.token();
   const suffix = Date.now().toString(36) + process.pid;
   const holderName = 'Import Contractor ' + suffix;
   const assetCode = ('IMP-' + suffix).slice(0, 50);
@@ -30,7 +31,7 @@ test('XLSX preview is read-only and commit creates a manual holder with immutabl
     );
     const response = await fetch(base + path, {
       method: 'POST',
-      headers: { Authorization: 'Bearer ' + token },
+      headers: operator.headers(token),
       body: form,
     });
     return { status: response.status, body: await response.json() as any };
@@ -66,6 +67,7 @@ test('XLSX preview is read-only and commit creates a manual holder with immutabl
       '',
       '',
     ]);
+    workbook.getWorksheet('Laptop-PC')!.getRow(2).getCell(6).value=operator.locationCode;
     const file = Buffer.from(await workbook.xlsx.writeBuffer());
 
     const before = await pool.query('SELECT count(*)::int AS count FROM asset_custodians WHERE display_name=$1', [holderName]);
@@ -94,7 +96,7 @@ test('XLSX preview is read-only and commit creates a manual holder with immutabl
     )).rows[0];
     assert.equal(Number(history.custodian_id), Number(stored.current_custodian_id));
     assert.equal(history.custodian_name_snapshot, holderName);
-    assert.equal(Number(history.assigned_by_user_id), 1);
+    assert.equal(Number(history.assigned_by_user_id), operator.userId);
     assert.equal((await pool.query('SELECT id FROM asset_computer_specs WHERE asset_id=$1', [assetId])).rowCount, 0);
   } finally {
     if (assetId) {
@@ -108,6 +110,7 @@ test('XLSX preview is read-only and commit creates a manual holder with immutabl
     );
     await db.delete(assetCustodians).where(eq(assetCustodians.displayName, holderName));
     if (categoryId && ownsCategory) await db.delete(assetCategories).where(eq(assetCategories.id, categoryId));
+    await operator.cleanup();
     await new Promise<void>((resolve) => server.close(() => resolve()));
     await closeDatabase();
   }

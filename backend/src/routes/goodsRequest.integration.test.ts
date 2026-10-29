@@ -7,6 +7,7 @@ import { once } from 'node:events';
 import sharp from 'sharp';
 import { createHrAuditTestDatabase } from '../testing/hrAuditDatabase';
 import { runMigrations } from '../db/migrate';
+import { createDocumentProfileFixture } from '../testing/documentProfileFixture';
 
 test('GA API saves complete requests, protects evidence, handles drafts, status transitions, and signed documents', async t => {
   const fixture = await createHrAuditTestDatabase();
@@ -15,15 +16,18 @@ test('GA API saves complete requests, protects evidence, handles drafts, status 
   t.after(async () => { await closeApp(); await fixture.cleanup(); await rm(directory, { recursive: true, force: true }); });
   await runMigrations(fixture.ownerUrl, undefined, fixture.runtimeRole);
   await fixture.owner.query('GRANT SELECT ON users, roles, permissions, role_permissions TO "' + fixture.runtimeRole + '"');
+  const owner = await createDocumentProfileFixture(fixture.owner);
+  await fixture.owner.query('GRANT SELECT ON organization_groups, organizations, user_organization_group_access, document_profiles, document_template_versions, document_identity_versions TO "' + fixture.runtimeRole + '"');
   process.env.DATABASE_URL = fixture.runtime.options.connectionString!;
   process.env.GA_STORAGE_DIR = directory;
   const { createApp } = await import('../app');
   const { closeDatabase } = await import('../db');
   const { generateToken } = await import('../utils/jwt');
-  const { rows: [role] } = await fixture.owner.query("INSERT INTO roles(code,name) VALUES('ga_test_admin','GA test admin') RETURNING id");
+  const { rows: [role] } = await fixture.owner.query("INSERT INTO roles(code,name) VALUES('super_admin','SuperAdmin') RETURNING id");
   const { rows: [user] } = await fixture.owner.query("INSERT INTO users(username,email,password_hash,role_id) VALUES('ga_test','ga_test@example.test','unused',$1) RETURNING id", [role.id]);
   const token = generateToken({ userId: Number(user.id), roleId: Number(role.id), roleName: 'SuperAdmin', email: 'ga_test@example.test' });
-  const noPermission = generateToken({ userId: Number(user.id), roleId: Number(role.id), roleName: 'NoPermissions', email: 'ga_test@example.test' });
+  const { rows: [restricted] } = await fixture.owner.query("INSERT INTO users(username,password_hash,role) VALUES('ga_restricted','unused','Employee') RETURNING id");
+  const noPermission = generateToken({ userId: Number(restricted.id), roleId: 0, roleName: 'Employee', email: null });
   const missingUser = generateToken({ userId: 99999999, roleId: Number(role.id), roleName: 'SuperAdmin', email: 'missing@example.test' });
   const server = createApp().listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -32,16 +36,17 @@ test('GA API saves complete requests, protects evidence, handles drafts, status 
   const base = 'http://127.0.0.1:' + address.port + '/api/v1/ga/requests';
   const image = await sharp({ create: { width: 100, height: 100, channels: 3, background: '#fff' } }).png().toBuffer();
   const payload = {
+    groupId:owner.groupId, organizationId:owner.organizationId,
     title: 'Pengadaan Laptop Staff',
     purpose: 'Karyawan baru divisi HR-GA',
     requestDate: '2026-10-20', requesterName: 'Fathiya', jobTitle: 'GA', division: 'HR-GA',
     items: [{ name: 'Laptop', quantity: 2, estimatedPrice: 6199000, subtotal: 1, notes: 'Karyawan baru', attachmentKeys: ['proof-1'] }]
   };
   function body(input = payload, buffer = image) {
-    const data = new FormData(); data.append('payload', JSON.stringify(input));
+    const data = new FormData(); data.append('payload', JSON.stringify({groupId:owner.groupId,organizationId:owner.organizationId,...input}));
     data.append('evidence', new Blob([new Uint8Array(buffer)], { type: 'image/png' }), 'proof-1'); return data;
   }
-  const auth = { Authorization: 'Bearer ' + token };
+  const auth = { Authorization: 'Bearer ' + token, 'X-Organization-Group-Id': String(owner.groupId) };
   assert.equal((await fetch(base)).status, 401);
   assert.equal((await fetch(base, { headers: { Authorization: 'Bearer ' + noPermission } })).status, 403);
   const incomplete = { ...payload, items: [...payload.items, { ...payload.items[0], name: 'Mouse', attachmentKeys: [] }] };
@@ -126,6 +131,7 @@ test('GA API saves complete requests, protects evidence, handles drafts, status 
   // 6. Create Draft
   const draftData = new FormData();
   draftData.append('payload', JSON.stringify({
+    groupId:owner.groupId,organizationId:owner.organizationId,
     title: 'Draft Meja Kantor',
     purpose: 'Rencana',
     isDraft: true,
@@ -153,6 +159,7 @@ test('GA API saves complete requests, protects evidence, handles drafts, status 
   // 7. Edit (PUT) and Delete (DELETE) testing
   const testDraftData = new FormData();
   testDraftData.append('payload', JSON.stringify({
+    groupId:owner.groupId,organizationId:owner.organizationId,
     title: 'Pengadaan Keyboard Mekanikal',
     purpose: 'Developer baru',
     requestDate: '2026-10-21',
@@ -169,6 +176,7 @@ test('GA API saves complete requests, protects evidence, handles drafts, status 
   // Edit draft request
   const editData = new FormData();
   editData.append('payload', JSON.stringify({
+    groupId:owner.groupId,organizationId:owner.organizationId,
     title: 'Pengadaan Keyboard & Mouse',
     purpose: 'Developer baru revisi',
     requestDate: '2026-10-21',

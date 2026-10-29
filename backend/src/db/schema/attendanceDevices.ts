@@ -1,3 +1,4 @@
+import {organizationGroups} from './organizations';
 import {
   pgTable,
   bigint,
@@ -17,6 +18,7 @@ import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 export const attendanceDevices = pgTable(
   'attendance_devices',
   {
+    groupId: bigint('group_id', {mode:'number'}).references(() => organizationGroups.id,{onDelete:'restrict'}),
     id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
     code: varchar('code', { length: 50 }).notNull().unique(),
     name: varchar('name', { length: 150 }).notNull(),
@@ -48,6 +50,7 @@ export const attendanceDevices = pgTable(
 export const attendanceDeviceSyncLogs = pgTable(
   'attendance_device_sync_logs',
   {
+    groupId: bigint('group_id', {mode:'number'}).references(() => organizationGroups.id,{onDelete:'restrict'}),
     id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
     deviceId: bigint('device_id', { mode: 'number' })
       .notNull()
@@ -75,6 +78,7 @@ export const attendanceDeviceSyncLogs = pgTable(
 export const attendanceDeviceRawLogs = pgTable(
   'attendance_device_raw_logs',
   {
+    groupId: bigint('group_id', {mode:'number'}).references(() => organizationGroups.id,{onDelete:'restrict'}),
     id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
     syncLogId: bigint('sync_log_id', { mode: 'number' }).references(
       () => attendanceDeviceSyncLogs.id,

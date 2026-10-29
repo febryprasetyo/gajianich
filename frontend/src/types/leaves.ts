@@ -1,3 +1,4 @@
+import type { DocumentProfileSnapshot } from './documentProfile';
 export type LeaveType = 'ANNUAL' | 'SPECIAL';
 
 export type SpecialLeaveReason = 'Menikah' | 'Melahirkan' | 'Kematian' | 'Khitanan' | 'Lain-lain';
@@ -69,6 +70,12 @@ export interface LeaveApprovalItem {
 }
 
 export interface FullLeaveDocumentData {
+  groupId?: number | null;
+  organizationId?: number | null;
+  documentProfileSnapshot?: DocumentProfileSnapshot | null;
+  documentProfilePreview?: DocumentProfileSnapshot | null;
+  documentProfileUnavailable?: boolean;
+  status?: string;
   id: number;
   requestNumber: string;
   formNumber: string; // '001'

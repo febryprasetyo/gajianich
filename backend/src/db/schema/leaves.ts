@@ -1,6 +1,8 @@
-import { pgTable, bigint, varchar, text, date, integer, timestamp, boolean, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, bigint, varchar, text, date, integer, timestamp, boolean, uniqueIndex, foreignKey, jsonb } from 'drizzle-orm/pg-core';
 import { employees } from './employees';
 import { users } from './users';
+import {organizationGroups, organizations} from './organizations';
+import type {DocumentProfileSnapshot} from '../../services/documentProfile';
 
 // 0. Konfigurasi Master Cuti Tahunan & Cuti Bersama
 export const annualLeaveConfigs = pgTable('annual_leave_configs', {
@@ -28,6 +30,7 @@ export const leaveHolidayCalendars = pgTable('leave_holiday_calendars', {
 
 // 2. Saldo Cuti Karyawan per Tahun
 export const leaveBalances = pgTable('leave_balances', {
+  groupId: bigint('group_id', {mode:'number'}).references(() => organizationGroups.id,{onDelete:'restrict'}),
   id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
   employeeId: bigint('employee_id', { mode: 'number' }).notNull().references(() => employees.id, { onDelete: 'cascade' }),
   year: integer('year').notNull(),
@@ -45,6 +48,9 @@ export const leaveBalances = pgTable('leave_balances', {
 
 // 3. Permohonan Cuti Karyawan
 export const leaveRequests = pgTable('leave_requests', {
+  groupId: bigint('group_id', {mode:'number'}).references(() => organizationGroups.id,{onDelete:'restrict'}),
+  organizationId: bigint('organization_id', {mode:'number'}).references(() => organizations.id,{onDelete:'restrict'}),
+  documentProfileSnapshot: jsonb('document_profile_snapshot').$type<DocumentProfileSnapshot>(),
   id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
   requestNumber: varchar('request_number', { length: 50 }).notNull().unique(), // Format: LV-YYYYMM-XXXX
   employeeId: bigint('employee_id', { mode: 'number' }).notNull().references(() => employees.id, { onDelete: 'restrict' }),
@@ -75,7 +81,9 @@ export const leaveRequests = pgTable('leave_requests', {
   createdById: bigint('created_by_id', { mode: 'number' }).references(() => users.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+}, (table) => [
+  foreignKey({name:'leaveRequests_organization_group_fk',columns:[table.organizationId,table.groupId],foreignColumns:[organizations.id,organizations.groupId]}).onDelete('restrict'),
+]);
 
 // 4. Persetujuan Bertingkat (4 Kolom Sesuai Form Cetak F4)
 export const leaveApprovals = pgTable('leave_approvals', {

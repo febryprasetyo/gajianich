@@ -1,3 +1,6 @@
+import type {RequestScope} from '../domain/organizationAccess';
+import {loadGroupAccess,resolveRequestScope} from './organizationScope';
+import {historicalScopePredicate,requireHrScope,requireScopedEmployee} from './hrOrganizationScope';
 function computeRecordDuration(scanIn?: string | null, scanOut?: string | null): string {
   if (!scanIn || !scanOut) return '--';
   const matchIn = scanIn.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
@@ -100,10 +103,13 @@ export async function resolveEmployeeUser(userId: number, targetDb = db) {
     .from(employees).leftJoin(departments, eq(employees.departmentId, departments.id)).leftJoin(locations, eq(employees.locationId, locations.id)).where(eq(employees.id, user.employeeId)).limit(1);
   if (!employee) throw new Error('Data karyawan tidak ditemukan.');
   if (employee.employeeStatus !== 'Active') throw new Error('Status karyawan tidak aktif. Hubungi HRD.');
-  return { user, employee };
+  const access = await loadGroupAccess(userId,targetDb);
+  const scope = resolveRequestScope({access,module:'hr',mode:'read',selectedGroupId:null});
+  const owner = await requireScopedEmployee(scope,employee.id,targetDb);
+  return { user, employee:{...employee,groupId:owner.groupId}, scope };
 }
-async function employeeLogs(employeeId: number, targetDb: any): Promise<SelfLog[]> {
-  return targetDb.select().from(attendanceSelfLogs).where(eq(attendanceSelfLogs.employeeId, employeeId)).orderBy(desc(attendanceSelfLogs.occurredAt), desc(attendanceSelfLogs.id));
+async function employeeLogs(employeeId: number, targetDb: any, groupId: number): Promise<SelfLog[]> {
+  return targetDb.select().from(attendanceSelfLogs).where(and(eq(attendanceSelfLogs.employeeId, employeeId),eq(attendanceSelfLogs.groupId,groupId))).orderBy(desc(attendanceSelfLogs.occurredAt), desc(attendanceSelfLogs.id));
 }
 async function shiftForEmployee(employee: { id: number; departmentId: number | null }, targetDb: any) {
   const shifts = await targetDb.select().from(attendanceShifts);
@@ -121,12 +127,14 @@ async function checkUnlocked(tx: any, date: string) {
   if (lock) throw new Error('Periode absensi dikunci. Hubungi HRD.');
 }
 export async function projectApprovedLog(tx: any, log: SelfLog) {
+  if (!log.groupId) throw new Error('Historical mobile attendance ownership unresolved');
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${"att_date_" + log.workDate}))`);
   await checkUnlocked(tx, log.workDate);
-  const all: SelfLog[] = await tx.select().from(attendanceSelfLogs).where(and(eq(attendanceSelfLogs.employeeId, log.employeeId), eq(attendanceSelfLogs.workDate, log.workDate))).orderBy(desc(attendanceSelfLogs.id));
+  const all: SelfLog[] = await tx.select().from(attendanceSelfLogs).where(and(eq(attendanceSelfLogs.employeeId, log.employeeId),eq(attendanceSelfLogs.groupId,log.groupId!), eq(attendanceSelfLogs.workDate, log.workDate))).orderBy(desc(attendanceSelfLogs.id));
   const approved = all.filter(l => l.approvalStatus === 'APPROVED');
   const { inLog, outLog } = resolveFirstInLastOutLogs(approved);
   const [storedRecord] = await tx.select().from(attendanceRecords).where(and(eq(attendanceRecords.employeeId, log.employeeId), eq(attendanceRecords.workDate, log.workDate)));
+  if (storedRecord && storedRecord.groupId !== log.groupId) throw new Error('Historical attendance ownership mismatch');
   if (storedRecord?.scanIn) {
     const isMobileOwned = storedRecord.sourceBatchId === null
       && !storedRecord.normalized
@@ -149,7 +157,7 @@ export async function projectApprovedLog(tx: any, log: SelfLog) {
   const offset = outLog?.scanDate ? Math.round((Date.parse(outLog.scanDate) - Date.parse(log.workDate)) / 86400_000) : 0;
   const values = { scanIn, scanOut, rawScanIn: scanIn, rawScanOut: scanOut, scheduleIn, scheduleOut, shift: log.shiftCode,
     ...attendanceMetrics(scheduleIn, scheduleOut, scanIn, scanOut, offset), attendanceStatus: approved.some(l => !l.isWithinGeofence) ? 'DINAS_LUAR' : 'PRESENT', updatedAt: new Date() };
-  await tx.insert(attendanceRecords).values({ employeeId: log.employeeId, workDate: log.workDate, ...values })
+  await tx.insert(attendanceRecords).values({ groupId:log.groupId, employeeId: log.employeeId, workDate: log.workDate, ...values })
     .onConflictDoUpdate({ target: [attendanceRecords.employeeId, attendanceRecords.workDate], set: { ...values, revision: sql`${attendanceRecords.revision} + 1` } });
 }
 export interface MobileClockInput {
@@ -179,7 +187,7 @@ export async function recordMobileClock(userId: number, payload: MobileClockInpu
       const [currentProfile] = await tx.select().from(attendanceFaceProfiles).where(eq(attendanceFaceProfiles.employeeId, employee.id));
       const currentReference = currentProfile?.samplePhotoUrl === profile.samplePhotoUrl ? reference : currentProfile?.faceDescriptorHash;
       if (!currentProfile?.isEnrolled || !verifyBiometricMatch(live.descriptor, currentReference).isMatch) throw new Error('Foto acuan telah berubah. Ulangi presensi.');
-      const logs = await employeeLogs(employee.id, tx);
+      const logs = await employeeLogs(employee.id, tx,employee.groupId);
       const entry = latestPair(logs, now);
       const zone = payload.eventType === 'OUT' && entry ? entry.timeZone : gpsZone;
       const local = localAttendanceTime(now, zone);
@@ -187,6 +195,7 @@ export async function recordMobileClock(userId: number, payload: MobileClockInpu
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${"att_date_" + workDate}))`);
       await checkUnlocked(tx, workDate);
       const [existingRecord] = await tx.select().from(attendanceRecords).where(and(eq(attendanceRecords.employeeId, employee.id), eq(attendanceRecords.workDate, workDate)));
+      if (existingRecord && existingRecord.groupId !== employee.groupId) throw new Error('Historical attendance ownership mismatch');
       if (payload.eventType === 'IN' && existingRecord?.scanIn) {
         throw new Error('Presensi masuk sudah tercatat di sistem.');
       }
@@ -214,7 +223,7 @@ export async function recordMobileClock(userId: number, payload: MobileClockInpu
       const finalNotes = payload.isDirectOut ? `[DIRECT_OUT] ${payload.notes!.trim()}` : payload.notes;
       const geo = isWithinGeofence(payload.latitude, payload.longitude, DEFAULT_OFFICE_COORDINATES.latitude, DEFAULT_OFFICE_COORDINATES.longitude, DEFAULT_OFFICE_COORDINATES.radiusMeters);
       const links = buildMapLinks(payload.latitude!, payload.longitude!);
-      const [log] = await tx.insert(attendanceSelfLogs).values({ employeeId: employee.id, userId: user.id, eventType: payload.eventType, workDate, scanDate: local.workDate, scanTime: local.scanTime, timeZone: zone, occurredAt: now,
+      const [log] = await tx.insert(attendanceSelfLogs).values({ groupId:employee.groupId,employeeId: employee.id, userId: user.id, eventType: payload.eventType, workDate, scanDate: local.workDate, scanTime: local.scanTime, timeZone: zone, occurredAt: now,
         scheduleIn: entry && payload.eventType === 'OUT' ? entry.scheduleIn : daily.scheduleIn, scheduleOut: entry && payload.eventType === 'OUT' ? entry.scheduleOut : daily.scheduleOut,
         shiftCode: entry && payload.eventType === 'OUT' ? entry.shiftCode : shift.code, shiftCategory: determineShiftCategory(shift),
         latitude: String(payload.latitude), longitude: String(payload.longitude), accuracy: payload.accuracy == null ? null : Math.round(payload.accuracy), address: payload.address || null,
@@ -240,7 +249,7 @@ function reviewSummary(logs: SelfLog[]): { status: 'PENDING' | 'APPROVED' | 'REJ
 }
 export async function getMobileTodaySummary(userId: number, targetDb = db) {
   const { employee } = await resolveEmployeeUser(userId, targetDb);
-  const logs = await employeeLogs(employee.id, targetDb);
+  const logs = await employeeLogs(employee.id, targetDb,employee.groupId);
   const entry = latestPair(logs);
   const zone = entry?.timeZone || 'Asia/Jakarta';
   const today = localAttendanceTime(new Date(), zone).workDate;
@@ -276,13 +285,13 @@ export async function getMobileTodaySummary(userId: number, targetDb = db) {
 function publicLog(log: SelfLog) { return { ...log, photoUrl: log.photoUrl ? `/attendance/mobile/photos/${log.id}` : null, timeZoneLabel: zoneLabels[log.timeZone] }; }
 export async function getMobileAttendanceHistory(userId: number, period: 'CURRENT' | 'PREVIOUS' = 'CURRENT', targetDb = db) {
   const { employee } = await resolveEmployeeUser(userId, targetDb);
-  const logs = await employeeLogs(employee.id, targetDb);
+  const logs = await employeeLogs(employee.id, targetDb,employee.groupId);
   const zone = logs[0]?.timeZone || 'Asia/Jakarta';
   const local = localAttendanceTime(new Date(), zone);
   const month = new Date(`${local.workDate.slice(0,7)}-01T12:00:00Z`);
   if (period === 'PREVIOUS') month.setUTCMonth(month.getUTCMonth() - 1);
   const prefix = month.toISOString().slice(0,7);
-  const core = await targetDb.select().from(attendanceRecords).where(and(eq(attendanceRecords.employeeId, employee.id), gte(attendanceRecords.workDate, `${prefix}-01`), lte(attendanceRecords.workDate, `${prefix}-31`)));
+  const core = await targetDb.select().from(attendanceRecords).where(and(eq(attendanceRecords.employeeId, employee.id), eq(attendanceRecords.groupId,employee.groupId), gte(attendanceRecords.workDate, `${prefix}-01`), lte(attendanceRecords.workDate, `${prefix}-31`)));
   const dates = [...new Set([...logs.filter(l => l.workDate.startsWith(prefix)).map(l => l.workDate), ...core.map(r => r.workDate)])].sort().reverse();
   return { period, monthName: new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(month), records: dates.map(date => {
     const events = logs.filter(l => l.workDate === date);
@@ -307,7 +316,7 @@ export async function getMobileAttendanceHistory(userId: number, period: 'CURREN
 export async function getFaceProfile(userId: number, targetDb = db) {
   const { employee } = await resolveEmployeeUser(userId, targetDb);
   const [profile] = await targetDb.select().from(attendanceFaceProfiles).where(eq(attendanceFaceProfiles.employeeId, employee.id));
-  const [request] = await targetDb.select().from(attendanceFaceRequests).where(eq(attendanceFaceRequests.employeeId, employee.id)).orderBy(desc(attendanceFaceRequests.id)).limit(1);
+  const [request] = await targetDb.select().from(attendanceFaceRequests).where(and(eq(attendanceFaceRequests.employeeId, employee.id),eq(attendanceFaceRequests.groupId,employee.groupId))).orderBy(desc(attendanceFaceRequests.id)).limit(1);
   return { success: true, data: { employeeId: employee.id, employeeName: employee.fullName, isEnrolled: !!(profile?.isEnrolled && profile.samplePhotoUrl && profile.faceDescriptorHash), faceDescriptor: null, samplePhotoUrl: employee.photoUrl, enrolledAt: profile?.enrolledAt || null, changeStatus: request?.status || null, changeNote: request?.note || null } };
 }
 export async function updateFaceEnrollment(userId: number, payload: { isEnrolled?: boolean; faceDescriptor?: unknown; faceDescriptorHash?: string; samplePhotoBase64?: string }, targetDb = db, recognize: typeof extractPhotoFace = extractPhotoFace) {
@@ -320,7 +329,7 @@ export async function updateFaceEnrollment(userId: number, payload: { isEnrolled
     if (existing?.samplePhotoUrl && existing.faceDescriptorHash) {
       const [pending] = await tx.select().from(attendanceFaceRequests).where(and(eq(attendanceFaceRequests.employeeId, employee.id), eq(attendanceFaceRequests.status, 'PENDING')));
       if (pending) throw new Error('Perubahan foto masih menunggu approval HRD.');
-      await tx.insert(attendanceFaceRequests).values({ employeeId: employee.id, descriptor: JSON.stringify(face.descriptor), photoUrl: face.photoUrl, oldPhotoUrl: existing.samplePhotoUrl?.startsWith('data:image/') ? existing.samplePhotoUrl : employee.photoUrl });
+      await tx.insert(attendanceFaceRequests).values({ groupId:employee.groupId,employeeId: employee.id, descriptor: JSON.stringify(face.descriptor), photoUrl: face.photoUrl, oldPhotoUrl: existing.samplePhotoUrl?.startsWith('data:image/') ? existing.samplePhotoUrl : employee.photoUrl });
       return { success: true, message: 'Perubahan foto dikirim untuk approval HRD. Foto lama tetap digunakan.', isEnrolled: existing.isEnrolled, changeStatus: 'PENDING' };
     }
     const initialProfile = { employeeId: employee.id, isEnrolled: true, faceDescriptorHash: JSON.stringify(face.descriptor), descriptorVersion: FACE_DESCRIPTOR_VERSION, samplePhotoUrl: face.photoUrl, enrolledAt: new Date(), updatedAt: new Date() };
@@ -329,16 +338,18 @@ export async function updateFaceEnrollment(userId: number, payload: { isEnrolled
     return { success: true, message: 'Wajah berhasil didaftarkan dan menjadi foto profil.', isEnrolled: true, changeStatus: null };
   });
 }
-export async function listPendingVerifications(targetDb = db) {
-  const rows = await targetDb.select({ log: attendanceSelfLogs, employeeName: employees.fullName, employeeCode: employees.employeeCode, departmentName: departments.name }).from(attendanceSelfLogs).leftJoin(employees, eq(attendanceSelfLogs.employeeId, employees.id)).leftJoin(departments, eq(employees.departmentId, departments.id)).where(or(eq(attendanceSelfLogs.approvalStatus, 'PENDING'), sql`${attendanceSelfLogs.id} IN (SELECT id FROM attendance_self_logs WHERE approval_status <> 'PENDING' ORDER BY id DESC LIMIT 500)`)).orderBy(desc(attendanceSelfLogs.id));
+export async function listPendingVerifications(targetDb = db, scope?: RequestScope) {
+  scope = requireHrScope({organizationScope:scope});
+  const rows = await targetDb.select({ log: attendanceSelfLogs, employeeName: employees.fullName, employeeCode: employees.employeeCode, departmentName: departments.name }).from(attendanceSelfLogs).leftJoin(employees, eq(attendanceSelfLogs.employeeId, employees.id)).leftJoin(departments, eq(employees.departmentId, departments.id)).where(historicalScopePredicate(scope,attendanceSelfLogs.groupId)).orderBy(desc(attendanceSelfLogs.id));
   return rows.map(row => ({ ...publicLog(row.log), employeeName: row.employeeName, employeeCode: row.employeeCode, departmentName: row.departmentName }));
 }
-export async function verifyAttendanceRecord(verifierUserId: number, payload: { logId: number; status: 'APPROVED' | 'REJECTED'; note?: string }, targetDb = db) {
+export async function verifyAttendanceRecord(verifierUserId: number, payload: { logId: number; status: 'APPROVED' | 'REJECTED'; note?: string }, targetDb = db, scope?: RequestScope) {
+  scope = requireHrScope({organizationScope:scope});
   return targetDb.transaction(async tx => {
-    const [initial] = await tx.select().from(attendanceSelfLogs).where(eq(attendanceSelfLogs.id, payload.logId));
+    const [initial] = await tx.select().from(attendanceSelfLogs).where(and(eq(attendanceSelfLogs.id, payload.logId),historicalScopePredicate({...scope!,includeUnmapped:false},attendanceSelfLogs.groupId)));
     if (!initial) throw new Error('Log presensi tidak ditemukan.');
     await employeeLock(tx, initial.employeeId);
-    const [log] = await tx.select().from(attendanceSelfLogs).where(eq(attendanceSelfLogs.id, payload.logId)).for('update');
+    const [log] = await tx.select().from(attendanceSelfLogs).where(and(eq(attendanceSelfLogs.id, payload.logId),historicalScopePredicate({...scope!,includeUnmapped:false},attendanceSelfLogs.groupId))).for('update');
     if (log.approvalStatus !== 'PENDING') throw new Error('Pengajuan sudah diproses. Muat ulang halaman.');
     if (payload.status === 'REJECTED' && !payload.note?.trim()) throw new Error('Alasan penolakan wajib diisi.');
     const note = payload.note?.trim() || 'Disetujui oleh HRD.';
@@ -352,28 +363,31 @@ export async function correctMobileAttendance(userId: number, logId: number, not
   if (!note.trim()) throw new Error('Keterangan koreksi wajib diisi.');
   return targetDb.transaction(async tx => {
     await employeeLock(tx, employee.id);
-    const [log] = await tx.select().from(attendanceSelfLogs).where(and(eq(attendanceSelfLogs.id, logId), eq(attendanceSelfLogs.employeeId, employee.id))).for('update');
+    const [log] = await tx.select().from(attendanceSelfLogs).where(and(eq(attendanceSelfLogs.id, logId), eq(attendanceSelfLogs.employeeId, employee.id),eq(attendanceSelfLogs.groupId,employee.groupId))).for('update');
     if (!log || log.approvalStatus !== 'REJECTED') throw new Error('Hanya absensi milik Anda yang ditolak dapat dikoreksi.');
     await tx.update(attendanceSelfLogs).set({ approvalStatus: 'PENDING', requiresVerification: true, approvalNote: 'Koreksi menunggu pemeriksaan HRD.', verifiedById: null, verifiedAt: null, reviewHistory: [...log.reviewHistory, { status: 'CORRECTION', note: note.trim(), actorId: userId, at: new Date().toISOString() }] }).where(eq(attendanceSelfLogs.id, log.id));
     return { success: true, message: 'Keterangan koreksi dikirim ke HRD.' };
   });
 }
-export async function listFaceRequests(targetDb = db) {
-  return targetDb.select({ id: attendanceFaceRequests.id, employeeName: employees.fullName, employeeCode: employees.employeeCode, oldPhotoUrl: attendanceFaceRequests.oldPhotoUrl, photoUrl: attendanceFaceRequests.photoUrl, status: attendanceFaceRequests.status, note: attendanceFaceRequests.note, createdAt: attendanceFaceRequests.createdAt, verifiedAt: attendanceFaceRequests.verifiedAt, verifiedById: attendanceFaceRequests.verifiedById }).from(attendanceFaceRequests).leftJoin(employees, eq(employees.id, attendanceFaceRequests.employeeId)).where(or(eq(attendanceFaceRequests.status, 'PENDING'), sql`${attendanceFaceRequests.id} IN (SELECT id FROM attendance_face_requests WHERE status <> 'PENDING' ORDER BY id DESC LIMIT 500)`)).orderBy(desc(attendanceFaceRequests.id));
+export async function listFaceRequests(targetDb = db, scope?: RequestScope) {
+  scope = requireHrScope({organizationScope:scope});
+  return targetDb.select({ id: attendanceFaceRequests.id, employeeName: employees.fullName, employeeCode: employees.employeeCode, oldPhotoUrl: attendanceFaceRequests.oldPhotoUrl, photoUrl: attendanceFaceRequests.photoUrl, status: attendanceFaceRequests.status, note: attendanceFaceRequests.note, createdAt: attendanceFaceRequests.createdAt, verifiedAt: attendanceFaceRequests.verifiedAt, verifiedById: attendanceFaceRequests.verifiedById }).from(attendanceFaceRequests).leftJoin(employees, eq(employees.id, attendanceFaceRequests.employeeId)).where(historicalScopePredicate(scope,attendanceFaceRequests.groupId)).orderBy(desc(attendanceFaceRequests.id));
 }
-export async function verifyFaceRequest(userId: number, id: number, status: 'APPROVED' | 'REJECTED', note: string, targetDb = db) {
+export async function verifyFaceRequest(userId: number, id: number, status: 'APPROVED' | 'REJECTED', note: string, targetDb = db, scope?: RequestScope) {
+  scope = requireHrScope({organizationScope:scope});
   return targetDb.transaction(async tx => {
-    const [initial] = await tx.select().from(attendanceFaceRequests).where(eq(attendanceFaceRequests.id, id));
+    const [initial] = await tx.select().from(attendanceFaceRequests).where(and(eq(attendanceFaceRequests.id, id),historicalScopePredicate({...scope!,includeUnmapped:false},attendanceFaceRequests.groupId)));
     if (!initial) throw new Error('Pengajuan foto tidak ditemukan.');
+    await requireScopedEmployee(scope!,initial.employeeId,tx);
     await employeeLock(tx, initial.employeeId);
-    const [request] = await tx.select().from(attendanceFaceRequests).where(eq(attendanceFaceRequests.id, id)).for('update');
+    const [request] = await tx.select().from(attendanceFaceRequests).where(and(eq(attendanceFaceRequests.id, id),historicalScopePredicate({...scope!,includeUnmapped:false},attendanceFaceRequests.groupId))).for('update');
     if (request.status !== 'PENDING') throw new Error('Pengajuan foto sudah diproses.');
     if (status === 'REJECTED' && !note.trim()) throw new Error('Alasan penolakan wajib diisi.');
     if (status === 'APPROVED') {
       await tx.update(attendanceFaceProfiles).set({ isEnrolled: true, faceDescriptorHash: request.descriptor, descriptorVersion: FACE_DESCRIPTOR_VERSION, samplePhotoUrl: request.photoUrl, updatedAt: new Date() }).where(eq(attendanceFaceProfiles.employeeId, request.employeeId));
       await tx.update(employees).set({ photoUrl: request.photoUrl, updatedAt: new Date() }).where(eq(employees.id, request.employeeId));
     }
-    await tx.update(attendanceFaceRequests).set({ status, note: note.trim() || 'Disetujui HRD.', verifiedById: userId, verifiedAt: new Date() }).where(eq(attendanceFaceRequests.id, id));
+    await tx.update(attendanceFaceRequests).set({ status, note: note.trim() || 'Disetujui HRD.', verifiedById: userId, verifiedAt: new Date() }).where(and(eq(attendanceFaceRequests.id, id),historicalScopePredicate({...scope!,includeUnmapped:false},attendanceFaceRequests.groupId)));
     return { success: true, message: 'Keputusan perubahan foto disimpan.' };
   });
 }

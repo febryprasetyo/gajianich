@@ -1,3 +1,4 @@
+import {requireOrganizationScope} from '../middleware/organizationScope';
 import { Router } from "express";
 import { authenticateToken, requirePermission } from "../middleware/auth";
 import {
@@ -19,6 +20,7 @@ router.get(
   "/",
   authenticateToken,
   requirePermission(["attendance.view", "attendance.manage"]),
+  requireOrganizationScope('hr', 'read'),
   getAttendanceDevicesHandler
 );
 
@@ -26,6 +28,7 @@ router.post(
   "/",
   authenticateToken,
   requirePermission(["attendance.manage"]),
+  requireOrganizationScope('hr', 'write'),
   createAttendanceDeviceHandler
 );
 
@@ -33,6 +36,7 @@ router.put(
   "/:id",
   authenticateToken,
   requirePermission(["attendance.manage"]),
+  requireOrganizationScope('hr', 'write'),
   updateAttendanceDeviceHandler
 );
 
@@ -40,6 +44,7 @@ router.delete(
   "/:id",
   authenticateToken,
   requirePermission(["attendance.manage"]),
+  requireOrganizationScope('hr', 'write'),
   deleteAttendanceDeviceHandler
 );
 
@@ -47,6 +52,7 @@ router.post(
   "/:id/connect",
   authenticateToken,
   requirePermission(["attendance.manage", "attendance.import"]),
+  requireOrganizationScope('hr', 'write'),
   connectAttendanceDeviceHandler
 );
 
@@ -54,6 +60,7 @@ router.post(
   "/:id/disconnect",
   authenticateToken,
   requirePermission(["attendance.manage", "attendance.import"]),
+  requireOrganizationScope('hr', 'write'),
   disconnectAttendanceDeviceHandler
 );
 
@@ -61,6 +68,7 @@ router.post(
   "/:id/sync",
   authenticateToken,
   requirePermission(["attendance.manage", "attendance.import"]),
+  requireOrganizationScope('hr', 'write'),
   syncAttendanceDeviceHandler
 );
 
@@ -69,6 +77,7 @@ router.get(
   "/raw-logs/query",
   authenticateToken,
   requirePermission(["attendance.view", "attendance.manage"]),
+  requireOrganizationScope('hr', 'read'),
   getRawAttendanceLogsHandler
 );
 
@@ -77,6 +86,7 @@ router.post(
   "/calculate",
   authenticateToken,
   requirePermission(["attendance.manage"]),
+  requireOrganizationScope('hr', 'write'),
   calculateAttendanceHandler
 );
 

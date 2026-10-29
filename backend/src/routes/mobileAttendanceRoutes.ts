@@ -1,3 +1,4 @@
+import {requireOrganizationScope} from '../middleware/organizationScope';
 import { Router } from "express";
 import { authenticateToken, requirePermission } from "../middleware/auth";
 import mobileApprovalRoutes from './mobileApprovalRoutes';
@@ -26,6 +27,7 @@ router.get(
   "/verifications",
   authenticateToken,
   requirePermission('attendance.mobile.verify'),
+  requireOrganizationScope('hr','read'),
   getVerificationsController
 );
 
@@ -33,6 +35,7 @@ router.post(
   "/verify",
   authenticateToken,
   requirePermission('attendance.mobile.verify'),
+  requireOrganizationScope('hr','write'),
   verifyAttendanceController
 );
 

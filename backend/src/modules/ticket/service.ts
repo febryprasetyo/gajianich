@@ -11,6 +11,15 @@ import { employees } from "../../db/schema/employees";
 import { departments } from "../../db/schema/master";
 import { users } from "../../db/schema/users";
 import { assets } from "../../db/schema/assets";
+import {loadGroupAccess} from '../../services/organizationScope';
+import {resolveRequestScope} from '../../domain/organizationAccess';
+
+async function mayReferenceAsset(actor:TicketActor,assetId:number,runner:any=pool):Promise<boolean>{
+  if(!actor.permissions.includes('assets.view') && !actor.permissions.includes('*')) return false;
+  const scope=actor.organizationScope??resolveRequestScope({access:await loadGroupAccess(actor.userId),module:'assets',mode:'read',selectedGroupId:null});
+  const result=await runner.query(`SELECT a.id FROM assets a LEFT JOIN location_organization_mappings m ON m.location_id=a.location_id WHERE a.id=$1 AND (m.group_id=ANY($2::bigint[]) OR ($3 AND m.location_id IS NULL))`,[assetId,scope.groupIds,scope.includeUnmapped]);
+  return result.rows.length>0;
+}
 import {
   TicketActor,
   TicketStatus,
@@ -111,6 +120,7 @@ export async function createTicket(actor: TicketActor, input: CreateTicketDTO): 
     let affectedAssetId: number | null = null;
     let affectedAssetLabel: string | null = null;
     if (input.affectedAssetId) {
+      if(!await mayReferenceAsset(actor,input.affectedAssetId,client)) throw new Error('Aset tidak ditemukan dalam cakupan akses');
       const aRes = await client.query("SELECT id, asset_tag, brand FROM assets WHERE id = $1", [input.affectedAssetId]);
       if (aRes.rowCount && aRes.rowCount > 0) {
         affectedAssetId = aRes.rows[0].id;
@@ -416,7 +426,7 @@ export async function updateTicket(actor: TicketActor, ticketId: number, patch: 
     }
 
     await client.query("COMMIT");
-    return getTicketById(ticketId);
+    return getTicketById(ticketId,actor);
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;
@@ -486,7 +496,7 @@ export async function addComment(actor: TicketActor, ticketId: number, input: Ad
   }
 }
 
-export async function getTicketById(ticketIdOrNumber: number | string): Promise<TicketDetail> {
+export async function getTicketById(ticketIdOrNumber: number | string,actor?:TicketActor): Promise<TicketDetail> {
   const isNumeric = typeof ticketIdOrNumber === "number" || /^\d+$/.test(String(ticketIdOrNumber).trim());
   const tRes = isNumeric
     ? await pool.query("SELECT * FROM helpdesk_tickets WHERE id = $1", [Number(ticketIdOrNumber)])
@@ -510,6 +520,7 @@ export async function getTicketById(ticketIdOrNumber: number | string): Promise<
   );
 
   const detail = mapTicketRowToDetail(tRes.rows[0], commentsRes.rows, attachmentsRes.rows);
+  if(actor && detail.affectedAsset && !await mayReferenceAsset(actor,Number(detail.affectedAsset.id))) detail.affectedAsset=null;
   detail.audit = auditRes.rows.map((row) => ({
     id: String(row.id),
     ticketId: String(row.ticket_id),

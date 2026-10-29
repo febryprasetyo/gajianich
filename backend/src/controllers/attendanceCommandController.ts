@@ -1,3 +1,4 @@
+import {requireHrScope} from '../services/hrOrganizationScope';
 import type { Request, Response } from "express";
 import { db } from "../db";
 import {
@@ -18,7 +19,7 @@ export async function getAttendanceWorkspace(req: Request, res: Response) {
   try {
     const targetDb = (req as any).db || db;
     const context = await resolveAuditContext(req as any, targetDb);
-    const workspace = await loadAttendanceWorkspace(targetDb, context);
+    const workspace = await loadAttendanceWorkspace(targetDb, context,requireHrScope(req as any));
     return res.status(200).json({
       success: true,
       data: workspace,
@@ -78,13 +79,13 @@ export async function postAttendanceCommand(req: Request, res: Response) {
 
     const targetDb = (req as any).db || db;
     const context = await resolveAuditContext(req as any, targetDb);
-    const requestHash = hashRequestPayload(req.body);
+    const requestHash = hashRequestPayload({body:req.body,scope:requireHrScope(req as any)});
 
     const result = await runHrMutation(
       context,
       requestHash,
       async (tx) => {
-        return await executeAttendanceCommand(tx, context, (command as any), parseResult.data.expectedBatchRevision);
+        return await executeAttendanceCommand(tx, context, (command as any), parseResult.data.expectedBatchRevision,requireHrScope(req as any));
       },
       targetDb
     );

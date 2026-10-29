@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type {RequestScope} from '../../domain/organizationAccess';
 
 export type TicketStatus = "OPEN" | "IN_PROGRESS" | "PENDING" | "RESOLVED" | "CLOSED";
 export type TicketPriority = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
@@ -8,6 +9,7 @@ export type TicketAuditAction = "CREATE" | "UPDATE" | "ASSIGN" | "STATUS_CHANGE"
 export type ConfirmationChannel = "WHATSAPP" | "PHONE" | "EMAIL" | "WALK_IN" | "SYSTEM";
 
 export interface TicketActor {
+  organizationScope?:RequestScope;
   userId: number;
   name: string;
   username: string;

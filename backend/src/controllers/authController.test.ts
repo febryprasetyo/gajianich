@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { login, changePassword } from './authController';
-import { createUser, resetPassword, deleteUser } from './userController';
+import { createUser as rawCreateUser, resetPassword as rawResetPassword, deleteUser as rawDeleteUser } from './userController';
+import {bindScopedCaller} from '../testing/scopedCaller';
+const createUser=bindScopedCaller(rawCreateUser),resetPassword=bindScopedCaller(rawResetPassword),deleteUser=bindScopedCaller(rawDeleteUser);
 import { db } from '../db';
 import { users, roles } from '../db/schema/users';
 import { eq } from 'drizzle-orm';

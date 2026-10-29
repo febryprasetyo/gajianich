@@ -1,9 +1,14 @@
-import { pgTable, uuid, bigint, varchar, date, timestamp, integer, numeric, text, index, check } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, bigint, varchar, date, timestamp, integer, numeric, text, index, check, jsonb, foreignKey } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users';
+import { organizationGroups, organizations } from './organizations';
+import type { DocumentProfileSnapshot } from './documentProfiles';
 
 export const goodsRequests = pgTable('ga_goods_requests', {
   id: uuid('id').primaryKey(),
+  groupId: bigint('group_id', { mode: 'number' }).references(() => organizationGroups.id),
+  organizationId: bigint('organization_id', { mode: 'number' }),
+  documentProfileSnapshot: jsonb('document_profile_snapshot').$type<DocumentProfileSnapshot>(),
   title: varchar('title', { length: 255 }).notNull().default(''),
   purpose: text('purpose').notNull().default(''),
   status: varchar('status', { length: 50 }).notNull().default('draft'),
@@ -15,6 +20,9 @@ export const goodsRequests = pgTable('ga_goods_requests', {
   createdBy: bigint('created_by', { mode: 'number' }).notNull().references(() => users.id),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, t => [
+  foreignKey({ columns: [t.organizationId,t.groupId], foreignColumns: [organizations.id,organizations.groupId] }),
+  check('ga_goods_owner_pair_check', sql`${t.organizationId} IS NULL OR ${t.groupId} IS NOT NULL`),
+  index('ga_goods_requests_group_idx').on(t.groupId),
   index('ga_goods_requests_created_at_idx').on(t.createdAt),
   index('ga_goods_requests_status_idx').on(t.status),
 ]);

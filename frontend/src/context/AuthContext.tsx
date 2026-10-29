@@ -6,6 +6,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { checkUserPermission } from '@/lib/access/permissions';
+import {organizationRequests,type OrganizationGroup} from '@/lib/access/organizationScope';
 
 export interface User {
   id: number;
@@ -17,6 +18,8 @@ export interface User {
   employeeId?: number | null;
   permissions?: string[];
   mustChangePassword?: boolean;
+  availableGroups?:OrganizationGroup[];
+  organizationAccess?:{groupIds:number[];isGlobalAdministrator:boolean};
 }
 
 export interface AuthContextType {
@@ -98,6 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = (newToken: string, newUser: User) => {
+    organizationRequests.change(null,true);
     setToken(newToken);
     setUser(newUser);
     localStorage.setItem('token', newToken);
@@ -106,6 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
+    organizationRequests.change(null,true);
     setToken(null);
     setUser(null);
     try {

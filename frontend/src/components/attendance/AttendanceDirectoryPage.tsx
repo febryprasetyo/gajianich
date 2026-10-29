@@ -178,16 +178,7 @@ export default function AttendanceDirectoryPage({ mode }: { mode: Mode }) {
     try {
       setIsExporting(true);
       setNotice(null);
-      const res = await fetch('/api/v1/employees/export', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
-        },
-      });
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.error || 'Gagal mengekspor data karyawan');
-      }
-      const blob = await res.blob();
+      const blob = await api.download('/employees/export');
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

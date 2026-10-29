@@ -1,7 +1,9 @@
+import {organizationGroups} from './organizations';
 import { pgTable, bigint, text, varchar, timestamp } from 'drizzle-orm/pg-core';
 import { employees } from './employees';
 import { users } from './users';
 export const attendanceFaceRequests = pgTable('attendance_face_requests', {
+  groupId: bigint('group_id', {mode:'number'}).references(() => organizationGroups.id,{onDelete:'restrict'}),
   id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
   employeeId: bigint('employee_id', { mode: 'number' }).notNull().references(() => employees.id, { onDelete: 'cascade' }),
   descriptor: text('descriptor').notNull(),

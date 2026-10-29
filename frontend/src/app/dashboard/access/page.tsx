@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import {useOrganizationScope} from '@/context/OrganizationScopeContext';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { UserItem, RoleItem, PermissionItem, ModuleGroup, UserFormData, RoleFormData } from '@/lib/access/types';
 import UserStatsCard from '@/components/access/UserStatsCard';
@@ -25,10 +26,11 @@ import {
 
 export default function AccessManagementPage() {
   const { user: currentUser } = useAuth();
+  const {isGlobalAdministrator}=useOrganizationScope();
 
   const normRole = (currentUser?.roleName || (currentUser as any)?.role || "").toLowerCase().replace(/[\s_-]+/g, "");
   const isHrd = normRole === "hrattendance" || normRole === "hrd" || normRole.includes("hr") || normRole.includes("attendance");
-  const canManageRoles = Boolean(
+  const canManageRoles = isGlobalAdministrator && Boolean(
     currentUser?.permissions?.includes("*") ||
     currentUser?.permissions?.includes("access.roles.manage")
   );

@@ -1,3 +1,4 @@
+import {requireOrganizationScope} from '../middleware/organizationScope';
 import { Router } from "express";
 import { authenticateToken, requirePermission } from "../middleware/auth";
 import {
@@ -33,6 +34,7 @@ router.get(
   "/actors",
   authenticateToken,
   requirePermission(hrAuditPermissions),
+  requireOrganizationScope("hr","read"),
   getActors
 );
 
@@ -41,6 +43,7 @@ router.get(
   "/",
   authenticateToken,
   requirePermission(hrAuditPermissions),
+  requireOrganizationScope("hr","read"),
   getActivities
 );
 
@@ -49,6 +52,7 @@ router.get(
   "/:id",
   authenticateToken,
   requirePermission(hrAuditPermissions),
+  requireOrganizationScope("hr","read"),
   getActivityById
 );
 
@@ -57,6 +61,7 @@ router.get(
   "/:id/targets",
   authenticateToken,
   requirePermission(hrAuditPermissions),
+  requireOrganizationScope("hr","read"),
   getActivityTargets
 );
 

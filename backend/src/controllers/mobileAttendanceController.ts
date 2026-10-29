@@ -1,3 +1,5 @@
+import {requireHrScope} from '../services/hrOrganizationScope';
+import {db} from '../db';
 import { Response } from "express";
 import { AuthenticatedRequest } from "../middleware/auth";
 import {
@@ -125,9 +127,9 @@ export async function enrollFaceController(req: AuthenticatedRequest, res: Respo
   }
 }
 
-export async function getVerificationsController(_req: AuthenticatedRequest, res: Response) {
+export async function getVerificationsController(req: AuthenticatedRequest, res: Response) {
   try {
-    const list = await listPendingVerifications();
+    const list = await listPendingVerifications(db,requireHrScope(req as any));
     return res.status(200).json({ success: true, data: list });
   } catch (err: any) {
     return res.status(500).json({
@@ -145,7 +147,7 @@ export async function verifyAttendanceController(req: AuthenticatedRequest, res:
     }
 
     const parsed = verifyPayloadSchema.parse(req.body);
-    const result = await verifyAttendanceRecord(verifierUserId, parsed);
+    const result = await verifyAttendanceRecord(verifierUserId, parsed,db,requireHrScope(req as any));
     return res.status(200).json(result);
   } catch (err: any) {
     if (err instanceof z.ZodError) {

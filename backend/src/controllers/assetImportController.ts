@@ -1,3 +1,4 @@
+import { assetRequestScope, custodianScopePredicate, employeeAssetScopePredicate, locationScopePredicate, requireAssetLocation } from '../services/assetOrganizationScope';
 import { Request, Response } from 'express';
 import { db } from '../db';
 import {
@@ -11,7 +12,7 @@ import { locations } from '../db/schema/master';
 import { auditLogs } from '../db/schema/system';
 import { employees } from '../db/schema/employees';
 import { assetCustodians } from '../db/schema/assetCustodians';
-import { eq, isNotNull, sql, ilike } from 'drizzle-orm';
+import { eq, and, isNotNull, sql, ilike } from 'drizzle-orm';
 import { buildAssetImportTemplate, parseAssetImportWorkbook } from '../services/assetWorkbook';
 import {
   validateAssetImport,
@@ -28,7 +29,7 @@ import {
   resolveEmployeeCustodian,
 } from '../services/assetCustodian';
 
-async function loadAssetImportLookups(runner: any = db): Promise<AssetImportLookups> {
+async function loadAssetImportLookups(req: Request, runner: any = db): Promise<AssetImportLookups> {
   const [empRows, custodianRows, catRows, locRows, codeRows, snRows] = await Promise.all([
     runner
       .select({
@@ -40,7 +41,7 @@ async function loadAssetImportLookups(runner: any = db): Promise<AssetImportLook
       })
       .from(employees)
       .leftJoin(locations, eq(employees.locationId, locations.id))
-      .where(ilike(employees.status, 'active')),
+      .where(and(ilike(employees.status, 'active'),employeeAssetScopePredicate(assetRequestScope(req)))),
     runner
       .select({
         id: assetCustodians.id,
@@ -55,7 +56,7 @@ async function loadAssetImportLookups(runner: any = db): Promise<AssetImportLook
       })
       .from(assetCustodians)
       .leftJoin(locations, eq(assetCustodians.locationId, locations.id))
-      .where(eq(assetCustodians.recordStatus, 'ACTIVE')),
+      .where(and(eq(assetCustodians.recordStatus, 'ACTIVE'),custodianScopePredicate(assetRequestScope(req)))),
     runner
       .select({
         id: assetCategories.id,
@@ -69,7 +70,7 @@ async function loadAssetImportLookups(runner: any = db): Promise<AssetImportLook
         code: locations.code,
         name: locations.name,
       })
-      .from(locations),
+      .from(locations).where(locationScopePredicate(assetRequestScope(req),locations.id)),
     runner.select({ code: assets.assetCode }).from(assets),
     runner.select({ sn: assets.serialNumber }).from(assets).where(isNotNull(assets.serialNumber)),
   ]);
@@ -108,7 +109,7 @@ export async function previewAssetImport(req: Request, res: Response) {
       return res.status(400).json({ error: err.message || 'Failed to parse XLSX workbook' });
     }
 
-    const lookups = await loadAssetImportLookups(db);
+    const lookups = await loadAssetImportLookups(req,db);
     const validationResult = validateAssetImport(parsedWorkbook, lookups);
 
     return res.status(200).json(validationResult);
@@ -133,7 +134,7 @@ export async function commitAssetImportUpload(req: Request, res: Response) {
     const userId = (req as any).user?.userId ?? (req as any).user?.id ?? 1;
 
     const commitResult = await db.transaction(async (tx) => {
-      const lookups = await loadAssetImportLookups(tx);
+      const lookups = await loadAssetImportLookups(req,tx);
       const validation = validateAssetImport(parsedWorkbook, lookups);
 
       if (!validation.valid || validation.messages.some((m) => m.type === 'error')) {
@@ -150,7 +151,7 @@ export async function commitAssetImportUpload(req: Request, res: Response) {
           };
         },
         createManualCustodian: async (input) => {
-          const custodian = await createManualCustodian(tx, input, userId);
+          const custodian = await createManualCustodian(tx, input, userId,assetRequestScope(req));
           return {
             id: custodian.id,
             displayName: custodian.displayName,
@@ -180,6 +181,7 @@ export async function commitAssetImportUpload(req: Request, res: Response) {
           return allocateSequentialCodes(prefix, year, existingCodes, count);
         },
         insertAsset: async (data) => {
+          await requireAssetLocation(tx,req,data.locationId);
           const [inserted] = await tx
             .insert(assets)
             .values({
@@ -224,6 +226,7 @@ export async function commitAssetImportUpload(req: Request, res: Response) {
         insertAssignmentHistory: async (data) => {
           await tx.insert(assetAssignmentHistory).values({
             assetId: data.assetId,
+            groupId: assetRequestScope(req).selectedGroupId,
             custodianId: data.custodianId,
             custodianNameSnapshot: data.custodianNameSnapshot,
             locationNameSnapshot: data.locationNameSnapshot ?? null,
@@ -239,7 +242,7 @@ export async function commitAssetImportUpload(req: Request, res: Response) {
             action: data.action,
             entity: data.entity,
             entityId: data.entityId,
-            newValues: data.details ? { info: data.details } : null,
+            newValues: { groupId:assetRequestScope(req).selectedGroupId, info:data.details ?? null },
           });
         },
       };
