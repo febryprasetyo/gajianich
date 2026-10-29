@@ -210,6 +210,13 @@
       "when": 1793259076754,
       "tag": "0029_immutable_hardware_ownership",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1793261418629,
+      "tag": "0030_seed_organization_groups",
+      "breakpoints": true
     }
   ],
   "version": "7"

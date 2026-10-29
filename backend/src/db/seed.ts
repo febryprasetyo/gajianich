@@ -1,6 +1,7 @@
 import { db } from './index';
 import { roles, users, permissions, rolePermissions } from './schema/users';
 import { departments, locations } from './schema/master';
+import { organizationGroups } from './schema/organizations';
 import { vendors } from './schema/vendors';
 import { employees } from './schema/employees';
 import { assetCategories, assets } from './schema/assets';
@@ -102,7 +103,20 @@ async function seed() {
   `);
   console.log('  ✓ Verified table columns in database');
 
-  // 1. Seed Roles
+  // 1. Seed Organization Groups (must exist before any FK references)
+  const defaultOrganizationGroups = [
+    { code: 'CMC' as const, name: 'Cahaya Mas Cemerlang' },
+    { code: 'MGM' as const, name: 'Multi Gas Medika' },
+  ];
+  for (const group of defaultOrganizationGroups) {
+    const existing = await db.select().from(organizationGroups).where(eq(organizationGroups.code, group.code));
+    if (existing.length === 0) {
+      await db.insert(organizationGroups).values(group);
+      console.log(`  ✓ Inserted organization group: ${group.name} (${group.code})`);
+    }
+  }
+
+  // 2. Seed Roles
   const defaultRoles = [
     { code: 'ga_staff', name: 'GA Staff', description: 'Permintaan barang General Affairs', isSystem: true },
     { code: 'super_admin', name: 'SuperAdmin', description: 'Full system access and security administration', isSystem: true },
@@ -163,7 +177,7 @@ async function seed() {
   }
   console.log('  ✓ Seeded default role permissions matrix');
 
-  // 2. Seed SuperAdmin User
+  // 3. Seed SuperAdmin User
   const superAdminRole = (await db.select().from(roles).where(eq(roles.code, 'super_admin')))[0];
   const existingAdmin = await db.select().from(users).where(eq(users.email, 'admin@company.com'));
   let superAdminUser = existingAdmin[0];
@@ -184,7 +198,7 @@ async function seed() {
     await db.update(users).set({ roleId: superAdminRole.id }).where(eq(users.id, superAdminUser.id));
   }
 
-  // 3. Seed Departments
+  // 4. Seed Departments
   const defaultDepartments = [
     { name: 'Information Technology', code: 'IT' },
     { name: 'Finance & Accounting', code: 'FIN' },
@@ -200,7 +214,7 @@ async function seed() {
     }
   }
 
-  // 4. Seed Locations
+  // 5. Seed Locations
   const defaultLocations = [
     { code: 'CMC', name: 'Cahaya Mas Cemerlang', address: '' },
     { code: 'ARV', name: 'Arvirotech', address: '' },

@@ -3,7 +3,7 @@ import {useOrganizationScope} from '@/context/OrganizationScopeContext';
 export default function OrganizationScopeSelector(){
   const {availableGroups,selectedGroupId,selectGroup,isLoading,isGlobalAdministrator}=useOrganizationScope();
   if(isLoading) return <span role="status" className="text-xs text-slate-600">Memuat kelompok…</span>;
-  if(!availableGroups.length) return <span className="text-xs text-amber-800">Akses kelompok belum dialokasikan</span>;
+  if(!availableGroups.length && !isGlobalAdministrator) return <span className="text-xs text-amber-800">Akses kelompok belum dialokasikan</span>;
   return <label className="flex min-w-0 items-center gap-2 text-xs font-semibold text-slate-700">
     <span className="hidden sm:inline">Kelompok</span>
     <select aria-label="Kelompok aktif" value={selectedGroupId??'all'} onChange={event=>selectGroup(event.target.value==='all'?null:Number(event.target.value))}
