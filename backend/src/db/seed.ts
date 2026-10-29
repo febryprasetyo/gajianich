@@ -360,7 +360,8 @@ async function seed() {
   for (const dev of defaultAttendanceDevices) {
     const existing = await db.select().from(attendanceDevices).where(eq(attendanceDevices.code, dev.code));
     if (existing.length === 0) {
-      await db.insert(attendanceDevices).values(dev);
+      const devGroupId = dev.name.includes('MGM') || dev.location.includes('MGM') ? mgmGroup?.id : cmcGroup?.id;
+      await db.insert(attendanceDevices).values({ ...dev, groupId: devGroupId });
       console.log(`  ✓ Inserted attendance device: ${dev.name} (${dev.ip})`);
     }
   }

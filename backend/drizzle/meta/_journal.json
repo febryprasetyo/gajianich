@@ -224,6 +224,13 @@
       "when": 1793262424765,
       "tag": "0031_seed_department_and_location_mappings",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1793262958602,
+      "tag": "0032_restore_attendance_devices_and_face_requests",
+      "breakpoints": true
     }
   ],
   "version": "7"
