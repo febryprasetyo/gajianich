@@ -10,10 +10,14 @@ export function requireHrScope(req: {organizationScope?: RequestScope}): Request
  return scope;
 }
 export function historicalScopePredicate(scope: RequestScope, column: AnyColumn): SQL {
+ // Global admin viewing all groups (includeUnmapped + no groupId filter) → no restriction
+ if (scope.includeUnmapped && !scope.groupIds.length) return sql`true`;
  const mapped = scope.groupIds.length ? inArray(column, scope.groupIds) : sql`false`;
  return scope.includeUnmapped ? or(mapped,isNull(column))! : mapped;
 }
 export function employeeScopePredicate(scope: RequestScope, departmentColumn: AnyColumn = employees.departmentId): SQL {
+ // Global admin viewing all groups (includeUnmapped + no groupId filter) → no restriction
+ if (scope.includeUnmapped && !scope.groupIds.length) return sql`true`;
  const mapped = sql`exists (select 1 from ${mappings} where ${mappings.departmentId} = ${departmentColumn} and ${scope.groupIds.length ? inArray(mappings.groupId,scope.groupIds) : sql`false`})`;
  return scope.includeUnmapped ? or(mapped,sql`not exists (select 1 from ${mappings} where ${mappings.departmentId} = ${departmentColumn})`)! : mapped;
 }

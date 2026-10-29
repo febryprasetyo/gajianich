@@ -3,6 +3,8 @@ import {requireHrScope} from './hrOrganizationScope';
 import {inArray} from 'drizzle-orm';
 function auditScope(scope?:RequestScope) {
  const checked = requireHrScope({organizationScope:scope});
+ // Global admin viewing all groups (includeUnmapped + no groupId filter) → no restriction
+ if (checked.includeUnmapped && !checked.groupIds.length) return sql`true`;
  const column = sql`(${hrAuditEvents.metadata}->>'groupId')::bigint`;
  const mapped = checked.groupIds.length ? sql`${column} in (${sql.join(checked.groupIds.map(id=>sql`${id}`),sql`,`)})` : sql`false`;
  return checked.includeUnmapped ? or(mapped,sql`${column} is null`)! : mapped;
