@@ -86,7 +86,7 @@ router.post(
   "/calculate",
   authenticateToken,
   requirePermission(["attendance.manage"]),
-  requireOrganizationScope('hr', 'write'),
+  requireOrganizationScope('hr', 'read'),
   calculateAttendanceHandler
 );
 
