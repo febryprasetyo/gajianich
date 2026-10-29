@@ -6,7 +6,7 @@ import type {RequestScope} from '../domain/organizationAccess';
 
 /** Explicit CMC ownership for synthetic HR fixtures; never used against application data. */
 export async function createHrScopeFixture(database:any,existingDepartment?:{id:number;code:string;name:string}) {
- const [group]=await database.insert(organizationGroups).values({code:'CMC',name:'CMC fixture'}).returning();
+ const [group]=await database.insert(organizationGroups).values({code:'CMC',name:'CMC fixture'}).onConflictDoUpdate({target:organizationGroups.code,set:{isActive:true}}).returning();
  const department=existingDepartment??(await database.insert(departments).values({code:'HR-SCOPE',name:'HR scope fixture'}).returning())[0];
  await database.insert(departmentOrganizationMappings).values({departmentId:department.id,groupId:group.id,approvalReference:'Synthetic test fixture'});
  const scope:RequestScope={module:'hr',groupIds:[group.id],includeUnmapped:false,selectedGroupId:group.id};

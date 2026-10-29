@@ -14,7 +14,7 @@ test('user management confines all actions and membership/role assignment to cur
  const {generateToken}=await import('../utils/jwt');
  const {closeDatabase}=await import('../db');
  const query=(text:string,params?:unknown[])=>fixture.owner.query(text,params);
- const group=(await query("INSERT INTO organization_groups(code,name) VALUES('CMC','CMC'),('MGM','MGM') RETURNING id::int,code")).rows;
+ const group=(await query("INSERT INTO organization_groups(code,name) VALUES('CMC','CMC'),('MGM','MGM') ON CONFLICT (code) DO UPDATE SET is_active=true RETURNING id::int,code")).rows;
  const cmc=group.find(g=>g.code==='CMC').id,mgm=group.find(g=>g.code==='MGM').id;
  const r=(await query("INSERT INTO roles(code,name) VALUES('hr_attendance','HR Attendance & Time'),('employee','Employee'),('super_admin','SuperAdmin') RETURNING id::int,code")).rows;
  const hr=r.find(g=>g.code==='hr_attendance').id,emp=r.find(g=>g.code==='employee').id,sa=r.find(g=>g.code==='super_admin').id;

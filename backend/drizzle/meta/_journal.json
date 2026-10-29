@@ -245,6 +245,13 @@
       "when": 1793264900000,
       "tag": "0034_backfill_attendance_raw_logs_groups",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1793266000000,
+      "tag": "0035_backfill_user_organization_group_access",
+      "breakpoints": true
     }
   ],
   "version": "7"
