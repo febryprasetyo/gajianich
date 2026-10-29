@@ -70,6 +70,6 @@ export function createRateLimiter(options: RateLimiterOptions = {}) {
 
 export const loginRateLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: process.env.NODE_ENV === 'production' ? 5 : 100,
   message: 'Too many login attempts from this IP. Please try again after 15 minutes.',
 });

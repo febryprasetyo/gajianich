@@ -4,3 +4,4 @@ INSERT INTO "organization_groups" ("code", "name") VALUES
   ('CMC', 'Cahaya Mas Cemerlang'),
   ('MGM', 'Multi Gas Medika')
 ON CONFLICT ("code") DO NOTHING;
+
