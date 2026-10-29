@@ -28,7 +28,9 @@ export function OrganizationScopeProvider({children}:{children:ReactNode}){
         const global=response.user.organizationAccess?.isGlobalAdministrator??false;
         let stored:string|null=null;
         try{stored=sessionStorage.getItem(`gajianich:organization:${userId}`);}catch{}
-        const selected=stored==='all' && (global||groups.length>1)?null:restoreGroupSelection(groups,stored);
+        const selected = !global
+          ? (restoreGroupSelection(groups, stored) ?? groups[0]?.id ?? null)
+          : (stored === 'all' ? null : restoreGroupSelection(groups, stored));
         organizationRequests.change(selected);
         setState({userId,availableGroups:groups,selectedGroupId:selected,isGlobalAdministrator:global,revision:organizationRequests.revision,error:null});
       }catch(error){
