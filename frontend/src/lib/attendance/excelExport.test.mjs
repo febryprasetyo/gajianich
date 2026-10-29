@@ -192,3 +192,19 @@ test('daily export marks only recorded Alpha, not missing calendar days or dayof
   const daily = XLSX.utils.sheet_to_json(wb.Sheets['Rincian Harian']);
   assert.deepEqual(daily.map(row => row['Tidak Hadir']), [1, 0, 0]);
 });
+
+test('daily export includes employee info and labels TERLAMBAT / PULANG CEPAT correctly', () => {
+  const dailyRecords = [
+    { employeeId: 1, workDate: '2026-09-21', attendanceStatus: 'LATE', isDayOff: false, scanIn: '08:30', scanOut: '17:00', lateMinutes: 30, earlyMinutes: 0, overtimeMinutes: 0 },
+    { employeeId: 1, workDate: '2026-09-22', attendanceStatus: 'EARLY_LEAVE', isDayOff: false, scanIn: '08:00', scanOut: '16:00', lateMinutes: 0, earlyMinutes: 60, overtimeMinutes: 0 },
+  ];
+  const wb = createAttendanceReportWorkbook(dummyRows.slice(0, 1), dummyFilter, {
+    dailyRecords,
+    employeeLookup: id => (id === 1 ? { employeeCode: 'EMP-001', fullName: 'Budi Santoso' } : undefined),
+  });
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets['Rincian Harian']);
+  assert.equal(rows[0]['ID Karyawan'], 'EMP-001');
+  assert.equal(rows[0]['Nama Karyawan'], 'Budi Santoso');
+  assert.equal(rows[0]['Status'], 'TERLAMBAT');
+  assert.equal(rows[1]['Status'], 'PULANG CEPAT');
+});

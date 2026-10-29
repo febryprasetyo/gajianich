@@ -19,6 +19,7 @@ import type { CalendarDayRow } from "./scheduleShift";
 export interface ExportReportOptions {
   anonymous?: boolean;
   departmentLookup?: (deptId?: number | null) => string | undefined;
+  employeeLookup?: (empId: number) => { employeeCode?: string; fullName?: string } | undefined;
   filename?: string;
   dailyRecords?: AttendanceRecord[];
   calendarRows?: CalendarDayRow[];
@@ -119,7 +120,15 @@ export function createAttendanceReportWorkbook(
           "Jadwal Pulang": row.scheduleOut || "-",
           "Scan Masuk": r?.scanIn || "-",
           "Scan Pulang": r?.scanOut || "-",
-          "Status": row.isDayOff ? "DAYOFF" : (r?.attendanceStatus === 'DINAS_LUAR' ? 'DINAS LUAR' : (r?.attendanceStatus || "BELUM ADA CATATAN")),
+          "Status": row.isDayOff
+            ? "DAYOFF"
+            : (r?.attendanceStatus === 'DINAS_LUAR'
+            ? 'DINAS LUAR'
+            : r?.attendanceStatus === 'LATE'
+            ? 'TERLAMBAT'
+            : r?.attendanceStatus === 'EARLY_LEAVE'
+            ? 'PULANG CEPAT'
+            : (r?.attendanceStatus || "BELUM ADA CATATAN")),
           "Terlambat (Menit)": row.isDayOff ? 0 : (r?.lateMinutes || 0),
           "Pulang Cepat (Menit)": row.isDayOff ? 0 : (r?.earlyMinutes || 0),
           "Lembur (Menit)": r?.overtimeMinutes || 0,
@@ -127,22 +136,34 @@ export function createAttendanceReportWorkbook(
           "Tidak Hadir": !row.isDayOff && isRecordedAbsence(r, today) ? 1 : 0,
         };
       })
-      : dailyRecords!.map((r, idx) => ({
-      "No": idx + 1,
-      "Tanggal": r.workDate,
-      "Label Tanggal": dateLabel(r.workDate),
-      "Shift": r.shift || "-",
-      "Jadwal Masuk": r.scheduleIn || "-",
-      "Jadwal Pulang": r.scheduleOut || "-",
-      "Scan Masuk": r.scanIn || "-",
-      "Scan Pulang": r.scanOut || "-",
-      "Status": r.isDayOff ? "DAYOFF" : r.attendanceStatus === 'DINAS_LUAR' ? 'DINAS LUAR' : r.attendanceStatus,
-      "Terlambat (Menit)": r.isDayOff ? 0 : r.lateMinutes,
-      "Pulang Cepat (Menit)": r.isDayOff ? 0 : r.earlyMinutes,
-      "Lembur (Menit)": r.overtimeMinutes,
-      "Durasi Lembur": durationLabel(r.overtimeMinutes),
-      "Tidak Hadir": isRecordedAbsence(r, today) ? 1 : 0,
-    }));
+      : dailyRecords!.map((r, idx) => {
+        const emp = options?.employeeLookup ? options.employeeLookup(r.employeeId) : undefined;
+        return {
+          "No": idx + 1,
+          ...(emp ? { "ID Karyawan": emp.employeeCode || "-", "Nama Karyawan": emp.fullName || "-" } : {}),
+          "Tanggal": r.workDate,
+          "Label Tanggal": dateLabel(r.workDate),
+          "Shift": r.shift || "-",
+          "Jadwal Masuk": r.scheduleIn || "-",
+          "Jadwal Pulang": r.scheduleOut || "-",
+          "Scan Masuk": r.scanIn || "-",
+          "Scan Pulang": r.scanOut || "-",
+          "Status": r.isDayOff
+            ? "DAYOFF"
+            : r.attendanceStatus === 'DINAS_LUAR'
+            ? 'DINAS LUAR'
+            : r.attendanceStatus === 'LATE'
+            ? 'TERLAMBAT'
+            : r.attendanceStatus === 'EARLY_LEAVE'
+            ? 'PULANG CEPAT'
+            : r.attendanceStatus,
+          "Terlambat (Menit)": r.isDayOff ? 0 : r.lateMinutes,
+          "Pulang Cepat (Menit)": r.isDayOff ? 0 : r.earlyMinutes,
+          "Lembur (Menit)": r.overtimeMinutes,
+          "Durasi Lembur": durationLabel(r.overtimeMinutes),
+          "Tidak Hadir": isRecordedAbsence(r, today) ? 1 : 0,
+        };
+      });
     const wsDaily = XLSX.utils.json_to_sheet(dailyData);
     wsDaily["!cols"] = [
       { wch: 6 },

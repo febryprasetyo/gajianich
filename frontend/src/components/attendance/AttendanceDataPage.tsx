@@ -55,11 +55,11 @@ export default function AttendanceDataPage() {
   const lookup = new Map(records.map(r => [r.employeeId, r]));
 
   const metrics: { key: string; label: string; test: (r: AttendanceRecord) => boolean }[] = [
-    { key: 'ontime', label: 'Tepat waktu', test: r => !r.isDayOff && ['PRESENT', 'DINAS_LUAR'].includes(r.attendanceStatus) && r.lateMinutes === 0 },
-    { key: 'late', label: 'Terlambat', test: r => !r.isDayOff && r.lateMinutes > 0 },
-    { key: 'early', label: 'Pulang awal', test: r => !r.isDayOff && r.earlyMinutes > 0 },
-    { key: 'noout', label: 'Scan pulang kosong', test: r => !r.isDayOff && r.attendanceStatus === 'PRESENT' && !r.rawScanOut },
-    { key: 'noin', label: 'Scan masuk kosong', test: r => !r.isDayOff && r.attendanceStatus === 'PRESENT' && !r.rawScanIn },
+    { key: 'ontime', label: 'Tepat waktu', test: r => !r.isDayOff && ['PRESENT', 'DINAS_LUAR'].includes(r.attendanceStatus) && (r.lateMinutes || 0) === 0 },
+    { key: 'late', label: 'Terlambat', test: r => !r.isDayOff && ((r.lateMinutes || 0) > 0 || r.attendanceStatus === 'LATE') },
+    { key: 'early', label: 'Pulang awal', test: r => !r.isDayOff && ((r.earlyMinutes || 0) > 0 || r.attendanceStatus === 'EARLY_LEAVE') },
+    { key: 'noout', label: 'Scan pulang kosong', test: r => !r.isDayOff && ['PRESENT', 'LATE', 'EARLY_LEAVE'].includes(r.attendanceStatus) && !r.rawScanOut },
+    { key: 'noin', label: 'Scan masuk kosong', test: r => !r.isDayOff && ['PRESENT', 'LATE', 'EARLY_LEAVE'].includes(r.attendanceStatus) && !r.rawScanIn },
     { key: 'normalized', label: 'Dinormalisasi', test: r => r.normalized },
     { key: 'absent', label: 'Tidak hadir', test: r => !r.isDayOff && r.attendanceStatus === 'ALPHA' },
     { key: 'off', label: 'Libur', test: r => r.isDayOff },
@@ -82,6 +82,8 @@ export default function AttendanceDataPage() {
     const targetReports = summarizeEmployees(data, filter).filter(r => ids.has(r.employee.id));
     exportAttendanceReportToExcel(targetReports, filter, {
       departmentLookup: id => data.departments.find(d => d.id === id)?.name,
+      employeeLookup: id => data.employees.find(e => e.id === id),
+      dailyRecords: records.filter(r => ids.has(r.employeeId)),
       filename: `absensi-${date}.xlsx`,
     });
   };

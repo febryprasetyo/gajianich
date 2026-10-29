@@ -256,3 +256,33 @@ test('late KPI and filter count working days with positive late minutes', () => 
   assert.equal(lateRows.length, 1);
   assert.equal(lateRows[0].date, '2026-09-21');
 });
+
+test('formatTalentaRow and calculateTalentaKpi recognize LATE and EARLY_LEAVE attendance statuses', () => {
+  const row = {
+    date: '2026-09-21',
+    dayName: 'Senin',
+    dayOfWeek: 1,
+    isDayOff: false,
+    shiftName: 'Office',
+    scheduleIn: '08:00',
+    scheduleOut: '17:00',
+    record: {
+      id: 301,
+      employeeId: 1,
+      workDate: '2026-09-21',
+      scanIn: '08:30',
+      scanOut: '17:00',
+      lateMinutes: 30,
+      earlyMinutes: 0,
+      overtimeMinutes: 0,
+      attendanceStatus: 'LATE',
+      revision: 1,
+    },
+  };
+  const formatted = formatTalentaRow(row);
+  assert.equal(formatted.attendanceCode, 'H');
+  assert.equal(formatted.late, '00:30');
+
+  const kpi = calculateTalentaKpi([row], '2026-09-22');
+  assert.equal(kpi.late, 1);
+});

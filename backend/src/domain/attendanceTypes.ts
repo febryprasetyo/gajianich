@@ -7,7 +7,9 @@ export type AttendanceStatus =
   | 'SAKIT'
   | 'CUTI'
   | 'ALPHA'
-  | 'UNSPECIFIED';
+  | 'UNSPECIFIED'
+  | 'LATE'
+  | 'EARLY_LEAVE';
 
 export type ReviewStatus = 'READY' | 'NEEDS_REVIEW' | 'BLOCKED' | 'SKIPPED';
 

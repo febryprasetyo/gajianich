@@ -1,6 +1,16 @@
 import type { AttendanceDataset, AttendanceRecord, EmployeeReport, ImportRow, RecordFilter } from './types';
 
-export const statusLabels = { PRESENT: 'Hadir', DINAS_LUAR: 'Dinas Luar', IZIN: 'Izin', SAKIT: 'Sakit', CUTI: 'Cuti', ALPHA: 'Tidak hadir', UNSPECIFIED: 'Belum ditentukan' };
+export const statusLabels: Record<string, string> = {
+  PRESENT: 'Hadir',
+  DINAS_LUAR: 'Dinas Luar',
+  IZIN: 'Izin',
+  SAKIT: 'Sakit',
+  CUTI: 'Cuti',
+  ALPHA: 'Tidak hadir',
+  UNSPECIFIED: 'Belum ditentukan',
+  LATE: 'Terlambat',
+  EARLY_LEAVE: 'Pulang Cepat',
+};
 export const roleLabels = { HR_ADMIN: 'HR Admin', HR_STAFF: 'HR Staff', REPORT_VIEWER: 'Pembaca Laporan' };
 export function durationLabel(minutes: number): string {
   return minutes < 60 ? `${minutes} menit` : `${Math.floor(minutes / 60)} jam ${minutes % 60} menit`;
@@ -59,7 +69,11 @@ export function summarizeEmployees(data: AttendanceDataset, filter: RecordFilter
       absentDates.set(r.employeeId, dates);
       row.absentCount = dates.size;
     }
-    if (!r.isDayOff && (r.attendanceStatus === 'PRESENT' || r.attendanceStatus === 'DINAS_LUAR')) row.recordCount++;
+    const isAttended = !r.isDayOff && (
+      ['PRESENT', 'DINAS_LUAR', 'LATE', 'EARLY_LEAVE'].includes(r.attendanceStatus) ||
+      (Boolean(r.scanIn || r.scanOut) && !['SAKIT', 'IZIN', 'CUTI', 'ALPHA'].includes(r.attendanceStatus))
+    );
+    if (isAttended) row.recordCount++;
     if (!r.isDayOff) row.lateMinutes += r.lateMinutes || 0;
     row.overtimeMinutes += r.overtimeMinutes || 0;
     if (r.attendanceStatus === 'SAKIT') row.sakitCount++;

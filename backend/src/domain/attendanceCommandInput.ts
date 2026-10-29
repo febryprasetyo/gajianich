@@ -10,6 +10,8 @@ export const attendanceStatusSchema = z.enum([
   "CUTI",
   "ALPHA",
   "UNSPECIFIED",
+  "LATE",
+  "EARLY_LEAVE",
 ]);
 
 const manualAttendanceStatusSchema = z.enum([...attendanceStatusSchema.options, "DINAS_LUAR"]);

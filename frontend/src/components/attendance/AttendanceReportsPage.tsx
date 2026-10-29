@@ -393,9 +393,13 @@ export default function AttendanceReportsPage({ employeeId }: { employeeId?: num
           reports={reports}
           filter={filter}
           onExport={selectedReports => {
+            const selectedIds = new Set(selectedReports.map(sr => sr.employee.id));
+            const selectedDailyRecords = filterRecords(data, filter).filter(r => selectedIds.has(r.employeeId));
             exportAttendanceReportToExcel(selectedReports, filter, {
               anonymous,
               departmentLookup: id => data.departments.find(d => d.id === id)?.name,
+              employeeLookup: id => data.employees.find(e => e.id === id),
+              dailyRecords: selectedDailyRecords,
               filename: `rekap-absensi-${startDate}-${endDate}.xlsx`,
             });
           }}

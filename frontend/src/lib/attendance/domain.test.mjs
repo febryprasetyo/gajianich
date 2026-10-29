@@ -25,6 +25,19 @@ test('final records total per employee, without draft rows or duplicate identiti
   assert.equal(report.recordCount, 3);
   assert.equal(durationLabel(1500), '25 jam 0 menit');
 });
+test('summarizeEmployees counts LATE and EARLY_LEAVE records towards recordCount (Hadir)', () => {
+  const data = fixture();
+  const base = data.records[0];
+  data.records = [
+    { ...base, id: 1, workDate: '2026-09-21', attendanceStatus: 'PRESENT', lateMinutes: 0 },
+    { ...base, id: 2, workDate: '2026-09-22', attendanceStatus: 'LATE', lateMinutes: 30 },
+    { ...base, id: 3, workDate: '2026-09-23', attendanceStatus: 'EARLY_LEAVE', earlyMinutes: 20 },
+    { ...base, id: 4, workDate: '2026-09-24', attendanceStatus: 'DINAS_LUAR' },
+  ];
+  const report = summarizeEmployees(data, { startDate: '2026-09-21', endDate: '2026-09-25' }).find(row => row.employee.id === 1);
+  assert.equal(report.recordCount, 4);
+  assert.equal(report.lateMinutes, 30);
+});
 test('date and department filters operate before aggregation; no records is distinct from zero', () => {
   const data = fixture();
   const rows = filterRecords(data, { ...range, departmentId: 1 });

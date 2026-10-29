@@ -83,7 +83,7 @@ export function formatTalentaRow(row: CalendarDayRow): TalentaFormattedRow {
   let timeOffCode = '-';
 
   if (r) {
-    if (r.attendanceStatus === 'PRESENT') {
+    if (['PRESENT', 'LATE', 'EARLY_LEAVE'].includes(r.attendanceStatus)) {
       attendanceCode = 'H';
     } else if (r.attendanceStatus === 'DINAS_LUAR') {
       attendanceCode = 'DL';
@@ -148,12 +148,12 @@ export function calculateTalentaKpi(
     }
 
     if (r) {
-      if (r.attendanceStatus === 'PRESENT') {
-        if ((r.lateMinutes || 0) > 0) {
+      if (['PRESENT', 'LATE', 'EARLY_LEAVE'].includes(r.attendanceStatus)) {
+        if ((r.lateMinutes || 0) > 0 || r.attendanceStatus === 'LATE') {
           late++;
         }
         // Early clock out
-        if ((r.earlyMinutes || 0) > 0) {
+        if ((r.earlyMinutes || 0) > 0 || r.attendanceStatus === 'EARLY_LEAVE') {
           earlyClockOut++;
         }
         // Missing scan out
@@ -228,13 +228,13 @@ export function filterTalentaRows(
 
     switch (filterKey) {
       case 'LATE':
-        return r?.attendanceStatus === 'PRESENT' && (r.lateMinutes || 0) > 0;
+        return ['PRESENT', 'LATE', 'EARLY_LEAVE'].includes(r?.attendanceStatus || '') && (((r?.lateMinutes || 0) > 0) || r?.attendanceStatus === 'LATE');
       case 'EARLY_CLOCK_OUT':
-        return r?.attendanceStatus === 'PRESENT' && (r.earlyMinutes || 0) > 0;
+        return ['PRESENT', 'LATE', 'EARLY_LEAVE'].includes(r?.attendanceStatus || '') && (((r?.earlyMinutes || 0) > 0) || r?.attendanceStatus === 'EARLY_LEAVE');
       case 'NO_CLOCK_OUT':
-        return r?.attendanceStatus === 'PRESENT' && !!r.scanIn && !r.scanOut;
+        return ['PRESENT', 'LATE', 'EARLY_LEAVE'].includes(r?.attendanceStatus || '') && !!r?.scanIn && !r?.scanOut;
       case 'NO_CLOCK_IN':
-        return r?.attendanceStatus === 'PRESENT' && !r.scanIn && !!r.scanOut;
+        return ['PRESENT', 'LATE', 'EARLY_LEAVE'].includes(r?.attendanceStatus || '') && !r?.scanIn && !!r?.scanOut;
       case 'INVALID':
         return (r?.attendanceStatus as string) === 'INVALID';
       case 'ABSENT':
