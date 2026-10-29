@@ -10,7 +10,7 @@ import {
 } from "./zkProtocol";
 
 const MAX_RESPONSE_BYTES = 10 * 1024 * 1024; // 10MB limit for bulk att logs
-const DEFAULT_IDLE_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
+export const DEFAULT_IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes without process
 
 export interface DeviceConfig {
   id: number;
@@ -256,10 +256,13 @@ export class ZkClient {
   }
 }
 
+export type DisconnectListener = (deviceId: number, reason: string) => void | Promise<void>;
+
 export class AttendanceDeviceSessionManager {
   private static instance: AttendanceDeviceSessionManager | null = null;
   private sessions: Map<number, { client: ZkClient | null; info: SessionInfo; idleTimer: NodeJS.Timeout | null }> = new Map();
   private idleTimeoutMs: number = DEFAULT_IDLE_TIMEOUT_MS;
+  private disconnectListeners: DisconnectListener[] = [];
 
   private constructor() {}
 
@@ -268,6 +271,10 @@ export class AttendanceDeviceSessionManager {
       AttendanceDeviceSessionManager.instance = new AttendanceDeviceSessionManager();
     }
     return AttendanceDeviceSessionManager.instance;
+  }
+
+  public onDisconnect(listener: DisconnectListener) {
+    this.disconnectListeners.push(listener);
   }
 
   public setIdleTimeoutMs(ms: number) {
@@ -358,7 +365,7 @@ export class AttendanceDeviceSessionManager {
     }
 
     entry.idleTimer = setTimeout(async () => {
-      console.log(`[AttendanceDeviceSessionManager] Device ${deviceId} reached 15-minute idle limit. Auto-disconnecting.`);
+      console.log(`[AttendanceDeviceSessionManager] Device ${deviceId} reached 5-minute idle limit. Auto-disconnecting.`);
       await this.disconnect(deviceId, "IDLE_TIMEOUT");
     }, this.idleTimeoutMs);
   }
@@ -391,6 +398,14 @@ export class AttendanceDeviceSessionManager {
     entry.info.connectedAt = null;
     entry.info.lastActivityAt = null;
     entry.info.error = null;
+
+    for (const listener of this.disconnectListeners) {
+      try {
+        await listener(deviceId, reason);
+      } catch (err) {
+        console.error(`[AttendanceDeviceSessionManager] Error in disconnect listener for device ${deviceId}:`, err);
+      }
+    }
   }
 
   public async disconnectAll(): Promise<void> {

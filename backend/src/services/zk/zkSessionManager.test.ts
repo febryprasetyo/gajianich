@@ -1,6 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert";
-import { AttendanceDeviceSessionManager, ZkClient } from "./zkSessionManager";
+import { AttendanceDeviceSessionManager, ZkClient, DEFAULT_IDLE_TIMEOUT_MS } from "./zkSessionManager";
+
+test("AttendanceDeviceSessionManager defaults to 5-minute idle timeout", () => {
+  assert.strictEqual(DEFAULT_IDLE_TIMEOUT_MS, 5 * 60 * 1000);
+});
 
 test("AttendanceDeviceSessionManager maintains singleton instance", () => {
   const instance1 = AttendanceDeviceSessionManager.getInstance();
@@ -44,4 +48,25 @@ test("AttendanceDeviceSessionManager manages connection and idle countdown", asy
   const disconnectedInfo = manager.getSessionInfo(1);
   assert.strictEqual(disconnectedInfo.status, "DISCONNECTED");
   assert.strictEqual(manager.getIdleSecondsLeft(1), null);
+});
+
+test("AttendanceDeviceSessionManager triggers onDisconnect listener on disconnect", async () => {
+  const manager = AttendanceDeviceSessionManager.getInstance();
+  let disconnectCaptured: { deviceId: number; reason: string } | null = null;
+  manager.onDisconnect((deviceId, reason) => {
+    disconnectCaptured = { deviceId, reason };
+  });
+
+  const mockClient = {
+    connect: async () => {},
+    authenticate: async () => {},
+    readIdentity: async () => ({ firmware: "Ver 6.60", serialNumber: "TEST999", deviceName: "X900", platform: "ZAM180" }),
+    fetchAttendanceLogs: async () => [],
+    disconnect: async () => {},
+  } as unknown as ZkClient;
+
+  await manager.connect({ id: 2, ip: "127.0.0.1", port: 4370, commKey: 0 }, mockClient);
+  await manager.disconnect(2, "IDLE_TIMEOUT");
+
+  assert.deepStrictEqual(disconnectCaptured, { deviceId: 2, reason: "IDLE_TIMEOUT" });
 });

@@ -15,6 +15,19 @@ import {
   RawPunchInput,
 } from "../services/attendanceCalculationService";
 
+// Register disconnect listener to update database status when idle timeout or disconnect occurs
+attendanceDeviceSessionManager.onDisconnect(async (deviceId, reason) => {
+  try {
+    await db
+      .update(attendanceDevices)
+      .set({ status: "DISCONNECTED" })
+      .where(eq(attendanceDevices.id, deviceId));
+    console.log(`[attendanceDeviceController] Device ${deviceId} status updated to DISCONNECTED in DB (reason: ${reason})`);
+  } catch (err) {
+    console.error(`[attendanceDeviceController] Failed to update device ${deviceId} status in DB:`, err);
+  }
+});
+
 export async function getAttendanceDevicesHandler(req: Request, res: Response) {
   try {
     const list = await db
@@ -25,9 +38,19 @@ export async function getAttendanceDevicesHandler(req: Request, res: Response) {
     const enriched = list.map((dev) => {
       const session = attendanceDeviceSessionManager.getSessionInfo(dev.id);
       const idleSecondsLeft = attendanceDeviceSessionManager.getIdleSecondsLeft(dev.id);
+      const isActuallyConnected = session.status === "CONNECTED";
+
+      // Self-healing: if DB says CONNECTED but session is DISCONNECTED, heal DB to DISCONNECTED
+      if (!isActuallyConnected && dev.status === "CONNECTED") {
+        db.update(attendanceDevices)
+          .set({ status: "DISCONNECTED" })
+          .where(eq(attendanceDevices.id, dev.id))
+          .catch(() => {});
+      }
+
       return {
         ...dev,
-        status: session.status === "CONNECTED" ? "connected" : dev.status.toLowerCase(),
+        status: isActuallyConnected ? "connected" : (dev.status === "ERROR" ? "error" : "disconnected"),
         idleSecondsLeft,
         activeIdentity: session.identity,
       };
@@ -149,7 +172,7 @@ export async function connectAttendanceDeviceHandler(req: Request, res: Response
           status: "CONNECTED",
           connectedAt: new Date(),
           lastActivityAt: new Date(),
-          idleTimeoutMs: 15 * 60 * 1000,
+          idleTimeoutMs: 5 * 60 * 1000,
           identity: {
             firmware: "Ver 6.60 Aug 19 2021",
             serialNumber: device.serialNumber || "WAE4242900026",
@@ -189,7 +212,7 @@ export async function connectAttendanceDeviceHandler(req: Request, res: Response
         deviceId: device.id,
         status: "connected",
         connectedAt: session.connectedAt,
-        idleSecondsLeft: 900,
+        idleSecondsLeft: Math.floor((session.idleTimeoutMs || 300000) / 1000),
         identity: session.identity,
       },
     });

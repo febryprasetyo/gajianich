@@ -1,6 +1,12 @@
 import * as XLSX from 'xlsx';
 import type { ImportRow } from './types';
 
+// Compatible accessor for SheetJS across ESM, CJS, and Next.js / tsx runtimes
+const xlsxLib: any = (XLSX as any).default?.read ? (XLSX as any).default : XLSX;
+const ssfLib: any = xlsxLib.SSF || (XLSX as any).SSF;
+const utilsLib: any = xlsxLib.utils || (XLSX as any).utils;
+const readWorkbook: typeof XLSX.read = xlsxLib.read || XLSX.read;
+
 function minutes(value: unknown): number {
   if (value === null || value === undefined || value === '') return 0;
   if (typeof value === 'number') {
@@ -48,7 +54,7 @@ function parseAttendanceDate(value: unknown, rowIndex: number): string {
     if (value < 1000 || value > 80000) {
       throw new Error(`Tanggal baris ${rowIndex} tidak valid.`);
     }
-    const d = XLSX.SSF.parse_date_code(value);
+    const d = ssfLib.parse_date_code(value);
     const y = d.y, m = String(d.m).padStart(2, '0'), day = String(d.d).padStart(2, '0');
     if (y < 2000 || y > 2100) throw new Error(`Tanggal baris ${rowIndex} tidak valid.`);
     const iso = `${y}-${m}-${day}`;
@@ -97,7 +103,7 @@ function parseAttendanceDate(value: unknown, rowIndex: number): string {
 
   if (/^\d{5}$/.test(str)) {
     const num = Number(str);
-    const d = XLSX.SSF.parse_date_code(num);
+    const d = ssfLib.parse_date_code(num);
     const y = d.y, m = String(d.m).padStart(2, '0'), day = String(d.d).padStart(2, '0');
     if (y < 2000 || y > 2100) throw new Error(`Tanggal baris ${rowIndex} tidak valid.`);
     const iso = `${y}-${m}-${day}`;
@@ -157,7 +163,7 @@ function parseRawBiffRecords(bytes: Uint8Array): Array<Record<string, string>> {
 function parseWorkbookWithSheetJs(bytes: Uint8Array): Array<Record<string, unknown>> {
   let wb: XLSX.WorkBook;
   try {
-    wb = XLSX.read(bytes, { type: 'array' });
+    wb = readWorkbook(bytes, { type: 'array' });
   } catch {
     throw new Error('Gunakan file .xls atau .xlsx yang valid.');
   }
@@ -167,7 +173,7 @@ function parseWorkbookWithSheetJs(bytes: Uint8Array): Array<Record<string, unkno
   const sheet = wb.Sheets[wb.SheetNames[0]];
   if (!sheet) throw new Error('Lembar kerja Excel kosong.');
 
-  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
+  const rows = utilsLib.sheet_to_json(sheet, { defval: '' }) as Array<Record<string, unknown>>;
   if (!rows || rows.length === 0) throw new Error('File tidak memiliki data baris absensi.');
   if (rows.length > 50000) throw new Error('Batas 50.000 baris terlampaui.');
 

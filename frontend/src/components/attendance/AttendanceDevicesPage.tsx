@@ -92,11 +92,15 @@ export default function AttendanceDevicesPage() {
       const res = await apiFetch<{ success: boolean; data: AttendanceDevice[] }>("/attendance/devices");
       if (res.success && res.data) {
         setDevices(res.data);
-        if (res.data.length > 0 && !selectedDeviceId) {
+        const targetId = selectedDeviceId || (res.data.length > 0 ? res.data[0].id : "");
+        if (!selectedDeviceId && res.data.length > 0) {
           setSelectedDeviceId(res.data[0].id);
-          if (res.data[0].idleSecondsLeft) {
-            setIdleSecondsLeft(res.data[0].idleSecondsLeft);
-          }
+        }
+        const active = res.data.find((d) => String(d.id) === String(targetId));
+        if (active && active.status === "connected") {
+          setIdleSecondsLeft(active.idleSecondsLeft ?? 300);
+        } else if (active && active.status !== "connected") {
+          setIdleSecondsLeft(null);
         }
       }
     } catch (err: any) {
@@ -111,14 +115,30 @@ export default function AttendanceDevicesPage() {
     fetchDevices();
   }, [fetchDevices]);
 
-  // Idle timeout timer: 15 menit auto-disconnect
+  const handleSelectDevice = (deviceId: string | number) => {
+    setSelectedDeviceId(deviceId);
+    const target = devices.find((d) => String(d.id) === String(deviceId));
+    if (target && target.status === "connected") {
+      setIdleSecondsLeft(target.idleSecondsLeft ?? 300);
+    } else {
+      setIdleSecondsLeft(null);
+    }
+  };
+
+  // Idle timeout timer: 5 menit auto-disconnect tanpa proses
   useEffect(() => {
     if (idleSecondsLeft === null) return;
     if (idleSecondsLeft <= 0) {
       setDevices((prev) =>
-        prev.map((d) => (d.id === selectedDeviceId ? { ...d, status: "disconnected" } : d))
+        prev.map((d) => (String(d.id) === String(selectedDeviceId) ? { ...d, status: "disconnected", idleSecondsLeft: null } : d))
       );
       setIdleSecondsLeft(null);
+      if (selectedDeviceId) {
+        apiFetch(`/attendance/devices/${selectedDeviceId}/disconnect`, { method: "POST" })
+          .catch((err) => console.warn("Auto-disconnect API error:", err));
+      }
+      setPageToast("Koneksi mesin otomatis diputuskan karena idle 5 menit tanpa proses.");
+      setTimeout(() => setPageToast(null), 5000);
       return;
     }
     const timer = setInterval(() => {
@@ -126,6 +146,26 @@ export default function AttendanceDevicesPage() {
     }, 1000);
     return () => clearInterval(timer);
   }, [idleSecondsLeft, selectedDeviceId]);
+
+  // Polling reaktif: saat ada mesin yang terhubung, sinkronkan status berkala
+  useEffect(() => {
+    const hasConnectedDevice = devices.some((d) => d.status === "connected");
+    if (!hasConnectedDevice) return;
+    const interval = setInterval(() => {
+      apiFetch<{ success: boolean; data: AttendanceDevice[] }>("/attendance/devices").then((res) => {
+        if (res.success && res.data) {
+          setDevices(res.data);
+          const active = res.data.find((d) => String(d.id) === String(selectedDeviceId));
+          if (active && active.status === "connected" && typeof active.idleSecondsLeft === "number") {
+            setIdleSecondsLeft(active.idleSecondsLeft);
+          } else if (active && active.status !== "connected") {
+            setIdleSecondsLeft(null);
+          }
+        }
+      }).catch(() => {});
+    }, 20000);
+    return () => clearInterval(interval);
+  }, [devices, selectedDeviceId]);
 
   const activeDevice = devices.find((d) => String(d.id) === String(selectedDeviceId)) || devices[0];
 
@@ -200,7 +240,7 @@ export default function AttendanceDevicesPage() {
         setDevices((prev) =>
           prev.map((d) => (d.id === activeDevice.id ? { ...d, status: "connected" } : d))
         );
-        setIdleSecondsLeft(res.data.idleSecondsLeft || 900);
+        setIdleSecondsLeft(res.data.idleSecondsLeft || 300);
         setConnectionError(null);
         setPageToast(`Berhasil terhubung ke ${activeDevice.name}`);
         setTimeout(() => setPageToast(null), 3000);
@@ -283,6 +323,8 @@ export default function AttendanceDevicesPage() {
       setDevices((prev) =>
         prev.map((d) => (d.id === activeDevice.id ? { ...d, lastSyncAt: nowStr, totalLogs: (d.totalLogs || 0) + total, status: "connected" } : d))
       );
+      // Reset idle timer ke 5 menit karena ada aktivitas proses penarikan data yang sukses
+      setIdleSecondsLeft(300);
     } catch (err: any) {
       const errMsg = err.message || "Mesin tidak merespons (Koneksi Putus / Offline)";
       setDownloadError(errMsg);
@@ -563,7 +605,7 @@ export default function AttendanceDevicesPage() {
                   return (
                     <tr
                       key={device.id}
-                      onClick={() => setSelectedDeviceId(device.id)}
+                      onClick={() => handleSelectDevice(device.id)}
                       className={`cursor-pointer transition-colors ${
                         isSelected ? "bg-emerald-50/40 font-medium" : "hover:bg-slate-50/70"
                       }`}
@@ -573,7 +615,7 @@ export default function AttendanceDevicesPage() {
                           type="radio"
                           name="selected_device"
                           checked={isSelected}
-                          onChange={() => setSelectedDeviceId(device.id)}
+                          onChange={() => handleSelectDevice(device.id)}
                           className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer"
                         />
                       </td>
@@ -588,11 +630,15 @@ export default function AttendanceDevicesPage() {
                           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
                             <span>Terhubung</span>
-                            {idleSecondsLeft !== null && isSelected && (
-                              <span className="text-[10px] font-mono text-emerald-700 bg-emerald-200/60 px-1.5 py-0.2 rounded-sm ml-1">
+                            {isSelected && idleSecondsLeft !== null ? (
+                              <span className="text-[10px] font-mono text-emerald-700 bg-emerald-200/60 px-1.5 py-0.2 rounded-sm ml-1" title="Sisa waktu idle sebelum otomatis terputus">
                                 {formatCountdown(idleSecondsLeft)}
                               </span>
-                            )}
+                            ) : device.idleSecondsLeft ? (
+                              <span className="text-[10px] font-mono text-emerald-700 bg-emerald-200/60 px-1.5 py-0.2 rounded-sm ml-1" title="Sisa waktu idle sebelum otomatis terputus">
+                                {formatCountdown(device.idleSecondsLeft)}
+                              </span>
+                            ) : null}
                           </div>
                         ) : isErr ? (
                           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-100 text-rose-800">
