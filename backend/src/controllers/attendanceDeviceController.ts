@@ -1,5 +1,4 @@
 import {employeeScopePredicate,historicalScopePredicate,requireHrScope,requireScopedEmployee} from '../services/hrOrganizationScope';
-import {loadCurrentIdentity} from '../services/currentIdentity';
 import { Request, Response } from "express";
 import { eq, desc, and, gte, lte, ilike, or, sql } from "drizzle-orm";
 import { db } from "../db";
@@ -73,7 +72,6 @@ export async function getAttendanceDevicesHandler(req: Request, res: Response) {
 export async function createAttendanceDeviceHandler(req: Request, res: Response) {
   try {
     const scope = requireHrScope(req as any);
-    if (!(await loadCurrentIdentity((req as any).user?.userId))?.isGlobalAdministrator) return res.status(403).json({error:'Device configuration and ingestion require global administrator'});
     const { name, ip, port, commKey, deviceNumber, location, connectionType } = req.body;
     if (!name || !ip) {
       return res.status(400).json({ success: false, message: "Nama dan IP mesin wajib diisi" });
@@ -106,7 +104,6 @@ export async function createAttendanceDeviceHandler(req: Request, res: Response)
 export async function updateAttendanceDeviceHandler(req: Request, res: Response) {
   try {
     const scope = requireHrScope(req as any);
-    if (!(await loadCurrentIdentity((req as any).user?.userId))?.isGlobalAdministrator) return res.status(403).json({error:'Device configuration and ingestion require global administrator'});
     const [ownedDevice] = await db.select().from(attendanceDevices).where(and(eq(attendanceDevices.id,Number(req.params.id)),historicalScopePredicate({...scope,includeUnmapped:false},attendanceDevices.groupId)));
     if (!ownedDevice) return res.status(404).json({error:'Device unavailable in destination group'});
     const deviceId = parseInt(req.params.id, 10);
@@ -141,7 +138,6 @@ export async function updateAttendanceDeviceHandler(req: Request, res: Response)
 export async function deleteAttendanceDeviceHandler(req: Request, res: Response) {
   try {
     const scope = requireHrScope(req as any);
-    if (!(await loadCurrentIdentity((req as any).user?.userId))?.isGlobalAdministrator) return res.status(403).json({error:'Device configuration and ingestion require global administrator'});
     const [ownedDevice] = await db.select().from(attendanceDevices).where(and(eq(attendanceDevices.id,Number(req.params.id)),historicalScopePredicate({...scope,includeUnmapped:false},attendanceDevices.groupId)));
     if (!ownedDevice) return res.status(404).json({error:'Device unavailable in destination group'});
     const deviceId = parseInt(req.params.id, 10);
@@ -165,7 +161,6 @@ export async function deleteAttendanceDeviceHandler(req: Request, res: Response)
 export async function connectAttendanceDeviceHandler(req: Request, res: Response) {
   try {
     const scope = requireHrScope(req as any);
-    if (!(await loadCurrentIdentity((req as any).user?.userId))?.isGlobalAdministrator) return res.status(403).json({error:'Device configuration and ingestion require global administrator'});
     const [ownedDevice] = await db.select().from(attendanceDevices).where(and(eq(attendanceDevices.id,Number(req.params.id)),historicalScopePredicate({...scope,includeUnmapped:false},attendanceDevices.groupId)));
     if (!ownedDevice) return res.status(404).json({error:'Device unavailable in destination group'});
     const deviceId = parseInt(req.params.id, 10);
@@ -247,7 +242,6 @@ export async function connectAttendanceDeviceHandler(req: Request, res: Response
 export async function disconnectAttendanceDeviceHandler(req: Request, res: Response) {
   try {
     const scope = requireHrScope(req as any);
-    if (!(await loadCurrentIdentity((req as any).user?.userId))?.isGlobalAdministrator) return res.status(403).json({error:'Device configuration and ingestion require global administrator'});
     const [ownedDevice] = await db.select().from(attendanceDevices).where(and(eq(attendanceDevices.id,Number(req.params.id)),historicalScopePredicate({...scope,includeUnmapped:false},attendanceDevices.groupId)));
     if (!ownedDevice) return res.status(404).json({error:'Device unavailable in destination group'});
     const deviceId = parseInt(req.params.id, 10);
@@ -271,7 +265,6 @@ export async function disconnectAttendanceDeviceHandler(req: Request, res: Respo
 export async function syncAttendanceDeviceHandler(req: Request, res: Response) {
   try {
     const scope = requireHrScope(req as any);
-    if (!(await loadCurrentIdentity((req as any).user?.userId))?.isGlobalAdministrator) return res.status(403).json({error:'Device configuration and ingestion require global administrator'});
     const [ownedDevice] = await db.select().from(attendanceDevices).where(and(eq(attendanceDevices.id,Number(req.params.id)),historicalScopePredicate({...scope,includeUnmapped:false},attendanceDevices.groupId)));
     if (!ownedDevice) return res.status(404).json({error:'Device unavailable in destination group'});
     const deviceId = parseInt(req.params.id, 10);

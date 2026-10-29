@@ -37,3 +37,4 @@ SET "group_id" = dom.group_id
 FROM "employees" e
 JOIN "department_organization_mappings" dom ON dom.department_id = e.department_id
 WHERE e.id = lb.employee_id AND lb.group_id IS NULL;
+
