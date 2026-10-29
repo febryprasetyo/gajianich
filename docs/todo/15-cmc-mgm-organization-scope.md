@@ -29,18 +29,18 @@ Migrasi 0026–0029 diterapkan pada development saja. Fingerprint 19 tabel memas
 
 ## Checkpoint Git
 
-Checkbox mengikuti aturan README: ditandai setelah commit lokal terverifikasi.
+Commit implementasi terverifikasi: `c17148e` pada `feature/cmc-mgm-organization-scope`.
 
-- [ ] 1. Preview read-only dan manifest target.
-- [ ] 2. Schema additive, mapping dan membership.
-- [ ] 3. Scope server dan autentikasi terkini.
-- [ ] 4. Integrasi HR, mobile dan riwayat.
-- [ ] 5. Manajemen pengguna tanpa eskalasi kelompok/peran.
-- [ ] 6. GA, file, pencarian dan histori.
-- [ ] 7. Inventaris berdasarkan lokasi dan transfer berizin.
-- [ ] 8. Profil dokumen berversi dan snapshot identitas.
-- [ ] 9. UI kelompok, cache dan isolasi antar-tab.
-- [ ] 10a. Verifikasi lintas modul, rekonsiliasi dan runbook.
+- [x] 1. Preview read-only dan manifest target.
+- [x] 2. Schema additive, mapping dan membership.
+- [x] 3. Scope server dan autentikasi terkini.
+- [x] 4. Integrasi HR, mobile dan riwayat.
+- [x] 5. Manajemen pengguna tanpa eskalasi kelompok/peran.
+- [x] 6. GA, file, pencarian dan histori.
+- [x] 7. Inventaris berdasarkan lokasi dan transfer berizin.
+- [x] 8. Profil dokumen berversi dan snapshot identitas.
+- [x] 9. UI kelompok, cache dan isolasi antar-tab.
+- [x] 10a. Verifikasi lintas modul, rekonsiliasi dan runbook.
 - [ ] 10b. Aktivasi operasional/produksi setelah konfigurasi dan persetujuan terkait lengkap.
 
 ## Gerbang aktivasi

@@ -175,3 +175,5 @@ Audit sampel aset, tiket dan vendor pada 360/390/1440 px selesai; ditemukan semb
 ## Checkpoint CMC/MGM — integrasi akhir 29 Oktober 2026
 
 Scope HR/GA/inventaris/akun, dokumen berversi dan pemilih kelompok per tab tersedia. Backend 408/408, frontend 217/217, Chromium 2/2, typecheck, lint frontend dan build lulus. Migrasi development 0026–0029 mempertahankan fingerprint 19 tabel: 369 karyawan dan 1.684 absensi utuh. Aktivasi menunggu mapping/membership, bukti historis dan identitas/template resmi. [Checkpoint lengkap](../plan/2026-10-29-cmc-mgm-organization-scope-checkpoint.md), [runbook](../plan/2026-10-29-cmc-mgm-rollout-runbook.md). Tidak ada deploy produksi.
+
+Commit implementasi CMC/MGM terverifikasi: `c17148e` pada branch `feature/cmc-mgm-organization-scope`; checkpoint 1–9 dan 10a ditandai selesai, 10b aktivasi tetap terbuka.

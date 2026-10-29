@@ -1,5 +1,8 @@
 # Checkpoint perencanaan CMC/MGM — 29 Oktober 2026
 
+Status terkini: implementasi dan pengujian teknis terverifikasi pada commit `c17148e`, branch `feature/cmc-mgm-organization-scope`. Aktivasi menunggu konfigurasi resmi. Bagian fondasi/perencanaan di bawah adalah catatan historis; lihat **Checkpoint integrasi akhir** untuk hasil terbaru.
+
+
 Status terbaru: fondasi backend Task 1-3 telah diimplementasikan dan terverifikasi lokal; Task 4-10 belum selesai. Tidak ada commit/deploy produksi. Bagian perencanaan di bawah merupakan catatan historis; pembaruan implementasi ada di akhir dokumen.
 
 ## Otorisasi dan keluaran
@@ -112,3 +115,5 @@ Kegagalan selama verifikasi diselesaikan: assertion bigint tiket dinormalisasi, 
 Guard memeriksa localhost:5433/ams_dev_db dan baseline journal 27 entri. Migrasi additive 0027–0029 berhasil, journal menjadi 30. Snapshot READ ONLY membandingkan seluruh kolom lama di 19 tabel master/karyawan/absensi; fingerprint cocok seluruhnya: **369 employees dan 1.684 attendance_records**. Tidak ada reset/seed/backfill atau perubahan ID/FK/nilai lama. Katalog/mapping/membership tetap kosong.
 
 Preview historis 1.657 CMC + 27 MGM merupakan relasi terhadap departemen saat ini, bukan persetujuan pemilik historis. Konfirmasi belum diterima sehingga group_id lama tetap null. Identitas/logo/template resmi, daftar akun/membership dan manifest produksi tetap belum diberikan. Aktivasi terkait ditahan; implementasi teknis selesai bukan klaim rollout selesai. Tidak ada push atau deploy produksi.
+
+Commit `c17148e` diverifikasi melalui git log dan staged diff. Empat snapshot Drizzle memuat 38.188 baris; seluruh perubahan schema terkait scope/identitas/riwayat. Audit desain lain tetap untracked dan tidak ikut commit. Penolakan otomatis commit awal diselesaikan melalui audit cakupan staged sebelum percobaan ulang yang disetujui.
