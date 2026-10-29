@@ -231,6 +231,13 @@
       "when": 1793262958602,
       "tag": "0032_restore_attendance_devices_and_face_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793263569340,
+      "tag": "0033_backfill_historical_attendance_and_leave_groups",
+      "breakpoints": true
     }
   ],
   "version": "7"
