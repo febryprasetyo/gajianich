@@ -553,12 +553,16 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
       return resolvedId;
     };
 
-    // Format raw rows to RawPunchInput
-    const rawPunches: RawPunchInput[] = rawRows.map((r) => {
+    // Format raw rows to RawPunchInput, skipping punches for employees outside current scope
+    const rawPunches: RawPunchInput[] = [];
+    for (const r of rawRows) {
       const resolvedEmpId =
         r.employeeId || getEmployeeIdForPin(r.pin, (deviceId ? Number(deviceId) : 1));
+      if (resolvedEmpId && !allEmployees.some((e) => e.id === resolvedEmpId)) {
+        continue;
+      }
       const emp = resolvedEmpId ? allEmployees.find((e) => e.id === resolvedEmpId) : null;
-      return {
+      rawPunches.push({
         id: r.id,
         pin: r.pin,
         employeeId: resolvedEmpId,
@@ -568,8 +572,8 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
         workDate: r.workDate,
         verifyMode: r.verifyMode,
         inOutState: r.inOutState,
-      };
-    });
+      });
+    }
 
     const employeesMap = new Map();
     for (const emp of allEmployees) {
@@ -601,15 +605,30 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
 
     // If saveToDatabase requested, upsert into attendance_records
     if (saveToDatabase && result.processedRecords.length > 0) {
+      const hrScope = requireHrScope(req as any);
       for (const rec of result.processedRecords) {
         if (!rec.employeeId) continue;
-        const owner = await requireScopedEmployee(requireHrScope(req as any),rec.employeeId);
-        const [previous] = await db.select().from(attendanceRecords).where(and(eq(attendanceRecords.employeeId,rec.employeeId),eq(attendanceRecords.workDate,rec.workDate)));
-        if (previous && previous.groupId !== owner.groupId) throw new Error('Historical attendance ownership mismatch');
+        let owner;
+        try {
+          owner = await requireScopedEmployee(hrScope, rec.employeeId);
+        } catch {
+          continue;
+        }
+        const [previous] = await db
+          .select()
+          .from(attendanceRecords)
+          .where(
+            and(
+              eq(attendanceRecords.employeeId, rec.employeeId),
+              eq(attendanceRecords.workDate, rec.workDate)
+            )
+          );
+        if (previous && previous.groupId !== owner.groupId) continue;
         await db
           .insert(attendanceRecords)
           .values({
-            groupId:owner.groupId,organizationId:owner.organizationId,
+            groupId: owner.groupId,
+            organizationId: owner.organizationId,
             employeeId: rec.employeeId,
             workDate: rec.workDate,
             shift: rec.shiftName,

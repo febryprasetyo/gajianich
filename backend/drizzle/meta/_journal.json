@@ -238,6 +238,13 @@
       "when": 1793263569340,
       "tag": "0033_backfill_historical_attendance_and_leave_groups",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1793264900000,
+      "tag": "0034_backfill_attendance_raw_logs_groups",
+      "breakpoints": true
     }
   ],
   "version": "7"
