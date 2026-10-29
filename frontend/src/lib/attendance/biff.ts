@@ -1,4 +1,4 @@
-import XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
 import type { ImportRow } from './types';
 
 function minutes(value: unknown): number {

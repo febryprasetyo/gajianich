@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { existsSync, readFileSync } from 'node:fs';
 import { parseAttendanceBiff, parseAttendanceWorkbook } from './biff.ts';
-import XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
 
 const realXlsUrl = new URL('../../../../docs/21-7.xls', import.meta.url);
 
