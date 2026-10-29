@@ -7,13 +7,18 @@ import {
   attendanceDeviceRawLogs,
 } from "../db/schema/attendanceDevices";
 import { employees } from "../db/schema/employees";
-import { attendanceShifts, attendanceShiftAssignments } from "../db/schema/attendanceWorkspace";
+import {
+  attendanceShifts,
+  attendanceShiftAssignments,
+  attendanceIdentities,
+} from "../db/schema/attendanceWorkspace";
 import { attendanceRecords } from "../db/schema/attendance";
 import { attendanceDeviceSessionManager } from "../services/zk/zkSessionManager";
 import {
   calculateAttendanceFromPunches,
   RawPunchInput,
 } from "../services/attendanceCalculationService";
+import { resolveImportEmployee } from "../domain/attendanceImportMapping";
 
 // Register disconnect listener to update database status when idle timeout or disconnect occurs
 attendanceDeviceSessionManager.onDisconnect(async (deviceId, reason) => {
@@ -304,13 +309,20 @@ export async function syncAttendanceDeviceHandler(req: Request, res: Response) {
       });
     }
 
-    // 3. Match PIN to Employees
+    // 3. Match PIN to Employees using canonical resolveImportEmployee
     const allEmployees = await db.select().from(employees);
-    const empByPin = new Map();
-    for (const emp of allEmployees) {
-      if (emp.employeeCode) empByPin.set(emp.employeeCode, emp);
-      empByPin.set(String(emp.id), emp);
-    }
+    const identities = await db.select().from(attendanceIdentities);
+    const pinResolutionCache = new Map<string, number | null>();
+
+    const getEmployeeIdForPin = (pin: string): number | null => {
+      const cleanPin = String(pin).trim();
+      if (pinResolutionCache.has(cleanPin)) {
+        return pinResolutionCache.get(cleanPin)!;
+      }
+      const resolvedId = resolveImportEmployee(cleanPin, device.id, allEmployees, identities);
+      pinResolutionCache.set(cleanPin, resolvedId);
+      return resolvedId;
+    };
 
     // 4. Save Raw Logs into Database (filtered by date range if provided)
     if (overwriteExisting) {
@@ -353,12 +365,12 @@ export async function syncAttendanceDeviceHandler(req: Request, res: Response) {
     for (const punch of fetchedPunches) {
       if (startDate && punch.workDate < startDate) continue;
       if (endDate && punch.workDate > endDate) continue;
-      const emp = empByPin.get(punch.pin);
+      const empId = getEmployeeIdForPin(punch.pin);
       rawInserts.push({
         syncLogId: syncLog.id,
         deviceId: device.id,
         pin: punch.pin,
-        employeeId: emp ? emp.id : null,
+        employeeId: empId,
         timestamp: new Date(punch.timestamp),
         workDate: punch.workDate,
         verifyMode: punch.verifyMode,
@@ -446,6 +458,30 @@ export async function getRawAttendanceLogsHandler(req: Request, res: Response) {
       .limit(parseInt(String(limit), 10))
       .offset(parseInt(String(offset), 10));
 
+    // Fallback: If any log rows have null employeeId, resolve them dynamically
+    const unmappedLogs = logs.filter((l) => !l.employeeId);
+    if (unmappedLogs.length > 0) {
+      const allEmployees = await db.select().from(employees);
+      const identities = await db.select().from(attendanceIdentities);
+      const pinCache = new Map<string, number | null>();
+      for (const log of unmappedLogs) {
+        const cleanPin = String(log.pin).trim();
+        let resolvedId = pinCache.get(cleanPin);
+        if (resolvedId === undefined) {
+          resolvedId = resolveImportEmployee(cleanPin, log.deviceId, allEmployees, identities);
+          pinCache.set(cleanPin, resolvedId);
+        }
+        if (resolvedId) {
+          const emp = allEmployees.find((e) => e.id === resolvedId);
+          if (emp) {
+            log.employeeId = emp.id;
+            log.employeeName = emp.fullName;
+            log.employeeNik = emp.employeeCode;
+          }
+        }
+      }
+    }
+
     res.json({ success: true, data: logs });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -479,36 +515,53 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
       .leftJoin(employees, eq(attendanceDeviceRawLogs.employeeId, employees.id))
       .where(whereClause);
 
-    // Format raw rows to RawPunchInput
-    const rawPunches: RawPunchInput[] = rawRows.map((r) => ({
-      id: r.id,
-      pin: r.pin,
-      employeeId: r.employeeId,
-      employeeCode: r.employeeNik || r.pin,
-      employeeName: r.employeeName || undefined,
-      timestamp: String(r.timestamp),
-      workDate: r.workDate,
-      verifyMode: r.verifyMode,
-      inOutState: r.inOutState,
-    }));
-
-    // Query employees, shifts, assignments
+    // Query employees, shifts, assignments, and identities
     const allEmployees = await db.select().from(employees);
+    const identities = await db.select().from(attendanceIdentities);
+    const pinResolutionCache = new Map<string, number | null>();
+
+    const getEmployeeIdForPin = (pin: string, devId: number): number | null => {
+      const cleanPin = String(pin).trim();
+      if (pinResolutionCache.has(cleanPin)) {
+        return pinResolutionCache.get(cleanPin)!;
+      }
+      const resolvedId = resolveImportEmployee(cleanPin, devId, allEmployees, identities);
+      pinResolutionCache.set(cleanPin, resolvedId);
+      return resolvedId;
+    };
+
+    // Format raw rows to RawPunchInput
+    const rawPunches: RawPunchInput[] = rawRows.map((r) => {
+      const resolvedEmpId =
+        r.employeeId || getEmployeeIdForPin(r.pin, (deviceId ? Number(deviceId) : 1));
+      const emp = resolvedEmpId ? allEmployees.find((e) => e.id === resolvedEmpId) : null;
+      return {
+        id: r.id,
+        pin: r.pin,
+        employeeId: resolvedEmpId,
+        employeeCode: emp?.employeeCode || r.employeeNik || r.pin,
+        employeeName: emp?.fullName || r.employeeName || undefined,
+        timestamp: String(r.timestamp),
+        workDate: r.workDate,
+        verifyMode: r.verifyMode,
+        inOutState: r.inOutState,
+      };
+    });
+
     const employeesMap = new Map();
     for (const emp of allEmployees) {
-      employeesMap.set(emp.id, {
+      const empData = {
         id: emp.id,
         nik: emp.employeeCode || String(emp.id),
         fullName: emp.fullName,
         departmentId: emp.departmentId,
-      });
+      };
+      employeesMap.set(emp.id, empData);
       if (emp.employeeCode) {
-        employeesMap.set(emp.employeeCode, {
-          id: emp.id,
-          nik: emp.employeeCode,
-          fullName: emp.fullName,
-          departmentId: emp.departmentId,
-        });
+        employeesMap.set(emp.employeeCode, empData);
+      }
+      if (emp.barcode) {
+        employeesMap.set(emp.barcode, empData);
       }
     }
 
