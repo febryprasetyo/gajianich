@@ -1,7 +1,7 @@
 import { db } from './index';
 import { roles, users, permissions, rolePermissions } from './schema/users';
 import { departments, locations } from './schema/master';
-import { organizationGroups } from './schema/organizations';
+import { organizationGroups, departmentOrganizationMappings, locationOrganizationMappings } from './schema/organizations';
 import { vendors } from './schema/vendors';
 import { employees } from './schema/employees';
 import { assetCategories, assets } from './schema/assets';
@@ -227,6 +227,40 @@ async function seed() {
       await db.insert(locations).values(loc);
       console.log(`  ✓ Inserted location: ${loc.name}`);
     }
+  }
+
+  // 6. Map Departments & Locations to Organization Groups
+  const allGroups = await db.select().from(organizationGroups);
+  const cmcGroup = allGroups.find(g => g.code === 'CMC');
+  const mgmGroup = allGroups.find(g => g.code === 'MGM');
+  if (cmcGroup && mgmGroup) {
+    const allDepts = await db.select().from(departments);
+    for (const d of allDepts) {
+      const isMgm = ['MULTI GAS MEDIKA', 'MEDICARE SOLUSI INDONESIA'].includes(d.name.trim().toUpperCase());
+      const targetGroup = isMgm ? mgmGroup : cmcGroup;
+      const existingMapping = await db.select().from(departmentOrganizationMappings).where(eq(departmentOrganizationMappings.departmentId, d.id));
+      if (existingMapping.length === 0) {
+        await db.insert(departmentOrganizationMappings).values({
+          departmentId: d.id,
+          groupId: targetGroup.id,
+          approvalReference: 'seed-initial-mapping',
+        });
+      }
+    }
+    const allLocs = await db.select().from(locations);
+    for (const l of allLocs) {
+      const isMgm = l.name.trim().toUpperCase().includes('MULTI GAS MEDIKA') || l.code.trim().toUpperCase() === 'MGM';
+      const targetGroup = isMgm ? mgmGroup : cmcGroup;
+      const existingMapping = await db.select().from(locationOrganizationMappings).where(eq(locationOrganizationMappings.locationId, l.id));
+      if (existingMapping.length === 0) {
+        await db.insert(locationOrganizationMappings).values({
+          locationId: l.id,
+          groupId: targetGroup.id,
+          approvalReference: 'seed-initial-mapping',
+        });
+      }
+    }
+    console.log('  ✓ Verified department and location organization mappings');
   }
 
   // 4a. Seed IT Equipment Types

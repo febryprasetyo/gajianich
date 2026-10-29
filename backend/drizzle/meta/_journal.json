@@ -217,6 +217,13 @@
       "when": 1793261418629,
       "tag": "0030_seed_organization_groups",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793262424765,
+      "tag": "0031_seed_department_and_location_mappings",
+      "breakpoints": true
     }
   ],
   "version": "7"
