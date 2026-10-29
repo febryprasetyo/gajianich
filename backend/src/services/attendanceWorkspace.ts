@@ -123,8 +123,8 @@ export async function loadAttendanceWorkspace(
     assignRows,
     strictSetting,
   ] = await Promise.all([
-    tx.select().from(departments).where(sql`exists(select 1 from ${departmentOrganizationMappings} where ${departmentOrganizationMappings.departmentId} = ${departments.id} and ${inArray(departmentOrganizationMappings.groupId,scope.groupIds)})`),
-    tx.select().from(locations).where(sql`exists(select 1 from ${locationOrganizationMappings} where ${locationOrganizationMappings.locationId} = ${locations.id} and ${inArray(locationOrganizationMappings.groupId,scope.groupIds)})`),
+    tx.select().from(departments).where(scope.includeUnmapped && !scope.groupIds.length ? sql`true` : sql`exists(select 1 from ${departmentOrganizationMappings} where ${departmentOrganizationMappings.departmentId} = ${departments.id} and ${scope.groupIds.length ? inArray(departmentOrganizationMappings.groupId,scope.groupIds) : sql`false`})`),
+    tx.select().from(locations).where(scope.includeUnmapped && !scope.groupIds.length ? sql`true` : sql`exists(select 1 from ${locationOrganizationMappings} where ${locationOrganizationMappings.locationId} = ${locations.id} and ${scope.groupIds.length ? inArray(locationOrganizationMappings.groupId,scope.groupIds) : sql`false`})`),
     tx.select().from(attendanceSources),
     tx.select().from(employees).where(employeeScopePredicate(scope)),
     tx.select().from(attendanceIdentities).where(sql`${attendanceIdentities.employeeId} in (select ${employees.id} from ${employees} where ${employeeScopePredicate(scope)})`),
@@ -135,7 +135,7 @@ export async function loadAttendanceWorkspace(
     tx.select().from(attendanceGrants),
     tx.select().from(attendanceLocks),
     tx.select().from(attendanceShifts),
-    tx.select().from(attendanceShiftAssignments).where(sql`(${attendanceShiftAssignments.employeeId} in (select ${employees.id} from ${employees} where ${employeeScopePredicate(scope)})) or (${attendanceShiftAssignments.departmentId} in (select ${departmentOrganizationMappings.departmentId} from ${departmentOrganizationMappings} where ${inArray(departmentOrganizationMappings.groupId,scope.groupIds)}))`),
+    tx.select().from(attendanceShiftAssignments).where(scope.includeUnmapped && !scope.groupIds.length ? sql`true` : sql`(${attendanceShiftAssignments.employeeId} in (select ${employees.id} from ${employees} where ${employeeScopePredicate(scope)})) or (${attendanceShiftAssignments.departmentId} in (select ${departmentOrganizationMappings.departmentId} from ${departmentOrganizationMappings} where ${scope.groupIds.length ? inArray(departmentOrganizationMappings.groupId,scope.groupIds) : sql`false`}))`),
     tx.select().from(systemSettings).where(eq(systemSettings.key, "attendance_strict_integrity")).limit(1),
   ]);
 

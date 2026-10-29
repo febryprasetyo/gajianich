@@ -14,6 +14,7 @@ import {
   attendanceIdentities,
 } from "../db/schema/attendanceWorkspace";
 import { attendanceRecords } from "../db/schema/attendance";
+import { departments } from "../db/schema/master";
 import { attendanceDeviceSessionManager } from "../services/zk/zkSessionManager";
 import {
   calculateAttendanceFromPunches,
@@ -472,10 +473,12 @@ export async function getRawAttendanceLogsHandler(req: Request, res: Response) {
         employeeId: attendanceDeviceRawLogs.employeeId,
         employeeName: employees.fullName,
         employeeNik: employees.employeeCode,
+        department: departments.name,
       })
       .from(attendanceDeviceRawLogs)
       .leftJoin(attendanceDevices, eq(attendanceDeviceRawLogs.deviceId, attendanceDevices.id))
       .leftJoin(employees, eq(attendanceDeviceRawLogs.employeeId, employees.id))
+      .leftJoin(departments, eq(employees.departmentId, departments.id))
       .where(whereClause)
       .orderBy(desc(attendanceDeviceRawLogs.timestamp))
       .limit(parseInt(String(limit), 10))
@@ -484,14 +487,25 @@ export async function getRawAttendanceLogsHandler(req: Request, res: Response) {
     // Fallback: If any log rows have null employeeId, resolve them dynamically
     const unmappedLogs = logs.filter((l) => !l.employeeId);
     if (unmappedLogs.length > 0) {
-      const allEmployees = await db.select().from(employees).where(employeeScopePredicate({...requireHrScope(req as any),includeUnmapped:false}));
+      const allEmployees = await db
+        .select({
+          id: employees.id,
+          fullName: employees.fullName,
+          employeeCode: employees.employeeCode,
+          barcode: employees.barcode,
+          departmentId: employees.departmentId,
+          departmentName: departments.name,
+        })
+        .from(employees)
+        .leftJoin(departments, eq(employees.departmentId, departments.id))
+        .where(employeeScopePredicate({...requireHrScope(req as any),includeUnmapped:false}));
       const identities = await db.select().from(attendanceIdentities);
       const pinCache = new Map<string, number | null>();
       for (const log of unmappedLogs) {
         const cleanPin = String(log.pin).trim();
         let resolvedId = pinCache.get(cleanPin);
         if (resolvedId === undefined) {
-          resolvedId = resolveImportEmployee(cleanPin, log.deviceId, allEmployees, identities);
+          resolvedId = resolveImportEmployee(cleanPin, log.deviceId, allEmployees as any, identities);
           pinCache.set(cleanPin, resolvedId);
         }
         if (resolvedId) {
@@ -500,6 +514,7 @@ export async function getRawAttendanceLogsHandler(req: Request, res: Response) {
             log.employeeId = emp.id;
             log.employeeName = emp.fullName;
             log.employeeNik = emp.employeeCode;
+            log.department = emp.departmentName;
           }
         }
       }
@@ -538,8 +553,19 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
       .leftJoin(employees, eq(attendanceDeviceRawLogs.employeeId, employees.id))
       .where(whereClause);
 
-    // Query employees, shifts, assignments, and identities
-    const allEmployees = await db.select().from(employees).where(employeeScopePredicate({...requireHrScope(req as any),includeUnmapped:false}));
+    // Query employees with department name, shifts, assignments, and identities
+    const allEmployees = await db
+      .select({
+        id: employees.id,
+        fullName: employees.fullName,
+        employeeCode: employees.employeeCode,
+        barcode: employees.barcode,
+        departmentId: employees.departmentId,
+        departmentName: departments.name,
+      })
+      .from(employees)
+      .leftJoin(departments, eq(employees.departmentId, departments.id))
+      .where(employeeScopePredicate({...requireHrScope(req as any),includeUnmapped:false}));
     const identities = await db.select().from(attendanceIdentities);
     const pinResolutionCache = new Map<string, number | null>();
 
@@ -548,7 +574,7 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
       if (pinResolutionCache.has(cleanPin)) {
         return pinResolutionCache.get(cleanPin)!;
       }
-      const resolvedId = resolveImportEmployee(cleanPin, devId, allEmployees, identities);
+      const resolvedId = resolveImportEmployee(cleanPin, devId, allEmployees as any, identities);
       pinResolutionCache.set(cleanPin, resolvedId);
       return resolvedId;
     };
@@ -568,6 +594,7 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
         employeeId: resolvedEmpId,
         employeeCode: emp?.employeeCode || r.employeeNik || r.pin,
         employeeName: emp?.fullName || r.employeeName || undefined,
+        department: emp?.departmentName || undefined,
         timestamp: String(r.timestamp),
         workDate: r.workDate,
         verifyMode: r.verifyMode,
@@ -582,6 +609,7 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
         nik: emp.employeeCode || String(emp.id),
         fullName: emp.fullName,
         departmentId: emp.departmentId,
+        departmentName: emp.departmentName || "Umum",
       };
       employeesMap.set(emp.id, empData);
       if (emp.employeeCode) {
