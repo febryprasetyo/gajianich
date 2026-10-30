@@ -18,6 +18,8 @@ export interface AttendanceDevice {
   idleSecondsLeft?: number | null;
   admsRegistered?: boolean;
   admsEnabled?: boolean;
+  admsOnline?: boolean;
+  admsLastSeenAt?: string | null;
   allowedNetwork?: string | null;
 }
 

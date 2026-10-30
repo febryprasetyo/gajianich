@@ -48,17 +48,19 @@ export async function getAttendanceDevicesHandler(req: Request, res: Response) {
       .orderBy(attendanceDevices.id);
 
     // Query adms.devices for all device_ids in list to support unified device dashboard
-    const deviceIds = list.map(d => d.id);
-    const admsMap: Record<number, { serial: string; enabled: boolean; allowedNetwork: string | null; lastSeenAt: string | null; lastDataAt: string | null }> = {};
+    const deviceIds = list.map(d => Number(d.id)).filter(id => Number.isInteger(id) && id > 0);
+    const admsMap: Record<number, { serial: string; enabled: boolean; allowedNetwork: string | null; lastSeenAt: string | null; lastDataAt: string | null; isOnline: boolean }> = {};
     if (deviceIds.length > 0) {
       try {
+        const idListStr = deviceIds.join(',');
         const admsRows = await db.execute(sql`
           SELECT device_id, serial, enabled,
                  host(allowed_network) || '/' || masklen(allowed_network) AS "allowedNetwork",
                  last_seen_at AS "lastSeenAt",
-                 last_data_at AS "lastDataAt"
+                 last_data_at AS "lastDataAt",
+                 (enabled AND last_seen_at >= now() - interval '180 seconds') AS "isOnline"
           FROM adms.devices
-          WHERE device_id = ANY(${deviceIds})
+          WHERE device_id IN (${sql.raw(idListStr)})
         `);
         for (const row of (admsRows.rows as any[])) {
           admsMap[Number(row.device_id)] = {
@@ -67,6 +69,7 @@ export async function getAttendanceDevicesHandler(req: Request, res: Response) {
             allowedNetwork: row.allowedNetwork,
             lastSeenAt: row.lastSeenAt,
             lastDataAt: row.lastDataAt,
+            isOnline: Boolean(row.isOnline),
           };
         }
       } catch (e) {
@@ -96,6 +99,7 @@ export async function getAttendanceDevicesHandler(req: Request, res: Response) {
         activeIdentity: dev.connectionType === "ADMS" ? { firmware: dev.firmware, serialNumber: dev.serialNumber, deviceName: dev.model, platform: dev.platform } : session.identity,
         admsRegistered: Boolean(admsInfo),
         admsEnabled: admsInfo ? admsInfo.enabled : false,
+        admsOnline: admsInfo ? admsInfo.isOnline : false,
         allowedNetwork: admsInfo?.allowedNetwork ?? null,
         admsLastSeenAt: admsInfo?.lastSeenAt ?? dev.lastAdmsSeenAt ?? null,
       };

@@ -436,8 +436,12 @@ export default function AttendanceDevicesPage() {
   };
 
   // Split into ADMS and Ethernet devices for the 1-page unified layout
-  const admsDevices = devices.filter((d) => d.connectionType === "ADMS" || Boolean(d.admsRegistered));
-  const ethernetDevices = devices.filter((d) => d.connectionType !== "ADMS" && !d.admsRegistered);
+  const admsDevices = devices.filter(
+    (d) => d.connectionType === "ADMS" || Boolean(d.admsRegistered)
+  );
+  const ethernetDevices = devices.filter(
+    (d) => d.connectionType === "Ethernet" || (Boolean(d.ip) && d.ip !== "0.0.0.0" && d.ip !== "Auto / DHCP")
+  );
 
   // Candidates list for editing allowlist
   const admsCandidatesList: AdmsCandidateDevice[] = devices.map((d) => ({
@@ -559,7 +563,7 @@ export default function AttendanceDevicesPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                  Mesin Cloud ADMS (Push Port 8081)
+                  Mesin Cloud ADMS
                 </h2>
                 <span className="px-2 py-0.5 text-[11px] font-semibold bg-indigo-100 text-indigo-800 rounded-full">
                   {admsDevices.length} Unit
@@ -570,21 +574,6 @@ export default function AttendanceDevicesPage() {
               </p>
             </div>
           </div>
-
-          {canManage && (
-            <button
-              type="button"
-              onClick={() => {
-                resetAddForm();
-                setAddConnectionType("ADMS");
-                setIsAddModalOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-800 hover:bg-indigo-100 transition-colors cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Registrasi Mesin ADMS</span>
-            </button>
-          )}
         </div>
 
         {isLoading ? (
@@ -597,7 +586,7 @@ export default function AttendanceDevicesPage() {
             <Server className="w-8 h-8 text-slate-300 mx-auto mb-2" />
             <p className="text-xs font-semibold text-slate-700">Belum ada mesin Cloud ADMS yang terdaftar</p>
             <p className="text-xs text-slate-400 mt-1">
-              Klik Registrasi Mesin ADMS untuk menghubungkan mesin push port 8081.
+              Gunakan tombol Tambah Mesin di atas untuk mendaftarkan mesin ADMS.
             </p>
           </div>
         ) : (
@@ -622,15 +611,24 @@ export default function AttendanceDevicesPage() {
                         <Server className="w-4 h-4 text-indigo-600 shrink-0" />
                         <div>
                           <p>{device.name}</p>
-                          <p className="text-[10px] text-slate-400 font-normal">Push Server Port 8081</p>
                         </div>
                       </div>
                     </td>
 
                     <td className="py-3 px-4">
-                      <StatusBadge icon={dot} variant={!device.admsEnabled ? "slate" : "success"}>
-                        {!device.admsEnabled ? "ADMS Dinonaktifkan" : "ADMS Aktif"}
-                      </StatusBadge>
+                      {!device.admsEnabled ? (
+                        <StatusBadge icon={dot} variant="slate">
+                          ADMS Dinonaktifkan
+                        </StatusBadge>
+                      ) : device.admsOnline ? (
+                        <StatusBadge icon={dot} variant="success">
+                          Online
+                        </StatusBadge>
+                      ) : (
+                        <StatusBadge icon={dot} variant="warning">
+                          Standby / Terdaftar
+                        </StatusBadge>
+                      )}
                     </td>
 
                     <td className="py-3 px-4 font-mono text-slate-700 font-semibold">
@@ -747,23 +745,6 @@ export default function AttendanceDevicesPage() {
               </p>
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            {canManage && (
-              <button
-                type="button"
-                onClick={() => {
-                  resetAddForm();
-                  setAddConnectionType("Ethernet");
-                  setIsAddModalOpen(true);
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-100 transition-colors cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Tambah Mesin Fisik</span>
-              </button>
-            )}
-          </div>
         </div>
 
         {isLoading ? (
@@ -776,7 +757,7 @@ export default function AttendanceDevicesPage() {
             <Cpu className="w-8 h-8 text-slate-300 mx-auto mb-2" />
             <p className="text-xs font-semibold text-slate-700">Belum ada mesin fisik Ethernet terdaftar</p>
             <p className="text-xs text-slate-400 mt-1">
-              Klik Tambah Mesin Fisik untuk mendaftarkan IP dan port mesin lokal.
+              Gunakan tombol Tambah Mesin di atas untuk mendaftarkan IP dan port mesin lokal.
             </p>
           </div>
         ) : (
@@ -784,14 +765,14 @@ export default function AttendanceDevicesPage() {
             <table className="w-full text-xs text-left border-collapse">
               <thead className="bg-slate-50/80 text-slate-600 font-semibold border-b border-slate-200/80">
                 <tr>
-                  <th className="py-2.5 px-4 w-36 text-center">Koneksi Mesin</th>
+                  <th className="py-2.5 px-4 text-center whitespace-nowrap">Aksi Koneksi & Download</th>
                   <th className="py-2.5 px-4">Nama Mesin</th>
                   <th className="py-2.5 px-4">Status</th>
                   <th className="py-2.5 px-4">Alamat IP & Port</th>
                   <th className="py-2.5 px-4">No. Mesin & CommKey</th>
                   <th className="py-2.5 px-4">Lokasi</th>
                   <th className="py-2.5 px-4">Terakhir Tarik Data</th>
-                  <th className="py-2.5 px-4 text-center w-28">Aksi</th>
+                  <th className="py-2.5 px-4 text-center w-24">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -803,33 +784,46 @@ export default function AttendanceDevicesPage() {
 
                   return (
                     <tr key={device.id} className="hover:bg-slate-50/70 transition-colors">
-                      {/* KOLOM KONEKSI: Tombol Langsung Connect / Disconnect */}
+                      {/* KOLOM KONEKSI & DOWNLOAD DI DEPAN */}
                       <td className="py-3 px-4 text-center whitespace-nowrap">
                         {isConn ? (
-                          <button
-                            type="button"
-                            onClick={() => handleDisconnectDevice(device)}
-                            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition-colors cursor-pointer shadow-2xs"
-                            title="Putuskan koneksi ke mesin"
-                          >
-                            <PowerOff className="w-3.5 h-3.5" />
-                            <span>Putuskan</span>
-                          </button>
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleDisconnectDevice(device)}
+                              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition-colors cursor-pointer shadow-2xs"
+                              title="Putuskan koneksi ke mesin"
+                            >
+                              <PowerOff className="w-3.5 h-3.5" />
+                              <span>Putuskan</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenDownloadModal(device)}
+                              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors cursor-pointer shadow-2xs"
+                              title="Tarik log presensi terbaru dari mesin"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              <span>Download Presensi</span>
+                            </button>
+                          </div>
                         ) : (
-                          <button
-                            type="button"
-                            disabled={isBusy}
-                            onClick={() => handleConnectDevice(device)}
-                            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors cursor-pointer shadow-2xs"
-                            title="Hubungkan ke mesin absensi via TCP/IP"
-                          >
-                            {isBusy ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <Power className="w-3.5 h-3.5" />
-                            )}
-                            <span>{isBusy ? "Menghubungkan..." : "Koneksikan"}</span>
-                          </button>
+                          <div className="flex items-center justify-center">
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => handleConnectDevice(device)}
+                              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors cursor-pointer shadow-2xs"
+                              title="Hubungkan ke mesin absensi via TCP/IP"
+                            >
+                              {isBusy ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Power className="w-3.5 h-3.5" />
+                              )}
+                              <span>{isBusy ? "Menghubungkan..." : "Koneksikan"}</span>
+                            </button>
+                          </div>
                         )}
                       </td>
 
@@ -887,16 +881,6 @@ export default function AttendanceDevicesPage() {
 
                       <td className="py-3 px-4 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1">
-                          {isConn && (
-                            <RowActionButton
-                              icon={Download}
-                              label="Download Presensi"
-                              title="Tarik log presensi dari mesin"
-                              variant="default"
-                              onClick={() => handleOpenDownloadModal(device)}
-                            />
-                          )}
-
                           {canManage && (
                             <RowActionButton
                               icon={Edit3}
