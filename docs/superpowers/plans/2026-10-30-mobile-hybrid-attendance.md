@@ -34,3 +34,4 @@ This plan implements the multi-tenant destination group resolution for mobile at
 - [ ] Task 4.1: Run targeted unit and integration tests (`mobileAttendanceService.test.ts`, `attendanceCalculationService.test.ts`, `mobileApprovals.integration.test.ts`).
 - [ ] Task 4.2: Run TypeScript compiler check (`npx tsc --noEmit` in backend and frontend).
 - [ ] Task 4.3: Git commit with conventional commit message per SDD standard.
+

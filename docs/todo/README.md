@@ -177,3 +177,17 @@ Audit sampel aset, tiket dan vendor pada 360/390/1440 px selesai; ditemukan semb
 Scope HR/GA/inventaris/akun, dokumen berversi dan pemilih kelompok per tab tersedia. Backend 408/408, frontend 217/217, Chromium 2/2, typecheck, lint frontend dan build lulus. Migrasi development 0026–0029 mempertahankan fingerprint 19 tabel: 369 karyawan dan 1.684 absensi utuh. Aktivasi menunggu mapping/membership, bukti historis dan identitas/template resmi. [Checkpoint lengkap](../plan/2026-10-29-cmc-mgm-organization-scope-checkpoint.md), [runbook](../plan/2026-10-29-cmc-mgm-rollout-runbook.md). Tidak ada deploy produksi.
 
 Commit implementasi CMC/MGM terverifikasi: `c17148e` pada branch `feature/cmc-mgm-organization-scope`; checkpoint 1–9 dan 10a ditandai selesai, 10b aktivasi tetap terbuka.
+
+## Diagnosis Gudang 2 — 30 Oktober 2026
+
+- [Checkpoint SDK dan autentikasi Gudang 2](../plan/2026-10-30-gudang-2-sdk-compatibility-checkpoint.md): TCP berhasil tetapi autentikasi ditolak kode 2032; pembanding MGM berhasil. Pengguna mengonfirmasi aplikasi Windows berhasil setelah pembaruan SDK. Kompatibilitas konektor Ubuntu masih perlu ditangani setelah identifikasi model/firmware dan handshake SDK.
+
+## ADMS terpisah dan impor historis — 30 Oktober 2026
+
+- **Implementasi terverifikasi lokal; aktivasi mesin belum dilakukan.** [Checkpoint](../plan/2026-10-30-adms-server-checkpoint.md) dan [panduan server](../../adms-server/README.md): container terpisah, database Gajianich bersama, PUSH otomatis + impor TSV historis, receipt sebelum ACK, dedup lintas sumber, pemetaan grup, status heartbeat. 25 hitungan tes ADMS/integrasi dan 28 regresi backend lulus; image produksi dibangun. Masih perlu konfigurasi deployment serta uji firmware fisik Gudang 2.
+
+## Aktivasi dan monitoring ADMS — 30 Oktober 2026
+
+- **Aktif pada development.** [Monitoring browser](http://192.168.10.212:3000/dashboard/attendance/adms), [checkpoint](../plan/2026-10-30-adms-monitor-checkpoint.md). Container receiver healthy pada port 8081 dan database Gajianich bersama; Gudang 2 terdaftar ID 3 grup CMC. Monitoring status/mesin/receipt otomatis, filter dan pembatasan grup terverifikasi. Menunggu pengaturan ADMS pada mesin fisik; receipt masih 0 dan 5.430 log lama tetap utuh.
+
+- Uji ADMS juga disiapkan untuk **Absensi Office** ID1 (`192.168.10.224`, serial `WAE4242900026`) sesuai pilihan pengguna. Registrasi selesai; menunggu heartbeat mesin. Tarik TCP untuk Office tidak digunakan selama mode ADMS.

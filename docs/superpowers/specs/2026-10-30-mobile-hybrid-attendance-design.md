@@ -74,3 +74,4 @@ No new tables or schema migrations needed. The existing `attendance_records`, `a
   - Machine IN + Mobile OUT approval flow.
   - Mobile IN + Machine OUT calculation flow.
   - Preserving duplicate IN rejection.
+

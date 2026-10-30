@@ -166,7 +166,7 @@ export default function AdmsRegistrationModal({
               value={deviceId}
               onChange={e => handleDeviceChange(e.target.value)}
             >
-              <option value="">-- Pilih Mesin dalam Kelompok Aktif --</option>
+              <option value="">-- Pilih Mesin Absensi --</option>
               {candidates.map(device => (
                 <option key={device.id} value={device.id}>
                   {device.name} · IP: {device.ip} ({device.connectionType})
@@ -174,6 +174,9 @@ export default function AdmsRegistrationModal({
                 </option>
               ))}
             </select>
+            <span className="block text-[11px] font-normal text-slate-500">
+              Menampilkan mesin yang terdaftar pada unit/cabang perusahaan yang sedang Anda pilih di menu atas.
+            </span>
           </label>
 
           {/* Serial Number */}
