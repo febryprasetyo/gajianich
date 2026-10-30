@@ -53,6 +53,7 @@ export interface NavSubItem {
   href: string;
   icon?: React.ElementType;
   permission?: string;
+  anyPermissions?: string[];
   badge?: string;
   adminOnly?: boolean;
 }
@@ -93,6 +94,7 @@ export const navGroups: NavGroup[] = [
         name: 'Mesin Presensi',
         icon: Cpu,
         children: [
+          { name: 'Review ADMS', href: '/dashboard/attendance/adms', icon: Cpu, anyPermissions: ['attendance.import', 'attendance.manage'] },
           { name: 'Download Presensi', href: '/dashboard/attendance/devices', icon: Cpu, permission: 'attendance.import' },
           { name: 'Data Presensi', href: '/dashboard/attendance/raw-logs', icon: ListFilter, permission: 'attendance.import' },
           { name: 'Laporan Presensi', href: '/dashboard/attendance/transactions', icon: FileCheck2, permission: 'attendance.view' },
@@ -188,6 +190,7 @@ const ROUTE_PERMISSION_MAP: { prefix: string; permission: string; moduleName: st
   { prefix: '/dashboard/licenses', permission: 'licenses.view', moduleName: 'Software Licenses' },
   { prefix: '/dashboard/tickets', permission: 'tickets.view', moduleName: 'Service Desk Tickets' },
   { prefix: '/dashboard/infrastructure', permission: 'infrastructure.view', moduleName: 'Accurate & Server Infrastructure' },
+  { prefix: '/dashboard/attendance/adms', permission: 'attendance.import atau attendance.manage', moduleName: 'Review ADMS' },
   { prefix: '/dashboard/attendance/devices', permission: 'attendance.import', moduleName: 'Download Presensi Mesin' },
   { prefix: '/dashboard/attendance/approvals/rules', permission: 'attendance.manage', moduleName: 'Aturan Auto-Approve Shift' },
   { prefix: '/dashboard/attendance/approvals/photos', permission: 'attendance.mobile.verify', moduleName: 'Validasi Foto Wajah' },
@@ -270,6 +273,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
 
     if (subItem.adminOnly && !canManageCustodians(user.roleName)) return false;
+
+    if (subItem.anyPermissions) return subItem.anyPermissions.some(permission => user.permissions?.includes(permission));
 
     if (subItem.permission) {
       return Boolean(user.permissions && user.permissions.includes(subItem.permission));

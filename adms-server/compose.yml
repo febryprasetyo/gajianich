@@ -1,0 +1,35 @@
+name: gajianich-adms
+services:
+  adms:
+    image: gajianich-adms:local
+    build:
+      context: .
+      target: production
+    restart: unless-stopped
+    init: true
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Shared Gajianich database URL required}
+      PORT: 8081
+      TZ: Asia/Jakarta
+      ADMS_TIMEZONE_HOURS: ${ADMS_TIMEZONE_HOURS:-7}
+      MAX_BODY_BYTES: ${MAX_BODY_BYTES:-1048576}
+    ports:
+      - "${ADMS_BIND_ADDRESS:-127.0.0.1}:${ADMS_PORT:-8081}:8081"
+    networks:
+      - gajianich_database
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 256m
+    cpus: 0.5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+networks:
+  gajianich_database:
+    external: true
+    name: ${GAJIANICH_DB_NETWORK:?Existing Gajianich database network required}

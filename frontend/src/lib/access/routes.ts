@@ -2,6 +2,7 @@ export interface RouteRule {
   prefix: string;
   exact?: boolean;
   permission?: string;
+  anyPermissions?: string[];
   itOnly?: boolean;
   adminOnly?: boolean;
   moduleName: string;
@@ -11,6 +12,7 @@ export const IT_ROLES = ['superadmin', 'super_admin', 'itadmin', 'it_admin', 'it
 export const ADMIN_ROLES = ['superadmin', 'super_admin', 'itadmin', 'it_admin', 'admin'];
 
 export const DASHBOARD_ROUTE_RULES: RouteRule[] = [
+  { prefix: '/dashboard/attendance/adms', anyPermissions: ['attendance.import', 'attendance.manage'], moduleName: 'Review ADMS' },
   { prefix: '/dashboard/attendance/devices', permission: 'attendance.import', moduleName: 'Download Presensi Mesin' },
   { prefix: '/dashboard/attendance/raw-logs', permission: 'attendance.import', moduleName: 'Data Presensi Log Mentah' },
   { prefix: '/dashboard/attendance/transactions', permission: 'attendance.view', moduleName: 'Laporan Presensi Final' },
@@ -221,6 +223,8 @@ export function canAccessRoute(
       return false;
     }
   }
+
+  if (matched.anyPermissions && !matched.anyPermissions.some(permission => perms.includes(permission))) return false;
 
   // Permission code check
   if (matched.permission) {

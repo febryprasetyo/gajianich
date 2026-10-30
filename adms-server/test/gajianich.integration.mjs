@@ -1,0 +1,80 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
+import {mkdtemp,writeFile,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {makePool,migrate,Store} from '../src/store.mjs';
+const url=process.env.DATABASE_URL;
+if(!url || new URL(url).pathname!=='/gajianich_adms_backend_test')throw new Error('Use disposable gajianich_adms_backend_test with full backend migrations');
+const require=createRequire(import.meta.url);
+const handlers=require('../../backend/dist/controllers/attendanceDeviceController.js');
+const {closeDatabase}=require('../../backend/dist/db/index.js');
+const {attendanceDeviceSessionManager}=require('../../backend/dist/services/zk/zkSessionManager.js');
+test('ADMS review is isolated from actual migrated Gajianich handlers and normal TCP pull',async t=>{
+ const pool=makePool(url);t.after(async()=>{await pool.end();await closeDatabase();});
+ await migrate(pool,'adms_backend_runtime');
+ await pool.query(`DELETE FROM adms.read_commands WHERE serial='GSY1254900014';
+ DELETE FROM adms.review_logs WHERE serial='GSY1254900014';
+ DELETE FROM adms.receipts WHERE serial='GSY1254900014';
+ DELETE FROM adms.devices WHERE serial='GSY1254900014';
+ DELETE FROM attendance_device_raw_logs WHERE device_id IN (SELECT id FROM attendance_devices WHERE code='adms-e2e');
+ DELETE FROM attendance_device_sync_logs WHERE device_id IN (SELECT id FROM attendance_devices WHERE code='adms-e2e');`);
+ const gid=(await pool.query("SELECT id FROM organization_groups WHERE code='CMC'")).rows[0].id;
+ const dept=(await pool.query("INSERT INTO departments(code,name) VALUES('ADMS_TEST','ADMS Test Department') ON CONFLICT(code) DO UPDATE SET name=excluded.name RETURNING id")).rows[0].id;
+ await pool.query("INSERT INTO department_organization_mappings(department_id,group_id,approval_reference) VALUES($1,$2,'ADMS integration test') ON CONFLICT(department_id) DO NOTHING",[dept,gid]);
+ await pool.query("INSERT INTO employees(employee_number,full_name,department_id) VALUES('9900122','ADMS test employee',$1) ON CONFLICT(employee_number) DO UPDATE SET department_id=excluded.department_id",[dept]);
+ const dev=(await pool.query("INSERT INTO attendance_devices(code,name,ip,group_id,serial_number,connection_type,status) VALUES('adms-e2e','ADMS E2E','192.0.2.80',$1,'GSY1254900014','Ethernet','DISCONNECTED') ON CONFLICT(code) DO UPDATE SET group_id=excluded.group_id,serial_number=excluded.serial_number,connection_type='Ethernet',status='DISCONNECTED' RETURNING id",[gid])).rows[0].id;
+ const runtimeUrl=new URL(url);runtimeUrl.username='adms_backend_runtime';runtimeUrl.password='adms-runtime-test-only';
+ const runtime=makePool(runtimeUrl.toString());t.after(()=>runtime.end());const store=new Store(runtime);
+ const publicSnapshot=async()=>JSON.stringify((await pool.query(`SELECT (SELECT jsonb_agg(to_jsonb(d) ORDER BY id) FROM attendance_devices d) AS devices,(SELECT count(*) FROM attendance_device_raw_logs) AS raw_count,(SELECT count(*) FROM attendance_device_sync_logs) AS sync_count`)).rows);
+ const before=await publicSnapshot();
+ await store.register({serial:'GSY1254900014',deviceId:dev,network:'127.0.0.1/32'});
+ await store.touch('GSY1254900014','127.0.0.1');
+ await store.receive({serial:'GSY1254900014',ip:'127.0.0.1',table:'ATTLOG',stamp:'300',payload:Buffer.from('9900122\t2026-10-30 07:55:00\t0\t15')});
+ const scope={module:'hr',groupIds:[Number(gid)],selectedGroupId:Number(gid),includeUnmapped:false};
+ const call=async(handler,req={})=>{
+  let body,status=200;const res={status(s){status=s;return this;},json(b){body=b;return this;}};
+  await handler({organizationScope:scope,query:{},body:{},params:{id:dev},...req},res);return {status,body};
+ };
+ await t.test('real raw log handler does not expose review rows as attendance',async()=>{
+  const logs=await call(handlers.getRawAttendanceLogsHandler,{query:{deviceId:dev}});
+  assert.equal(logs.status,200,JSON.stringify(logs.body));
+  assert.equal(JSON.stringify(logs.body).includes('9900122'),false);
+  assert.equal(await publicSnapshot(),before);
+  assert.equal((await store.status()).find(d=>d.device_id===dev).online,true);
+ });
+ await t.test('CLI dry-run and repeated committed imports preserve public tables and main device',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'adms-import-'));t.after(()=>rm(dir,{recursive:true,force:true}));
+  const file=join(dir,'history.tsv');await writeFile(file,'9900122\t2026-10-30 07:55:00\t0\t15\n9900122\t2026-10-30 17:05:00\t1\t15\n');
+  const run=promisify(execFile),cli=new URL('../src/cli.mjs',import.meta.url).pathname;
+  const receipts=(await pool.query('SELECT count(*) FROM adms.receipts')).rows[0].count;
+  const dry=await run(process.execPath,[cli,'import','--serial','GSY1254900014','--file',file]);
+  assert.equal(JSON.parse(dry.stdout.trim()).dryRun,true);
+  assert.equal((await pool.query('SELECT count(*) FROM adms.receipts')).rows[0].count,receipts);
+  const options={env:{...process.env,DATABASE_URL:runtimeUrl.toString()}};
+  await run(process.execPath,[cli,'import','--serial','GSY1254900014','--file',file,'--commit'],options);
+  const again=await run(process.execPath,[cli,'import','--serial','GSY1254900014','--file',file,'--commit'],options);
+  assert.equal(JSON.parse(again.stdout.trim().split('\n').at(-1)).inserted,0);
+  await run(process.execPath,[cli,'backfill-review','--serial','GSY1254900014'],options);
+  assert.equal((await pool.query('SELECT count(*) FROM adms.review_logs WHERE serial=$1',['GSY1254900014'])).rows[0].count,'2');
+  assert.equal((await pool.query('SELECT attlog_stamp FROM adms.devices WHERE device_id=$1',[dev])).rows[0].attlog_stamp,'300');
+  assert.equal(await publicSnapshot(),before);
+ });
+ await t.test('normal TCP pull remains available and writes main attendance independently',async()=>{
+  const origConnect=attendanceDeviceSessionManager.connect,origFetch=attendanceDeviceSessionManager.fetchAttendanceLogs;
+  attendanceDeviceSessionManager.connect=async()=>({status:'CONNECTED'});
+  attendanceDeviceSessionManager.fetchAttendanceLogs=async()=>[{pin:'9900122',timestamp:'2026-10-30 07:55:00',workDate:'2026-10-30',rawStatus:0,rawVerify:15,verifyMode:'Face',inOutState:'Masuk'}];
+  const reviewBefore=JSON.stringify((await pool.query('SELECT * FROM adms.review_logs ORDER BY id')).rows);
+  try {
+   const r=await call(handlers.syncAttendanceDeviceHandler,{body:{startDate:'2026-10-30',endDate:'2026-10-30',overwriteExisting:false}});
+   assert.equal(r.status,200,JSON.stringify(r.body));assert.equal(r.body.data.totalProcessed,1);
+   assert.equal((await pool.query('SELECT count(*) FROM attendance_device_raw_logs WHERE device_id=$1',[dev])).rows[0].count,'1');
+   assert.equal(JSON.stringify((await pool.query('SELECT * FROM adms.review_logs ORDER BY id')).rows),reviewBefore);
+   const repeat=await call(handlers.syncAttendanceDeviceHandler,{body:{startDate:'2026-10-30',endDate:'2026-10-30',overwriteExisting:false}});
+   assert.equal(repeat.status,200,JSON.stringify(repeat.body));assert.equal(repeat.body.data.totalProcessed,0);
+  }finally{attendanceDeviceSessionManager.connect=origConnect;attendanceDeviceSessionManager.fetchAttendanceLogs=origFetch;}
+ });
+});
