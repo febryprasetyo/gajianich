@@ -56,6 +56,9 @@ test('HTTP scope combines current permission and membership, validates write des
   assert.equal((await api('/scope',String(cmc),{groupId:mgm})).status,400);
   await db.insert(userOrganizationGroupAccess).values({userId:user.id,groupId:mgm});
   assert.equal((await api('/scope',undefined,{})).status,400);
+  const bodyFallbackResult = await api('/scope',undefined,{groupId:mgm});
+  assert.equal(bodyFallbackResult.status,200);
+  assert.equal((await bodyFallbackResult.json()).selectedGroupId,mgm);
   result = await api('/scope',String(mgm),{groupId:mgm});
   assert.equal(result.status,200);
   assert.equal((await result.json()).selectedGroupId,mgm);

@@ -4,6 +4,7 @@ import {
   calculateAttendanceFromPunches,
   extractTimeHHmm,
   parseMinutesFromTime,
+  mergeAttendanceScans,
 } from "./attendanceCalculationService";
 import type { WorkShift, ShiftAssignment } from "../domain/attendanceTypes";
 
@@ -122,4 +123,95 @@ test("calculateAttendanceFromPunches processes unassigned under default if reque
   assert.strictEqual(result.totalProcessed, 1);
   assert.strictEqual(result.totalUnassigned, 0);
   assert.strictEqual(result.processedRecords[0].shiftCode, "OFFICE");
+});
+
+test("mergeAttendanceScans connects mobile IN and machine OUT seamlessly", () => {
+  // Scenario: Employee clocked in on mobile at 08:00, then punched out on physical machine at 17:05
+  const previousMobileRecord = {
+    scanIn: "08:00",
+    scanOut: null,
+    scheduleIn: "08:00",
+    scheduleOut: "17:00",
+    attendanceStatus: "PRESENT",
+  };
+  const machineCalculation = {
+    scanIn: "17:05", // Single machine punch in the afternoon
+    scanOut: null,
+    scheduleIn: "08:00",
+    scheduleOut: "17:00",
+    attendanceStatus: "PRESENT",
+  };
+
+  const merged = mergeAttendanceScans(previousMobileRecord, machineCalculation);
+
+  assert.strictEqual(merged.scanIn, "08:00");
+  assert.strictEqual(merged.scanOut, "17:05");
+  assert.strictEqual(merged.lateMinutes, 0);
+  assert.strictEqual(merged.earlyMinutes, 0);
+  assert.strictEqual(merged.attendanceStatus, "PRESENT");
+});
+
+test("mergeAttendanceScans preserves mobile OUT when machine calculation processes morning IN", () => {
+  // Scenario: Machine IN 07:55, Mobile OUT 17:15
+  const previousMobileRecord = {
+    scanIn: null,
+    scanOut: "17:15",
+    scheduleIn: "08:00",
+    scheduleOut: "17:00",
+    attendanceStatus: "PRESENT",
+  };
+  const machineCalculation = {
+    scanIn: "07:55",
+    scanOut: null,
+    scheduleIn: "08:00",
+    scheduleOut: "17:00",
+    attendanceStatus: "PRESENT",
+  };
+
+  const merged = mergeAttendanceScans(previousMobileRecord, machineCalculation);
+
+  assert.strictEqual(merged.scanIn, "07:55");
+  assert.strictEqual(merged.scanOut, "17:15");
+  assert.strictEqual(merged.lateMinutes, 0);
+  assert.strictEqual(merged.earlyMinutes, 0);
+});
+
+test("mergeAttendanceScans correctly computes late minutes from mobile IN with machine OUT", () => {
+  // Scenario: Mobile IN 08:25 (tardy 25 mins), Machine OUT 17:00
+  const previousMobileRecord = {
+    scanIn: "08:25",
+    scanOut: null,
+    scheduleIn: "08:00",
+    scheduleOut: "17:00",
+  };
+  const machineCalculation = {
+    scanIn: "17:00",
+    scanOut: null,
+    scheduleIn: "08:00",
+    scheduleOut: "17:00",
+  };
+
+  const merged = mergeAttendanceScans(previousMobileRecord, machineCalculation);
+
+  assert.strictEqual(merged.scanIn, "08:25");
+  assert.strictEqual(merged.scanOut, "17:00");
+  assert.strictEqual(merged.lateMinutes, 25);
+  assert.strictEqual(merged.earlyMinutes, 0);
+});
+
+test("mergeAttendanceScans preserves machine scans when no previous mobile record exists", () => {
+  const machineCalculation = {
+    scanIn: "07:50",
+    scanOut: "17:10",
+    scheduleIn: "08:00",
+    scheduleOut: "17:00",
+    attendanceStatus: "PRESENT",
+  };
+
+  const merged = mergeAttendanceScans(null, machineCalculation);
+
+  assert.strictEqual(merged.scanIn, "07:50");
+  assert.strictEqual(merged.scanOut, "17:10");
+  assert.strictEqual(merged.lateMinutes, 0);
+  assert.strictEqual(merged.earlyMinutes, 0);
 });

@@ -9,6 +9,7 @@ import { ScanFace, CheckCircle2, XCircle, Search, AlertCircle, Loader2, Clock, S
 
 interface FaceRequest {
   id: number;
+  groupId?: number | null;
   employeeName: string;
   employeeCode: string;
   photoUrl: string;
@@ -68,7 +69,8 @@ export default function FaceApprovalsPage() {
     try {
       await apiFetch(`/attendance/mobile/face-requests/${selected.id}/review`, {
         method: 'POST',
-        body: JSON.stringify({ status: decision, note: note.trim() }),
+        headers: selected.groupId ? { 'X-Organization-Group-Id': String(selected.groupId) } : undefined,
+        body: JSON.stringify({ groupId: selected.groupId, status: decision, note: note.trim() }),
       });
       setMessage(`Permohonan foto wajah ${selected.employeeName} berhasil ${decision === 'APPROVED' ? 'disetujui' : 'ditolak'}.`);
       setSelected(null);

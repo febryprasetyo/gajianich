@@ -32,7 +32,23 @@ router.put('/approval-settings/:id', review, requireOrganizationScope('hr','writ
   res.json({ success: true, data: shift });
 }));
 router.get('/face-requests', review, requireOrganizationScope('hr','read'),handle(async (req, res) => { res.json({ data: await listFaceRequests(db,requireHrScope(req as any)) }); }));
-router.post('/face-requests/:id/review', review, requireOrganizationScope('hr','write'), handle(async (req, res) => {
+router.post('/face-requests/:id/review', review, async (req, _res, next) => {
+  try {
+    if (!req.headers['x-organization-group-id'] && !req.body?.groupId && req.params?.id) {
+      const id = Number(req.params.id);
+      if (Number.isSafeInteger(id) && id > 0) {
+        const [row] = await db
+          .select({ groupId: attendanceFaceRequests.groupId })
+          .from(attendanceFaceRequests)
+          .where(eq(attendanceFaceRequests.id, id));
+        if (row?.groupId) {
+          req.headers['x-organization-group-id'] = String(row.groupId);
+        }
+      }
+    }
+  } catch {}
+  next();
+}, requireOrganizationScope('hr','write'), handle(async (req, res) => {
   const id = z.coerce.number().int().positive().parse(req.params.id);
   const data = z.object({ status: z.enum(['APPROVED','REJECTED']), note: z.string().max(2000).default('') }).parse(req.body);
   res.json(await verifyFaceRequest(req.user!.userId, id, data.status, data.note,db,requireHrScope(req as any)));

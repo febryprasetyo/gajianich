@@ -194,6 +194,50 @@ test('mobile approvals preserve original evidence and project only approved scan
     assert.equal(recordAfter.sourceBatchId, 1);
   });
 
+  await t.test('hybrid linking: machine IN and mobile OUT seamlessly connect on same workDate', async () => {
+    const hybridDate = '2026-04-20';
+    const [machineRecord] = await database.insert(attendanceRecords).values({
+      employeeId: employee.id,
+      workDate: hybridDate,
+      scanIn: '07:55',
+      rawScanIn: '07:55',
+      scanOut: null,
+      rawScanOut: null,
+      scheduleIn: '08:00',
+      scheduleOut: '17:00',
+      shift: 'OFFICE',
+      sourceBatchId: 1,
+      attendanceStatus: 'PRESENT',
+    }).returning();
+
+    const [mobileOutLog] = await database.insert(attendanceSelfLogs).values({
+      employeeId: employee.id,
+      userId: user.id,
+      eventType: 'OUT',
+      workDate: hybridDate,
+      scanDate: hybridDate,
+      scanTime: '17:10',
+      shiftCode: 'OFFICE',
+      shiftCategory: 'OFFICE',
+      timeZone: 'Asia/Jayapura',
+      scheduleIn: '08:00',
+      scheduleOut: '17:00',
+      txHash: 'test-hybrid-out',
+      approvalStatus: 'PENDING',
+      occurredAt: new Date(),
+    }).returning();
+
+    // Verify mobile OUT approval succeeds without throwing conflict error
+    await verifyAttendanceRecord(user.id, { logId: mobileOutLog.id, status: 'APPROVED' }, database as any);
+
+    const [updatedRecord] = await database.select().from(attendanceRecords).where(eq(attendanceRecords.id, machineRecord.id));
+    assert.equal(updatedRecord.scanIn, '07:55');
+    assert.equal(updatedRecord.scanOut, '17:10');
+    assert.equal(updatedRecord.lateMinutes, 0);
+    assert.equal(updatedRecord.earlyMinutes, 0);
+    assert.equal(updatedRecord.overtimeMinutes, 10);
+  });
+
   await t.test('old pending requests stay visible after more than 500 processed requests', async () => {
     const [pendingLog] = await database.insert(attendanceSelfLogs).values({ employeeId: employee.id, eventType: 'IN', workDate: '2000-01-01', scanTime: '08:00', shiftCode: 'OFFICE', shiftCategory: 'OFFICE', txHash: 'old-pending', approvalStatus: 'PENDING' }).returning();
     const [pendingPhoto] = await database.insert(attendanceFaceRequests).values({ employeeId: employee.id, descriptor: '[0.1]', photoUrl: 'pending-photo' }).returning();

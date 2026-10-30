@@ -69,8 +69,10 @@ export default function MobileApprovalsPage() {
     try {
       await apiFetch('/attendance/mobile/verify', {
         method: 'POST',
+        headers: selected.groupId ? { 'X-Organization-Group-Id': String(selected.groupId) } : undefined,
         body: JSON.stringify({
           logId: selected.id,
+          groupId: selected.groupId,
           status: decision,
           note: note.trim() || undefined,
         }),

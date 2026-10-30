@@ -22,8 +22,10 @@ test('HR database boundaries preserve historical owners and deny direct foreign 
  const fixture=await createHrAuditTestDatabase();t.after(()=>fixture.cleanup());
  await runMigrations(fixture.ownerUrl,path.resolve(__dirname,'../../drizzle'),fixture.runtimeRole);
  const database=drizzle(fixture.owner);
- const groups=await database.insert(organizationGroups).values([{code:'CMC',name:'CMC'},{code:'MGM',name:'MGM'}]).returning();
- const [cmc,mgm]=groups;
+ await database.insert(organizationGroups).values([{code:'CMC',name:'CMC'},{code:'MGM',name:'MGM'}]).onConflictDoNothing();
+ const allGroups = await database.select().from(organizationGroups);
+ const cmc = allGroups.find(g => g.code === 'CMC')!;
+ const mgm = allGroups.find(g => g.code === 'MGM')!;
  const [deptA,deptB]=await database.insert(departments).values([{code:'C',name:'CMC Dept'},{code:'M',name:'MGM Dept'}]).returning();
  await database.insert(departmentOrganizationMappings).values([{departmentId:deptA.id,groupId:cmc.id,approvalReference:'fixture'},{departmentId:deptB.id,groupId:mgm.id,approvalReference:'fixture'}]);
  const [alice,bob,unknown]=await database.insert(employees).values([{employeeCode:'A',fullName:'Alice',departmentId:deptA.id},{employeeCode:'B',fullName:'Bob',departmentId:deptB.id},{employeeCode:'U',fullName:'Unknown'}]).returning();

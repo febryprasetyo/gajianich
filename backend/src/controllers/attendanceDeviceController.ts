@@ -19,6 +19,8 @@ import { attendanceDeviceSessionManager } from "../services/zk/zkSessionManager"
 import {
   calculateAttendanceFromPunches,
   RawPunchInput,
+  parseMinutesFromTime,
+  mergeAttendanceScans,
 } from "../services/attendanceCalculationService";
 import { resolveImportEmployee } from "../domain/attendanceImportMapping";
 
@@ -652,6 +654,17 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
             )
           );
         if (previous && previous.groupId !== owner.groupId) continue;
+
+        const effectiveScheduleIn = previous?.scheduleIn || rec.scheduleIn || '08:00';
+        const effectiveScheduleOut = previous?.scheduleOut || rec.scheduleOut || '17:00';
+        const merged = mergeAttendanceScans(previous, {
+          scanIn: rec.scanIn,
+          scanOut: rec.scanOut,
+          scheduleIn: effectiveScheduleIn,
+          scheduleOut: effectiveScheduleOut,
+          attendanceStatus: rec.attendanceStatus,
+        });
+
         await db
           .insert(attendanceRecords)
           .values({
@@ -659,26 +672,30 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
             organizationId: owner.organizationId,
             employeeId: rec.employeeId,
             workDate: rec.workDate,
-            shift: rec.shiftName,
-            scheduleIn: rec.scheduleIn,
-            scheduleOut: rec.scheduleOut,
-            scanIn: rec.scanIn,
-            scanOut: rec.scanOut,
-            lateMinutes: rec.lateMinutes,
-            earlyMinutes: rec.earlyMinutes,
-            attendanceStatus: rec.attendanceStatus,
+            shift: rec.shiftName || previous?.shift,
+            scheduleIn: effectiveScheduleIn,
+            scheduleOut: effectiveScheduleOut,
+            scanIn: merged.scanIn,
+            scanOut: merged.scanOut,
+            rawScanIn: merged.scanIn,
+            rawScanOut: merged.scanOut,
+            lateMinutes: merged.lateMinutes,
+            earlyMinutes: merged.earlyMinutes,
+            attendanceStatus: merged.attendanceStatus,
           })
           .onConflictDoUpdate({
             target: [attendanceRecords.employeeId, attendanceRecords.workDate],
             set: {
-              shift: rec.shiftName,
-              scheduleIn: rec.scheduleIn,
-              scheduleOut: rec.scheduleOut,
-              scanIn: rec.scanIn,
-              scanOut: rec.scanOut,
-              lateMinutes: rec.lateMinutes,
-              earlyMinutes: rec.earlyMinutes,
-              attendanceStatus: rec.attendanceStatus,
+              shift: rec.shiftName || previous?.shift,
+              scheduleIn: effectiveScheduleIn,
+              scheduleOut: effectiveScheduleOut,
+              scanIn: merged.scanIn,
+              scanOut: merged.scanOut,
+              rawScanIn: merged.scanIn,
+              rawScanOut: merged.scanOut,
+              lateMinutes: merged.lateMinutes,
+              earlyMinutes: merged.earlyMinutes,
+              attendanceStatus: merged.attendanceStatus,
               updatedAt: new Date(),
             },
           });

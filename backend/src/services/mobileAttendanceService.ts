@@ -143,22 +143,46 @@ export async function projectApprovedLog(tx: any, log: SelfLog) {
       if (log.eventType === "IN") {
         throw new Error("Konflik: Presensi masuk independen (mesin/impor/manual) sudah tercatat untuk tanggal ini.");
       }
-      throw new Error("Konflik: Record absensi pada tanggal ini milik mesin/impor/manual dan tidak dapat ditimpa.");
+      // For log.eventType === "OUT", hybrid linking connects mobile checkout to existing machine/imported check-in
     }
   }
   const existing = storedRecord ? approvedMobileRecord(storedRecord, all) : null;
   const hasPendingIn = all.some(l => l.eventType === "IN" && l.approvalStatus === "PENDING");
   const isDirectOut = Boolean(outLog && (outLog.notes?.includes("[DIRECT_OUT]") || !all.some(l => l.eventType === "IN")));
-  if (!inLog && !existing?.scanIn && (!isDirectOut || hasPendingIn)) return;
-  const scanIn = inLog?.scanTime || existing?.scanIn || null;
-  const scanOut = outLog?.scanTime || existing?.scanOut || null;
-  const scheduleIn = log.scheduleIn || existing?.scheduleIn || '08:00';
-  const scheduleOut = log.scheduleOut || existing?.scheduleOut || '17:00';
+  if (!inLog && !existing?.scanIn && !storedRecord?.scanIn && (!isDirectOut || hasPendingIn)) return;
+  const scanIn = inLog?.scanTime || existing?.scanIn || storedRecord?.scanIn || null;
+  const scanOut = outLog?.scanTime || existing?.scanOut || storedRecord?.scanOut || null;
+  const rawScanIn = inLog?.scanTime || existing?.rawScanIn || storedRecord?.rawScanIn || storedRecord?.scanIn || null;
+  const rawScanOut = outLog?.scanTime || existing?.rawScanOut || storedRecord?.rawScanOut || storedRecord?.scanOut || null;
+  const scheduleIn = log.scheduleIn || existing?.scheduleIn || storedRecord?.scheduleIn || '08:00';
+  const scheduleOut = log.scheduleOut || existing?.scheduleOut || storedRecord?.scheduleOut || '17:00';
+  const shift = log.shiftCode || existing?.shift || storedRecord?.shift || 'OFFICE';
   const offset = outLog?.scanDate ? Math.round((Date.parse(outLog.scanDate) - Date.parse(log.workDate)) / 86400_000) : 0;
-  const values = { scanIn, scanOut, rawScanIn: scanIn, rawScanOut: scanOut, scheduleIn, scheduleOut, shift: log.shiftCode,
-    ...attendanceMetrics(scheduleIn, scheduleOut, scanIn, scanOut, offset), attendanceStatus: approved.some(l => !l.isWithinGeofence) ? 'DINAS_LUAR' : 'PRESENT', updatedAt: new Date() };
-  await tx.insert(attendanceRecords).values({ groupId:log.groupId, employeeId: log.employeeId, workDate: log.workDate, ...values })
-    .onConflictDoUpdate({ target: [attendanceRecords.employeeId, attendanceRecords.workDate], set: { ...values, revision: sql`${attendanceRecords.revision} + 1` } });
+  const values = {
+    scanIn,
+    scanOut,
+    rawScanIn,
+    rawScanOut,
+    scheduleIn,
+    scheduleOut,
+    shift,
+    ...attendanceMetrics(scheduleIn, scheduleOut, scanIn, scanOut, offset),
+    attendanceStatus: approved.some(l => !l.isWithinGeofence) ? 'DINAS_LUAR' : (storedRecord?.attendanceStatus || 'PRESENT'),
+    updatedAt: new Date()
+  };
+  await tx.insert(attendanceRecords).values({
+    groupId: log.groupId,
+    organizationId: storedRecord?.organizationId,
+    employeeId: log.employeeId,
+    workDate: log.workDate,
+    ...values
+  }).onConflictDoUpdate({
+    target: [attendanceRecords.employeeId, attendanceRecords.workDate],
+    set: {
+      ...values,
+      revision: sql`${attendanceRecords.revision} + 1`
+    }
+  });
 }
 export interface MobileClockInput {
   eventType: 'IN' | 'OUT';
@@ -207,7 +231,7 @@ export async function recordMobileClock(userId: number, payload: MobileClockInpu
         if (payload.eventType !== 'OUT') throw new Error('isDirectOut hanya berlaku untuk event OUT.');
         if (!payload.notes || payload.notes.trim().length < 3) throw new Error('Keterangan wajib diisi untuk absensi pulang tanpa jam masuk.');
       }
-      if (payload.eventType === 'OUT' && !entry && !payload.isDirectOut) throw new Error('Belum melakukan presensi masuk.');
+      if (payload.eventType === 'OUT' && !entry && !existingRecord?.scanIn && !payload.isDirectOut) throw new Error('Belum melakukan presensi masuk.');
       if (payload.eventType === 'IN' && entry && !logs.some(l => l.workDate === entry.workDate && l.eventType === 'OUT')) throw new Error('Selesaikan presensi pulang shift sebelumnya terlebih dahulu.');
       const { shift, approvalShift } = await shiftForEmployee(employee, tx);
       const daily = getWorkingScheduleForDate(workDate, shift);
@@ -224,8 +248,8 @@ export async function recordMobileClock(userId: number, payload: MobileClockInpu
       const geo = isWithinGeofence(payload.latitude, payload.longitude, DEFAULT_OFFICE_COORDINATES.latitude, DEFAULT_OFFICE_COORDINATES.longitude, DEFAULT_OFFICE_COORDINATES.radiusMeters);
       const links = buildMapLinks(payload.latitude!, payload.longitude!);
       const [log] = await tx.insert(attendanceSelfLogs).values({ groupId:employee.groupId,employeeId: employee.id, userId: user.id, eventType: payload.eventType, workDate, scanDate: local.workDate, scanTime: local.scanTime, timeZone: zone, occurredAt: now,
-        scheduleIn: entry && payload.eventType === 'OUT' ? entry.scheduleIn : daily.scheduleIn, scheduleOut: entry && payload.eventType === 'OUT' ? entry.scheduleOut : daily.scheduleOut,
-        shiftCode: entry && payload.eventType === 'OUT' ? entry.shiftCode : shift.code, shiftCategory: determineShiftCategory(shift),
+        scheduleIn: entry && payload.eventType === 'OUT' ? entry.scheduleIn : (existingRecord?.scheduleIn || daily.scheduleIn), scheduleOut: entry && payload.eventType === 'OUT' ? entry.scheduleOut : (existingRecord?.scheduleOut || daily.scheduleOut),
+        shiftCode: entry && payload.eventType === 'OUT' ? entry.shiftCode : (existingRecord?.shift || shift.code), shiftCategory: determineShiftCategory(shift),
         latitude: String(payload.latitude), longitude: String(payload.longitude), accuracy: payload.accuracy == null ? null : Math.round(payload.accuracy), address: payload.address || null,
         mapUrl: links.osmUrl, googleMapsUrl: links.googleMapsUrl, isWithinGeofence: geo.isWithin, distanceMeters: geo.distanceMeters,
         photoUrl: photoPath, txHash: hash, deviceInfo: payload.deviceInfo, notes: finalNotes, ...approval,
@@ -257,6 +281,10 @@ export async function getMobileTodaySummary(userId: number, targetDb = db) {
   const workDate = open ? entry.workDate : today;
   const current = logs.filter(l => l.workDate === workDate);
   const { inLog, outLog } = resolveFirstInLastOutLogs(current);
+  const [existingRecord] = await targetDb
+    .select()
+    .from(attendanceRecords)
+    .where(and(eq(attendanceRecords.employeeId, employee.id), eq(attendanceRecords.workDate, workDate)));
   const { shift } = await shiftForEmployee(employee, targetDb);
   const daily = getWorkingScheduleForDate(workDate, shift);
   const face = await getFaceProfile(userId, targetDb);
@@ -267,18 +295,58 @@ export async function getMobileTodaySummary(userId: number, targetDb = db) {
   const currentLocal = localAttendanceTime(new Date(), zone);
   const currentMinutes = minuteValue(currentLocal.scanTime);
   const isLateAfternoon = currentMinutes >= thresholdMinutes;
-  const canDirectOut = !inLog && !outLog && isLateAfternoon;
-  const elapsedSinceIn = inLog?.occurredAt ? Math.floor((new Date().getTime() - inLog.occurredAt.getTime()) / 60000) : null;
-  const isCheckoutCooldown = elapsedSinceIn !== null && elapsedSinceIn < MIN_CHECKOUT_INTERVAL_MINUTES;
+  const canDirectOut = !inLog && !outLog && !existingRecord?.scanIn && isLateAfternoon;
+
+  const hasCheckedIn = Boolean(inLog || existingRecord?.scanIn);
+  const effectiveCheckInTime = inLog?.scanTime || existingRecord?.scanIn || null;
+  const hasCheckedOut = Boolean(outLog || existingRecord?.scanOut);
+  const effectiveCheckOutTime = outLog?.scanTime || existingRecord?.scanOut || null;
+
+  let elapsedSinceIn = inLog?.occurredAt ? Math.floor((new Date().getTime() - inLog.occurredAt.getTime()) / 60000) : null;
+  if (elapsedSinceIn === null && existingRecord?.scanIn) {
+    const [h, m] = existingRecord.scanIn.split(':').map(Number);
+    if (Number.isSafeInteger(h) && Number.isSafeInteger(m)) {
+      const inDate = new Date();
+      inDate.setHours(h, m, 0, 0);
+      elapsedSinceIn = Math.floor((new Date().getTime() - inDate.getTime()) / 60000);
+    }
+  }
+
+  const isCheckoutCooldown = elapsedSinceIn !== null && elapsedSinceIn >= 0 && elapsedSinceIn < MIN_CHECKOUT_INTERVAL_MINUTES;
   const cooldownRemainingMinutes = isCheckoutCooldown ? Math.max(1, MIN_CHECKOUT_INTERVAL_MINUTES - elapsedSinceIn!) : 0;
+
+  const totalHours = hasCheckedIn && hasCheckedOut
+    ? (inLog?.approvalStatus === 'APPROVED' && outLog?.approvalStatus === 'APPROVED'
+      ? formatDurationMinutes(Math.floor((outLog.occurredAt.getTime() - inLog.occurredAt.getTime()) / 60000))
+      : computeRecordDuration(effectiveCheckInTime, effectiveCheckOutTime))
+    : '--:--';
+
+  const status = hasCheckedOut ? 'COMPLETED' : hasCheckedIn ? 'CHECKED_IN' : 'NOT_CHECKED_IN';
 
   return {
     employee: { ...employee, position: employee.position || 'Staff', department: employee.departmentName || '-', workLocation: employee.locationName || '', avatarInitial: employee.fullName.split(' ').slice(0,2).map(n => n[0]).join('') },
     shift: { ...shift, category: determineShiftCategory(shift), ...daily, officeLatitude: DEFAULT_OFFICE_COORDINATES.latitude, officeLongitude: DEFAULT_OFFICE_COORDINATES.longitude, geofenceRadiusMeters: 100 },
-    attendance: { workDate, checkedIn: !!inLog, checkedOut: !!outLog, checkInTime: inLog?.scanTime || null, checkOutTime: outLog?.scanTime || null,
-      totalHours: inLog?.approvalStatus === 'APPROVED' && outLog?.approvalStatus === 'APPROVED' ? formatDurationMinutes(Math.floor((outLog.occurredAt.getTime() - inLog.occurredAt.getTime()) / 60000)) : '--:--',
-      status: outLog ? 'COMPLETED' : inLog ? 'CHECKED_IN' : 'NOT_CHECKED_IN', approvalStatus: approval.status, approvalNote: approval.note, txHash: current[0]?.txHash || null, timeZone: zone, timeZoneLabel: entry ? zoneLabels[zone] : 'waktu lokal', events: current.map(publicLog),
-      isLateAfternoon, strictClock, isCheckoutCooldown, cooldownRemainingMinutes, checkInOccurredAt: inLog?.occurredAt ? inLog.occurredAt.toISOString() : null, shiftWindow: { scheduleIn: daily.scheduleIn, scheduleOut: daily.scheduleOut, canDirectOut } },
+    attendance: {
+      workDate,
+      checkedIn: hasCheckedIn,
+      checkedOut: hasCheckedOut,
+      checkInTime: effectiveCheckInTime,
+      checkOutTime: effectiveCheckOutTime,
+      totalHours,
+      status,
+      approvalStatus: approval.status,
+      approvalNote: current.length ? approval.note : (existingRecord?.scanIn ? 'Tercatat di sistem.' : approval.note),
+      txHash: current[0]?.txHash || (existingRecord ? `REC-${existingRecord.id}` : null),
+      timeZone: zone,
+      timeZoneLabel: entry ? zoneLabels[zone] : 'waktu lokal',
+      events: current.map(publicLog),
+      isLateAfternoon,
+      strictClock,
+      isCheckoutCooldown,
+      cooldownRemainingMinutes,
+      checkInOccurredAt: inLog?.occurredAt ? inLog.occurredAt.toISOString() : null,
+      shiftWindow: { scheduleIn: daily.scheduleIn, scheduleOut: daily.scheduleOut, canDirectOut }
+    },
     faceEnrollment: { isFaceEnrolled: face.data.isEnrolled, faceId: face.data.isEnrolled ? `BIO-${employee.id}` : null, changeStatus: face.data.changeStatus, changeNote: face.data.changeNote },
   };
 }
@@ -371,7 +439,7 @@ export async function correctMobileAttendance(userId: number, logId: number, not
 }
 export async function listFaceRequests(targetDb = db, scope?: RequestScope) {
   scope = requireHrScope({organizationScope:scope});
-  return targetDb.select({ id: attendanceFaceRequests.id, employeeName: employees.fullName, employeeCode: employees.employeeCode, oldPhotoUrl: attendanceFaceRequests.oldPhotoUrl, photoUrl: attendanceFaceRequests.photoUrl, status: attendanceFaceRequests.status, note: attendanceFaceRequests.note, createdAt: attendanceFaceRequests.createdAt, verifiedAt: attendanceFaceRequests.verifiedAt, verifiedById: attendanceFaceRequests.verifiedById }).from(attendanceFaceRequests).leftJoin(employees, eq(employees.id, attendanceFaceRequests.employeeId)).where(historicalScopePredicate(scope,attendanceFaceRequests.groupId)).orderBy(desc(attendanceFaceRequests.id));
+  return targetDb.select({ id: attendanceFaceRequests.id, groupId: attendanceFaceRequests.groupId, employeeName: employees.fullName, employeeCode: employees.employeeCode, oldPhotoUrl: attendanceFaceRequests.oldPhotoUrl, photoUrl: attendanceFaceRequests.photoUrl, status: attendanceFaceRequests.status, note: attendanceFaceRequests.note, createdAt: attendanceFaceRequests.createdAt, verifiedAt: attendanceFaceRequests.verifiedAt, verifiedById: attendanceFaceRequests.verifiedById }).from(attendanceFaceRequests).leftJoin(employees, eq(employees.id, attendanceFaceRequests.employeeId)).where(historicalScopePredicate(scope,attendanceFaceRequests.groupId)).orderBy(desc(attendanceFaceRequests.id));
 }
 export async function verifyFaceRequest(userId: number, id: number, status: 'APPROVED' | 'REJECTED', note: string, targetDb = db, scope?: RequestScope) {
   scope = requireHrScope({organizationScope:scope});

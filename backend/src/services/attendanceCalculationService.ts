@@ -200,3 +200,67 @@ export function calculateAttendanceFromPunches(
     totalUnassigned: unassignedShiftRecords.length,
   };
 }
+
+export function mergeAttendanceScans(
+  previous: { scanIn?: string | null; scanOut?: string | null; scheduleIn?: string | null; scheduleOut?: string | null; attendanceStatus?: string | null } | null | undefined,
+  calculated: { scanIn?: string | null; scanOut?: string | null; scheduleIn?: string | null; scheduleOut?: string | null; attendanceStatus?: string | null }
+): {
+  scanIn: string | null;
+  scanOut: string | null;
+  lateMinutes: number;
+  earlyMinutes: number;
+  attendanceStatus: string;
+} {
+  let finalScanIn = calculated.scanIn || null;
+  let finalScanOut = calculated.scanOut || null;
+  const effectiveScheduleIn = previous?.scheduleIn || calculated.scheduleIn || '08:00';
+  const effectiveScheduleOut = previous?.scheduleOut || calculated.scheduleOut || '17:00';
+
+  if (previous?.scanIn) {
+    if (!calculated.scanOut && calculated.scanIn) {
+      if (calculated.scanIn > previous.scanIn) {
+        finalScanIn = previous.scanIn;
+        finalScanOut = calculated.scanIn;
+      } else {
+        finalScanIn = calculated.scanIn;
+        finalScanOut = previous.scanOut || (previous.scanIn !== calculated.scanIn ? previous.scanIn : null);
+      }
+    } else if (calculated.scanIn && calculated.scanOut) {
+      finalScanIn = calculated.scanIn < previous.scanIn ? calculated.scanIn : previous.scanIn;
+      finalScanOut = previous.scanOut && previous.scanOut > calculated.scanOut ? previous.scanOut : calculated.scanOut;
+    } else if (!calculated.scanIn && !calculated.scanOut) {
+      finalScanIn = previous.scanIn;
+      finalScanOut = previous.scanOut || null;
+    }
+  } else if (previous?.scanOut) {
+    if (calculated.scanIn) {
+      if (calculated.scanIn < previous.scanOut) {
+        finalScanIn = calculated.scanIn;
+        finalScanOut = previous.scanOut;
+      } else {
+        finalScanOut = calculated.scanIn;
+      }
+    }
+  }
+
+  const scanInMins = finalScanIn ? parseMinutesFromTime(finalScanIn) : 0;
+  const schedInMins = parseMinutesFromTime(effectiveScheduleIn);
+  const lateMinutes = scanInMins > schedInMins ? scanInMins - schedInMins : 0;
+
+  let earlyMinutes = 0;
+  if (finalScanOut) {
+    const scanOutMins = parseMinutesFromTime(finalScanOut);
+    const schedOutMins = parseMinutesFromTime(effectiveScheduleOut);
+    earlyMinutes = scanOutMins < schedOutMins ? schedOutMins - scanOutMins : 0;
+  }
+
+  const attendanceStatus = (previous?.attendanceStatus === 'DINAS_LUAR' ? 'DINAS_LUAR' : calculated.attendanceStatus) || 'PRESENT';
+
+  return {
+    scanIn: finalScanIn,
+    scanOut: finalScanOut,
+    lateMinutes,
+    earlyMinutes,
+    attendanceStatus,
+  };
+}

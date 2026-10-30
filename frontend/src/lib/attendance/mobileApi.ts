@@ -177,6 +177,7 @@ export async function postEnrollFace(payload: {
 
 export interface MobileAttendanceEvent {
   id: number;
+  groupId?: number | null;
   eventType: 'IN' | 'OUT';
   scanTime: string;
   scanDate: string;

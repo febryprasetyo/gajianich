@@ -17,7 +17,10 @@ export function requireOrganizationScope(module: ScopeModule, mode: 'read' | 'wr
   return async (req: OrganizationScopedRequest, res: Response, next: NextFunction) => {
     if (!req.user) return res.status(401).json({error: 'Unauthorized'});
     try {
-      const selectedGroupId = parseGroupSelection(req.headers['x-organization-group-id']);
+      let selectedGroupId = parseGroupSelection(req.headers['x-organization-group-id']);
+      if (selectedGroupId === null && req.body?.groupId !== undefined) {
+        selectedGroupId = parseGroupSelection(String(req.body.groupId));
+      }
       const access = await loadGroupAccess(req.user.userId);
       const scope = resolveRequestScope({access, module, mode, selectedGroupId});
       if (mode === 'write' && req.body?.groupId !== undefined && req.body.groupId !== scope.selectedGroupId) {
