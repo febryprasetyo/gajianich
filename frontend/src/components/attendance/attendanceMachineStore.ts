@@ -36,6 +36,7 @@ export interface RawAttendanceLog {
   verifyMode: "Fingerprint" | "Face" | "Password" | "Card";
   inOutState: "Masuk" | "Pulang" | "Scan Antara";
   workDate: string; // YYYY-MM-DD
+  source?: string;
 }
 
 export interface ProcessedAttendanceRecord {

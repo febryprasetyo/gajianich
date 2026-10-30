@@ -430,7 +430,7 @@ export async function syncAttendanceDeviceHandler(req: Request, res: Response) {
         workDate: punch.workDate,
         verifyMode: punch.verifyMode,
         inOutState: punch.inOutState,
-        rawPayload: { punch },
+        rawPayload: { punch, source: 'TCP_SYNC' },
       });
     }
 

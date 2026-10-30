@@ -7,6 +7,7 @@ import {
   Search,
   Calendar,
   Cpu,
+  Server,
   Calculator,
   Download,
   Filter,
@@ -31,6 +32,7 @@ export default function AttendanceRawLogsPage() {
   const [endDate, setEndDate] = useState("");
   const [selectedDevice, setSelectedDevice] = useState("all");
   const [selectedState, setSelectedState] = useState<"all" | "Masuk" | "Pulang" | "Scan Antara">("all");
+  const [selectedSource, setSelectedSource] = useState<"all" | "ADMS" | "TCP_SYNC">("all");
   const [isCalculating, setIsCalculating] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -82,6 +84,7 @@ export default function AttendanceRawLogsPage() {
             verifyMode: r.verifyMode,
             inOutState: r.inOutState,
             workDate: r.workDate,
+            source: r.rawSource === "ADMS" ? "ADMS" : "TCP_SYNC",
           };
         });
         setLogs(formatted);
@@ -109,6 +112,7 @@ export default function AttendanceRawLogsPage() {
     setEndDate("");
     setSelectedDevice("all");
     setSelectedState("all");
+    setSelectedSource("all");
     setCurrentPage(1);
   };
 
@@ -119,6 +123,7 @@ export default function AttendanceRawLogsPage() {
       if (endDate && log.workDate > endDate) return false;
       if (selectedDevice !== "all" && String(log.deviceIp) !== selectedDevice) return false;
       if (selectedState !== "all" && log.inOutState !== selectedState) return false;
+      if (selectedSource !== "all" && log.source !== selectedSource) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchName = log.employeeName.toLowerCase().includes(q);
@@ -129,7 +134,7 @@ export default function AttendanceRawLogsPage() {
       }
       return true;
     });
-  }, [logs, startDate, endDate, selectedDevice, selectedState, searchQuery]);
+  }, [logs, startDate, endDate, selectedDevice, selectedState, selectedSource, searchQuery]);
 
   // Pagination slice
   const totalPages = Math.max(1, Math.ceil(filteredLogs.length / pageSize));
@@ -320,6 +325,23 @@ export default function AttendanceRawLogsPage() {
               </select>
             </div>
 
+            {/* Filter Sumber Data */}
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 px-2.5 py-1.5 rounded-xl">
+              <Server className="w-3.5 h-3.5 text-slate-500" />
+              <select
+                value={selectedSource}
+                onChange={(e) => {
+                  setSelectedSource(e.target.value as any);
+                  setCurrentPage(1);
+                }}
+                className="bg-transparent text-xs text-slate-700 cursor-pointer focus:outline-none"
+              >
+                <option value="all">Semua Sumber Log</option>
+                <option value="ADMS">Cloud ADMS (Push)</option>
+                <option value="TCP_SYNC">Tarik Mesin (TCP)</option>
+              </select>
+            </div>
+
             {/* Tombol Reset Filter yang Jelas & Tegas */}
             <button
               type="button"
@@ -351,12 +373,13 @@ export default function AttendanceRawLogsPage() {
                 <th className="py-2.5 px-3">Mesin Presensi</th>
                 <th className="py-2.5 px-3">Metode Verifikasi</th>
                 <th className="py-2.5 px-3">Status Tap</th>
+                <th className="py-2.5 px-3">Sumber Log</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                  <td colSpan={9} className="py-12 text-center text-slate-400">
                     <Loader2 className="w-6 h-6 animate-spin text-emerald-600 mx-auto mb-2" />
                     <p className="text-xs text-slate-500">Memuat data log mentah dari server...</p>
                   </td>
@@ -404,11 +427,24 @@ export default function AttendanceRawLogsPage() {
                         </span>
                       )}
                     </td>
+                    <td className="py-2.5 px-3">
+                      {log.source === "ADMS" ? (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                          Cloud ADMS
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                          Tarik Mesin
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                  <td colSpan={9} className="py-12 text-center text-slate-400">
                     <p className="text-xs font-medium text-slate-600">Tidak ada data presensi yang sesuai dengan filter.</p>
                   </td>
                 </tr>
