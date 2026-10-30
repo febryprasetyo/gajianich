@@ -127,6 +127,7 @@ test('cleanseAndIngestAdmsLogs only ingests mapped employee logs and performs at
   assert.ok(queries.some(q => q.sql === 'BEGIN'));
   assert.ok(queries.some(q => q.sql.includes('INSERT INTO public.attendance_device_raw_logs')));
   assert.ok(queries.some(q => q.sql.includes('INSERT INTO public.attendance_records')));
+  assert.ok(queries.some(q => q.sql.includes('UPDATE adms.review_logs SET ingested_at = now()')));
   assert.ok(queries.some(q => q.sql === 'COMMIT'));
 });
 

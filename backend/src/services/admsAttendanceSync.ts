@@ -70,6 +70,7 @@ export interface IngestOptions {
   endDate?: string | null;
   deviceId?: number | null;
   pin?: string | null;
+  onlyUningested?: boolean;
 }
 
 export async function cleanseAndIngestAdmsLogs(
@@ -100,6 +101,7 @@ export async function cleanseAndIngestAdmsLogs(
         AND ($3::text IS NULL OR r.punched_at::date <= $3::date)
         AND ($4::bigint IS NULL OR dev.device_id = $4::bigint)
         AND ($5::text IS NULL OR r.pin = $5::text)
+        AND ($6::boolean IS FALSE OR r.ingested_at IS NULL)
       ORDER BY r.punched_at ASC
     `;
 
@@ -109,6 +111,7 @@ export async function cleanseAndIngestAdmsLogs(
       options.endDate || null,
       options.deviceId || null,
       options.pin || null,
+      Boolean(options.onlyUningested),
     ]);
 
     const allRows = rawRes.rows;
@@ -271,6 +274,15 @@ export async function cleanseAndIngestAdmsLogs(
           ]
         );
       }
+    }
+
+    // 7. Mark successfully processed review logs as ingested
+    const processedIds = mappedRows.map(r => r.id).filter(Boolean);
+    if (processedIds.length > 0) {
+      await client.query(
+        `UPDATE adms.review_logs SET ingested_at = now() WHERE id = ANY($1::bigint[])`,
+        [processedIds]
+      );
     }
 
     await client.query('COMMIT');
