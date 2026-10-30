@@ -1,0 +1,668 @@
+[
+  {
+    "name": "vendors-360",
+    "url": "/dashboard/master/vendors",
+    "viewport": 360,
+    "scrollWidth": 390,
+    "heading": "Vendor Directory",
+    "inputs": [
+      {
+        "tag": "INPUT",
+        "placeholder": "Search vendor company, contact person, email, address...",
+        "label": null,
+        "labels": []
+      }
+    ],
+    "buttons": [
+      {
+        "text": "New Vendor",
+        "title": "",
+        "aria": null,
+        "width": 125.421875,
+        "height": 32
+      },
+      {
+        "text": "",
+        "title": "Edit Vendor",
+        "aria": null,
+        "width": 26,
+        "height": 26
+      },
+      {
+        "text": "",
+        "title": "Delete Vendor",
+        "aria": null,
+        "width": 26,
+        "height": 26
+      }
+    ],
+    "overflow": [
+      {
+        "tag": "TABLE",
+        "cls": "w-full text-left text-xs border-collapse"
+      },
+      {
+        "tag": "THEAD",
+        "cls": ""
+      },
+      {
+        "tag": "TR",
+        "cls": "bg-slate-50/80 text-slate-500 border-b border-slate-200 font-mono uppercase tracking-wider"
+      },
+      {
+        "tag": "TH",
+        "cls": "py-3.5 px-5 font-semibold"
+      },
+      {
+        "tag": "TH",
+        "cls": "py-3.5 px-5 font-semibold"
+      }
+    ]
+  },
+  {
+    "name": "vendors-390",
+    "url": "/dashboard/master/vendors",
+    "viewport": 390,
+    "scrollWidth": 390,
+    "heading": "Vendor Directory",
+    "inputs": [
+      {
+        "tag": "INPUT",
+        "placeholder": "Search vendor company, contact person, email, address...",
+        "label": null,
+        "labels": []
+      }
+    ],
+    "buttons": [
+      {
+        "text": "New Vendor",
+        "title": "",
+        "aria": null,
+        "width": 125.421875,
+        "height": 32
+      },
+      {
+        "text": "",
+        "title": "Edit Vendor",
+        "aria": null,
+        "width": 26,
+        "height": 26
+      },
+      {
+        "text": "",
+        "title": "Delete Vendor",
+        "aria": null,
+        "width": 26,
+        "height": 26
+      }
+    ],
+    "overflow": [
+      {
+        "tag": "TABLE",
+        "cls": "w-full text-left text-xs border-collapse"
+      },
+      {
+        "tag": "THEAD",
+        "cls": ""
+      },
+      {
+        "tag": "TR",
+        "cls": "bg-slate-50/80 text-slate-500 border-b border-slate-200 font-mono uppercase tracking-wider"
+      },
+      {
+        "tag": "TH",
+        "cls": "py-3.5 px-5 font-semibold"
+      },
+      {
+        "tag": "TH",
+        "cls": "py-3.5 px-5 font-semibold"
+      }
+    ]
+  },
+  {
+    "name": "vendors-1440",
+    "url": "/dashboard/master/vendors",
+    "viewport": 1440,
+    "scrollWidth": 1440,
+    "heading": "Vendor Directory",
+    "inputs": [
+      {
+        "tag": "INPUT",
+        "placeholder": "Search vendor company, contact person, email, address...",
+        "label": null,
+        "labels": []
+      }
+    ],
+    "buttons": [
+      {
+        "text": "New Vendor",
+        "title": "",
+        "aria": null,
+        "width": 125.421875,
+        "height": 32
+      },
+      {
+        "text": "",
+        "title": "Edit Vendor",
+        "aria": null,
+        "width": 26,
+        "height": 26
+      },
+      {
+        "text": "",
+        "title": "Delete Vendor",
+        "aria": null,
+        "width": 26,
+        "height": 26
+      }
+    ],
+    "overflow": []
+  },
+  {
+    "name": "assets-360",
+    "url": "/dashboard/assets",
+    "viewport": 360,
+    "scrollWidth": 390,
+    "heading": "IT Asset & Hardware Inventory",
+    "inputs": [
+      {
+        "tag": "INPUT",
+        "placeholder": "Search Asset Tag, Serial Number, Name, User...",
+        "label": null,
+        "labels": []
+      },
+      {
+        "tag": "SELECT",
+        "placeholder": null,
+        "label": null,
+        "labels": []
+      },
+      {
+        "tag": "SELECT",
+        "placeholder": null,
+        "label": null,
+        "labels": []
+      },
+      {
+        "tag": "SELECT",
+        "placeholder": null,
+        "label": null,
+        "labels": []
+      }
+    ],
+    "buttons": [
+      {
+        "text": "Template",
+        "title": "Download standard 4-sheet XLSX bulk import template",
+        "aria": null,
+        "width": 106.734375,
+        "height": 34
+      },
+      {
+        "text": "Bulk Import",
+        "title": "Bulk import assets from 4-sheet XLSX template",
+        "aria": null,
+        "width": 127.25,
+        "height": 34
+      },
+      {
+        "text": "Register Asset",
+        "title": "",
+        "aria": null,
+        "width": 151.765625,
+        "height": 32
+      },
+      {
+        "text": "Register First Asset",
+        "title": "",
+        "aria": null,
+        "width": 190.8125,
+        "height": 32
+      }
+    ],
+    "overflow": []
+  },
+  {
+    "name": "assets-390",
+    "url": "/dashboard/assets",
+    "viewport": 390,
+    "scrollWidth": 390,
+    "heading": "IT Asset & Hardware Inventory",
+    "inputs": [
+      {
+        "tag": "INPUT",
+        "placeholder": "Search Asset Tag, Serial Number, Name, User...",
+        "label": null,
+        "labels": []
+      },
+      {
+        "tag": "SELECT",
+        "placeholder": null,
+        "label": null,
+        "labels": []
+      },
+      {
+        "tag": "SELECT",
+        "placeholder": null,
+        "label": null,
+        "labels": []
+      },
+      {
+        "tag": "SELECT",
+        "placeholder": null,
+        "label": null,
+        "labels": []
+      }
+    ],
+    "buttons": [
+      {
+        "text": "Template",
+        "title": "Download standard 4-sheet XLSX bulk import template",
+        "aria": null,
+        "width": 106.734375,
+        "height": 34
+      },
+      {
+        "text": "Bulk Import",
+        "title": "Bulk import assets from 4-sheet XLSX template",
+        "aria": null,
+        "width": 127.25,
+        "height": 34
+      },
+      {
+        "text": "Register Asset",
+        "title": "",
+        "aria": null,
+        "width": 151.765625,
+        "height": 32
+      },
+      {
+        "text": "Register First Asset",
+        "title": "",
+        "aria": null,
+        "width": 190.8125,
+        "height": 32
+      }
+    ],
+    "overflow": []
+  },
+  {
+    "name": "assets-1440",
+    "url": "/dashboard/assets",
+    "viewport": 1440,
+    "scrollWidth": 1440,
+    "heading": "IT Asset & Hardware Inventory",
+    "inputs": [
+      {
+        "tag": "INPUT",
+        "placeholder": "Search Asset Tag, Serial Number, Name, User...",
+        "label": null,
+        "labels": []
+      },
+      {
+        "tag": "SELECT",
+        "placeholder": null,
+        "label": null,
+        "labels": []
+      },
+      {
+        "tag": "SELECT",
+        "placeholder": null,
+        "label": null,
+        "labels": []
+      },
+      {
+        "tag": "SELECT",
+        "placeholder": null,
+        "label": null,
+        "labels": []
+      }
+    ],
+    "buttons": [
+      {
+        "text": "Template",
+        "title": "Download standard 4-sheet XLSX bulk import template",
+        "aria": null,
+        "width": 106.734375,
+        "height": 34
+      },
+      {
+        "text": "Bulk Import",
+        "title": "Bulk import assets from 4-sheet XLSX template",
+        "aria": null,
+        "width": 127.25,
+        "height": 34
+      },
+      {
+        "text": "Register Asset",
+        "title": "",
+        "aria": null,
+        "width": 151.765625,
+        "height": 32
+      },
+      {
+        "text": "Register First Asset",
+        "title": "",
+        "aria": null,
+        "width": 190.8125,
+        "height": 32
+      }
+    ],
+    "overflow": []
+  },
+  {
+    "name": "tickets-360",
+    "url": "/dashboard/tickets",
+    "viewport": 360,
+    "scrollWidth": 390,
+    "heading": "Sistem Tiket Helpdesk IT",
+    "inputs": [
+      {
+        "tag": "INPUT",
+        "placeholder": "Cari nomor tiket, judul masalah, atau nama pelapor...",
+        "label": null,
+        "labels": []
+      },
+      {
+        "tag": "SELECT",
+        "placeholder": null,
+        "label": null,
+        "labels": []
+      },
+      {
+        "tag": "SELECT",
+        "placeholder": null,
+        "label": null,
+        "labels": []
+      },
+      {
+        "tag": "SELECT",
+        "placeholder": null,
+        "label": null,
+        "labels": []
+      },
+      {
+        "tag": "SELECT",
+        "placeholder": null,
+        "label": null,
+        "labels": []
+      }
+    ],
+    "buttons": [
+      {
+        "text": "Buat Tiket Baru",
+        "title": "",
+        "aria": null,
+        "width": 145.25,
+        "height": 32
+      },
+      {
+        "text": "Tiket Terbuka4Menunggu penanganan",
+        "title": "",
+        "aria": null,
+        "width": 158,
+        "height": 120
+      },
+      {
+        "text": "Sedang Dikerjakan2Dalam proses teknisi",
+        "title": "",
+        "aria": null,
+        "width": 158,
+        "height": 120
+      },
+      {
+        "text": "Selesai Hari Ini3Terselesaikan",
+        "title": "",
+        "aria": null,
+        "width": 158,
+        "height": 120
+      },
+      {
+        "text": "Tiket Kritis1Prioritas SLA 1 jam",
+        "title": "",
+        "aria": null,
+        "width": 158,
+        "height": 120
+      },
+      {
+        "text": "Kepatuhan SLA96%Filter: SLA terlewat",
+        "title": "",
+        "aria": null,
+        "width": 158,
+        "height": 120
+      },
+      {
+        "text": "Semua",
+        "title": "",
+        "aria": null,
+        "width": 63.828125,
+        "height": 28
+      },
+      {
+        "text": "Aduan Karyawan",
+        "title": "",
+        "aria": null,
+        "width": 102.359375,
+        "height": 44
+      },
+      {
+        "text": "Temuan Internal IT",
+        "title": "",
+        "aria": null,
+        "width": 111.8125,
+        "height": 44
+      }
+    ],
+    "overflow": []
+  },
+  {
+    "name": "tickets-390",
+    "url": "/dashboard/tickets",
+    "viewport": 390,
+    "scrollWidth": 390,
+    "heading": "Sistem Tiket Helpdesk IT",
+    "inputs": [
+      {
+        "tag": "INPUT",
+        "placeholder": "Cari nomor tiket, judul masalah, atau nama pelapor...",
+        "label": null,
+        "labels": []
+      },
+      {
+        "tag": "SELECT",
+        "placeholder": null,
+        "label": null,
+        "labels": []
+      },
+      {
+        "tag": "SELECT",
+        "placeholder": null,
+        "label": null,
+        "labels": []
+      },
+      {
+        "tag": "SELECT",
+        "placeholder": null,
+        "label": null,
+        "labels": []
+      },
+      {
+        "tag": "SELECT",
+        "placeholder": null,
+        "label": null,
+        "labels": []
+      }
+    ],
+    "buttons": [
+      {
+        "text": "Buat Tiket Baru",
+        "title": "",
+        "aria": null,
+        "width": 145.25,
+        "height": 32
+      },
+      {
+        "text": "Tiket Terbuka4Menunggu penanganan",
+        "title": "",
+        "aria": null,
+        "width": 173,
+        "height": 120
+      },
+      {
+        "text": "Sedang Dikerjakan2Dalam proses teknisi",
+        "title": "",
+        "aria": null,
+        "width": 173,
+        "height": 120
+      },
+      {
+        "text": "Selesai Hari Ini3Terselesaikan",
+        "title": "",
+        "aria": null,
+        "width": 173,
+        "height": 120
+      },
+      {
+        "text": "Tiket Kritis1Prioritas SLA 1 jam",
+        "title": "",
+        "aria": null,
+        "width": 173,
+        "height": 120
+      },
+      {
+        "text": "Kepatuhan SLA96%Filter: SLA terlewat",
+        "title": "",
+        "aria": null,
+        "width": 173,
+        "height": 115
+      },
+      {
+        "text": "Semua",
+        "title": "",
+        "aria": null,
+        "width": 63.828125,
+        "height": 28
+      },
+      {
+        "text": "Aduan Karyawan",
+        "title": "",
+        "aria": null,
+        "width": 116.5,
+        "height": 44
+      },
+      {
+        "text": "Temuan Internal IT",
+        "title": "",
+        "aria": null,
+        "width": 127.671875,
+        "height": 44
+      }
+    ],
+    "overflow": []
+  },
+  {
+    "name": "tickets-1440",
+    "url": "/dashboard/tickets",
+    "viewport": 1440,
+    "scrollWidth": 1440,
+    "heading": "Sistem Tiket Helpdesk IT",
+    "inputs": [
+      {
+        "tag": "INPUT",
+        "placeholder": "Cari nomor tiket, judul masalah, atau nama pelapor...",
+        "label": null,
+        "labels": []
+      },
+      {
+        "tag": "SELECT",
+        "placeholder": null,
+        "label": null,
+        "labels": []
+      },
+      {
+        "tag": "SELECT",
+        "placeholder": null,
+        "label": null,
+        "labels": []
+      },
+      {
+        "tag": "SELECT",
+        "placeholder": null,
+        "label": null,
+        "labels": []
+      },
+      {
+        "tag": "SELECT",
+        "placeholder": null,
+        "label": null,
+        "labels": []
+      }
+    ],
+    "buttons": [
+      {
+        "text": "Buat Tiket Baru",
+        "title": "",
+        "aria": null,
+        "width": 145.25,
+        "height": 32
+      },
+      {
+        "text": "Tiket Terbuka4Menunggu penanganan",
+        "title": "",
+        "aria": null,
+        "width": 211.1875,
+        "height": 115
+      },
+      {
+        "text": "Sedang Dikerjakan2Dalam proses teknisi",
+        "title": "",
+        "aria": null,
+        "width": 211.203125,
+        "height": 115
+      },
+      {
+        "text": "Selesai Hari Ini3Terselesaikan",
+        "title": "",
+        "aria": null,
+        "width": 211.203125,
+        "height": 115
+      },
+      {
+        "text": "Tiket Kritis1Prioritas SLA 1 jam",
+        "title": "",
+        "aria": null,
+        "width": 211.203125,
+        "height": 115
+      },
+      {
+        "text": "Kepatuhan SLA96%Filter: SLA terlewat",
+        "title": "",
+        "aria": null,
+        "width": 211.1875,
+        "height": 115
+      },
+      {
+        "text": "Semua",
+        "title": "",
+        "aria": null,
+        "width": 63.828125,
+        "height": 28
+      },
+      {
+        "text": "Aduan Karyawan",
+        "title": "",
+        "aria": null,
+        "width": 117.046875,
+        "height": 28
+      },
+      {
+        "text": "Temuan Internal IT",
+        "title": "",
+        "aria": null,
+        "width": 128.28125,
+        "height": 28
+      }
+    ],
+    "overflow": []
+  }
+]
