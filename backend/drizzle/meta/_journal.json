@@ -252,6 +252,13 @@
       "when": 1793266000000,
       "tag": "0035_backfill_user_organization_group_access",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1793327600000,
+      "tag": "0036_work_hours_template_and_shift_redesign",
+      "breakpoints": true
     }
   ],
   "version": "7"

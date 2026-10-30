@@ -14,6 +14,33 @@ import { departments } from './master';
 import { users } from './users';
 import { attendanceBatches } from './attendance';
 
+// ---------------------------------------------------------------------------
+// Master Jam Kerja — template jam kerja reusable (Daytime, Sabtu Pendek, dsb)
+// ---------------------------------------------------------------------------
+export const attendanceWorkHours = pgTable('attendance_work_hours', {
+  id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  name: varchar('name', { length: 100 }).notNull(),
+  color: varchar('color', { length: 20 }),
+  // Jam resmi masuk & pulang
+  scheduleIn: varchar('schedule_in', { length: 5 }).notNull(),   // "HH:mm"
+  scheduleOut: varchar('schedule_out', { length: 5 }).notNull(), // "HH:mm"
+  // Window tap masuk yang diterima sistem
+  scanInStart: varchar('scan_in_start', { length: 5 }).notNull(),
+  scanInEnd: varchar('scan_in_end', { length: 5 }).notNull(),
+  // Window tap pulang yang diterima sistem
+  scanOutStart: varchar('scan_out_start', { length: 5 }).notNull(),
+  scanOutEnd: varchar('scan_out_end', { length: 5 }).notNull(),
+  // Toleransi
+  lateToleranceMinutes: integer('late_tolerance_minutes').default(5).notNull(),
+  earlyLeaveToleranceMinutes: integer('early_leave_tolerance_minutes').default(5).notNull(),
+  // Flag wajib tap
+  requireCheckIn: boolean('require_check_in').default(true).notNull(),
+  requireCheckOut: boolean('require_check_out').default(true).notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 export const attendanceSources = pgTable(
   'attendance_sources',
   {
@@ -41,18 +68,27 @@ export const attendanceIdentities = pgTable(
   ]
 );
 
+// ---------------------------------------------------------------------------
+// Master Shift — mapping per-hari ke template Jam Kerja
+// FK null pada hari tertentu = hari libur (Senin-Sabtu: tidak hadir = ALPHA;
+// Minggu: tidak hadir = LIBUR, TIDAK pernah ALPHA)
+// ---------------------------------------------------------------------------
 export const attendanceShifts = pgTable(
   'attendance_shifts',
   {
     id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
     code: varchar('code', { length: 50 }).notNull().unique(),
     name: varchar('name', { length: 150 }).notNull(),
-    scheduleIn: varchar('schedule_in', { length: 10 }).notNull(),
-    scheduleOut: varchar('schedule_out', { length: 10 }).notNull(),
-    workDays: integer('work_days').default(5).notNull(),
-    saturdayScheduleIn: varchar('saturday_schedule_in', { length: 10 }),
-    saturdayScheduleOut: varchar('saturday_schedule_out', { length: 10 }),
     description: text('description'),
+    // Mapping per-hari → FK ke attendanceWorkHours (null = hari libur)
+    mondayWorkHoursId: bigint('monday_work_hours_id', { mode: 'number' }).references(() => attendanceWorkHours.id, { onDelete: 'set null' }),
+    tuesdayWorkHoursId: bigint('tuesday_work_hours_id', { mode: 'number' }).references(() => attendanceWorkHours.id, { onDelete: 'set null' }),
+    wednesdayWorkHoursId: bigint('wednesday_work_hours_id', { mode: 'number' }).references(() => attendanceWorkHours.id, { onDelete: 'set null' }),
+    thursdayWorkHoursId: bigint('thursday_work_hours_id', { mode: 'number' }).references(() => attendanceWorkHours.id, { onDelete: 'set null' }),
+    fridayWorkHoursId: bigint('friday_work_hours_id', { mode: 'number' }).references(() => attendanceWorkHours.id, { onDelete: 'set null' }),
+    saturdayWorkHoursId: bigint('saturday_work_hours_id', { mode: 'number' }).references(() => attendanceWorkHours.id, { onDelete: 'set null' }),
+    // Minggu selalu opsional — null/tidak tap = LIBUR, bukan ALPHA
+    sundayWorkHoursId: bigint('sunday_work_hours_id', { mode: 'number' }).references(() => attendanceWorkHours.id, { onDelete: 'set null' }),
     autoApproveIn: boolean('auto_approve_in').default(false).notNull(),
     autoApproveOut: boolean('auto_approve_out').default(false).notNull(),
     isDefault: boolean('is_default').default(false).notNull(),
@@ -62,6 +98,10 @@ export const attendanceShifts = pgTable(
   }
 );
 
+// ---------------------------------------------------------------------------
+// Penugasan Shift — satu departemen bisa memiliki beberapa shift (multiple)
+// dengan penanda isDefault untuk shift utama
+// ---------------------------------------------------------------------------
 export const attendanceShiftAssignments = pgTable(
   'attendance_shift_assignments',
   {
@@ -69,12 +109,15 @@ export const attendanceShiftAssignments = pgTable(
     shiftId: bigint('shift_id', { mode: 'number' }).notNull().references(() => attendanceShifts.id, { onDelete: 'cascade' }),
     departmentId: bigint('department_id', { mode: 'number' }).references(() => departments.id, { onDelete: 'cascade' }),
     employeeId: bigint('employee_id', { mode: 'number' }).references(() => employees.id, { onDelete: 'cascade' }),
+    // Shift utama departemen (hanya satu isDefault:true per departemen)
+    isDefault: boolean('is_default').default(false).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
   (table) => [
     uniqueIndex('uq_shift_assignment_employee').on(table.employeeId),
-    uniqueIndex('uq_shift_assignment_department').on(table.departmentId),
+    // Diubah: departemen bisa punya banyak shift, unik per (departement+shift)
+    uniqueIndex('uq_shift_assignment_dept_shift').on(table.departmentId, table.shiftId),
   ]
 );
 

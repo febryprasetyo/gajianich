@@ -13,18 +13,39 @@ export type AttendanceStatus =
 
 export type ReviewStatus = 'READY' | 'NEEDS_REVIEW' | 'BLOCKED' | 'SKIPPED';
 
+export interface WorkHoursTemplate {
+  id: number;
+  name: string;
+  color?: string | null;
+  scheduleIn: string;
+  scheduleOut: string;
+  scanInStart: string;
+  scanInEnd: string;
+  scanOutStart: string;
+  scanOutEnd: string;
+  lateToleranceMinutes: number;
+  earlyLeaveToleranceMinutes: number;
+  requireCheckIn: boolean;
+  requireCheckOut: boolean;
+  isActive: boolean;
+}
+
 export interface WorkShift {
   autoApproveIn?: boolean;
   autoApproveOut?: boolean;
   id: number;
   code: string;
   name: string;
-  scheduleIn: string;
-  scheduleOut: string;
-  workDays: 5 | 6;
-  saturdayScheduleIn?: string | null;
-  saturdayScheduleOut?: string | null;
-  description?: string;
+  description?: string | null;
+  // Per-day work hours template FK (null = hari libur)
+  // Senin-Sabtu: null/tidak tap = ALPHA; Minggu: null/tidak tap = LIBUR (selalu opsional)
+  mondayWorkHoursId?: number | null;
+  tuesdayWorkHoursId?: number | null;
+  wednesdayWorkHoursId?: number | null;
+  thursdayWorkHoursId?: number | null;
+  fridayWorkHoursId?: number | null;
+  saturdayWorkHoursId?: number | null;
+  sundayWorkHoursId?: number | null;
   isDefault: boolean;
   isActive: boolean;
 }
@@ -34,6 +55,7 @@ export interface ShiftAssignment {
   shiftId: number;
   departmentId?: number | null;
   employeeId?: number | null;
+  isDefault?: boolean;
 }
 
 export interface MasterItem {

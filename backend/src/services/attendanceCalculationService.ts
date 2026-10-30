@@ -145,16 +145,18 @@ export function calculateAttendanceFromPunches(
     // Active or Default Assigned Shift Calculation
     const effectiveShift = shift || DEFAULT_OFFICE_SHIFT;
     const schedule = getWorkingScheduleForDate(workDate, effectiveShift);
+    const resolvedScheduleIn = schedule.scheduleIn ?? '';
+    const resolvedScheduleOut = schedule.scheduleOut ?? '';
 
     const scanInMins = parseMinutesFromTime(scanIn);
-    const schedInMins = parseMinutesFromTime(schedule.scheduleIn);
+    const schedInMins = parseMinutesFromTime(resolvedScheduleIn);
 
     const lateMinutes = scanInMins > schedInMins ? scanInMins - schedInMins : 0;
 
     let earlyMinutes = 0;
     if (scanOut) {
       const scanOutMins = parseMinutesFromTime(scanOut);
-      const schedOutMins = parseMinutesFromTime(schedule.scheduleOut);
+      const schedOutMins = parseMinutesFromTime(resolvedScheduleOut);
       earlyMinutes = scanOutMins < schedOutMins ? schedOutMins - scanOutMins : 0;
     }
 
@@ -180,8 +182,8 @@ export function calculateAttendanceFromPunches(
       workDate,
       shiftCode: effectiveShift.code,
       shiftName: effectiveShift.name,
-      scheduleIn: schedule.scheduleIn,
-      scheduleOut: schedule.scheduleOut,
+      scheduleIn: resolvedScheduleIn,
+      scheduleOut: resolvedScheduleOut,
       scanIn,
       scanOut,
       lateMinutes,

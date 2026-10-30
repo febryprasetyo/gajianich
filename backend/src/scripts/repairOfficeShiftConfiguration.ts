@@ -17,8 +17,11 @@ export async function repairOfficeShiftConfiguration(tx: AuditTx, context: Audit
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('office-shift-repair-2026-10-22'))`);
   const shifts = await tx.select().from(attendanceShifts);
   let office = shifts.find(s => s.code === 'OFFICE');
-  if (office && (office.scheduleIn !== '08:00' || office.scheduleOut !== '17:00' || office.workDays !== 5 || !office.isActive)) {
-    throw new Error('Existing OFFICE definition differs from confirmed 08:00–17:00; inspect before repair');
+  // NOTE: Setelah migrasi arsitektur shift ke model Jam Kerja Template,
+  // validasi office shift tidak lagi menggunakan scheduleIn/scheduleOut/workDays.
+  // Script ini dipertahankan untuk backward compatibility audit trail.
+  if (office && !office.isActive) {
+    throw new Error('Existing OFFICE shift is inactive; inspect before repair');
   }
   const masterChanges = !office || !office.isDefault || shifts.some(s => s.code !== 'OFFICE' && s.isDefault);
   if (apply) {
