@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Cpu,
   Server,
@@ -20,9 +19,6 @@ import {
   XCircle,
   Loader2,
   Settings2,
-  Network,
-  RefreshCw,
-  ExternalLink,
 } from "lucide-react";
 import ModalShell from "@/components/ui/ModalShell";
 import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
@@ -35,8 +31,6 @@ import { apiFetch } from "@/lib/api";
 import { AttendanceDevice } from "./attendanceMachineStore";
 import type { AdmsCandidateDevice } from "@/lib/attendance/admsMonitor";
 
-type FailureScenario = "TIMEOUT" | "AUTH_FAILED" | "REFUSED";
-
 interface ConnectionErrorDetail {
   code: string;
   title: string;
@@ -48,34 +42,30 @@ interface ConnectionErrorDetail {
 const dot = <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />;
 
 export default function AttendanceDevicesPage() {
-  const router = useRouter();
   const { user } = useAuth();
   const { selectedGroupId } = useOrganizationScope();
   const normalizedRole = (user?.roleName || "").toLowerCase().replace(/_/g, "");
   const canManage = normalizedRole === "superadmin" || normalizedRole === "itadmin";
 
-  const [activeTab, setActiveTab] = useState<"all" | "tcp" | "adms">("all");
   const [devices, setDevices] = useState<AttendanceDevice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | number>("");
-  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectingDeviceId, setConnectingDeviceId] = useState<string | number | null>(null);
   const [idleSecondsLeft, setIdleSecondsLeft] = useState<number | null>(null);
 
-  // Connection Simulation Failure State
-  const [simulateFailure, setSimulateFailure] = useState(false);
-  const [failureScenario, setFailureScenario] = useState<FailureScenario>("TIMEOUT");
+  // Diagnostic Modal
   const [connectionError, setConnectionError] = useState<ConnectionErrorDetail | null>(null);
   const [isDiagnosticModalOpen, setIsDiagnosticModalOpen] = useState(false);
 
   // Modal Download Data Presensi state
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+  const [downloadTargetDevice, setDownloadTargetDevice] = useState<AttendanceDevice | null>(null);
   const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [overwriteExisting, setOverwriteExisting] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [downloadCount, setDownloadCount] = useState(0);
-  const [downloadTotal, setDownloadTotal] = useState(0);
   const [downloadCompleted, setDownloadCompleted] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
@@ -93,6 +83,7 @@ export default function AttendanceDevicesPage() {
 
   // Modal Edit Mesin state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingDevice, setEditingDevice] = useState<AttendanceDevice | null>(null);
   const [editDeviceName, setEditDeviceName] = useState("");
   const [editDeviceIp, setEditDeviceIp] = useState("");
   const [editDevicePort, setEditDevicePort] = useState(4370);
@@ -117,11 +108,7 @@ export default function AttendanceDevicesPage() {
       const res = await apiFetch<{ success: boolean; data: AttendanceDevice[] }>("/attendance/devices");
       if (res.success && res.data) {
         setDevices(res.data);
-        const targetId = selectedDeviceId || (res.data.length > 0 ? res.data[0].id : "");
-        if (!selectedDeviceId && res.data.length > 0) {
-          setSelectedDeviceId(res.data[0].id);
-        }
-        const active = res.data.find((d) => String(d.id) === String(targetId));
+        const active = res.data.find((d) => String(d.id) === String(selectedDeviceId));
         if (active && active.status === "connected") {
           setIdleSecondsLeft(active.idleSecondsLeft ?? 300);
         } else if (active && active.status !== "connected") {
@@ -140,17 +127,7 @@ export default function AttendanceDevicesPage() {
     fetchDevices();
   }, [fetchDevices]);
 
-  const handleSelectDevice = (deviceId: string | number) => {
-    setSelectedDeviceId(deviceId);
-    const target = devices.find((d) => String(d.id) === String(deviceId));
-    if (target && target.status === "connected") {
-      setIdleSecondsLeft(target.idleSecondsLeft ?? 300);
-    } else {
-      setIdleSecondsLeft(null);
-    }
-  };
-
-  // Idle timeout timer: 5 menit auto-disconnect tanpa proses
+  // Idle timeout countdown timer
   useEffect(() => {
     if (idleSecondsLeft === null) return;
     if (idleSecondsLeft <= 0) {
@@ -162,7 +139,7 @@ export default function AttendanceDevicesPage() {
         apiFetch(`/attendance/devices/${selectedDeviceId}/disconnect`, { method: "POST" })
           .catch((err) => console.warn("Auto-disconnect API error:", err));
       }
-      setPageToast("Koneksi mesin otomatis diputuskan karena idle 5 menit tanpa proses.");
+      setPageToast("Koneksi mesin otomatis diputuskan karena idle 5 menit tanpa aktivitas.");
       setTimeout(() => setPageToast(null), 5000);
       return;
     }
@@ -172,114 +149,69 @@ export default function AttendanceDevicesPage() {
     return () => clearInterval(timer);
   }, [idleSecondsLeft, selectedDeviceId]);
 
-  // Polling reaktif: saat ada mesin yang terhubung, sinkronkan status berkala
-  useEffect(() => {
-    const hasConnectedDevice = devices.some((d) => d.status === "connected");
-    if (!hasConnectedDevice) return;
-    const interval = setInterval(() => {
-      apiFetch<{ success: boolean; data: AttendanceDevice[] }>("/attendance/devices").then((res) => {
-        if (res.success && res.data) {
-          setDevices(res.data);
-          const active = res.data.find((d) => String(d.id) === String(selectedDeviceId));
-          if (active && active.status === "connected" && typeof active.idleSecondsLeft === "number") {
-            setIdleSecondsLeft(active.idleSecondsLeft);
-          } else if (active && active.status !== "connected") {
-            setIdleSecondsLeft(null);
-          }
-        }
-      }).catch(() => {});
-    }, 20000);
-    return () => clearInterval(interval);
-  }, [devices, selectedDeviceId]);
-
-  const activeDevice = devices.find((d) => String(d.id) === String(selectedDeviceId)) || devices[0];
-
-  const handleConnect = async () => {
-    if (!activeDevice) return;
-    setIsConnecting(true);
+  // Connect directly to a specific Ethernet device
+  const handleConnectDevice = async (device: AttendanceDevice) => {
+    setConnectingDeviceId(device.id);
+    setSelectedDeviceId(device.id);
     setConnectionError(null);
 
-    if (simulateFailure) {
-      setTimeout(() => {
-        setIsConnecting(false);
-        setDevices((prev) =>
-          prev.map((d) => (d.id === activeDevice.id ? { ...d, status: "error" } : d))
-        );
-        setIdleSecondsLeft(null);
-
-        const now = new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-        const detail: ConnectionErrorDetail = {
-          code: "TCP_TIMEOUT (ETIMEDOUT)",
-          title: "Koneksi Waktu Habis (Mesin Tidak Merespon)",
-          message: `Tidak dapat menjangkau mesin ${activeDevice.name} di ${activeDevice.ip}:${activeDevice.port}.`,
-          troubleshooting: [
-            "Pastikan mesin menyala dan kabel LAN terhubung stabil.",
-            `Pastikan IP ${activeDevice.ip} berada dalam satu subnet jaringan lokal.`,
-            `Pastikan port ${activeDevice.port} tidak diblokir firewall.`,
-          ],
-          timestamp: now,
-        };
-        setConnectionError(detail);
-        setIsDiagnosticModalOpen(true);
-      }, 800);
-      return;
-    }
-
     try {
-      const res = await apiFetch<{ success: boolean; data: any }>(`/attendance/devices/${activeDevice.id}/connect`, {
+      const res = await apiFetch<{ success: boolean; data: any }>(`/attendance/devices/${device.id}/connect`, {
         method: "POST",
         body: JSON.stringify({ simulate: false }),
       });
 
       if (res.success) {
         setDevices((prev) =>
-          prev.map((d) => (d.id === activeDevice.id ? { ...d, status: "connected" } : d))
+          prev.map((d) => (d.id === device.id ? { ...d, status: "connected" } : d))
         );
         setIdleSecondsLeft(res.data.idleSecondsLeft || 300);
         setConnectionError(null);
-        setPageToast(`Berhasil terhubung ke ${activeDevice.name}`);
+        setPageToast(`Berhasil terhubung ke ${device.name}`);
         setTimeout(() => setPageToast(null), 3000);
       }
     } catch (err: any) {
       setDevices((prev) =>
-        prev.map((d) => (d.id === activeDevice.id ? { ...d, status: "error" } : d))
+        prev.map((d) => (d.id === device.id ? { ...d, status: "error" } : d))
       );
       setIdleSecondsLeft(null);
       const now = new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
       const detail: ConnectionErrorDetail = {
         code: "TCP_CONNECT_ERROR",
-        title: "Gagal Menghubungkan ke Mesin",
-        message: err.message || `Tidak dapat membuka koneksi socket ke ${activeDevice.ip}:${activeDevice.port}.`,
+        title: `Gagal Terhubung ke ${device.name}`,
+        message: err.message || `Tidak dapat membuka koneksi socket TCP ke ${device.ip}:${device.port}.`,
         troubleshooting: [
-          `Pastikan IP ${activeDevice.ip} dapat dijangkau dari server.`,
-          "Periksa apakah mesin sedang sibuk atau diakses aplikasi lain.",
-          "Restart mesin fisik untuk mereset socket komunikasi.",
+          `Pastikan IP ${device.ip} dapat dijangkau/di-ping dari jaringan server.`,
+          "Pastikan mesin absensi menyala dan port 4370 tidak diblokir firewall.",
+          `Kunci komunikasi (CommKey: ${device.commKey}) harus sama dengan konfigurasi mesin.`,
         ],
         timestamp: now,
       };
       setConnectionError(detail);
       setIsDiagnosticModalOpen(true);
     } finally {
-      setIsConnecting(false);
+      setConnectingDeviceId(null);
     }
   };
 
-  const handleDisconnect = async () => {
-    if (!activeDevice) return;
+  // Disconnect directly from a specific Ethernet device
+  const handleDisconnectDevice = async (device: AttendanceDevice) => {
     try {
-      await apiFetch(`/attendance/devices/${activeDevice.id}/disconnect`, { method: "POST" });
+      await apiFetch(`/attendance/devices/${device.id}/disconnect`, { method: "POST" });
       setDevices((prev) =>
-        prev.map((d) => (d.id === activeDevice.id ? { ...d, status: "disconnected", idleSecondsLeft: null } : d))
+        prev.map((d) => (d.id === device.id ? { ...d, status: "disconnected", idleSecondsLeft: null } : d))
       );
-      setIdleSecondsLeft(null);
-      setPageToast(`Koneksi ke ${activeDevice.name} diputuskan`);
+      if (String(selectedDeviceId) === String(device.id)) {
+        setIdleSecondsLeft(null);
+      }
+      setPageToast(`Koneksi ke ${device.name} diputuskan`);
       setTimeout(() => setPageToast(null), 3000);
     } catch (err: any) {
       console.error("Gagal disconnect:", err);
     }
   };
 
-  // Toggle ADMS device
+  // Toggle ADMS device reception
   const handleToggleAdmsDevice = async (device: AttendanceDevice) => {
     try {
       const res = await apiFetch<{ success: boolean; message?: string }>(
@@ -290,7 +222,7 @@ export default function AttendanceDevicesPage() {
         }
       );
       if (res.success) {
-        setPageToast(res.message || `Status penerimaan ADMS mesin ${device.name} berhasil diperbarui.`);
+        setPageToast(res.message || `Status penerimaan ADMS mesin ${device.name} diperbarui.`);
         fetchDevices();
         setTimeout(() => setPageToast(null), 3000);
       }
@@ -300,26 +232,24 @@ export default function AttendanceDevicesPage() {
     }
   };
 
-  const handleOpenDownloadModal = (deviceToDownload?: AttendanceDevice) => {
-    const target = deviceToDownload || activeDevice;
-    if (!target) return;
-    setSelectedDeviceId(target.id);
+  const handleOpenDownloadModal = (device: AttendanceDevice) => {
+    setDownloadTargetDevice(device);
+    setSelectedDeviceId(device.id);
     setDownloadCompleted(false);
     setDownloadError(null);
     setDownloadProgress(0);
     setDownloadCount(0);
-    setDownloadTotal(0);
     setIsDownloadModalOpen(true);
   };
 
   const handleStartDownload = async () => {
-    if (!activeDevice) return;
+    if (!downloadTargetDevice) return;
     setIsDownloading(true);
-    setDownloadProgress(10);
+    setDownloadProgress(20);
     setDownloadError(null);
 
     try {
-      setDownloadProgress(35);
+      setDownloadProgress(45);
       const res = await apiFetch<{
         success: boolean;
         message: string;
@@ -330,7 +260,7 @@ export default function AttendanceDevicesPage() {
           syncLogId: number;
         };
       }>(
-        `/attendance/devices/${activeDevice.id}/sync`,
+        `/attendance/devices/${downloadTargetDevice.id}/sync`,
         {
           method: "POST",
           body: JSON.stringify({
@@ -346,7 +276,6 @@ export default function AttendanceDevicesPage() {
 
       if (res.success && res.data) {
         setDownloadCount(res.data.inserted);
-        setDownloadTotal(res.data.totalDownloaded);
         setDownloadCompleted(true);
         fetchDevices();
       } else {
@@ -354,7 +283,7 @@ export default function AttendanceDevicesPage() {
       }
     } catch (err: any) {
       setIsDownloading(false);
-      setDownloadError(err.message || "Terjadi kesalahan jaringan saat menarik data dari mesin.");
+      setDownloadError(err.message || "Terjadi kesalahan koneksi saat mengunduh log dari mesin.");
     }
   };
 
@@ -365,7 +294,7 @@ export default function AttendanceDevicesPage() {
     try {
       if (addConnectionType === "ADMS") {
         if (!newDeviceSerial) {
-          setPageToast("Nomor seri (SN) wajib diisi untuk mesin ADMS.");
+          setPageToast("Nomor seri (SN) wajib diisi untuk mesin Cloud ADMS.");
           setTimeout(() => setPageToast(null), 3000);
           return;
         }
@@ -398,7 +327,7 @@ export default function AttendanceDevicesPage() {
         if (res.success) {
           setIsAddModalOpen(false);
           resetAddForm();
-          setPageToast("Mesin ADMS baru berhasil didaftarkan.");
+          setPageToast("Mesin Cloud ADMS baru berhasil didaftarkan.");
           fetchDevices();
           setTimeout(() => setPageToast(null), 3000);
         }
@@ -425,7 +354,7 @@ export default function AttendanceDevicesPage() {
         if (res.success && res.data) {
           setIsAddModalOpen(false);
           resetAddForm();
-          setPageToast("Perangkat mesin baru berhasil ditambahkan.");
+          setPageToast("Mesin fisik baru berhasil ditambahkan.");
           fetchDevices();
           setTimeout(() => setPageToast(null), 3000);
         }
@@ -447,25 +376,22 @@ export default function AttendanceDevicesPage() {
     setNewDeviceSourceCidr("");
   };
 
-  const handleOpenEditModal = (deviceToEdit?: AttendanceDevice) => {
-    const target = deviceToEdit || activeDevice;
-    if (!target) return;
-    setSelectedDeviceId(target.id);
-    setEditDeviceName(target.name);
-    setEditDeviceIp(target.ip);
-    setEditDevicePort(target.port);
-    setEditDeviceCommKey(target.commKey);
-    setEditDeviceNumber(target.deviceNumber);
-    setEditDeviceLocation(target.location);
+  const handleOpenEditModal = (device: AttendanceDevice) => {
+    setEditingDevice(device);
+    setEditDeviceName(device.name);
+    setEditDeviceIp(device.ip);
+    setEditDevicePort(device.port);
+    setEditDeviceCommKey(device.commKey);
+    setEditDeviceNumber(device.deviceNumber);
+    setEditDeviceLocation(device.location);
     setIsEditModalOpen(true);
   };
 
   const handleSaveEditDevice = async (e: React.FormEvent) => {
     e.preventDefault();
-    const target = devices.find((d) => String(d.id) === String(selectedDeviceId)) || activeDevice;
-    if (!target) return;
+    if (!editingDevice) return;
     try {
-      const res = await apiFetch<{ success: boolean; data: AttendanceDevice }>(`/attendance/devices/${target.id}`, {
+      const res = await apiFetch<{ success: boolean; data: AttendanceDevice }>(`/attendance/devices/${editingDevice.id}`, {
         method: "PUT",
         body: JSON.stringify({
           name: editDeviceName,
@@ -493,10 +419,6 @@ export default function AttendanceDevicesPage() {
     try {
       await apiFetch(`/attendance/devices/${deletingDevice.id}`, { method: "DELETE" });
       setDevices((prev) => prev.filter((d) => d.id !== deletingDevice.id));
-      if (selectedDeviceId === deletingDevice.id) {
-        const remaining = devices.filter((d) => d.id !== deletingDevice.id);
-        setSelectedDeviceId(remaining[0]?.id || "");
-      }
       setIsDeleteModalOpen(false);
       setDeletingDevice(null);
       setPageToast(`Mesin ${deletingDevice.name} berhasil dihapus.`);
@@ -513,7 +435,11 @@ export default function AttendanceDevicesPage() {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // Convert device to candidate format for AdmsRegistrationModal
+  // Split into ADMS and Ethernet devices for the 1-page unified layout
+  const admsDevices = devices.filter((d) => d.connectionType === "ADMS" || Boolean(d.admsRegistered));
+  const ethernetDevices = devices.filter((d) => d.connectionType !== "ADMS" && !d.admsRegistered);
+
+  // Candidates list for editing allowlist
   const admsCandidatesList: AdmsCandidateDevice[] = devices.map((d) => ({
     id: Number(d.id),
     name: d.name,
@@ -539,7 +465,7 @@ export default function AttendanceDevicesPage() {
         </div>
       )}
 
-      {/* Header Halaman */}
+      {/* Header Halaman Utama */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-emerald-600 rounded-xl text-white shadow-xs">
@@ -547,10 +473,10 @@ export default function AttendanceDevicesPage() {
           </div>
           <div>
             <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-              Manajemen & Download Mesin Presensi
+              Mesin Presensi
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              Kelola perangkat absensi kantor (Ethernet / TCP) dan mesin cloud ADMS terintegrasi dalam satu sistem.
+              Pusat pengelolaan seluruh mesin absensi kantor — Mesin Cloud ADMS dan Mesin Fisik (Ethernet/TCP).
             </p>
           </div>
         </div>
@@ -562,6 +488,7 @@ export default function AttendanceDevicesPage() {
               type="button"
               onClick={() => {
                 resetAddForm();
+                setAddConnectionType("Ethernet");
                 setIsAddModalOpen(true);
               }}
               className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-xs cursor-pointer"
@@ -574,35 +501,21 @@ export default function AttendanceDevicesPage() {
           <Link
             href="/dashboard/attendance/adms"
             className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-all shadow-xs cursor-pointer"
-            title="Buka panel monitor dan log real-time ADMS"
+            title="Buka monitor log real-time & sinkronisasi ADMS"
           >
-            <Server className="w-4 h-4 text-emerald-600" />
-            <span>Review & Log ADMS</span>
+            <Server className="w-4 h-4 text-indigo-600" />
+            <span>Review Log ADMS</span>
+          </Link>
+
+          <Link
+            href="/dashboard/attendance/raw-logs"
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-all shadow-xs cursor-pointer"
+            title="Buka seluruh data presensi mentah"
+          >
+            <ListFilter className="w-4 h-4 text-emerald-600" />
+            <span>Data Presensi</span>
           </Link>
         </div>
-      </div>
-
-      {/* Tab Navigasi Alur Kerja */}
-      <div role="tablist" aria-label="Alur Kerja Mesin Presensi" className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
-        {[
-          { id: "all", label: "1. Daftar Mesin Presensi (Fisik & ADMS)" },
-          { id: "tcp", label: "2. Tarik Data Manual (Koneksi TCP / LAN)" },
-        ].map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === item.id}
-            onClick={() => setActiveTab(item.id as any)}
-            className={`min-h-10 rounded-xl border px-4 py-2 text-xs font-semibold cursor-pointer transition-colors ${
-              activeTab === item.id
-                ? "border-emerald-200 bg-emerald-50 text-emerald-800 shadow-2xs"
-                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
       </div>
 
       {/* Alert Banner jika koneksi gagal */}
@@ -630,187 +543,321 @@ export default function AttendanceDevicesPage() {
               <Wrench className="w-3.5 h-3.5" />
               <span>Panduan Solusi</span>
             </button>
-            <button
-              onClick={handleConnect}
-              disabled={isConnecting}
-              className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-rose-600 text-white hover:bg-rose-700 transition-colors inline-flex items-center gap-1.5 shadow-2xs cursor-pointer"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Coba Lagi</span>
-            </button>
           </div>
         </div>
       )}
 
-      {/* Tab 2: Action Toolbar Penarikan TCP */}
-      {activeTab === "tcp" && (
-        <div className="rounded-2xl p-4 bg-white border border-slate-200/90 shadow-xs space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* ========================================================= */}
+      {/* SEKSI 1 (ATAS): TABEL MESIN CLOUD ADMS                   */}
+      {/* ========================================================= */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-indigo-50 text-indigo-700 rounded-lg">
+              <Server className="w-4 h-4" />
+            </div>
             <div>
-              <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                Operasi Penarikan Presensi TCP / Ethernet
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Koneksikan mesin absensi yang terhubung ke jaringan LAN untuk mengunduh log presensi manual.
+              <div className="flex items-center gap-2">
+                <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  Mesin Cloud ADMS (Push Port 8081)
+                </h2>
+                <span className="px-2 py-0.5 text-[11px] font-semibold bg-indigo-100 text-indigo-800 rounded-full">
+                  {admsDevices.length} Unit
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Mesin mengirim data absensi otomatis via internet/jaringan ke server ADMS.
               </p>
             </div>
-            <div className="text-xs text-slate-500">
-              Perangkat aktif:{" "}
-              <strong className="text-slate-800">
-                {activeDevice ? `${activeDevice.name} (${activeDevice.ip})` : "Pilih dari tabel"}
-              </strong>
-            </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-slate-100">
-            {activeDevice?.status === "connected" ? (
-              <button
-                onClick={handleDisconnect}
-                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl bg-slate-100 text-slate-700 border border-slate-300 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 transition-colors cursor-pointer"
-              >
-                <PowerOff className="w-3.5 h-3.5" />
-                <span>Putuskan Sambungan</span>
-              </button>
-            ) : (
-              <button
-                onClick={handleConnect}
-                disabled={isConnecting || !activeDevice || activeDevice.connectionType === "ADMS"}
-                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 shadow-xs cursor-pointer"
-              >
-                <Power className="w-3.5 h-3.5" />
-                <span>{isConnecting ? "Menghubungkan..." : "Koneksikan ke Mesin"}</span>
-              </button>
-            )}
-
+          {canManage && (
             <button
-              onClick={() => handleOpenDownloadModal()}
-              disabled={activeDevice?.status !== "connected"}
-              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-xs cursor-pointer"
+              type="button"
+              onClick={() => {
+                resetAddForm();
+                setAddConnectionType("ADMS");
+                setIsAddModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-800 hover:bg-indigo-100 transition-colors cursor-pointer"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>Download Data Presensi</span>
+              <Plus className="w-3.5 h-3.5" />
+              <span>Registrasi Mesin ADMS</span>
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* Tabel Mesin Absensi Terdaftar */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-        <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-          <div className="flex items-center gap-2">
-            <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Daftar Mesin Absensi Terdaftar
-            </h2>
-            <span className="px-2 py-0.5 text-[11px] font-semibold bg-emerald-100/70 text-emerald-800 rounded-full">
-              {devices.length} Unit
-            </span>
-          </div>
-          <span className="text-[11px] text-slate-500">
-            {activeTab === "tcp"
-              ? "Pilih mesin fisik untuk menarik data via TCP/IP"
-              : "Menampilkan mesin presensi jaringan lokal (Ethernet) dan Cloud ADMS"}
-          </span>
+          )}
         </div>
 
         {isLoading ? (
           <div className="p-8 text-center flex flex-col items-center justify-center">
-            <Loader2 className="w-6 h-6 animate-spin text-emerald-600 mb-2" />
-            <p className="text-xs text-slate-500">Memuat daftar mesin dari database...</p>
+            <Loader2 className="w-6 h-6 animate-spin text-indigo-600 mb-2" />
+            <p className="text-xs text-slate-500">Memuat daftar mesin ADMS...</p>
           </div>
-        ) : devices.length === 0 ? (
+        ) : admsDevices.length === 0 ? (
           <div className="p-8 text-center">
-            <Cpu className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-            <p className="text-xs font-semibold text-slate-700">Belum ada mesin absensi terdaftar</p>
-            <p className="text-xs text-slate-400 mt-1">Silakan klik Tambah Mesin untuk mendaftarkan perangkat</p>
+            <Server className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+            <p className="text-xs font-semibold text-slate-700">Belum ada mesin Cloud ADMS yang terdaftar</p>
+            <p className="text-xs text-slate-400 mt-1">
+              Klik Registrasi Mesin ADMS untuk menghubungkan mesin push port 8081.
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-left border-collapse">
               <thead className="bg-slate-50/80 text-slate-600 font-semibold border-b border-slate-200/80">
                 <tr>
-                  <th className="py-2.5 px-4 w-12 text-center">Pilih</th>
-                  <th className="py-2.5 px-4">Nama Mesin</th>
-                  <th className="py-2.5 px-4">Tipe Koneksi</th>
-                  <th className="py-2.5 px-4">Status</th>
-                  <th className="py-2.5 px-4">Alamat IP / Allowlist</th>
-                  <th className="py-2.5 px-4">Serial Number</th>
+                  <th className="py-2.5 px-4">Nama Mesin ADMS</th>
+                  <th className="py-2.5 px-4">Status Penerimaan</th>
+                  <th className="py-2.5 px-4">Nomor Seri (SN)</th>
+                  <th className="py-2.5 px-4">Alamat IP Mesin & Allowlist</th>
                   <th className="py-2.5 px-4">Lokasi</th>
                   <th className="py-2.5 px-4">Terakhir Aktif</th>
                   <th className="py-2.5 px-4 text-center w-28">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {devices.map((device) => {
-                  const isSelected = String(device.id) === String(selectedDeviceId);
-                  const isAdms = device.connectionType === "ADMS" || Boolean(device.admsRegistered);
+                {admsDevices.map((device) => (
+                  <tr key={device.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-3 px-4 text-slate-900 font-semibold">
+                      <div className="flex items-center gap-2">
+                        <Server className="w-4 h-4 text-indigo-600 shrink-0" />
+                        <div>
+                          <p>{device.name}</p>
+                          <p className="text-[10px] text-slate-400 font-normal">Push Server Port 8081</p>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="py-3 px-4">
+                      <StatusBadge icon={dot} variant={!device.admsEnabled ? "slate" : "success"}>
+                        {!device.admsEnabled ? "ADMS Dinonaktifkan" : "ADMS Aktif"}
+                      </StatusBadge>
+                    </td>
+
+                    <td className="py-3 px-4 font-mono text-slate-700 font-semibold">
+                      {device.serialNumber || "-"}
+                    </td>
+
+                    <td className="py-3 px-4 font-mono text-slate-700">
+                      <div>{device.ip ? device.ip : "Auto / DHCP"}</div>
+                      {device.allowedNetwork && (
+                        <div className="text-[10px] text-indigo-700 font-mono mt-0.5">
+                          Allowlist: {device.allowedNetwork}
+                        </div>
+                      )}
+                    </td>
+
+                    <td className="py-3 px-4 text-slate-600">{device.location || "-"}</td>
+
+                    <td className="py-3 px-4 text-slate-500 text-[11px]">
+                      {device.lastSyncAt ? (
+                        <span className="font-mono text-slate-700">{device.lastSyncAt}</span>
+                      ) : (
+                        <span className="italic text-slate-400">Belum ada transmisi</span>
+                      )}
+                    </td>
+
+                    <td className="py-3 px-4 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1">
+                        {canManage && (
+                          <RowActionButton
+                            icon={Settings2}
+                            label="Allowlist ADMS"
+                            title="Ubah nomor seri atau IP allowlist ADMS"
+                            variant="default"
+                            onClick={() => {
+                              const candidate: AdmsCandidateDevice = {
+                                id: Number(device.id),
+                                name: device.name,
+                                serialNumber: device.serialNumber || null,
+                                ip: device.ip,
+                                port: device.port,
+                                connectionType: "ADMS",
+                                isEnabled: true,
+                                admsRegistered: true,
+                                admsEnabled: Boolean(device.admsEnabled),
+                                allowedNetwork: device.allowedNetwork || null,
+                                lastSeenAt: device.lastSyncAt,
+                                lastDataAt: device.lastSyncAt,
+                              };
+                              setEditingAdmsCandidate(candidate);
+                              setIsAdmsAllowlistModalOpen(true);
+                            }}
+                          />
+                        )}
+                        {canManage && (
+                          <RowActionButton
+                            icon={Power}
+                            label={device.admsEnabled ? "Nonaktifkan ADMS" : "Aktifkan ADMS"}
+                            title={device.admsEnabled ? "Nonaktifkan penerimaan ADMS" : "Aktifkan penerimaan ADMS"}
+                            variant={device.admsEnabled ? "amber" : "emerald"}
+                            onClick={() => handleToggleAdmsDevice(device)}
+                          />
+                        )}
+                        {canManage && (
+                          <RowActionButton
+                            icon={Edit3}
+                            label="Edit Mesin"
+                            title={`Edit Konfigurasi ${device.name}`}
+                            variant="default"
+                            onClick={() => handleOpenEditModal(device)}
+                          />
+                        )}
+                        {canManage && (
+                          <RowActionButton
+                            icon={Trash2}
+                            label="Hapus Mesin"
+                            title={`Hapus ${device.name}`}
+                            variant="rose"
+                            onClick={() => {
+                              setDeletingDevice(device);
+                              setIsDeleteModalOpen(true);
+                            }}
+                          />
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================= */}
+      {/* SEKSI 2 (BAWAH): TABEL MESIN FISIK / ETHERNET (TCP/IP)    */}
+      {/* ========================================================= */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-emerald-50 text-emerald-700 rounded-lg">
+              <Cpu className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  Mesin Fisik (Ethernet / LAN)
+                </h2>
+                <span className="px-2 py-0.5 text-[11px] font-semibold bg-emerald-100 text-emerald-800 rounded-full">
+                  {ethernetDevices.length} Unit
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Koneksi langsung soket TCP port 4370 melalui kabel LAN kantor.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {canManage && (
+              <button
+                type="button"
+                onClick={() => {
+                  resetAddForm();
+                  setAddConnectionType("Ethernet");
+                  setIsAddModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-100 transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Tambah Mesin Fisik</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="p-8 text-center flex flex-col items-center justify-center">
+            <Loader2 className="w-6 h-6 animate-spin text-emerald-600 mb-2" />
+            <p className="text-xs text-slate-500">Memuat daftar mesin fisik...</p>
+          </div>
+        ) : ethernetDevices.length === 0 ? (
+          <div className="p-8 text-center">
+            <Cpu className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+            <p className="text-xs font-semibold text-slate-700">Belum ada mesin fisik Ethernet terdaftar</p>
+            <p className="text-xs text-slate-400 mt-1">
+              Klik Tambah Mesin Fisik untuk mendaftarkan IP dan port mesin lokal.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left border-collapse">
+              <thead className="bg-slate-50/80 text-slate-600 font-semibold border-b border-slate-200/80">
+                <tr>
+                  <th className="py-2.5 px-4 w-36 text-center">Koneksi Mesin</th>
+                  <th className="py-2.5 px-4">Nama Mesin</th>
+                  <th className="py-2.5 px-4">Status</th>
+                  <th className="py-2.5 px-4">Alamat IP & Port</th>
+                  <th className="py-2.5 px-4">No. Mesin & CommKey</th>
+                  <th className="py-2.5 px-4">Lokasi</th>
+                  <th className="py-2.5 px-4">Terakhir Tarik Data</th>
+                  <th className="py-2.5 px-4 text-center w-28">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {ethernetDevices.map((device) => {
                   const isConn = device.status === "connected";
                   const isErr = device.status === "error";
+                  const isBusy = connectingDeviceId === device.id;
+                  const isSelected = String(device.id) === String(selectedDeviceId);
 
                   return (
-                    <tr
-                      key={device.id}
-                      onClick={() => handleSelectDevice(device.id)}
-                      className={`cursor-pointer transition-colors ${
-                        isSelected ? "bg-emerald-50/40 font-medium" : "hover:bg-slate-50/70"
-                      }`}
-                    >
-                      <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="radio"
-                          name="selected_device"
-                          checked={isSelected}
-                          onChange={() => handleSelectDevice(device.id)}
-                          className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer"
-                        />
+                    <tr key={device.id} className="hover:bg-slate-50/70 transition-colors">
+                      {/* KOLOM KONEKSI: Tombol Langsung Connect / Disconnect */}
+                      <td className="py-3 px-4 text-center whitespace-nowrap">
+                        {isConn ? (
+                          <button
+                            type="button"
+                            onClick={() => handleDisconnectDevice(device)}
+                            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition-colors cursor-pointer shadow-2xs"
+                            title="Putuskan koneksi ke mesin"
+                          >
+                            <PowerOff className="w-3.5 h-3.5" />
+                            <span>Putuskan</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => handleConnectDevice(device)}
+                            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors cursor-pointer shadow-2xs"
+                            title="Hubungkan ke mesin absensi via TCP/IP"
+                          >
+                            {isBusy ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Power className="w-3.5 h-3.5" />
+                            )}
+                            <span>{isBusy ? "Menghubungkan..." : "Koneksikan"}</span>
+                          </button>
+                        )}
                       </td>
 
                       <td className="py-3 px-4 text-slate-900 font-semibold">
                         <div className="flex items-center gap-2">
-                          {isAdms ? (
-                            <Server className="w-4 h-4 text-indigo-600" />
-                          ) : (
-                            <Cpu className={`w-4 h-4 ${isConn ? "text-emerald-600" : isErr ? "text-rose-500" : "text-slate-400"}`} />
-                          )}
+                          <Cpu className={`w-4 h-4 ${isConn ? "text-emerald-600" : isErr ? "text-rose-500" : "text-slate-400"}`} />
                           <span>{device.name}</span>
                         </div>
                       </td>
 
                       <td className="py-3 px-4">
-                        {isAdms ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                            <Server className="w-3 h-3" />
-                            Cloud ADMS
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            <Cpu className="w-3 h-3" />
-                            Ethernet (LAN)
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="py-3 px-4">
-                        {isAdms ? (
-                          <StatusBadge
-                            icon={dot}
-                            variant={!device.admsEnabled ? "slate" : "success"}
-                          >
-                            {!device.admsEnabled ? "ADMS Dinonaktifkan" : "ADMS Aktif"}
-                          </StatusBadge>
-                        ) : isConn ? (
+                        {isConn ? (
                           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
                             <span>Terhubung</span>
-                            {isSelected && idleSecondsLeft !== null ? (
-                              <span className="text-[10px] font-mono text-emerald-700 bg-emerald-200/60 px-1.5 py-0.2 rounded-sm ml-1" title="Sisa waktu idle sebelum otomatis terputus">
+                            {isSelected && idleSecondsLeft !== null && (
+                              <span
+                                className="text-[10px] font-mono text-emerald-700 bg-emerald-200/60 px-1.5 py-0.2 rounded-sm ml-1"
+                                title="Sisa waktu idle sebelum otomatis terputus"
+                              >
                                 {formatCountdown(idleSecondsLeft)}
                               </span>
-                            ) : null}
+                            )}
                           </div>
                         ) : isErr ? (
                           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-100 text-rose-800">
                             <span className="w-1.5 h-1.5 rounded-full bg-rose-600" />
-                            <span>Gagal Terhubung</span>
+                            <span>Gagal</span>
                           </div>
                         ) : (
                           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-100 text-slate-600">
@@ -821,19 +868,14 @@ export default function AttendanceDevicesPage() {
                       </td>
 
                       <td className="py-3 px-4 font-mono text-slate-700">
-                        {device.ip ? `${device.ip}:${device.port}` : "-"}
-                        {device.allowedNetwork && (
-                          <div className="text-[10px] text-slate-500 font-mono">
-                            Allowlist: {device.allowedNetwork}
-                          </div>
-                        )}
+                        {device.ip}:{device.port}
                       </td>
 
-                      <td className="py-3 px-4 font-mono text-slate-600 text-[11px]">
-                        {device.serialNumber || "-"}
+                      <td className="py-3 px-4 text-slate-600">
+                        ID: <span className="font-semibold">{device.deviceNumber}</span> · Key: {device.commKey}
                       </td>
 
-                      <td className="py-3 px-4 text-slate-600">{device.location}</td>
+                      <td className="py-3 px-4 text-slate-600">{device.location || "-"}</td>
 
                       <td className="py-3 px-4 text-slate-500 text-[11px]">
                         {device.lastSyncAt ? (
@@ -843,75 +885,16 @@ export default function AttendanceDevicesPage() {
                         )}
                       </td>
 
-                      <td className="py-3 px-4 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-3 px-4 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1">
-                          {isAdms ? (
-                            <>
-                              {canManage && (
-                                <RowActionButton
-                                  icon={Settings2}
-                                  label="Allowlist ADMS"
-                                  title="Ubah nomor seri atau IP allowlist ADMS"
-                                  variant="default"
-                                  onClick={() => {
-                                    const candidate: AdmsCandidateDevice = {
-                                      id: Number(device.id),
-                                      name: device.name,
-                                      serialNumber: device.serialNumber || null,
-                                      ip: device.ip,
-                                      port: device.port,
-                                      connectionType: "ADMS",
-                                      isEnabled: true,
-                                      admsRegistered: true,
-                                      admsEnabled: Boolean(device.admsEnabled),
-                                      allowedNetwork: device.allowedNetwork || null,
-                                      lastSeenAt: device.lastSyncAt,
-                                      lastDataAt: device.lastSyncAt,
-                                    };
-                                    setEditingAdmsCandidate(candidate);
-                                    setIsAdmsAllowlistModalOpen(true);
-                                  }}
-                                />
-                              )}
-                              {canManage && (
-                                <RowActionButton
-                                  icon={Power}
-                                  label={device.admsEnabled ? "Nonaktifkan ADMS" : "Aktifkan ADMS"}
-                                  title={device.admsEnabled ? "Nonaktifkan penerimaan ADMS" : "Aktifkan penerimaan ADMS"}
-                                  variant={device.admsEnabled ? "amber" : "emerald"}
-                                  onClick={() => handleToggleAdmsDevice(device)}
-                                />
-                              )}
-                            </>
-                          ) : (
-                            <>
-                              {isConn ? (
-                                <RowActionButton
-                                  icon={PowerOff}
-                                  label="Putuskan Koneksi"
-                                  title="Putuskan sambungan ke mesin"
-                                  variant="rose"
-                                  onClick={handleDisconnect}
-                                />
-                              ) : (
-                                <RowActionButton
-                                  icon={Power}
-                                  label="Hubungkan Mesin"
-                                  title="Hubungkan ke mesin absensi"
-                                  variant="emerald"
-                                  onClick={handleConnect}
-                                />
-                              )}
-                              {isConn && (
-                                <RowActionButton
-                                  icon={Download}
-                                  label="Download Presensi"
-                                  title="Download catatan presensi"
-                                  variant="default"
-                                  onClick={() => handleOpenDownloadModal(device)}
-                                />
-                              )}
-                            </>
+                          {isConn && (
+                            <RowActionButton
+                              icon={Download}
+                              label="Download Presensi"
+                              title="Tarik log presensi dari mesin"
+                              variant="default"
+                              onClick={() => handleOpenDownloadModal(device)}
+                            />
                           )}
 
                           {canManage && (
@@ -952,7 +935,7 @@ export default function AttendanceDevicesPage() {
         isOpen={isDownloadModalOpen}
         onClose={() => setIsDownloadModalOpen(false)}
         title="Download Data Presensi Mesin"
-        subtitle={`Mengambil catatan presensi dari ${activeDevice?.name} (${activeDevice?.ip})`}
+        subtitle={`Mengambil catatan presensi dari ${downloadTargetDevice?.name} (${downloadTargetDevice?.ip})`}
       >
         <div className="space-y-4">
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 flex items-center justify-between">
@@ -962,7 +945,7 @@ export default function AttendanceDevicesPage() {
             </div>
             {idleSecondsLeft !== null && (
               <div className="text-[11px] text-slate-500">
-                Auto-disconnect dalam: <strong className="font-mono text-slate-700">{formatCountdown(idleSecondsLeft)}</strong>
+                Auto-disconnect: <strong className="font-mono text-slate-700">{formatCountdown(idleSecondsLeft)}</strong>
               </div>
             )}
           </div>
@@ -1094,7 +1077,7 @@ export default function AttendanceDevicesPage() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         title="Tambah Mesin Absensi"
-        subtitle="Daftarkan mesin absensi baru ke dalam sistem GAJIANICH"
+        subtitle="Daftarkan perangkat absensi baru ke dalam sistem GAJIANICH"
       >
         <form onSubmit={handleAddDevice} className="space-y-4">
           <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl text-xs font-semibold">
@@ -1118,7 +1101,7 @@ export default function AttendanceDevicesPage() {
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              Mesin Cloud ADMS (Push Port 8081)
+              Mesin Cloud ADMS (Port 8081)
             </button>
           </div>
 
@@ -1264,7 +1247,7 @@ export default function AttendanceDevicesPage() {
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         title="Edit Konfigurasi Mesin"
-        subtitle={`Mengubah parameter komunikasi untuk ${activeDevice?.name}`}
+        subtitle={`Mengubah parameter komunikasi untuk ${editingDevice?.name}`}
       >
         <form onSubmit={handleSaveEditDevice} className="space-y-4">
           <div className="space-y-3 text-xs">
@@ -1353,7 +1336,7 @@ export default function AttendanceDevicesPage() {
         isOpen={isDiagnosticModalOpen}
         onClose={() => setIsDiagnosticModalOpen(false)}
         title="Detail Diagnostik & Solusi Koneksi"
-        subtitle={`Hasil pengecekan koneksi ke mesin ${activeDevice?.name} (${activeDevice?.ip})`}
+        subtitle={`Hasil pengecekan koneksi ke mesin`}
       >
         <div className="space-y-4">
           {connectionError && (
@@ -1390,37 +1373,14 @@ export default function AttendanceDevicesPage() {
             </>
           )}
 
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-end">
             <button
               type="button"
-              onClick={() => {
-                setIsDiagnosticModalOpen(false);
-                handleOpenEditModal();
-              }}
-              className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+              onClick={() => setIsDiagnosticModalOpen(false)}
+              className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 cursor-pointer"
             >
-              <Edit3 className="w-3.5 h-3.5 text-slate-500" />
-              <span>Periksa Pengaturan Mesin</span>
+              Tutup
             </button>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsDiagnosticModalOpen(false)}
-                className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 cursor-pointer"
-              >
-                Tutup
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsDiagnosticModalOpen(false);
-                  handleConnect();
-                }}
-                className="px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-xs cursor-pointer"
-              >
-                Uji Ulang Koneksi
-              </button>
-            </div>
           </div>
         </div>
       </ModalShell>

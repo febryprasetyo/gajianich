@@ -95,7 +95,7 @@ export const navGroups: NavGroup[] = [
         icon: Cpu,
         children: [
           { name: 'Review ADMS', href: '/dashboard/attendance/adms', icon: Cpu, anyPermissions: ['attendance.import', 'attendance.manage'] },
-          { name: 'Download Presensi', href: '/dashboard/attendance/devices', icon: Cpu, permission: 'attendance.import' },
+          { name: 'Mesin Presensi', href: '/dashboard/attendance/devices', icon: Cpu, permission: 'attendance.import' },
           { name: 'Data Presensi', href: '/dashboard/attendance/raw-logs', icon: ListFilter, permission: 'attendance.import' },
           { name: 'Laporan Presensi', href: '/dashboard/attendance/transactions', icon: FileCheck2, permission: 'attendance.view' },
         ],
@@ -191,7 +191,7 @@ const ROUTE_PERMISSION_MAP: { prefix: string; permission: string; moduleName: st
   { prefix: '/dashboard/tickets', permission: 'tickets.view', moduleName: 'Service Desk Tickets' },
   { prefix: '/dashboard/infrastructure', permission: 'infrastructure.view', moduleName: 'Accurate & Server Infrastructure' },
   { prefix: '/dashboard/attendance/adms', permission: 'attendance.import atau attendance.manage', moduleName: 'Review ADMS' },
-  { prefix: '/dashboard/attendance/devices', permission: 'attendance.import', moduleName: 'Download Presensi Mesin' },
+  { prefix: '/dashboard/attendance/devices', permission: 'attendance.import', moduleName: 'Mesin Presensi' },
   { prefix: '/dashboard/attendance/approvals/rules', permission: 'attendance.manage', moduleName: 'Aturan Auto-Approve Shift' },
   { prefix: '/dashboard/attendance/approvals/photos', permission: 'attendance.mobile.verify', moduleName: 'Validasi Foto Wajah' },
   { prefix: '/dashboard/attendance/approvals', permission: 'attendance.mobile.verify', moduleName: 'Review Absensi Mobile' },
