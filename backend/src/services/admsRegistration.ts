@@ -52,21 +52,29 @@ export function parseSourceCidr(raw: unknown): string {
   return `${ip}/${mask}`;
 }
 
-export function parseRegisterInput(input: Record<string, unknown>) {
+export type RegisterAdmsInput =
+  | {
+      mode: 'existing';
+      deviceId: number;
+      serial: string;
+      sourceCidr: string;
+      enabled: boolean;
+    }
+  | {
+      mode: 'new';
+      name: string;
+      ip: string;
+      port: number;
+      groupId?: number;
+      serial: string;
+      sourceCidr: string;
+      enabled: boolean;
+    };
+
+export function parseRegisterInput(input: Record<string, unknown>): RegisterAdmsInput {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     throw fail('Input registrasi ADMS tidak valid.');
   }
-
-  const rawDeviceId = input.deviceId;
-  if (
-    rawDeviceId === undefined ||
-    rawDeviceId === null ||
-    (!Number.isInteger(rawDeviceId) && !/^\d+$/.test(String(rawDeviceId))) ||
-    Number(rawDeviceId) < 1
-  ) {
-    throw fail('Input registrasi ADMS tidak valid: ID mesin tidak valid.');
-  }
-  const deviceId = Number(rawDeviceId);
 
   const rawSerial = input.serial;
   if (typeof rawSerial !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(rawSerial.trim())) {
@@ -74,10 +82,65 @@ export function parseRegisterInput(input: Record<string, unknown>) {
   }
   const serial = rawSerial.trim();
 
-  const sourceCidr = parseSourceCidr(input.sourceCidr);
   const enabled = input.enabled !== undefined ? Boolean(input.enabled) : true;
+  const rawDeviceId = input.deviceId;
 
-  return { deviceId, serial, sourceCidr, enabled };
+  // Mode 1: Existing Device Registration
+  if (
+    rawDeviceId !== undefined &&
+    rawDeviceId !== null &&
+    rawDeviceId !== '' &&
+    rawDeviceId !== 0 &&
+    rawDeviceId !== '0'
+  ) {
+    if ((!Number.isInteger(rawDeviceId) && !/^\d+$/.test(String(rawDeviceId))) || Number(rawDeviceId) < 1) {
+      throw fail('Input registrasi ADMS tidak valid: ID mesin tidak valid.');
+    }
+    const deviceId = Number(rawDeviceId);
+    const sourceCidr = parseSourceCidr(input.sourceCidr);
+    return { mode: 'existing', deviceId, serial, sourceCidr, enabled };
+  }
+
+  // Mode 2: New Device Registration
+  const rawName = input.name;
+  if (typeof rawName !== 'string' || !rawName.trim() || rawName.trim().length > 100) {
+    throw fail('Input registrasi ADMS tidak valid: Nama mesin harus diisi (maksimal 100 karakter).');
+  }
+  const name = rawName.trim();
+
+  const rawIp = input.ip;
+  if (typeof rawIp !== 'string' || !rawIp.trim()) {
+    throw fail('Input registrasi ADMS tidak valid: Alamat IP mesin harus diisi.');
+  }
+  const ip = rawIp.trim();
+  // Validate IPv4 format
+  const octets = ip.split('.');
+  if (octets.length !== 4 || octets.some(o => !/^\d{1,3}$/.test(o) || Number(o) < 0 || Number(o) > 255)) {
+    throw fail('Input registrasi ADMS tidak valid: Format IP mesin tidak valid.');
+  }
+
+  let port = 4370;
+  if (input.port !== undefined && input.port !== null && input.port !== '') {
+    const parsedPort = Number(input.port);
+    if (!Number.isInteger(parsedPort) || parsedPort < 1 || parsedPort > 65535) {
+      throw fail('Input registrasi ADMS tidak valid: Port harus antara 1 dan 65535.');
+    }
+    port = parsedPort;
+  }
+
+  let groupId: number | undefined;
+  if (input.groupId !== undefined && input.groupId !== null && input.groupId !== '') {
+    const parsedGroupId = Number(input.groupId);
+    if (!Number.isInteger(parsedGroupId) || parsedGroupId < 1) {
+      throw fail('Input registrasi ADMS tidak valid: Kelompok organisasi tidak valid.');
+    }
+    groupId = parsedGroupId;
+  }
+
+  const rawSourceCidr = input.sourceCidr ? String(input.sourceCidr).trim() : `${ip}/32`;
+  const sourceCidr = parseSourceCidr(rawSourceCidr);
+
+  return { mode: 'new', name, ip, port, groupId, serial, sourceCidr, enabled };
 }
 
 export function parseToggleInput(input: Record<string, unknown>) {
@@ -99,12 +162,15 @@ export async function getAdmsCandidates(runner: SqlRunner, scope: RequestScope) 
       d.port,
       d.connection_type AS "connectionType",
       d.is_enabled AS "isEnabled",
+      d.group_id AS "groupId",
+      og.name AS "groupName",
       (a.serial IS NOT NULL) AS "admsRegistered",
       COALESCE(a.enabled, false) AS "admsEnabled",
       host(a.allowed_network) || '/' || masklen(a.allowed_network) AS "allowedNetwork",
       a.last_seen_at AS "lastSeenAt",
       a.last_data_at AS "lastDataAt"
     FROM public.attendance_devices d
+    LEFT JOIN public.organization_groups og ON og.id = d.group_id
     LEFT JOIN adms.devices a ON a.device_id = d.id AND a.group_id = d.group_id
     WHERE ($1::boolean OR d.group_id = ANY($2::bigint[]))
     ORDER BY d.id ASC
@@ -118,50 +184,104 @@ export async function getAdmsCandidates(runner: SqlRunner, scope: RequestScope) 
   return rows.map(r => ({
     ...r,
     id: Number(r.id),
+    groupId: r.groupId ? Number(r.groupId) : null,
+    groupName: r.groupName || null,
   }));
 }
 
 export async function registerAdmsDevice(
   pool: PoolLike,
   scope: RequestScope,
-  input: ReturnType<typeof parseRegisterInput>
+  input: RegisterAdmsInput
 ) {
   if (scope.module !== 'hr') throw fail('HR scope required', 403);
-  if (scope.selectedGroupId === null || !scope.groupIds.includes(scope.selectedGroupId)) {
-    throw fail('Pilih kelompok organisasi aktif terlebih dahulu.', 403);
-  }
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    // 1. Verify device exists in active group
-    const checkSql = `
-      SELECT id, group_id, serial_number, is_enabled
-      FROM public.attendance_devices
-      WHERE id = $1 AND group_id = $2
-      FOR UPDATE
-    `;
-    const checkRes = await client.query(checkSql, [input.deviceId, scope.selectedGroupId]);
-    if (!checkRes.rows.length) {
-      throw fail('Mesin tidak ditemukan dalam kelompok organisasi aktif.', 404);
-    }
-    const dev = checkRes.rows[0];
-    if (!dev.is_enabled) {
-      throw fail('Aktifkan perangkat pada menu Mesin Presensi sebelum mendaftarkannya ke ADMS.', 400);
+    let targetGroupId: number;
+    let targetDeviceId: number;
+    let successMessage: string;
+
+    if (input.mode === 'new') {
+      // Mode 2: New Device Registration
+      if (input.groupId !== undefined) {
+        if (!scope.groupIds.includes(input.groupId)) {
+          throw fail('Kelompok organisasi tujuan tidak diizinkan atau tidak ditemukan.', 403);
+        }
+        targetGroupId = input.groupId;
+      } else if (scope.selectedGroupId !== null && scope.groupIds.includes(scope.selectedGroupId)) {
+        targetGroupId = scope.selectedGroupId;
+      } else if (scope.groupIds.length === 1) {
+        targetGroupId = scope.groupIds[0];
+      } else {
+        throw fail('Pilih kelompok organisasi tujuan untuk mesin absensi baru.', 400);
+      }
+
+      // Check if IP or serial already used
+      const existingCheck = await client.query(
+        `SELECT id, name FROM public.attendance_devices WHERE (ip = $1 OR serial_number = $2) AND group_id = $3 LIMIT 1`,
+        [input.ip, input.serial, targetGroupId]
+      );
+      if (existingCheck.rows.length) {
+        throw fail('Alamat IP atau nomor seri mesin sudah terdaftar di kelompok organisasi ini.', 409);
+      }
+
+      // Insert new device into public.attendance_devices
+      const code = `adms-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const devInsertSql = `
+        INSERT INTO public.attendance_devices(code, name, ip, port, serial_number, connection_type, is_enabled, group_id)
+        VALUES ($1, $2, $3, $4, $5, 'ADMS', true, $6)
+        RETURNING id
+      `;
+      const devInsertRes = await client.query(devInsertSql, [
+        code,
+        input.name,
+        input.ip,
+        input.port,
+        input.serial,
+        targetGroupId,
+      ]);
+      targetDeviceId = Number(devInsertRes.rows[0].id);
+      successMessage = `Mesin baru "${input.name}" berhasil dibuat dan didaftarkan ke ADMS.`;
+    } else {
+      // Mode 1: Existing Device Registration
+      if (scope.selectedGroupId === null || !scope.groupIds.includes(scope.selectedGroupId)) {
+        throw fail('Pilih kelompok organisasi aktif terlebih dahulu.', 403);
+      }
+      targetGroupId = scope.selectedGroupId;
+      targetDeviceId = input.deviceId;
+
+      // Verify device exists in active group
+      const checkSql = `
+        SELECT id, group_id, serial_number, is_enabled
+        FROM public.attendance_devices
+        WHERE id = $1 AND group_id = $2
+        FOR UPDATE
+      `;
+      const checkRes = await client.query(checkSql, [targetDeviceId, targetGroupId]);
+      if (!checkRes.rows.length) {
+        throw fail('Mesin tidak ditemukan dalam kelompok organisasi aktif.', 404);
+      }
+      const dev = checkRes.rows[0];
+      if (!dev.is_enabled) {
+        throw fail('Aktifkan perangkat pada menu Mesin Presensi sebelum mendaftarkannya ke ADMS.', 400);
+      }
+
+      // Update attendance_devices connection_type to ADMS
+      await client.query(
+        `UPDATE public.attendance_devices 
+         SET connection_type = 'ADMS',
+             serial_number = COALESCE(NULLIF($2, ''), serial_number),
+             updated_at = NOW()
+         WHERE id = $1`,
+        [targetDeviceId, input.serial]
+      );
+      successMessage = 'Mesin ADMS berhasil didaftarkan dan allowlist diperbarui.';
     }
 
-    // 2. Update attendance_devices connection_type to ADMS
-    await client.query(
-      `UPDATE public.attendance_devices 
-       SET connection_type = 'ADMS',
-           serial_number = COALESCE(NULLIF($2, ''), serial_number),
-           updated_at = NOW()
-       WHERE id = $1`,
-      [input.deviceId, input.serial]
-    );
-
-    // 3. Upsert into adms.devices
+    // Upsert into adms.devices
     const upsertSql = `
       INSERT INTO adms.devices(serial, device_id, group_id, allowed_network, enabled)
       VALUES ($1, $2, $3, $4::cidr, $5)
@@ -173,8 +293,8 @@ export async function registerAdmsDevice(
     `;
     const upsertRes = await client.query(upsertSql, [
       input.serial,
-      input.deviceId,
-      scope.selectedGroupId,
+      targetDeviceId,
+      targetGroupId,
       input.sourceCidr,
       input.enabled,
     ]);
@@ -186,11 +306,11 @@ export async function registerAdmsDevice(
     await client.query('COMMIT');
 
     return {
-      deviceId: input.deviceId,
+      deviceId: targetDeviceId,
       serial: input.serial,
       allowedNetwork: input.sourceCidr,
       enabled: input.enabled,
-      message: 'Mesin ADMS berhasil didaftarkan dan allowlist diperbarui.',
+      message: successMessage,
     };
   } catch (err: any) {
     await client.query('ROLLBACK');

@@ -54,7 +54,9 @@ function useAdmsPolling<T>(endpoint: string, enabled = true) {
 export default function AdmsMonitorPage() {
   const { user } = useAuth();
   const { selectedGroupId, revision } = useOrganizationScope();
-  const canManage = Boolean(user?.permissions?.includes('attendance.manage') || user?.roleName?.toLowerCase().includes('admin'));
+  const normalizedRole = (user?.roleName || '').toLowerCase().replace(/_/g, '');
+  // Hanya SuperAdmin dan ITAdmin yang diizinkan menambah / mengelola mesin absensi
+  const canManage = normalizedRole === 'superadmin' || normalizedRole === 'itadmin';
   const [regModalOpen, setRegModalOpen] = useState(false);
   const [editingCandidate, setEditingCandidate] = useState<AdmsCandidateDevice | null>(null);
   const [regFeedback, setRegFeedback] = useState<string | null>(null);

@@ -135,6 +135,8 @@ export interface AdmsCandidateDevice {
   port: number;
   connectionType: 'Ethernet' | 'ADMS';
   isEnabled: boolean;
+  groupId?: number | null;
+  groupName?: string | null;
   admsRegistered: boolean;
   admsEnabled: boolean;
   allowedNetwork: string | null;
@@ -177,4 +179,29 @@ export function validateAdmsRegistration(
     return 'Nomor seri (SN) harus alfanumerik 1-100 karakter.';
   }
   return validateCidrInput(sourceCidr);
+}
+
+export function validateNewAdmsDevice(
+  groupId: number | null,
+  name: string,
+  ip: string,
+  port: string | number,
+  serial: string,
+  sourceCidr: string
+): string | null {
+  if (groupId === null) return 'Pilih kelompok unit / cabang organisasi terlebih dahulu.';
+  if (!name.trim()) return 'Nama mesin absensi harus diisi.';
+  if (!ip.trim()) return 'Alamat IP mesin harus diisi.';
+  const octets = ip.trim().split('.');
+  if (octets.length !== 4 || octets.some(o => !/^\d{1,3}$/.test(o) || Number(o) < 0 || Number(o) > 255)) {
+    return 'Format IP mesin tidak valid (contoh: 192.168.10.50).';
+  }
+  const portNum = Number(port);
+  if (!Number.isInteger(portNum) || portNum < 1 || portNum > 65535) {
+    return 'Port harus berupa angka antara 1 dan 65535 (default: 4370).';
+  }
+  if (!serial.trim() || !/^[A-Za-z0-9_-]{1,100}$/.test(serial.trim())) {
+    return 'Nomor seri (SN) harus alfanumerik 1-100 karakter.';
+  }
+  return validateCidrInput(sourceCidr || `${ip.trim()}/32`);
 }

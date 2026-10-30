@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { admsReadCommandStatus, buildAdmsReviewQuery, filterMonitorDevices, formatAdmsLocalTimestamp, startMonitorPolling, validateAdmsHistoryRequest, validateAdmsReviewRange, withMonitorDeadline, validateCidrInput, validateAdmsRegistration } from './admsMonitor.ts';
+import { admsReadCommandStatus, buildAdmsReviewQuery, filterMonitorDevices, formatAdmsLocalTimestamp, startMonitorPolling, validateAdmsHistoryRequest, validateAdmsReviewRange, withMonitorDeadline, validateCidrInput, validateAdmsRegistration, validateNewAdmsDevice } from './admsMonitor.ts';
 
 test('slow responses never accumulate overlapping monitor requests', async context => {
   context.mock.timers.enable(Number(process.versions.node.split('.')[0]) < 20 ? ['setTimeout'] : { apis: ['setTimeout'] });
@@ -205,4 +205,15 @@ test('validateAdmsRegistration validates group, device, serial, and cidr', () =>
   assert.ok(validateAdmsRegistration(1, '2', '', '192.168.10.4'));
   assert.ok(validateAdmsRegistration(1, '2', 'INVALID SERIAL$$', '192.168.10.4'));
   assert.ok(validateAdmsRegistration(1, '2', 'WAE4242300038', 'invalid_cidr'));
+});
+
+test('validateNewAdmsDevice validates name, ip, port, group, serial, and cidr', () => {
+  assert.equal(validateNewAdmsDevice(1, 'Absensi Baru', '192.168.10.50', 4370, 'WAE9999999999', '192.168.10.50/32'), null);
+  // Auto defaults sourceCidr when empty
+  assert.equal(validateNewAdmsDevice(1, 'Absensi Baru', '192.168.10.50', '4370', 'WAE9999999999', ''), null);
+  assert.ok(validateNewAdmsDevice(null, 'Absensi Baru', '192.168.10.50', 4370, 'WAE9999999999', ''));
+  assert.ok(validateNewAdmsDevice(1, '', '192.168.10.50', 4370, 'WAE9999999999', ''));
+  assert.ok(validateNewAdmsDevice(1, 'Absensi Baru', 'not an ip', 4370, 'WAE9999999999', ''));
+  assert.ok(validateNewAdmsDevice(1, 'Absensi Baru', '192.168.10.50', 99999, 'WAE9999999999', ''));
+  assert.ok(validateNewAdmsDevice(1, 'Absensi Baru', '192.168.10.50', 4370, '', ''));
 });

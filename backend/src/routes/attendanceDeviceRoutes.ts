@@ -9,7 +9,7 @@ import {
 } from '../controllers/admsMonitoringController';
 import {requireOrganizationScope} from '../middleware/organizationScope';
 import { Router } from "express";
-import { authenticateToken, requirePermission } from "../middleware/auth";
+import { authenticateToken, requirePermission, requireRoles } from "../middleware/auth";
 import {
   getAttendanceDevicesHandler,
   createAttendanceDeviceHandler,
@@ -32,14 +32,16 @@ router.get(
   getAdmsMonitoringHandler
 );
 
-router.get('/adms/review-logs',authenticateToken,requirePermission(['attendance.import','attendance.manage']),requireOrganizationScope('hr','read'),getAdmsReviewLogsHandler);
-router.get('/adms/read-commands',authenticateToken,requirePermission(['attendance.import','attendance.manage']),requireOrganizationScope('hr','read'),getAdmsReadCommandsHandler);
-router.get('/adms/candidates',authenticateToken,requirePermission(['attendance.manage']),requireOrganizationScope('hr','read'),getAdmsCandidatesHandler);
-router.post('/adms/register',authenticateToken,requirePermission(['attendance.manage']),requireOrganizationScope('hr','write'),registerAdmsDeviceHandler);
-router.patch('/adms/:id/toggle',authenticateToken,requirePermission(['attendance.manage']),requireOrganizationScope('hr','write'),toggleAdmsDeviceHandler);
-router.post('/adms/:id/history',authenticateToken,requirePermission(['attendance.import','attendance.manage']),requireOrganizationScope('hr','write'),requestAdmsHistoryHandler);
+router.get('/adms/review-logs', authenticateToken, requirePermission(['attendance.import', 'attendance.manage']), requireOrganizationScope('hr', 'read'), getAdmsReviewLogsHandler);
+router.get('/adms/read-commands', authenticateToken, requirePermission(['attendance.import', 'attendance.manage']), requireOrganizationScope('hr', 'read'), getAdmsReadCommandsHandler);
 
-// Device CRUD & Operations
+// Manajemen Mesin ADMS: Hanya SuperAdmin & ITAdmin
+router.get('/adms/candidates', authenticateToken, requireRoles('SuperAdmin', 'ITAdmin'), requireOrganizationScope('hr', 'read'), getAdmsCandidatesHandler);
+router.post('/adms/register', authenticateToken, requireRoles('SuperAdmin', 'ITAdmin'), requireOrganizationScope('hr', 'write'), registerAdmsDeviceHandler);
+router.patch('/adms/:id/toggle', authenticateToken, requireRoles('SuperAdmin', 'ITAdmin'), requireOrganizationScope('hr', 'write'), toggleAdmsDeviceHandler);
+router.post('/adms/:id/history', authenticateToken, requireRoles('SuperAdmin', 'ITAdmin'), requireOrganizationScope('hr', 'write'), requestAdmsHistoryHandler);
+
+// Device CRUD: Hanya SuperAdmin & ITAdmin yang dapat membuat, mengubah, atau menghapus mesin absensi
 router.get(
   "/",
   authenticateToken,
@@ -51,7 +53,7 @@ router.get(
 router.post(
   "/",
   authenticateToken,
-  requirePermission(["attendance.manage"]),
+  requireRoles('SuperAdmin', 'ITAdmin'),
   requireOrganizationScope('hr', 'write'),
   createAttendanceDeviceHandler
 );
@@ -59,7 +61,7 @@ router.post(
 router.put(
   "/:id",
   authenticateToken,
-  requirePermission(["attendance.manage"]),
+  requireRoles('SuperAdmin', 'ITAdmin'),
   requireOrganizationScope('hr', 'write'),
   updateAttendanceDeviceHandler
 );
@@ -67,7 +69,7 @@ router.put(
 router.delete(
   "/:id",
   authenticateToken,
-  requirePermission(["attendance.manage"]),
+  requireRoles('SuperAdmin', 'ITAdmin'),
   requireOrganizationScope('hr', 'write'),
   deleteAttendanceDeviceHandler
 );
