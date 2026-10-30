@@ -174,25 +174,50 @@ const shiftCommandSchema = z.object({
     id: z.number().int().nonnegative().optional().default(0),
     code: z.string().min(1).max(50),
     name: z.string().min(1).max(150),
+    mondayWorkHoursId: z.number().int().positive().nullable().optional(),
+    tuesdayWorkHoursId: z.number().int().positive().nullable().optional(),
+    wednesdayWorkHoursId: z.number().int().positive().nullable().optional(),
+    thursdayWorkHoursId: z.number().int().positive().nullable().optional(),
+    fridayWorkHoursId: z.number().int().positive().nullable().optional(),
+    saturdayWorkHoursId: z.number().int().positive().nullable().optional(),
+    sundayWorkHoursId: z.number().int().positive().nullable().optional(),
+    description: z.string().nullable().optional(),
+    isDefault: z.boolean().default(false),
+    isActive: z.boolean().default(true),
+  }),
+});
+
+const workHoursCommandSchema = z.object({
+  type: z.literal("work_hours"),
+  action: z.enum(["create", "update", "delete"]),
+  workHours: z.object({
+    id: z.number().int().nonnegative().optional().default(0),
+    name: z.string().min(1).max(100),
+    color: z.string().max(20).nullable().optional(),
     scheduleIn: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
     scheduleOut: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
-    workDays: z.union([z.literal(5), z.literal(6)]).default(5),
-    saturdayScheduleIn: z.string().nullable().optional(),
-    saturdayScheduleOut: z.string().nullable().optional(),
-    description: z.string().optional(),
-    isDefault: z.boolean().default(false),
+    scanInStart: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+    scanInEnd: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+    scanOutStart: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+    scanOutEnd: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+    lateToleranceMinutes: z.number().int().nonnegative().default(5),
+    earlyLeaveToleranceMinutes: z.number().int().nonnegative().default(5),
+    requireCheckIn: z.boolean().default(true),
+    requireCheckOut: z.boolean().default(true),
     isActive: z.boolean().default(true),
   }),
 });
 
 const assignShiftCommandSchema = z.object({
   type: z.literal("assign_shift"),
+  action: z.enum(["assign", "remove", "set_default"]).optional(),
   assignment: z
     .object({
       id: z.number().int().nonnegative().optional().default(0),
       shiftId: z.number().int().positive(),
       departmentId: z.number().int().positive().nullable().optional(),
       employeeId: z.number().int().positive().nullable().optional(),
+      isDefault: z.boolean().optional(),
     })
     .refine((data) => (data.departmentId ? !data.employeeId : !!data.employeeId), {
       message: "Assignment must specify either departmentId or employeeId, not both or neither",
@@ -240,6 +265,7 @@ export const attendanceCommandSchema = z.discriminatedUnion("type", [
   setStrictIntegrityCommandSchema,
   recordAttendanceCommandSchema,
   shiftCommandSchema,
+  workHoursCommandSchema,
   assignShiftCommandSchema,
   sourceCommandSchema,
   grantCommandSchema,
@@ -288,6 +314,7 @@ export const COMMAND_PERMISSIONS_MAP: Record<ServerAttendanceCommand["type"], st
   delete_identity: ["attendance.manage"],
   source: ["attendance.manage"],
   shift: ["attendance.manage"],
+  work_hours: ["attendance.manage"],
   assign_shift: ["attendance.manage"],
   lock: ["attendance.manage"],
   grant: ["attendance.manage"],

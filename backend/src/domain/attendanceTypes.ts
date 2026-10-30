@@ -192,4 +192,5 @@ export interface AttendanceDataset {
   locks: AttendanceLock[];
   shifts: WorkShift[];
   shiftAssignments: ShiftAssignment[];
+  workHours?: WorkHoursTemplate[];
 }

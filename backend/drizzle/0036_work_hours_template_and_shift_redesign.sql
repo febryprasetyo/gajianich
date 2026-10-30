@@ -33,8 +33,15 @@ CREATE TABLE IF NOT EXISTS "attendance_work_hours" (
 --> statement-breakpoint
 
 -- =============================================================================
--- STEP 2: Tambah kolom FK per-hari ke attendance_shifts
+-- STEP 2: Tambah kolom FK per-hari ke attendance_shifts & buat schedule lama nullable
 -- =============================================================================
+ALTER TABLE "attendance_shifts"
+  ALTER COLUMN "schedule_in" DROP NOT NULL,
+  ALTER COLUMN "schedule_out" DROP NOT NULL,
+  ALTER COLUMN "work_days" DROP NOT NULL;
+
+--> statement-breakpoint
+
 ALTER TABLE "attendance_shifts"
   ADD COLUMN IF NOT EXISTS "monday_work_hours_id"    bigint REFERENCES "attendance_work_hours"("id") ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS "tuesday_work_hours_id"   bigint REFERENCES "attendance_work_hours"("id") ON DELETE SET NULL,
@@ -162,3 +169,4 @@ WHERE id IN (
 -- untuk kompatibilitas backward — akan di-drop di migrasi berikutnya
 -- setelah semua query/service diperbarui.
 -- =============================================================================
+

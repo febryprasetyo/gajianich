@@ -2,7 +2,7 @@ import type {RequestScope} from '../domain/organizationAccess';
 import {employeeScopePredicate,historicalScopePredicate,requireHrScope,requireScopedEmployee,requireScopedDepartment} from './hrOrganizationScope';
 import {departmentOrganizationMappings,locationOrganizationMappings} from '../db/schema/organizations';
 import {loadCurrentIdentity} from './currentIdentity';
-import { eq, and, sql, asc, inArray } from "drizzle-orm";
+import { eq, and, or, sql, asc, inArray } from "drizzle-orm";
 import { db } from "../db";
 import { approvedAttendanceRecords } from "./approvedAttendanceRecords";
 import { employees } from "../db/schema/employees";
@@ -13,6 +13,7 @@ import {
   attendanceRecords,
 } from "../db/schema/attendance";
 import {
+  attendanceWorkHours,
   attendanceSources,
   attendanceIdentities,
   attendanceShifts,
@@ -27,6 +28,7 @@ import { sanitizeAuditTarget, type AuditContext } from "../domain/hrAudit";
 import type {
   AttendanceDataset,
   WorkShift,
+  WorkHoursTemplate,
   ShiftAssignment,
   MasterItem,
   EmployeeSummary,
@@ -48,7 +50,9 @@ async function employeeScheduleValues(tx: AuditTx, employeeId: number, workDate:
   if (!employee) throw new ValidationError("Karyawan tidak ditemukan");
   const shifts = await tx.select().from(attendanceShifts);
   const assignments = await tx.select().from(attendanceShiftAssignments);
-  return getAttendanceSchedule(employee, workDate, shifts as WorkShift[], assignments, shiftId);
+  const workHoursRows = await tx.select().from(attendanceWorkHours);
+  const workHoursMap = new Map<number, WorkHoursTemplate>(workHoursRows.map((wh) => [wh.id, wh]));
+  return getAttendanceSchedule(employee, workDate, shifts as WorkShift[], assignments, shiftId, workHoursMap);
 }
 
 async function fieldDutyValues(tx: AuditTx, employeeId: number, workDate: string, shiftId?: number) {
@@ -121,6 +125,7 @@ export async function loadAttendanceWorkspace(
     lockRows,
     shiftRows,
     assignRows,
+    workHoursRows,
     strictSetting,
   ] = await Promise.all([
     tx.select().from(departments).where(scope.includeUnmapped && !scope.groupIds.length ? sql`true` : sql`exists(select 1 from ${departmentOrganizationMappings} where ${departmentOrganizationMappings.departmentId} = ${departments.id} and ${scope.groupIds.length ? inArray(departmentOrganizationMappings.groupId,scope.groupIds) : sql`false`})`),
@@ -136,6 +141,7 @@ export async function loadAttendanceWorkspace(
     tx.select().from(attendanceLocks),
     tx.select().from(attendanceShifts),
     tx.select().from(attendanceShiftAssignments).where(scope.includeUnmapped && !scope.groupIds.length ? sql`true` : sql`(${attendanceShiftAssignments.employeeId} in (select ${employees.id} from ${employees} where ${employeeScopePredicate(scope)})) or (${attendanceShiftAssignments.departmentId} in (select ${departmentOrganizationMappings.departmentId} from ${departmentOrganizationMappings} where ${scope.groupIds.length ? inArray(departmentOrganizationMappings.groupId,scope.groupIds) : sql`false`}))`),
+    tx.select().from(attendanceWorkHours),
     tx.select().from(systemSettings).where(eq(systemSettings.key, "attendance_strict_integrity")).limit(1),
   ]);
 
@@ -252,27 +258,53 @@ export async function loadAttendanceWorkspace(
       reason: l.reason,
       createdAt: l.createdAt.toISOString(),
     })),
-    shifts: shiftRows.map((s) => ({
-      id: s.id,
-      code: s.code,
-      name: s.name,
-      mondayWorkHoursId: s.mondayWorkHoursId,
-      tuesdayWorkHoursId: s.tuesdayWorkHoursId,
-      wednesdayWorkHoursId: s.wednesdayWorkHoursId,
-      thursdayWorkHoursId: s.thursdayWorkHoursId,
-      fridayWorkHoursId: s.fridayWorkHoursId,
-      saturdayWorkHoursId: s.saturdayWorkHoursId,
-      sundayWorkHoursId: s.sundayWorkHoursId,
-      description: s.description ?? undefined,
-      isDefault: s.isDefault,
-      isActive: s.isActive,
-    })),
+    shifts: shiftRows.map((s) => {
+      const monWh = s.mondayWorkHoursId ? workHoursRows.find((w) => w.id === s.mondayWorkHoursId) : undefined;
+      const satWh = s.saturdayWorkHoursId ? workHoursRows.find((w) => w.id === s.saturdayWorkHoursId) : undefined;
+      const workDays = s.saturdayWorkHoursId ? 6 : 5;
+      return {
+        id: s.id,
+        code: s.code,
+        name: s.name,
+        mondayWorkHoursId: s.mondayWorkHoursId,
+        tuesdayWorkHoursId: s.tuesdayWorkHoursId,
+        wednesdayWorkHoursId: s.wednesdayWorkHoursId,
+        thursdayWorkHoursId: s.thursdayWorkHoursId,
+        fridayWorkHoursId: s.fridayWorkHoursId,
+        saturdayWorkHoursId: s.saturdayWorkHoursId,
+        sundayWorkHoursId: s.sundayWorkHoursId,
+        scheduleIn: monWh?.scheduleIn || '08:00',
+        scheduleOut: monWh?.scheduleOut || '17:00',
+        workDays: workDays as 5 | 6,
+        saturdayScheduleIn: satWh?.scheduleIn,
+        saturdayScheduleOut: satWh?.scheduleOut,
+        description: s.description ?? undefined,
+        isDefault: s.isDefault,
+        isActive: s.isActive,
+      };
+    }),
     shiftAssignments: assignRows.map((a) => ({
       id: a.id,
       shiftId: a.shiftId,
       departmentId: a.departmentId,
       employeeId: a.employeeId,
       isDefault: a.isDefault,
+    })),
+    workHours: workHoursRows.map((wh) => ({
+      id: wh.id,
+      name: wh.name,
+      color: wh.color,
+      scheduleIn: wh.scheduleIn,
+      scheduleOut: wh.scheduleOut,
+      scanInStart: wh.scanInStart,
+      scanInEnd: wh.scanInEnd,
+      scanOutStart: wh.scanOutStart,
+      scanOutEnd: wh.scanOutEnd,
+      lateToleranceMinutes: wh.lateToleranceMinutes,
+      earlyLeaveToleranceMinutes: wh.earlyLeaveToleranceMinutes,
+      requireCheckIn: wh.requireCheckIn,
+      requireCheckOut: wh.requireCheckOut,
+      isActive: wh.isActive,
     })),
   };
 }
@@ -576,18 +608,76 @@ export async function executeAttendanceCommand(
 
     case "shift": {
       if (command.action === "create") {
+        let monWhId = command.shift.mondayWorkHoursId ?? null;
+        let tueWhId = command.shift.tuesdayWorkHoursId ?? null;
+        let wedWhId = command.shift.wednesdayWorkHoursId ?? null;
+        let thuWhId = command.shift.thursdayWorkHoursId ?? null;
+        let friWhId = command.shift.fridayWorkHoursId ?? null;
+        let satWhId = command.shift.saturdayWorkHoursId ?? null;
+        let sunWhId = command.shift.sundayWorkHoursId ?? null;
+
+        const legacy = command.shift as any;
+        if (!monWhId && legacy.scheduleIn) {
+          const [autoWh] = await tx
+            .insert(attendanceWorkHours)
+            .values({
+              name: `${command.shift.name} - Reguler`,
+              scheduleIn: legacy.scheduleIn,
+              scheduleOut: legacy.scheduleOut || '17:00',
+              scanInStart: "06:00",
+              scanInEnd: "12:00",
+              scanOutStart: "15:00",
+              scanOutEnd: "22:00",
+              lateToleranceMinutes: 5,
+              earlyLeaveToleranceMinutes: 5,
+              requireCheckIn: true,
+              requireCheckOut: true,
+              isActive: true,
+            })
+            .returning();
+          monWhId = autoWh.id;
+          tueWhId = autoWh.id;
+          wedWhId = autoWh.id;
+          thuWhId = autoWh.id;
+          friWhId = autoWh.id;
+          if (legacy.workDays === 6) {
+            if (legacy.saturdayScheduleIn) {
+              const [satWh] = await tx
+                .insert(attendanceWorkHours)
+                .values({
+                  name: `${command.shift.name} - Sabtu`,
+                  scheduleIn: legacy.saturdayScheduleIn,
+                  scheduleOut: legacy.saturdayScheduleOut || '14:00',
+                  scanInStart: "06:00",
+                  scanInEnd: "12:00",
+                  scanOutStart: "11:00",
+                  scanOutEnd: "18:00",
+                  lateToleranceMinutes: 5,
+                  earlyLeaveToleranceMinutes: 5,
+                  requireCheckIn: true,
+                  requireCheckOut: true,
+                  isActive: true,
+                })
+                .returning();
+              satWhId = satWh.id;
+            } else {
+              satWhId = autoWh.id;
+            }
+          }
+        }
+
         const [inserted] = await tx
           .insert(attendanceShifts)
           .values({
             code: command.shift.code,
             name: command.shift.name,
-            mondayWorkHoursId: command.shift.mondayWorkHoursId ?? null,
-            tuesdayWorkHoursId: command.shift.tuesdayWorkHoursId ?? null,
-            wednesdayWorkHoursId: command.shift.wednesdayWorkHoursId ?? null,
-            thursdayWorkHoursId: command.shift.thursdayWorkHoursId ?? null,
-            fridayWorkHoursId: command.shift.fridayWorkHoursId ?? null,
-            saturdayWorkHoursId: command.shift.saturdayWorkHoursId ?? null,
-            sundayWorkHoursId: command.shift.sundayWorkHoursId ?? null,
+            mondayWorkHoursId: monWhId,
+            tuesdayWorkHoursId: tueWhId,
+            wednesdayWorkHoursId: wedWhId,
+            thursdayWorkHoursId: thuWhId,
+            fridayWorkHoursId: friWhId,
+            saturdayWorkHoursId: satWhId,
+            sundayWorkHoursId: sunWhId,
             description: command.shift.description,
             isDefault: command.shift.isDefault,
             isActive: command.shift.isActive,
@@ -649,11 +739,157 @@ export async function executeAttendanceCommand(
       break;
     }
 
+    case "work_hours": {
+      if (command.action === "create") {
+        const [inserted] = await tx
+          .insert(attendanceWorkHours)
+          .values({
+            name: command.workHours.name,
+            color: command.workHours.color ?? null,
+            scheduleIn: command.workHours.scheduleIn,
+            scheduleOut: command.workHours.scheduleOut,
+            scanInStart: command.workHours.scanInStart,
+            scanInEnd: command.workHours.scanInEnd,
+            scanOutStart: command.workHours.scanOutStart,
+            scanOutEnd: command.workHours.scanOutEnd,
+            lateToleranceMinutes: command.workHours.lateToleranceMinutes ?? 5,
+            earlyLeaveToleranceMinutes: command.workHours.earlyLeaveToleranceMinutes ?? 5,
+            requireCheckIn: command.workHours.requireCheckIn ?? true,
+            requireCheckOut: command.workHours.requireCheckOut ?? true,
+            isActive: command.workHours.isActive ?? true,
+          })
+          .returning();
+        eventId = await appendHrAudit(tx, {
+          operationId: context.operationId,
+          actor: context.actor,
+          action: "CREATE",
+          entityType: "attendance_work_hours",
+          entityId: String(inserted.id),
+          entityLabel: inserted.name,
+          outcome: "SUCCESS",
+          summary: `Menambah master jam kerja: ${inserted.name}`,
+        });
+      } else if (command.action === "update") {
+        const [updated] = await tx
+          .update(attendanceWorkHours)
+          .set({
+            name: command.workHours.name,
+            color: command.workHours.color ?? null,
+            scheduleIn: command.workHours.scheduleIn,
+            scheduleOut: command.workHours.scheduleOut,
+            scanInStart: command.workHours.scanInStart,
+            scanInEnd: command.workHours.scanInEnd,
+            scanOutStart: command.workHours.scanOutStart,
+            scanOutEnd: command.workHours.scanOutEnd,
+            lateToleranceMinutes: command.workHours.lateToleranceMinutes ?? 5,
+            earlyLeaveToleranceMinutes: command.workHours.earlyLeaveToleranceMinutes ?? 5,
+            requireCheckIn: command.workHours.requireCheckIn ?? true,
+            requireCheckOut: command.workHours.requireCheckOut ?? true,
+            isActive: command.workHours.isActive ?? true,
+            updatedAt: new Date(),
+          })
+          .where(eq(attendanceWorkHours.id, command.workHours.id))
+          .returning();
+        eventId = await appendHrAudit(tx, {
+          operationId: context.operationId,
+          actor: context.actor,
+          action: "UPDATE",
+          entityType: "attendance_work_hours",
+          entityId: String(updated.id),
+          entityLabel: updated.name,
+          outcome: "SUCCESS",
+          summary: `Memperbarui master jam kerja: ${updated.name}`,
+        });
+      } else if (command.action === "delete") {
+        const used = await tx.select().from(attendanceShifts).where(
+          or(
+            eq(attendanceShifts.mondayWorkHoursId, command.workHours.id),
+            eq(attendanceShifts.tuesdayWorkHoursId, command.workHours.id),
+            eq(attendanceShifts.wednesdayWorkHoursId, command.workHours.id),
+            eq(attendanceShifts.thursdayWorkHoursId, command.workHours.id),
+            eq(attendanceShifts.fridayWorkHoursId, command.workHours.id),
+            eq(attendanceShifts.saturdayWorkHoursId, command.workHours.id),
+            eq(attendanceShifts.sundayWorkHoursId, command.workHours.id)
+          )
+        );
+        if (used.length > 0) {
+          throw new ValidationError(`Jam kerja "${command.workHours.name}" masih digunakan oleh ${used.length} shift.`);
+        }
+        await tx.delete(attendanceWorkHours).where(eq(attendanceWorkHours.id, command.workHours.id));
+        eventId = await appendHrAudit(tx, {
+          operationId: context.operationId,
+          actor: context.actor,
+          action: "DELETE",
+          entityType: "attendance_work_hours",
+          entityId: String(command.workHours.id),
+          entityLabel: command.workHours.name,
+          outcome: "SUCCESS",
+          summary: `Menghapus master jam kerja: ${command.workHours.name}`,
+        });
+      }
+      break;
+    }
+
     case "assign_shift": {
       const [shift] = await tx.select().from(attendanceShifts).where(eq(attendanceShifts.id, command.assignment.shiftId));
-      if (!shift?.isActive) throw new ValidationError("Shift aktif tidak ditemukan. Simpan master shift terlebih dahulu.");
-      let targetId: number;
-      if (command.assignment.employeeId) {
+      if (command.action !== "remove" && !shift?.isActive) {
+        throw new ValidationError("Shift aktif tidak ditemukan. Simpan master shift terlebih dahulu.");
+      }
+      let targetId: number = 0;
+
+      if (command.action === "remove") {
+        if (command.assignment.employeeId) {
+          const [removed] = await tx
+            .delete(attendanceShiftAssignments)
+            .where(eq(attendanceShiftAssignments.employeeId, command.assignment.employeeId))
+            .returning();
+          targetId = removed?.id || 0;
+        } else if (command.assignment.departmentId) {
+          const [removed] = await tx
+            .delete(attendanceShiftAssignments)
+            .where(
+              and(
+                eq(attendanceShiftAssignments.departmentId, command.assignment.departmentId),
+                eq(attendanceShiftAssignments.shiftId, command.assignment.shiftId)
+              )
+            )
+            .returning();
+          targetId = removed?.id || 0;
+
+          // Jika yang dihapus adalah default, pilih shift tersisa pertama menjadi default
+          if (removed?.isDefault) {
+            const [remaining] = await tx
+              .select()
+              .from(attendanceShiftAssignments)
+              .where(eq(attendanceShiftAssignments.departmentId, command.assignment.departmentId))
+              .limit(1);
+            if (remaining) {
+              await tx
+                .update(attendanceShiftAssignments)
+                .set({ isDefault: true, updatedAt: new Date() })
+                .where(eq(attendanceShiftAssignments.id, remaining.id));
+            }
+          }
+        }
+      } else if (command.action === "set_default" && command.assignment.departmentId) {
+        // Unset default shift lain di departemen ini
+        await tx
+          .update(attendanceShiftAssignments)
+          .set({ isDefault: false, updatedAt: new Date() })
+          .where(eq(attendanceShiftAssignments.departmentId, command.assignment.departmentId));
+
+        const [updated] = await tx
+          .update(attendanceShiftAssignments)
+          .set({ isDefault: true, updatedAt: new Date() })
+          .where(
+            and(
+              eq(attendanceShiftAssignments.departmentId, command.assignment.departmentId),
+              eq(attendanceShiftAssignments.shiftId, command.assignment.shiftId)
+            )
+          )
+          .returning();
+        targetId = updated?.id || 0;
+      } else if (command.assignment.employeeId) {
         const [existing] = await tx
           .select()
           .from(attendanceShiftAssignments)
@@ -676,14 +912,36 @@ export async function executeAttendanceCommand(
           targetId = inserted.id;
         }
       } else if (command.assignment.departmentId) {
+        // Penugasan shift ke departemen (mendukung multiple shift)
         const [existing] = await tx
           .select()
           .from(attendanceShiftAssignments)
+          .where(
+            and(
+              eq(attendanceShiftAssignments.departmentId, command.assignment.departmentId),
+              eq(attendanceShiftAssignments.shiftId, command.assignment.shiftId)
+            )
+          );
+
+        const deptAssignments = await tx
+          .select()
+          .from(attendanceShiftAssignments)
           .where(eq(attendanceShiftAssignments.departmentId, command.assignment.departmentId));
+
+        const isFirst = deptAssignments.length === 0;
+        const willBeDefault = command.assignment.isDefault ?? isFirst;
+
+        if (willBeDefault) {
+          await tx
+            .update(attendanceShiftAssignments)
+            .set({ isDefault: false, updatedAt: new Date() })
+            .where(eq(attendanceShiftAssignments.departmentId, command.assignment.departmentId));
+        }
+
         if (existing) {
           const [updated] = await tx
             .update(attendanceShiftAssignments)
-            .set({ shiftId: command.assignment.shiftId, updatedAt: new Date() })
+            .set({ isDefault: willBeDefault, updatedAt: new Date() })
             .where(eq(attendanceShiftAssignments.id, existing.id))
             .returning();
           targetId = updated.id;
@@ -693,6 +951,7 @@ export async function executeAttendanceCommand(
             .values({
               shiftId: command.assignment.shiftId,
               departmentId: command.assignment.departmentId,
+              isDefault: willBeDefault,
             })
             .returning();
           targetId = inserted.id;
@@ -704,12 +963,14 @@ export async function executeAttendanceCommand(
       eventId = await appendHrAudit(tx, {
         operationId: context.operationId,
         actor: context.actor,
-        action: "ASSIGN",
+        action: command.action === "remove" ? "UNLINK" : "ASSIGN",
         entityType: "attendance_shift_assignment",
         entityId: String(targetId),
         entityLabel: `Assignment #${targetId}`,
         outcome: "SUCCESS",
-        summary: `Menetapkan shift #${command.assignment.shiftId}`,
+        summary: command.action === "remove"
+          ? `Mencabut penugasan shift #${command.assignment.shiftId}`
+          : `Menetapkan shift #${command.assignment.shiftId}`,
       });
       break;
     }
@@ -940,12 +1201,14 @@ export async function executeAttendanceCommand(
         const employeeRows = await tx.select().from(employees).where(employeeScopePredicate(scope));
         const shifts = await tx.select().from(attendanceShifts);
         const assignments = await tx.select().from(attendanceShiftAssignments);
+        const workHoursRows = await tx.select().from(attendanceWorkHours);
+        const workHoursMap = new Map<number, WorkHoursTemplate>(workHoursRows.map((wh) => [wh.id, wh]));
         // Commit active rows into attendanceRecords
         for (const r of activeRows) {
           if (!r.employeeId) continue;
           const employee = employeeRows.find(e => e.id === r.employeeId);
           if (!employee) throw new ValidationError("Karyawan tidak ditemukan");
-          const schedule = getAttendanceSchedule(employee, r.workDate, shifts as WorkShift[], assignments);
+          const schedule = getAttendanceSchedule(employee, r.workDate, shifts as WorkShift[], assignments, undefined, workHoursMap, { hasTapRecord: Boolean(r.scanIn || r.scanOut) });
           const [existingRec] = await tx
             .select()
             .from(attendanceRecords)
@@ -1140,6 +1403,9 @@ export async function executeAttendanceCommand(
       const dutyValues = command.attendanceStatus === "DINAS_LUAR"
         ? await fieldDutyValues(tx, command.employeeId, command.workDate, command.shiftId)
         : await employeeScheduleValues(tx, command.employeeId, command.workDate, command.shiftId);
+      const finalIsDayOff = command.attendanceStatus === "DINAS_LUAR"
+        ? false
+        : (command.isDayOff ?? (existing ? existing.isDayOff : false));
       let recordId: number;
       if (existing) {
         const [updated] = await tx
@@ -1149,7 +1415,7 @@ export async function executeAttendanceCommand(
             scanIn: command.scanIn,
             scanOut: command.scanOut,
             ...dutyValues,
-            isDayOff: command.isDayOff ?? existing.isDayOff,
+            isDayOff: finalIsDayOff,
             revision: existing.revision + 1,
             updatedAt: new Date(),
           })
@@ -1167,7 +1433,7 @@ export async function executeAttendanceCommand(
             scanIn: command.scanIn,
             scanOut: command.scanOut,
             ...dutyValues,
-            isDayOff: command.isDayOff ?? false,
+            isDayOff: finalIsDayOff,
             revision: 1,
           })
           .returning();

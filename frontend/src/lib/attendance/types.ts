@@ -1,14 +1,38 @@
 
+export interface WorkHoursTemplate {
+  id: number;
+  name: string;
+  color?: string | null;
+  scheduleIn: string;
+  scheduleOut: string;
+  scanInStart: string;
+  scanInEnd: string;
+  scanOutStart: string;
+  scanOutEnd: string;
+  lateToleranceMinutes: number;
+  earlyLeaveToleranceMinutes: number;
+  requireCheckIn: boolean;
+  requireCheckOut: boolean;
+  isActive: boolean;
+}
+
 export interface WorkShift {
   id: number;
   code: string;
   name: string;
-  scheduleIn: string;
-  scheduleOut: string;
-  workDays: 5 | 6;
+  description?: string;
+  mondayWorkHoursId?: number | null;
+  tuesdayWorkHoursId?: number | null;
+  wednesdayWorkHoursId?: number | null;
+  thursdayWorkHoursId?: number | null;
+  fridayWorkHoursId?: number | null;
+  saturdayWorkHoursId?: number | null;
+  sundayWorkHoursId?: number | null;
+  scheduleIn?: string;
+  scheduleOut?: string;
+  workDays?: 5 | 6;
   saturdayScheduleIn?: string | null;
   saturdayScheduleOut?: string | null;
-  description?: string;
   isDefault: boolean;
   isActive: boolean;
 }
@@ -18,6 +42,7 @@ export interface ShiftAssignment {
   shiftId: number;
   departmentId?: number | null;
   employeeId?: number | null;
+  isDefault?: boolean;
 }
 export type AttendanceRole = 'HR_ADMIN' | 'HR_STAFF' | 'REPORT_VIEWER';
 export type AttendanceStatus = 'PRESENT' | 'DINAS_LUAR' | 'IZIN' | 'SAKIT' | 'CUTI' | 'ALPHA' | 'UNSPECIFIED' | 'LATE' | 'EARLY_LEAVE';
@@ -69,6 +94,7 @@ export interface AttendanceDataset {
   grants: AttendanceGrant[]; locks: AttendanceLock[];
   shifts?: WorkShift[];
   shiftAssignments?: ShiftAssignment[];
+  workHours?: WorkHoursTemplate[];
 }
 export interface RecordFilter { startDate: string; endDate: string; q?: string; departmentId?: number; locationId?: number; employeeId?: number }
 export interface EmployeeReport { employee: Employee; recordCount: number; lateMinutes: number; overtimeMinutes: number; sakitCount?: number; izinCount?: number; cutiCount?: number; absentCount?: number; }
@@ -90,7 +116,8 @@ export type AttendanceCommand =
   | { type: 'source'; action: 'create' | 'update' | 'delete'; source: { id?: number; code: string; name: string; isActive?: boolean } }
   | { type: 'delete_identity'; id: number }
   | { type: 'shift'; action: 'create' | 'update' | 'delete'; shift: WorkShift }
-  | { type: 'assign_shift'; assignment: ShiftAssignment }
+  | { type: 'work_hours'; action: 'create' | 'update' | 'delete'; workHours: WorkHoursTemplate }
+  | { type: 'assign_shift'; action?: 'assign' | 'remove' | 'set_default'; assignment: ShiftAssignment }
   | { type: 'sync_employees'; employees: Employee[]; departments?: MasterItem[] };
 
 export interface AttendanceRepository {

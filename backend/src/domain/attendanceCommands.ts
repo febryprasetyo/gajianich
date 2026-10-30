@@ -5,6 +5,7 @@ import type {
   ImportRow,
   Identity,
   WorkShift,
+  WorkHoursTemplate,
   ShiftAssignment,
   MasterItem,
 } from './attendanceTypes';
@@ -68,5 +69,6 @@ export type ServerAttendanceCommand =
       reason?: string;
     }
   | { type: 'shift'; action: 'create' | 'update' | 'delete'; shift: WorkShift }
-  | { type: 'assign_shift'; assignment: ShiftAssignment }
+  | { type: 'work_hours'; action: 'create' | 'update' | 'delete'; workHours: WorkHoursTemplate }
+  | { type: 'assign_shift'; action?: 'assign' | 'remove' | 'set_default'; assignment: ShiftAssignment }
   | { type: 'source'; action: 'create' | 'update' | 'delete'; source: MasterItem };

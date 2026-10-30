@@ -1,25 +1,6 @@
-import type { AttendanceRecord } from './types';
+import type { AttendanceRecord, WorkShift, ShiftAssignment, WorkHoursTemplate } from './types';
 
-export interface WorkShift {
-  id: number;
-  code: string;
-  name: string;
-  scheduleIn: string;
-  scheduleOut: string;
-  workDays: 5 | 6;
-  saturdayScheduleIn?: string | null;
-  saturdayScheduleOut?: string | null;
-  description?: string;
-  isDefault: boolean;
-  isActive: boolean;
-}
-
-export interface ShiftAssignment {
-  id: number;
-  shiftId: number;
-  departmentId?: number | null;
-  employeeId?: number | null;
-}
+export type { WorkShift, ShiftAssignment, WorkHoursTemplate };
 
 export const DEFAULT_OFFICE_SHIFT: WorkShift = {
   id: 1,
@@ -92,9 +73,10 @@ export function resolveEmployeeShift(
   }
 
   if (employee?.departmentId) {
-    const deptAssign = assignmentList.find(a => a.departmentId === employee.departmentId && !a.employeeId);
-    if (deptAssign) {
-      const found = shiftList.find(s => s.id === deptAssign.shiftId && s.isActive);
+    const deptAssigns = assignmentList.filter(a => a.departmentId === employee.departmentId && !a.employeeId);
+    if (deptAssigns.length > 0) {
+      const defaultOne = deptAssigns.find(a => a.isDefault) || deptAssigns[0];
+      const found = shiftList.find(s => s.id === defaultOne.shiftId && s.isActive);
       if (found) return found;
     }
   }

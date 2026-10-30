@@ -86,29 +86,41 @@ export function getWorkingScheduleForDate(
   const key = DAY_TO_WORK_HOURS_KEY[dayOfWeek];
   const workHoursId = shift[key] as number | null | undefined;
 
-  // Hari tanpa template → libur
-  if (!workHoursId) {
+  // Cari template dasar (Senin) atau fallback untuk base hours
+  const baseWorkHoursId = shift.mondayWorkHoursId;
+  const baseWh = baseWorkHoursId ? workHoursMap.get(baseWorkHoursId) : undefined;
+  const baseScheduleIn = baseWh?.scheduleIn || (shift as any).scheduleIn || '08:00';
+  const baseScheduleOut = baseWh?.scheduleOut || (shift as any).scheduleOut || '17:00';
+
+  // Legacy fallback jika shift belum dikonfigurasi per-hari tapi punya scheduleIn
+  if (!workHoursId && (shift as any).scheduleIn) {
+    const legacy = shift as any;
+    const isSaturday = dayOfWeek === 6;
+    const isWorkDay = (dayOfWeek >= 1 && dayOfWeek <= 5) || (isSaturday && legacy.workDays === 6);
+    const inTime = isSaturday && legacy.saturdayScheduleIn ? legacy.saturdayScheduleIn : legacy.scheduleIn;
+    const outTime = isSaturday && legacy.saturdayScheduleOut ? legacy.saturdayScheduleOut : legacy.scheduleOut;
+
     return {
-      isDayOff: true,
+      isDayOff: !isWorkDay,
       isSundayOptional: isSunday,
-      scheduleIn: null,
-      scheduleOut: null,
+      scheduleIn: inTime,
+      scheduleOut: outTime,
       scanInStart: null,
       scanInEnd: null,
       scanOutStart: null,
       scanOutEnd: null,
-      lateToleranceMinutes: 0,
-      earlyLeaveToleranceMinutes: 0,
+      lateToleranceMinutes: 5,
+      earlyLeaveToleranceMinutes: 5,
     };
   }
 
-  // Minggu dengan template → opsional (tap-driven)
-  if (isSunday && !options?.hasTapRecord) {
+  // Hari tanpa template → libur, tapi tetap bawa base hours untuk keperluan display/Dinas Luar
+  if (!workHoursId) {
     return {
       isDayOff: true,
-      isSundayOptional: true,
-      scheduleIn: null,
-      scheduleOut: null,
+      isSundayOptional: isSunday,
+      scheduleIn: baseScheduleIn,
+      scheduleOut: baseScheduleOut,
       scanInStart: null,
       scanInEnd: null,
       scanOutStart: null,
@@ -119,33 +131,40 @@ export function getWorkingScheduleForDate(
   }
 
   const wh = workHoursMap.get(workHoursId);
-  if (!wh) {
-    // Template tidak ditemukan di map — fallback hari libur
+  const activeWh = wh || {
+    ...DEFAULT_OFFICE_WORK_HOURS,
+    scheduleIn: baseScheduleIn,
+    scheduleOut: baseScheduleOut,
+  };
+
+  // Minggu dengan template → opsional (tap-driven)
+  // Jika tidak ada tap, dihitung libur (bukan ALPHA)
+  if (isSunday && !options?.hasTapRecord) {
     return {
       isDayOff: true,
-      isSundayOptional: isSunday,
-      scheduleIn: null,
-      scheduleOut: null,
-      scanInStart: null,
-      scanInEnd: null,
-      scanOutStart: null,
-      scanOutEnd: null,
-      lateToleranceMinutes: 0,
-      earlyLeaveToleranceMinutes: 0,
+      isSundayOptional: true,
+      scheduleIn: activeWh.scheduleIn,
+      scheduleOut: activeWh.scheduleOut,
+      scanInStart: activeWh.scanInStart,
+      scanInEnd: activeWh.scanInEnd,
+      scanOutStart: activeWh.scanOutStart,
+      scanOutEnd: activeWh.scanOutEnd,
+      lateToleranceMinutes: activeWh.lateToleranceMinutes,
+      earlyLeaveToleranceMinutes: activeWh.earlyLeaveToleranceMinutes,
     };
   }
 
   return {
     isDayOff: false,
     isSundayOptional: false,
-    scheduleIn: wh.scheduleIn,
-    scheduleOut: wh.scheduleOut,
-    scanInStart: wh.scanInStart,
-    scanInEnd: wh.scanInEnd,
-    scanOutStart: wh.scanOutStart,
-    scanOutEnd: wh.scanOutEnd,
-    lateToleranceMinutes: wh.lateToleranceMinutes,
-    earlyLeaveToleranceMinutes: wh.earlyLeaveToleranceMinutes,
+    scheduleIn: activeWh.scheduleIn,
+    scheduleOut: activeWh.scheduleOut,
+    scanInStart: activeWh.scanInStart,
+    scanInEnd: activeWh.scanInEnd,
+    scanOutStart: activeWh.scanOutStart,
+    scanOutEnd: activeWh.scanOutEnd,
+    lateToleranceMinutes: activeWh.lateToleranceMinutes,
+    earlyLeaveToleranceMinutes: activeWh.earlyLeaveToleranceMinutes,
   };
 }
 
@@ -226,23 +245,12 @@ export function getAttendanceSchedule(
     shifts.find((s) => s.id === shiftId && s.isActive) ??
     resolveEmployeeShift(employee, shifts, assignments);
 
-  if (workHoursMap && workHoursMap.size > 0) {
-    const sched = getWorkingScheduleForDate(workDate, shift, workHoursMap, options);
-    return {
-      shift: shift.name,
-      scheduleIn: sched.scheduleIn ?? '',
-      scheduleOut: sched.scheduleOut ?? '',
-      isDayOff: sched.isDayOff,
-      isSundayOptional: sched.isSundayOptional,
-    };
-  }
-
-  // Fallback backward-compatible tanpa workHoursMap (data lama / test)
+  const sched = getWorkingScheduleForDate(workDate, shift, workHoursMap, options);
   return {
     shift: shift.name,
-    scheduleIn: '',
-    scheduleOut: '',
-    isDayOff: false,
-    isSundayOptional: false,
+    scheduleIn: sched.scheduleIn ?? '',
+    scheduleOut: sched.scheduleOut ?? '',
+    isDayOff: sched.isDayOff,
+    isSundayOptional: sched.isSundayOptional,
   };
 }
