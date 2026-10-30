@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { Server, Cpu, Wifi, ListFilter, Download, AlertTriangle, UserRoundSearch, Plus, Settings2, Power } from 'lucide-react';
+import { Server, Cpu, Wifi, ListFilter, Download, AlertTriangle, UserRoundSearch, Plus, Settings2, Power, RefreshCw, CheckCircle2, UserCheck } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import KpiGrid from '@/components/ui/KpiGrid';
 import FilterToolbar from '@/components/ui/FilterToolbar';
@@ -12,6 +12,7 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import ModalShell from '@/components/ui/ModalShell';
 import RowActionButton from '@/components/ui/RowActionButton';
 import AdmsRegistrationModal from '@/components/attendance/AdmsRegistrationModal';
+import AdmsResolvePinModal from '@/components/attendance/AdmsResolvePinModal';
 import { useOrganizationScope } from '@/context/OrganizationScopeContext';
 import { useAuth } from '@/context/AuthContext';
 import { canAccessRoute } from '@/lib/access/routes';
@@ -74,6 +75,36 @@ export default function AdmsMonitorPage() {
       }
     } catch (err: any) {
       setRegFeedback(err?.message || 'Gagal mengubah status penerimaan ADMS mesin.');
+    }
+  };
+
+  const [resolveModalOpen, setResolveModalOpen] = useState(false);
+  const [selectedUnmappedPin, setSelectedUnmappedPin] = useState('');
+  const [syncingAttendance, setSyncingAttendance] = useState(false);
+
+  const handleSyncToAttendance = async () => {
+    if (syncingAttendance || selectedGroupId === null) return;
+    setSyncingAttendance(true);
+    try {
+      const res = await apiFetch<{ success: boolean; message?: string }>(
+        '/attendance/devices/adms/sync-to-attendance',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            startDate: startDate || null,
+            endDate: endDate || null,
+            deviceId: reviewDevice ? Number(reviewDevice) : null,
+            pin: pin || null,
+          }),
+        }
+      );
+      if (res.success) {
+        setRegFeedback(res.message || 'Log ADMS berhasil disinkronkan ke daftar absensi.');
+      }
+    } catch (err: any) {
+      setRegFeedback(err?.message || 'Gagal menyinkronkan log ADMS ke absensi.');
+    } finally {
+      setSyncingAttendance(false);
     }
   };
 
@@ -280,7 +311,28 @@ export default function AdmsMonitorPage() {
       {tab === 'logs' ? <section id="adms-panel-logs" role="tabpanel" aria-labelledby="adms-tab-logs" className="min-w-0 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><h2 className="text-sm font-bold text-slate-900">Log ADMS untuk review</h2><p className="mt-1 text-xs text-slate-600">Hanya baca · waktu mengikuti jam lokal mesin</p></div>
-          <button type="button" disabled={selectedGroupId === null} onClick={() => { setHistoryError(null); setHistoryOpen(true); }} aria-describedby={selectedGroupId === null ? 'adms-history-group-hint' : undefined} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"><Download className="h-4 w-4" aria-hidden="true" />Minta log historis</button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              disabled={selectedGroupId === null || syncingAttendance}
+              onClick={handleSyncToAttendance}
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+              title="Bersihkan dan masukkan log ADMS yang valid ke daftar absensi karyawan (FIFO)"
+            >
+              <RefreshCw className={`h-4 w-4 ${syncingAttendance ? 'animate-spin' : ''}`} aria-hidden="true" />
+              {syncingAttendance ? 'Menyinkronkan…' : 'Sinkronkan ke Absensi'}
+            </button>
+            <button
+              type="button"
+              disabled={selectedGroupId === null}
+              onClick={() => { setHistoryError(null); setHistoryOpen(true); }}
+              aria-describedby={selectedGroupId === null ? 'adms-history-group-hint' : undefined}
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Download className="h-4 w-4" aria-hidden="true" />
+              Minta log historis
+            </button>
+          </div>
         </div>
         {selectedGroupId === null && <p id="adms-history-group-hint" className="text-xs text-amber-800">Pilih satu kelompok organisasi terlebih dahulu untuk meminta log historis.</p>}
         {historyFeedback && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs text-emerald-900">{historyFeedback}</p>}
@@ -294,7 +346,30 @@ export default function AdmsMonitorPage() {
         <TableShell loading={review.loading} error={rangeError || (!review.data && review.error ? review.error : null)} isEmpty={!review.data?.logs.length} emptyTitle="Belum ada log ADMS untuk review" emptyDescription="Log baru dari ADMS akan muncul di sini tanpa dimasukkan ke presensi utama. Sesuaikan mesin, PIN, atau tanggal untuk mencari data.">
           <table className={`${tableClass} min-w-[800px]`}><thead className="bg-slate-50"><tr><th scope="col">Mesin / Nomor seri</th><th scope="col">PIN / Karyawan</th><th scope="col">Waktu mesin (lokal)</th><th scope="col">Mode verifikasi</th><th scope="col">Status scan</th><th scope="col">Sumber</th></tr></thead><tbody className="divide-y divide-slate-100">{review.data?.logs.map(log => <tr key={log.id} className="hover:bg-slate-50/70">
             <td><p className="font-semibold text-slate-900">{log.deviceName}</p><p className="mt-1 font-mono text-slate-600">{log.serial}</p></td>
-            <td><p className="font-mono font-semibold text-slate-900">{log.pin}</p><p className="mt-1 text-slate-600">{log.employeeName || 'Belum dipetakan'}</p></td>
+            <td>
+              <p className="font-mono font-semibold text-slate-900">{log.pin}</p>
+              {log.employeeName ? (
+                <p className="mt-1 text-slate-600">{log.employeeName}</p>
+              ) : (
+                <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                  <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+                    Belum dipetakan
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedUnmappedPin(log.pin);
+                      setResolveModalOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 hover:underline"
+                    title="Petakan PIN ini ke nama karyawan"
+                  >
+                    <UserCheck className="h-3 w-3" />
+                    Petakan
+                  </button>
+                </div>
+              )}
+            </td>
             <td className="whitespace-nowrap text-slate-700">{formatAdmsLocalTimestamp(log.timestamp)}</td><td className="font-mono text-slate-700">{log.verifyMode || '—'}</td><td className="font-mono text-slate-700">{log.inOutState || '—'}</td><td className="text-slate-700">{log.source}</td>
           </tr>)}</tbody></table>
         </TableShell>
@@ -347,6 +422,16 @@ export default function AdmsMonitorPage() {
         }}
         candidates={candidates}
         editDevice={editingCandidate}
+        selectedGroupId={selectedGroupId}
+      />
+
+      <AdmsResolvePinModal
+        isOpen={resolveModalOpen}
+        onClose={() => setResolveModalOpen(false)}
+        onSuccess={msg => {
+          setRegFeedback(msg);
+        }}
+        pin={selectedUnmappedPin}
         selectedGroupId={selectedGroupId}
       />
     </div>

@@ -6,6 +6,8 @@ import {
   getAdmsCandidatesHandler,
   registerAdmsDeviceHandler,
   toggleAdmsDeviceHandler,
+  syncAdmsToAttendanceHandler,
+  resolveUnmappedPinHandler,
 } from '../controllers/admsMonitoringController';
 import {requireOrganizationScope} from '../middleware/organizationScope';
 import { Router } from "express";
@@ -34,6 +36,10 @@ router.get(
 
 router.get('/adms/review-logs', authenticateToken, requirePermission(['attendance.import', 'attendance.manage']), requireOrganizationScope('hr', 'read'), getAdmsReviewLogsHandler);
 router.get('/adms/read-commands', authenticateToken, requirePermission(['attendance.import', 'attendance.manage']), requireOrganizationScope('hr', 'read'), getAdmsReadCommandsHandler);
+
+// Sinkronisasi Hybrid ADMS ke Daftar Absensi & Pemetaan PIN Manual oleh HR
+router.post('/adms/sync-to-attendance', authenticateToken, requirePermission(['attendance.import', 'attendance.manage']), requireOrganizationScope('hr', 'write'), syncAdmsToAttendanceHandler);
+router.post('/adms/resolve-unmapped', authenticateToken, requirePermission(['attendance.manage']), requireOrganizationScope('hr', 'write'), resolveUnmappedPinHandler);
 
 // Manajemen Mesin ADMS: Hanya SuperAdmin & ITAdmin
 router.get('/adms/candidates', authenticateToken, requireRoles('SuperAdmin', 'ITAdmin'), requireOrganizationScope('hr', 'read'), getAdmsCandidatesHandler);

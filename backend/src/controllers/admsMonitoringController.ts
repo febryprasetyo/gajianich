@@ -5,6 +5,52 @@ import {pool} from '../db';
 import {requireHrScope} from '../services/hrOrganizationScope';
 import {getAdmsMonitoring,parseAdmsMonitorQuery} from '../services/admsMonitoring';
 import {getAdmsCandidates,parseRegisterInput,parseToggleInput,registerAdmsDevice,toggleAdmsDevice} from '../services/admsRegistration';
+import {cleanseAndIngestAdmsLogs,resolveUnmappedAdmsPin} from '../services/admsAttendanceSync';
+
+export async function syncAdmsToAttendanceHandler(req: Request, res: Response) {
+  try {
+    const scope = requireHrScope(req as any);
+    if (scope.selectedGroupId === null) {
+      return res.status(400).json({ success: false, message: 'Pilih satu kelompok organisasi terlebih dahulu.' });
+    }
+    const { startDate, endDate, deviceId, pin } = req.body || {};
+    const data = await cleanseAndIngestAdmsLogs(pool, {
+      groupId: scope.selectedGroupId,
+      startDate: startDate || null,
+      endDate: endDate || null,
+      deviceId: deviceId ? Number(deviceId) : null,
+      pin: pin ? String(pin).trim() : null,
+    });
+    res.json({ success: true, message: data.message, data });
+  } catch (error: any) {
+    res.status(error.statusCode || 500).json({ success: false, message: error.message });
+  }
+}
+
+export async function resolveUnmappedPinHandler(req: Request, res: Response) {
+  try {
+    const scope = requireHrScope(req as any);
+    if (scope.selectedGroupId === null) {
+      return res.status(400).json({ success: false, message: 'Pilih satu kelompok organisasi terlebih dahulu.' });
+    }
+    const { pin, employeeId, processLogs = true } = req.body || {};
+    if (!pin || typeof pin !== 'string' || !pin.trim()) {
+      return res.status(400).json({ success: false, message: 'Nomor PIN mesin wajib diisi.' });
+    }
+    if (!employeeId || !Number.isInteger(Number(employeeId)) || Number(employeeId) < 1) {
+      return res.status(400).json({ success: false, message: 'Pilih karyawan tujuan yang valid.' });
+    }
+    const data = await resolveUnmappedAdmsPin(pool, {
+      groupId: scope.selectedGroupId,
+      pin: pin.trim(),
+      employeeId: Number(employeeId),
+      processLogs: Boolean(processLogs),
+    });
+    res.json({ success: true, message: data.message, data });
+  } catch (error: any) {
+    res.status(error.statusCode || 400).json({ success: false, message: error.message });
+  }
+}
 
 export async function getAdmsCandidatesHandler(req: Request, res: Response) {
   try {
