@@ -7,7 +7,8 @@ export function parseReviewLogQuery(input:Record<string,unknown>) {
  const startDate=text('startDate',10),endDate=text('endDate',10),pin=text('pin',50);
  for(const v of [startDate,endDate])if(v&&!validDate(v))throw fail('Invalid review date');
  if(startDate&&endDate&&endDate<startDate)throw fail('Invalid review date range');
- return {deviceId:number('deviceId',0,Number.MAX_SAFE_INTEGER),startDate,endDate,pin,page:number('page',1,100000),limit:number('limit',20,100)};
+ const unmapped = input.unmapped === 'true' || input.unmapped === true ? true : input.unmapped === 'false' || input.unmapped === false ? false : null;
+ return {deviceId:number('deviceId',0,Number.MAX_SAFE_INTEGER),startDate,endDate,pin,unmapped,page:number('page',1,100000),limit:number('limit',20,100)};
 }
 function validDate(v:unknown):v is string {return typeof v==='string'&&/^20\d{2}-\d{2}-\d{2}$/.test(v)&&Number.isFinite(Date.parse(v+'T00:00:00Z'))&&new Date(v+'T00:00:00Z').toISOString().slice(0,10)===v;}
 export function parseHistoryRequest(input:Record<string,unknown>) {
@@ -32,8 +33,9 @@ export async function getReviewLogs(runner:SqlRunner,scope:RequestScope,q:Return
    AND ($4::text='' OR r.punched_at >= NULLIF($4::text,'')::date)
    AND ($5::text='' OR r.punched_at < NULLIF($5::text,'')::date+interval '1 day')
    AND ($6::text='' OR r.pin=$6)
+   AND ($9::boolean IS NULL OR ($9 = true AND (r.employee_id IS NULL OR NOT EXISTS(SELECT 1 FROM public.department_organization_mappings m WHERE m.department_id=e.department_id AND m.group_id=r.group_id))) OR ($9 = false AND r.employee_id IS NOT NULL AND EXISTS(SELECT 1 FROM public.department_organization_mappings m WHERE m.department_id=e.department_id AND m.group_id=r.group_id)))
  ) SELECT (SELECT count(*) FROM matching)::text AS total,
- coalesce((SELECT jsonb_agg(row_to_json(x)) FROM (SELECT * FROM matching ORDER BY timestamp DESC,id::bigint DESC LIMIT $7 OFFSET $8) x),'[]'::jsonb) AS logs`,[scope.includeUnmapped&&!scope.groupIds.length,scope.groupIds,q.deviceId,q.startDate,q.endDate,q.pin,q.limit,(q.page-1)*q.limit]);
+ coalesce((SELECT jsonb_agg(row_to_json(x)) FROM (SELECT * FROM matching ORDER BY timestamp DESC,id::bigint DESC LIMIT $7 OFFSET $8) x),'[]'::jsonb) AS logs`,[scope.includeUnmapped&&!scope.groupIds.length,scope.groupIds,q.deviceId,q.startDate,q.endDate,q.pin,q.limit,(q.page-1)*q.limit,q.unmapped]);
  return {logs:result.rows[0].logs.map((r:Record<string,unknown>)=>({...r,deviceId:Number(r.deviceId)})),pagination:{page:q.page,limit:q.limit,total:Number(result.rows[0].total)}};
 }
 export async function queueAttendanceRead(pool:{connect():Promise<any>},scope:RequestScope,deviceId:number,range:ReturnType<typeof parseHistoryRequest>,actorId:number) {

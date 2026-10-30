@@ -47,11 +47,39 @@ export async function getAttendanceDevicesHandler(req: Request, res: Response) {
       .where(historicalScopePredicate(requireHrScope(req as any),attendanceDevices.groupId))
       .orderBy(attendanceDevices.id);
 
+    // Query adms.devices for all device_ids in list to support unified device dashboard
+    const deviceIds = list.map(d => d.id);
+    const admsMap: Record<number, { serial: string; enabled: boolean; allowedNetwork: string | null; lastSeenAt: string | null; lastDataAt: string | null }> = {};
+    if (deviceIds.length > 0) {
+      try {
+        const admsRows = await db.execute(sql`
+          SELECT device_id, serial, enabled,
+                 host(allowed_network) || '/' || masklen(allowed_network) AS "allowedNetwork",
+                 last_seen_at AS "lastSeenAt",
+                 last_data_at AS "lastDataAt"
+          FROM adms.devices
+          WHERE device_id = ANY(${deviceIds})
+        `);
+        for (const row of (admsRows.rows as any[])) {
+          admsMap[Number(row.device_id)] = {
+            serial: row.serial,
+            enabled: Boolean(row.enabled),
+            allowedNetwork: row.allowedNetwork,
+            lastSeenAt: row.lastSeenAt,
+            lastDataAt: row.lastDataAt,
+          };
+        }
+      } catch (e) {
+        console.warn('Failed to query adms.devices:', e);
+      }
+    }
+
     const enriched = list.map((dev) => {
       const session = attendanceDeviceSessionManager.getSessionInfo(dev.id);
       const idleSecondsLeft = attendanceDeviceSessionManager.getIdleSecondsLeft(dev.id);
       const connectionStatus = attendanceConnectionStatus(dev, session.status);
       const isActuallyConnected = connectionStatus === "connected";
+      const admsInfo = admsMap[dev.id];
 
       // Self-healing: if DB says CONNECTED but session is DISCONNECTED, heal DB to DISCONNECTED
       if (dev.connectionType !== "ADMS" && !isActuallyConnected && dev.status === "CONNECTED") {
@@ -66,6 +94,10 @@ export async function getAttendanceDevicesHandler(req: Request, res: Response) {
         status: connectionStatus,
         idleSecondsLeft: dev.connectionType === "ADMS" ? null : idleSecondsLeft,
         activeIdentity: dev.connectionType === "ADMS" ? { firmware: dev.firmware, serialNumber: dev.serialNumber, deviceName: dev.model, platform: dev.platform } : session.identity,
+        admsRegistered: Boolean(admsInfo),
+        admsEnabled: admsInfo ? admsInfo.enabled : false,
+        allowedNetwork: admsInfo?.allowedNetwork ?? null,
+        admsLastSeenAt: admsInfo?.lastSeenAt ?? dev.lastAdmsSeenAt ?? null,
       };
     });
 
@@ -142,25 +174,43 @@ export async function updateAttendanceDeviceHandler(req: Request, res: Response)
 }
 
 export async function deleteAttendanceDeviceHandler(req: Request, res: Response) {
+  let ownedDevice: any = null;
   try {
     const scope = requireHrScope(req as any);
-    const [ownedDevice] = await db.select().from(attendanceDevices).where(and(eq(attendanceDevices.id,Number(req.params.id)),historicalScopePredicate({...scope,includeUnmapped:false},attendanceDevices.groupId)));
-    if (!ownedDevice) return res.status(404).json({error:'Device unavailable in destination group'});
+    const [found] = await db
+      .select()
+      .from(attendanceDevices)
+      .where(and(eq(attendanceDevices.id, Number(req.params.id)), historicalScopePredicate({ ...scope, includeUnmapped: false }, attendanceDevices.groupId)));
+    if (!found) return res.status(404).json({ error: 'Device unavailable in destination group' });
+    ownedDevice = found;
     const deviceId = parseInt(req.params.id, 10);
     await attendanceDeviceSessionManager.disconnect(deviceId);
 
-    const [deleted] = await db
-      .delete(attendanceDevices)
-      .where(eq(attendanceDevices.id, deviceId))
-      .returning();
+    let deleted: any = null;
+    await db.transaction(async (tx) => {
+      // Hapus relasi pendaftaran ADMS jika ada
+      await tx.execute(sql`DELETE FROM adms.devices WHERE device_id = ${deviceId}`);
+      const [res] = await tx
+        .delete(attendanceDevices)
+        .where(eq(attendanceDevices.id, deviceId))
+        .returning();
+      deleted = res;
+    });
 
     if (!deleted) {
       return res.status(404).json({ success: false, message: "Perangkat tidak ditemukan" });
     }
 
-    res.json({ success: true, message: `Mesin ${deleted.name} berhasil dihapus` });
+    res.json({ success: true, message: `Mesin "${deleted.name}" berhasil dihapus.` });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    if (err?.code === '23503' || String(err?.message || '').includes('violates foreign key constraint')) {
+      const devName = ownedDevice?.name || 'tersebut';
+      return res.status(409).json({
+        success: false,
+        message: `Mesin "${devName}" tidak dapat dihapus karena masih memiliki riwayat data transaksi atau log presensi di sistem. Silakan nonaktifkan status mesin jika perangkat sudah tidak beroperasi.`,
+      });
+    }
+    res.status(500).json({ success: false, message: err.message || 'Gagal menghapus mesin absensi.' });
   }
 }
 

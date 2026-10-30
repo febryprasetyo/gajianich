@@ -233,19 +233,6 @@ export default function AdmsRegistrationModal({
       }
     >
       <div className="space-y-4 text-xs">
-        <aside
-          aria-label="Informasi Keamanan ADMS"
-          className="flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 text-emerald-950"
-        >
-          <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-700 mt-0.5" aria-hidden="true" />
-          <div className="space-y-1">
-            <p className="font-bold">Zero-Trust Allowlist Jaringan (Port 8081)</p>
-            <p className="text-emerald-800">
-              Hanya koneksi dari IP/subnet mesin yang terdaftar yang diizinkan mengirim presensi. Mesin yang didaftarkan ke ADMS memisahkan review log dari data raw payroll.
-            </p>
-          </div>
-        </aside>
-
         {/* Tab Selection: Only visible when NOT editing */}
         {!editDevice && (
           <div className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1">

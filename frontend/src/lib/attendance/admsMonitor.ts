@@ -13,6 +13,7 @@ export interface AdmsMonitorData {
   pagination: { page: number; limit: number; total: number };
 }
 
+export type AdmsMonitorDevice = AdmsMonitorData['devices'][number];
 export type DeviceFilter = 'all' | 'online' | 'unmapped';
 
 export function filterMonitorDevices(devices: AdmsMonitorData['devices'], filter: DeviceFilter) {
@@ -73,10 +74,13 @@ export interface AdmsReviewLogsData {
   pagination: { page: number; limit: number; total: number };
 }
 
-export function buildAdmsReviewQuery(filters: { deviceId: string; startDate: string; endDate: string; pin: string; page: number }) {
+export function buildAdmsReviewQuery(filters: { deviceId: string; startDate: string; endDate: string; pin: string; unmapped?: boolean | string | null; page: number }) {
   const query = new URLSearchParams({ page: String(filters.page), limit: '20' });
   for (const field of ['deviceId', 'startDate', 'endDate', 'pin'] as const) {
     if (filters[field]) query.set(field, filters[field]);
+  }
+  if (filters.unmapped !== undefined && filters.unmapped !== null && filters.unmapped !== '') {
+    query.set('unmapped', String(filters.unmapped));
   }
   return query.toString();
 }

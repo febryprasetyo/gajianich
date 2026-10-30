@@ -11,11 +11,14 @@ export interface AttendanceDevice {
   platform?: string;
   firmware?: string;
   location: string;
-  connectionType: "Ethernet" | "WiFi" | "RS485";
-  status: "connected" | "disconnected" | "error";
+  connectionType: "Ethernet" | "WiFi" | "RS485" | "ADMS";
+  status: "connected" | "disconnected" | "error" | "online" | "offline";
   lastSyncAt: string | null;
   totalLogs?: number;
   idleSecondsLeft?: number | null;
+  admsRegistered?: boolean;
+  admsEnabled?: boolean;
+  allowedNetwork?: string | null;
 }
 
 export interface RawAttendanceLog {

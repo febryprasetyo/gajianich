@@ -73,3 +73,4 @@ Pengguna memerlukan perlindungan akses yang ketat pada pengelolaan mesin absensi
   - Feedback visual yang jelas saat loading atau error.
 - Halaman ADMS Monitor (`page.tsx`):
   - Hanya menampilkan tombol aksi registrasi dan toggle untuk SuperAdmin & ITAdmin.
+
