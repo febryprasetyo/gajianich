@@ -1,3 +1,5 @@
+import {departmentOrganizationMappings} from '../db/schema/organizations';
+import {attendanceConnectionStatus,attendanceIdentitySourceId} from '../domain/attendanceDeviceTransport';
 import {employeeScopePredicate,historicalScopePredicate,requireHrScope,requireScopedEmployee} from '../services/hrOrganizationScope';
 import { Request, Response } from "express";
 import { eq, desc, and, gte, lte, ilike, or, sql } from "drizzle-orm";
@@ -48,10 +50,11 @@ export async function getAttendanceDevicesHandler(req: Request, res: Response) {
     const enriched = list.map((dev) => {
       const session = attendanceDeviceSessionManager.getSessionInfo(dev.id);
       const idleSecondsLeft = attendanceDeviceSessionManager.getIdleSecondsLeft(dev.id);
-      const isActuallyConnected = session.status === "CONNECTED";
+      const connectionStatus = attendanceConnectionStatus(dev, session.status);
+      const isActuallyConnected = connectionStatus === "connected";
 
       // Self-healing: if DB says CONNECTED but session is DISCONNECTED, heal DB to DISCONNECTED
-      if (!isActuallyConnected && dev.status === "CONNECTED") {
+      if (dev.connectionType !== "ADMS" && !isActuallyConnected && dev.status === "CONNECTED") {
         db.update(attendanceDevices)
           .set({ status: "DISCONNECTED" })
           .where(eq(attendanceDevices.id, dev.id))
@@ -60,9 +63,9 @@ export async function getAttendanceDevicesHandler(req: Request, res: Response) {
 
       return {
         ...dev,
-        status: isActuallyConnected ? "connected" : (dev.status === "ERROR" ? "error" : "disconnected"),
-        idleSecondsLeft,
-        activeIdentity: session.identity,
+        status: connectionStatus,
+        idleSecondsLeft: dev.connectionType === "ADMS" ? null : idleSecondsLeft,
+        activeIdentity: dev.connectionType === "ADMS" ? { firmware: dev.firmware, serialNumber: dev.serialNumber, deviceName: dev.model, platform: dev.platform } : session.identity,
       };
     });
 
@@ -166,6 +169,9 @@ export async function connectAttendanceDeviceHandler(req: Request, res: Response
     const scope = requireHrScope(req as any);
     const [ownedDevice] = await db.select().from(attendanceDevices).where(and(eq(attendanceDevices.id,Number(req.params.id)),historicalScopePredicate({...scope,includeUnmapped:false},attendanceDevices.groupId)));
     if (!ownedDevice) return res.status(404).json({error:'Device unavailable in destination group'});
+    if (ownedDevice.connectionType === "ADMS") {
+      return res.status(409).json({ success: false, message: "Mesin ADMS mengirim data otomatis. Gunakan impor historis ADMS untuk menggabungkan data lama." });
+    }
     const deviceId = parseInt(req.params.id, 10);
     const [device] = await db
       .select()
@@ -247,6 +253,9 @@ export async function disconnectAttendanceDeviceHandler(req: Request, res: Respo
     const scope = requireHrScope(req as any);
     const [ownedDevice] = await db.select().from(attendanceDevices).where(and(eq(attendanceDevices.id,Number(req.params.id)),historicalScopePredicate({...scope,includeUnmapped:false},attendanceDevices.groupId)));
     if (!ownedDevice) return res.status(404).json({error:'Device unavailable in destination group'});
+    if (ownedDevice.connectionType === "ADMS") {
+      return res.status(409).json({ success: false, message: "Mesin ADMS mengirim data otomatis. Gunakan impor historis ADMS untuk menggabungkan data lama." });
+    }
     const deviceId = parseInt(req.params.id, 10);
     await attendanceDeviceSessionManager.disconnect(deviceId);
 
@@ -270,8 +279,11 @@ export async function syncAttendanceDeviceHandler(req: Request, res: Response) {
     const scope = requireHrScope(req as any);
     const [ownedDevice] = await db.select().from(attendanceDevices).where(and(eq(attendanceDevices.id,Number(req.params.id)),historicalScopePredicate({...scope,includeUnmapped:false},attendanceDevices.groupId)));
     if (!ownedDevice) return res.status(404).json({error:'Device unavailable in destination group'});
+    if (ownedDevice.connectionType === "ADMS") {
+      return res.status(409).json({ success: false, message: "Mesin ADMS mengirim data otomatis. Gunakan impor historis ADMS untuk menggabungkan data lama." });
+    }
     const deviceId = parseInt(req.params.id, 10);
-    const { startDate, endDate, overwriteExisting = true } = req.body;
+    const { startDate, endDate } = req.body;
 
     const [device] = await db
       .select()
@@ -347,57 +359,20 @@ export async function syncAttendanceDeviceHandler(req: Request, res: Response) {
       return resolvedId;
     };
 
-    // 4. Save Raw Logs into Database (filtered by date range if provided)
-    if (overwriteExisting) {
-      if (startDate && endDate) {
-        await db
-          .delete(attendanceDeviceRawLogs)
-          .where(
-            and(
-              eq(attendanceDeviceRawLogs.deviceId, device.id),
-              gte(attendanceDeviceRawLogs.workDate, startDate),
-              lte(attendanceDeviceRawLogs.workDate, endDate)
-            )
-          );
-      } else if (startDate) {
-        await db
-          .delete(attendanceDeviceRawLogs)
-          .where(
-            and(
-              eq(attendanceDeviceRawLogs.deviceId, device.id),
-              gte(attendanceDeviceRawLogs.workDate, startDate)
-            )
-          );
-      } else if (endDate) {
-        await db
-          .delete(attendanceDeviceRawLogs)
-          .where(
-            and(
-              eq(attendanceDeviceRawLogs.deviceId, device.id),
-              lte(attendanceDeviceRawLogs.workDate, endDate)
-            )
-          );
-      } else {
-        await db
-          .delete(attendanceDeviceRawLogs)
-          .where(eq(attendanceDeviceRawLogs.deviceId, device.id));
-      }
-    }
-
+    // Merge downloaded scans; replacing a date range could erase PUSH or imported history.
     const rawInserts = [];
     for (const punch of fetchedPunches) {
       if (startDate && punch.workDate < startDate) continue;
       if (endDate && punch.workDate > endDate) continue;
       const empId = getEmployeeIdForPin(punch.pin);
-      if (!empId) continue;
-      const owner = await requireScopedEmployee(requireHrScope(req as any),empId);
+      const owner = empId ? await requireScopedEmployee(requireHrScope(req as any),empId) : null;
       rawInserts.push({
-        groupId:owner.groupId,
+        groupId:owner?.groupId ?? device.groupId,
         syncLogId: syncLog.id,
         deviceId: device.id,
         pin: punch.pin,
         employeeId: empId,
-        timestamp: new Date(punch.timestamp),
+        timestamp: sql`${punch.timestamp}::timestamp`,
         workDate: punch.workDate,
         verifyMode: punch.verifyMode,
         inOutState: punch.inOutState,
@@ -405,11 +380,13 @@ export async function syncAttendanceDeviceHandler(req: Request, res: Response) {
       });
     }
 
+    let insertedCount = 0;
     if (rawInserts.length > 0) {
       const CHUNK_SIZE = 500;
       for (let i = 0; i < rawInserts.length; i += CHUNK_SIZE) {
         const chunk = rawInserts.slice(i, i + CHUNK_SIZE);
-        await db.insert(attendanceDeviceRawLogs).values(chunk);
+        const inserted = await db.insert(attendanceDeviceRawLogs).values(chunk).onConflictDoNothing().returning({id:attendanceDeviceRawLogs.id});
+        insertedCount += inserted.length;
       }
     }
 
@@ -420,7 +397,7 @@ export async function syncAttendanceDeviceHandler(req: Request, res: Response) {
         status: "SUCCESS",
         totalFetched: fetchedPunches.length,
         totalParsed: fetchedPunches.length,
-        totalProcessed: rawInserts.length,
+        totalProcessed: insertedCount,
         completedAt: new Date(),
       })
       .where(eq(attendanceDeviceSyncLogs.id, syncLog.id));
@@ -429,18 +406,18 @@ export async function syncAttendanceDeviceHandler(req: Request, res: Response) {
       .update(attendanceDevices)
       .set({
         lastSyncAt: new Date(),
-        totalLogs: (device.totalLogs || 0) + rawInserts.length,
+        totalLogs: sql`(select count(*) from attendance_device_raw_logs where device_id = ${device.id})`,
       })
       .where(eq(attendanceDevices.id, device.id));
 
     res.json({
       success: true,
-      message: `Berhasil mengunduh ${rawInserts.length} log dari ${device.name}`,
+      message: `Berhasil menggabungkan ${insertedCount} log baru dari ${device.name}`,
       data: {
         syncLogId: syncLog.id,
         totalFetched: fetchedPunches.length,
         totalParsed: fetchedPunches.length,
-        totalProcessed: rawInserts.length,
+        totalProcessed: insertedCount,
         logs: fetchedPunches,
       },
     });
@@ -464,6 +441,9 @@ export async function getRawAttendanceLogsHandler(req: Request, res: Response) {
     const logs = await db
       .select({
         id: attendanceDeviceRawLogs.id,
+        groupId: attendanceDeviceRawLogs.groupId,
+        rawSource: sql<string | null>`${attendanceDeviceRawLogs.rawPayload}->>'source'`,
+        identitySourceId: sql<string | null>`${attendanceDeviceRawLogs.rawPayload}->>'identitySourceId'`,
         pin: attendanceDeviceRawLogs.pin,
         timestamp: sql<string>`to_char(${attendanceDeviceRawLogs.timestamp}, \'YYYY-MM-DD HH24:MI:SS\')`.as("timestamp"),
         workDate: attendanceDeviceRawLogs.workDate,
@@ -496,19 +476,23 @@ export async function getRawAttendanceLogsHandler(req: Request, res: Response) {
           employeeCode: employees.employeeCode,
           barcode: employees.barcode,
           departmentId: employees.departmentId,
+          groupId: departmentOrganizationMappings.groupId,
           departmentName: departments.name,
         })
         .from(employees)
         .leftJoin(departments, eq(employees.departmentId, departments.id))
+        .leftJoin(departmentOrganizationMappings, eq(employees.departmentId, departmentOrganizationMappings.departmentId))
         .where(employeeScopePredicate({...requireHrScope(req as any),includeUnmapped:false}));
       const identities = await db.select().from(attendanceIdentities);
       const pinCache = new Map<string, number | null>();
       for (const log of unmappedLogs) {
         const cleanPin = String(log.pin).trim();
-        let resolvedId = pinCache.get(cleanPin);
+        const sourceId = attendanceIdentitySourceId(log.deviceId, log.rawSource, log.identitySourceId);
+        const cacheKey = `${log.groupId}:${sourceId}:${cleanPin}`;
+        let resolvedId = pinCache.get(cacheKey);
         if (resolvedId === undefined) {
-          resolvedId = resolveImportEmployee(cleanPin, log.deviceId, allEmployees as any, identities);
-          pinCache.set(cleanPin, resolvedId);
+          resolvedId = resolveImportEmployee(cleanPin, sourceId, allEmployees.filter(e=>e.groupId===log.groupId) as any, identities);
+          pinCache.set(cacheKey, resolvedId);
         }
         if (resolvedId) {
           const emp = allEmployees.find((e) => e.id === resolvedId);
@@ -542,6 +526,10 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
     const rawRows = await db
       .select({
         id: attendanceDeviceRawLogs.id,
+        groupId: attendanceDeviceRawLogs.groupId,
+        rawSource: sql<string | null>`${attendanceDeviceRawLogs.rawPayload}->>'source'`,
+        identitySourceId: sql<string | null>`${attendanceDeviceRawLogs.rawPayload}->>'identitySourceId'`,
+        deviceId: attendanceDeviceRawLogs.deviceId,
         pin: attendanceDeviceRawLogs.pin,
         employeeId: attendanceDeviceRawLogs.employeeId,
         timestamp: sql<string>`to_char(${attendanceDeviceRawLogs.timestamp}, \'YYYY-MM-DD HH24:MI:SS\')`.as("timestamp"),
@@ -563,37 +551,42 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
         employeeCode: employees.employeeCode,
         barcode: employees.barcode,
         departmentId: employees.departmentId,
+          groupId: departmentOrganizationMappings.groupId,
         departmentName: departments.name,
       })
       .from(employees)
       .leftJoin(departments, eq(employees.departmentId, departments.id))
+      .leftJoin(departmentOrganizationMappings, eq(employees.departmentId, departmentOrganizationMappings.departmentId))
       .where(employeeScopePredicate({...requireHrScope(req as any),includeUnmapped:false}));
     const identities = await db.select().from(attendanceIdentities);
     const pinResolutionCache = new Map<string, number | null>();
 
-    const getEmployeeIdForPin = (pin: string, devId: number): number | null => {
+    const getEmployeeIdForPin = (pin: string, sourceId: number, groupId: number | null): number | null => {
       const cleanPin = String(pin).trim();
-      if (pinResolutionCache.has(cleanPin)) {
-        return pinResolutionCache.get(cleanPin)!;
+      const cacheKey = `${groupId}:${sourceId}:${cleanPin}`;
+      if (pinResolutionCache.has(cacheKey)) {
+        return pinResolutionCache.get(cacheKey)!;
       }
-      const resolvedId = resolveImportEmployee(cleanPin, devId, allEmployees as any, identities);
-      pinResolutionCache.set(cleanPin, resolvedId);
+      const resolvedId = resolveImportEmployee(cleanPin, sourceId, allEmployees.filter(e=>e.groupId===groupId) as any, identities);
+      pinResolutionCache.set(cacheKey, resolvedId);
       return resolvedId;
     };
 
     // Format raw rows to RawPunchInput, skipping punches for employees outside current scope
     const rawPunches: RawPunchInput[] = [];
+    let totalUnmappedRawLogs = 0;
     for (const r of rawRows) {
       const resolvedEmpId =
-        r.employeeId || getEmployeeIdForPin(r.pin, (deviceId ? Number(deviceId) : 1));
-      if (resolvedEmpId && !allEmployees.some((e) => e.id === resolvedEmpId)) {
+        r.employeeId || getEmployeeIdForPin(r.pin, attendanceIdentitySourceId(r.deviceId, r.rawSource, r.identitySourceId), r.groupId);
+      const emp = resolvedEmpId ? allEmployees.find((e) => e.id === resolvedEmpId && e.groupId === r.groupId) : null;
+      if (!emp) {
+        totalUnmappedRawLogs++;
         continue;
       }
-      const emp = resolvedEmpId ? allEmployees.find((e) => e.id === resolvedEmpId) : null;
       rawPunches.push({
         id: r.id,
         pin: r.pin,
-        employeeId: resolvedEmpId,
+        employeeId: emp.id,
         employeeCode: emp?.employeeCode || r.employeeNik || r.pin,
         employeeName: emp?.fullName || r.employeeName || undefined,
         department: emp?.departmentName || undefined,
@@ -614,12 +607,6 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
         departmentName: emp.departmentName || "Umum",
       };
       employeesMap.set(emp.id, empData);
-      if (emp.employeeCode) {
-        employeesMap.set(emp.employeeCode, empData);
-      }
-      if (emp.barcode) {
-        employeesMap.set(emp.barcode, empData);
-      }
     }
 
     const shifts = await db.select().from(attendanceShifts);
@@ -705,7 +692,7 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
     res.json({
       success: true,
       message: `Kalkulasi selesai: ${result.totalProcessed} absensi berhasil dihitung, ${result.totalUnassigned} tanpa shift`,
-      data: result,
+      data: {...result, totalUnmappedRawLogs},
     });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });

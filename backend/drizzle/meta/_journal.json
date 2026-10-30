@@ -266,6 +266,13 @@
       "when": 1793331600000,
       "tag": "0037_default_all_departments_office_shift",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1793332000000,
+      "tag": "0038_adms_ingestion_columns",
+      "breakpoints": true
     }
   ],
   "version": "7"
