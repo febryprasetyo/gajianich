@@ -4,6 +4,7 @@ import { eq, sql } from 'drizzle-orm';
 import { departments, locations } from '../db/schema/master';
 import { employees } from '../db/schema/employees';
 import { systemSettings } from '../db/schema/system';
+import { attendanceShifts, attendanceShiftAssignments } from '../db/schema/attendanceWorkspace';
 import { sanitizeAuditTarget, type AuditContext } from '../domain/hrAudit';
 import { appendHrAudit, type AuditTx } from './hrAudit';
 import { assessEmployeeDeletion, getAttendanceDeletionCheck } from '../domain/employeeDeletion';
@@ -30,6 +31,33 @@ export async function mutateDepartment(
 ): Promise<{ department: any; eventId: string | null }> {
   if (command.type === 'CREATE') {
     const [inserted] = await (tx as any).insert(departments).values(command.data).returning();
+
+    // Auto-assign default office shift ke departemen baru
+    try {
+      const [defaultShift] = await (tx as any)
+        .select()
+        .from(attendanceShifts)
+        .where(eq(attendanceShifts.isDefault, true))
+        .limit(1);
+      const officeShift = defaultShift || (
+        await (tx as any)
+          .select()
+          .from(attendanceShifts)
+          .where(eq(attendanceShifts.code, 'OFFICE'))
+          .limit(1)
+      )[0];
+
+      if (officeShift) {
+        await (tx as any).insert(attendanceShiftAssignments).values({
+          departmentId: inserted.id,
+          shiftId: officeShift.id,
+          isDefault: true,
+        });
+      }
+    } catch {
+      // Abaikan jika tabel absensi belum tersedia pada bootstrap awal
+    }
+
     const target = sanitizeAuditTarget('department', null, inserted, {
       entityId: String(inserted.id),
       entityLabel: `${inserted.code} - ${inserted.name}`,

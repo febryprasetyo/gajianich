@@ -8,6 +8,7 @@ import { assetCategories, assets } from './schema/assets';
 import { ticketCategories, slaPolicies, itTickets, ticketComments } from './schema/tickets';
 import { softwareLicenses, licenseAllocations } from './schema/licenses';
 import { attendanceDevices } from './schema/attendanceDevices';
+import { attendanceWorkHours, attendanceShifts, attendanceShiftAssignments } from './schema/attendanceWorkspace';
 import bcrypt from 'bcrypt';
 import { eq } from 'drizzle-orm';
 import { DEFAULT_IT_EQUIPMENT_TYPES, shouldSeedDefaultEquipmentTypes } from '../domain/equipmentTypes';
@@ -262,6 +263,82 @@ async function seed() {
     }
     console.log('  ✓ Verified department and location organization mappings');
   }
+
+  // 6b. Seed Default Office Work Hours, Shift, and Department Assignments
+  const [existingWh] = await db
+    .select()
+    .from(attendanceWorkHours)
+    .where(eq(attendanceWorkHours.name, 'Office Reguler'))
+    .limit(1);
+
+  let officeWhId = existingWh?.id;
+  if (!officeWhId) {
+    const [createdWh] = await db
+      .insert(attendanceWorkHours)
+      .values({
+        name: 'Office Reguler',
+        color: '#059669',
+        scheduleIn: '08:00',
+        scheduleOut: '17:00',
+        scanInStart: '06:00',
+        scanInEnd: '10:00',
+        scanOutStart: '15:00',
+        scanOutEnd: '20:00',
+        lateToleranceMinutes: 5,
+        earlyLeaveToleranceMinutes: 5,
+        requireCheckIn: true,
+        requireCheckOut: true,
+        isActive: true,
+      })
+      .returning();
+    officeWhId = createdWh.id;
+    console.log('  ✓ Inserted default work hours: Office Reguler (08:00 - 17:00)');
+  }
+
+  const [existingShift] = await db
+    .select()
+    .from(attendanceShifts)
+    .where(eq(attendanceShifts.code, 'OFFICE'))
+    .limit(1);
+
+  let officeShiftId = existingShift?.id;
+  if (!officeShiftId) {
+    const [createdShift] = await db
+      .insert(attendanceShifts)
+      .values({
+        code: 'OFFICE',
+        name: 'Office Reguler (Default)',
+        description: 'Senin - Jumat 08:00 - 17:00 (Sabtu & Minggu Libur)',
+        mondayWorkHoursId: officeWhId,
+        tuesdayWorkHoursId: officeWhId,
+        wednesdayWorkHoursId: officeWhId,
+        thursdayWorkHoursId: officeWhId,
+        fridayWorkHoursId: officeWhId,
+        saturdayWorkHoursId: null,
+        sundayWorkHoursId: null,
+        isDefault: true,
+        isActive: true,
+      })
+      .returning();
+    officeShiftId = createdShift.id;
+    console.log('  ✓ Inserted default shift: OFFICE (08:00 - 17:00)');
+  }
+
+  const allDeptsForShifts = await db.select().from(departments);
+  for (const dept of allDeptsForShifts) {
+    const existingAssignment = await db
+      .select()
+      .from(attendanceShiftAssignments)
+      .where(eq(attendanceShiftAssignments.departmentId, dept.id));
+    if (existingAssignment.length === 0) {
+      await db.insert(attendanceShiftAssignments).values({
+        departmentId: dept.id,
+        shiftId: officeShiftId,
+        isDefault: true,
+      });
+    }
+  }
+  console.log('  ✓ Configured all departments to default Office shift');
 
   // 4a. Seed IT Equipment Types
   const insertedEquipmentTypes = await db.transaction(async (tx) => {

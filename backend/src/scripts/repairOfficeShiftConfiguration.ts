@@ -40,8 +40,8 @@ export async function repairOfficeShiftConfiguration(tx: AuditTx, context: Audit
   if (apply) {
     for (const dept of changedDepartments) {
       const existing = assignments.find(a => a.departmentId === dept.id && !a.employeeId);
-      if (existing) await tx.update(attendanceShiftAssignments).set({ shiftId: effectiveOffice.id, updatedAt: new Date() }).where(eq(attendanceShiftAssignments.id, existing.id));
-      else await tx.insert(attendanceShiftAssignments).values({ departmentId: dept.id, shiftId: effectiveOffice.id });
+      if (existing) await tx.update(attendanceShiftAssignments).set({ shiftId: effectiveOffice.id, isDefault: true, updatedAt: new Date() }).where(eq(attendanceShiftAssignments.id, existing.id));
+      else await tx.insert(attendanceShiftAssignments).values({ departmentId: dept.id, shiftId: effectiveOffice.id, isDefault: true });
     }
   }
   const effectiveAssignments = [...assignments.filter(a => a.employeeId), ...depts.map(d => ({ id: 0, employeeId: null, departmentId: d.id, shiftId: effectiveOffice.id }))];
