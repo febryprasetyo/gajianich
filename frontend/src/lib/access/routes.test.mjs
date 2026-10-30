@@ -79,6 +79,17 @@ test('Unknown role redirects to fallback welcome', () => {
   assert.equal(getDashboardHrefForUser(guest), '/dashboard/welcome');
 });
 
+test('mustChangePassword forces redirect to /change-password regardless of user role', () => {
+  const employeeTemp = { roleName: 'Employee', permissions: [], mustChangePassword: true };
+  const superAdminTemp = { roleName: 'SuperAdmin', permissions: ['*'], mustChangePassword: true };
+  const hrdTemp = { roleName: 'HR Attendance & Time', permissions: ['attendance.view'], mustChangePassword: true };
+
+  assert.equal(getDefaultRedirectForUser(employeeTemp), '/change-password');
+  assert.equal(getDefaultRedirectForUser(superAdminTemp), '/change-password');
+  assert.equal(getDefaultRedirectForUser(hrdTemp), '/change-password');
+  assert.equal(getDashboardHrefForUser(employeeTemp), '/change-password');
+});
+
 test('leave settings route requires attendance.manage and overrides generic leave view', () => {
   const staff = {
     roleName: 'Staff',

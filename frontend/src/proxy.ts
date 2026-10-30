@@ -9,6 +9,7 @@ interface JwtPayload {
   roleId?: number;
   roleName?: string;
   permissions?: string[];
+  mustChangePassword?: boolean;
 }
 
 function decodeJwt(token: string): JwtPayload | null {
@@ -64,6 +65,11 @@ export function proxy(request: NextRequest) {
     response.cookies.delete(AUTH_COOKIE_NAME);
     response.cookies.delete("token");
     return response;
+  }
+
+  // Enforce password change before accessing protected mobile or dashboard routes
+  if (payload.mustChangePassword) {
+    return NextResponse.redirect(new URL("/change-password", request.url));
   }
 
   const roleName = (payload.roleName || "").toLowerCase().trim();

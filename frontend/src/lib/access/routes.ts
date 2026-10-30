@@ -240,9 +240,10 @@ export function canAccessRoute(
 }
 
 export function getDefaultRedirectForUser(
-  user: { roleName?: string; role?: string; permissions?: string[] } | null | undefined
+  user: { roleName?: string; role?: string; permissions?: string[]; mustChangePassword?: boolean } | null | undefined
 ): string {
   if (!user) return '/login';
+  if (user.mustChangePassword) return '/change-password';
 
   const normRole = (user.roleName || user.role || '').toLowerCase().replace(/[\s_-]+/g, '');
   const perms = Array.isArray(user.permissions) ? user.permissions : [];

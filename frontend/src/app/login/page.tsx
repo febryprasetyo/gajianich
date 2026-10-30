@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth, User } from '@/context/AuthContext';
@@ -25,8 +25,32 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const { login } = useAuth();
+  const { user, isLoading, login } = useAuth();
   const router = useRouter();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!isLoading && user) {
+      if (user.mustChangePassword) {
+        router.replace('/change-password');
+        if (typeof window !== 'undefined') {
+          window.location.replace('/change-password');
+        }
+      } else {
+        const roleName = (user.roleName || "").toLowerCase().trim();
+        const isEmployee = roleName === "employee" || roleName === "karyawan";
+        const target = isEmployee
+          ? '/m/beranda'
+          : (roleName.includes("hr") && !roleName.includes("it")
+              ? "/dashboard/attendance/overview"
+              : getDefaultRedirectForUser(user));
+        router.replace(target);
+        if (typeof window !== 'undefined') {
+          window.location.replace(target);
+        }
+      }
+    }
+  }, [user, isLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,6 +76,7 @@ export default function LoginPage() {
       }>('/auth/login', { username: username.trim(), password });
 
       if (res && res.token && res.user) {
+        const mustChange = Boolean(res.mustChangePassword ?? res.user.mustChangePassword);
         const formattedUser: User = {
           id: res.user.id,
           username: res.user.username || username.trim(),
@@ -61,23 +86,28 @@ export default function LoginPage() {
           roleName: res.user.roleName,
           employeeId: res.user.employeeId ?? null,
           permissions: res.user.permissions || [],
-          mustChangePassword: Boolean(res.mustChangePassword ?? res.user.mustChangePassword),
+          mustChangePassword: mustChange,
         };
 
         login(res.token, formattedUser);
 
-        if (res.mustChangePassword || res.user.mustChangePassword) {
-          router.push('/change-password');
+        if (mustChange) {
+          router.replace('/change-password');
+          if (typeof window !== 'undefined') {
+            window.location.replace('/change-password');
+          }
         } else {
           const roleName = (res.user.roleName || "").toLowerCase().trim();
           const isEmployee = roleName === "employee" || roleName === "karyawan";
+          const target = isEmployee
+            ? '/m/beranda'
+            : (roleName.includes("hr") && !roleName.includes("it")
+                ? "/dashboard/attendance/overview"
+                : getDefaultRedirectForUser(formattedUser));
 
-          if (isEmployee) {
-            router.push('/m/beranda');
-          } else if (roleName.includes("hr") && !roleName.includes("it")) {
-            router.push("/dashboard/attendance/overview");
-          } else {
-            router.push(getDefaultRedirectForUser(formattedUser));
+          router.replace(target);
+          if (typeof window !== 'undefined') {
+            window.location.replace(target);
           }
         }
       } else {
@@ -85,7 +115,6 @@ export default function LoginPage() {
       }
     } catch (err: unknown) {
       setError((err as Error).message || 'Login failed. Please check your credentials.');
-    } finally {
       setLoading(false);
     }
   };

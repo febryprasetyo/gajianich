@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
+import { getDefaultRedirectForUser } from '@/lib/access/routes';
 import {
   Lock,
   KeyRound,
@@ -18,7 +19,7 @@ import {
 } from 'lucide-react';
 
 export default function ChangePasswordPage() {
-  const { user, login, logout } = useAuth();
+  const { user, isLoading, login, logout } = useAuth();
   const router = useRouter();
 
   const [newPassword, setNewPassword] = useState('');
@@ -28,6 +29,30 @@ export default function ChangePasswordPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // If not authenticated, redirect to login. If already changed, redirect to main workspace.
+  useEffect(() => {
+    if (!isLoading) {
+      if (!user) {
+        router.replace('/login');
+        if (typeof window !== 'undefined') {
+          window.location.replace('/login');
+        }
+      } else if (!user.mustChangePassword) {
+        const roleName = (user.roleName || "").toLowerCase().trim();
+        const isEmployee = roleName === "employee" || roleName === "karyawan";
+        const target = isEmployee
+          ? '/m/beranda'
+          : (roleName.includes("hr") && !roleName.includes("it")
+              ? "/dashboard/attendance/overview"
+              : getDefaultRedirectForUser(user));
+        router.replace(target);
+        if (typeof window !== 'undefined') {
+          window.location.replace(target);
+        }
+      }
+    }
+  }, [user, isLoading, router]);
 
   // Password rules validation: 8 or more characters with mix of letters, numbers & symbols
   const hasMinLength = newPassword.length >= 8;
@@ -60,7 +85,7 @@ export default function ChangePasswordPage() {
       });
 
       if (res && res.token && res.user) {
-        login(res.token, {
+        const updatedUser = {
           id: res.user.id,
           username: res.user.username || user?.username || '',
           email: res.user.email || user?.email || '',
@@ -69,15 +94,27 @@ export default function ChangePasswordPage() {
           roleName: res.user.roleName || user?.roleName || '',
           permissions: res.user.permissions || user?.permissions || [],
           mustChangePassword: false,
-        });
+        };
 
-        router.push('/dashboard');
+        login(res.token, updatedUser);
+
+        const roleName = (updatedUser.roleName || "").toLowerCase().trim();
+        const isEmployee = roleName === "employee" || roleName === "karyawan";
+        const target = isEmployee
+          ? '/m/beranda'
+          : (roleName.includes("hr") && !roleName.includes("it")
+              ? "/dashboard/attendance/overview"
+              : getDefaultRedirectForUser(updatedUser));
+
+        router.replace(target);
+        if (typeof window !== 'undefined') {
+          window.location.replace(target);
+        }
       } else {
         throw new Error('Respon server tidak valid');
       }
     } catch (err: any) {
       setError(err?.message || 'Gagal mengubah password. Silakan coba lagi.');
-    } finally {
       setLoading(false);
     }
   };

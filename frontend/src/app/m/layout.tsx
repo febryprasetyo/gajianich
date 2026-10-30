@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Signal, Wifi, BatteryFull, WifiOff } from 'lucide-react';
 import BottomNavigation from '@/components/mobile/BottomNavigation';
+import { useAuth } from '@/context/AuthContext';
 
 export default function MobileAppLayout({
   children,
@@ -11,6 +13,17 @@ export default function MobileAppLayout({
 }) {
   const [timeStr, setTimeStr] = useState('08:34');
   const [isOnline, setIsOnline] = useState(true);
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && user?.mustChangePassword) {
+      router.replace('/change-password');
+      if (typeof window !== 'undefined') {
+        window.location.replace('/change-password');
+      }
+    }
+  }, [user, isLoading, router]);
 
   useEffect(() => {
     const updateTime = () => {

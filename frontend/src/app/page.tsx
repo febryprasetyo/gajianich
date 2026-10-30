@@ -20,7 +20,16 @@ export default function Home() {
 
   useEffect(() => {
     if (!isLoading) {
-      const target = user ? getDefaultRedirectForUser(user) : '/login';
+      let target = '/login';
+      if (user) {
+        if (user.mustChangePassword) {
+          target = '/change-password';
+        } else {
+          const roleName = (user.roleName || "").toLowerCase().trim();
+          const isEmployee = roleName === "employee" || roleName === "karyawan";
+          target = isEmployee ? '/m/beranda' : getDefaultRedirectForUser(user);
+        }
+      }
       router.replace(target);
 
       // Fallback redirect if client-side router transition hangs on tunnel
@@ -34,7 +43,13 @@ export default function Home() {
     }
   }, [user, isLoading, router]);
 
-  const targetUrl = user ? getDefaultRedirectForUser(user) : '/login';
+  const targetUrl = user
+    ? (user.mustChangePassword
+        ? '/change-password'
+        : (((user.roleName || "").toLowerCase().trim() === "employee" || (user.roleName || "").toLowerCase().trim() === "karyawan")
+            ? '/m/beranda'
+            : getDefaultRedirectForUser(user)))
+    : '/login';
 
   return (
     <main className="min-h-screen w-full bg-[#F8FAFC] flex items-center justify-center p-4 font-sans text-slate-900">

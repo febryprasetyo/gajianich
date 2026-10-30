@@ -219,8 +219,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/login');
+    if (!isLoading) {
+      if (!user) {
+        router.push('/login');
+      } else if (user.mustChangePassword) {
+        router.replace('/change-password');
+        if (typeof window !== 'undefined') {
+          window.location.replace('/change-password');
+        }
+      }
     }
   }, [user, isLoading, router]);
 

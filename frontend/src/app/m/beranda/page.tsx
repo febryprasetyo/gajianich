@@ -89,6 +89,13 @@ export default function MobileBerandaPage() {
     } catch (err: any) {
       console.warn("loadSummary error:", err);
       const msg = err.message || "";
+      if (msg.includes("Password change required") || msg.includes("change-password")) {
+        router.replace("/change-password");
+        if (typeof window !== "undefined") {
+          window.location.replace("/change-password");
+        }
+        return;
+      }
       if (msg.includes("401") || msg.includes("Unauthorized") || msg.includes("token missing")) {
         router.push("/login");
         return;
@@ -97,7 +104,7 @@ export default function MobileBerandaPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -106,9 +113,27 @@ export default function MobileBerandaPage() {
       router.replace("/login");
       return;
     }
+    const storedUserStr = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+    let storedUserMustChange = false;
+    try {
+      if (storedUserStr) {
+        storedUserMustChange = Boolean(JSON.parse(storedUserStr).mustChangePassword);
+      }
+    } catch {
+      // ignore JSON parse error
+    }
+
+    if (user?.mustChangePassword || storedUserMustChange) {
+      router.replace("/change-password");
+      if (typeof window !== "undefined") {
+        window.location.replace("/change-password");
+      }
+      return;
+    }
+
     setIsAuthenticated(true);
     loadSummary();
-  }, [router, loadSummary]);
+  }, [router, loadSummary, user]);
 
   const getRingStatus = (): AttendanceRingState => {
     if (attendanceState.checkedOut) return "COMPLETED";

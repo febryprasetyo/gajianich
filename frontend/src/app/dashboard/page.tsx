@@ -18,7 +18,10 @@ export default function DashboardIndexPage() {
     }
 
     const redirectUrl = getDefaultRedirectForUser(user);
-    router.push(redirectUrl);
+    router.replace(redirectUrl);
+    if (typeof window !== 'undefined') {
+      window.location.replace(redirectUrl);
+    }
   }, [user, isLoading, router]);
 
   return (
