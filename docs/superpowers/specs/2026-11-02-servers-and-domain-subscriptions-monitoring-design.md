@@ -95,3 +95,4 @@ Mematuhi 6 Pilar Master Desain (`UI_DESIGN_SYSTEM_GUIDE.md`):
 - Full test suite: `npm test`
 - Typecheck: `npx tsc --noEmit`
 - Verifikasi visual alur navigasi dan highlight menu.
+

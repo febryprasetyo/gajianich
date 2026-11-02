@@ -155,10 +155,12 @@ test('mobile approvals require their dedicated permission for a custom reviewer'
   assert.equal(canAccessRoute('/dashboard/attendance/approvals', { roleName: 'HRViewer', permissions: ['attendance.view'] }), false);
 });
 
-test('ADMS monitoring accepts import or management permission and rejects general viewing', () => {
+test('ADMS monitoring requires dedicated attendance.adms.view permission and rejects general import/viewer', () => {
   assert.equal(canAccessRoute('/dashboard/attendance/adms', { roleName: 'HRViewer', permissions: ['attendance.view'] }), false);
-  assert.equal(canAccessRoute('/dashboard/attendance/adms', { roleName: 'MachineOperator', permissions: ['attendance.import'] }), true);
-  assert.equal(canAccessRoute('/dashboard/attendance/adms', { roleName: 'CustomManager', permissions: ['attendance.manage'] }), true);
+  assert.equal(canAccessRoute('/dashboard/attendance/adms', { roleName: 'MachineOperator', permissions: ['attendance.import'] }), false);
+  assert.equal(canAccessRoute('/dashboard/attendance/adms', { roleName: 'HRD', permissions: ['attendance.manage'] }), false);
+  assert.equal(canAccessRoute('/dashboard/attendance/adms', { roleName: 'AdmsAuditor', permissions: ['attendance.adms.view'] }), true);
+  assert.equal(canAccessRoute('/dashboard/attendance/adms', { roleName: 'SuperAdmin', permissions: ['*'] }), true);
   assert.equal(canAccessRoute('/dashboard/attendance/devices', { roleName: 'CustomManager', permissions: ['attendance.manage'] }), false);
 });
 

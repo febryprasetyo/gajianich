@@ -73,6 +73,22 @@ export interface IngestOptions {
   onlyUningested?: boolean;
 }
 
+export function mapAdmsVerifyMode(rawVerify: number): string {
+  switch (rawVerify) {
+    case 15:
+    case 20:
+      return 'Face';
+    case 1:
+      return 'Fingerprint';
+    case 2:
+      return 'Card';
+    case 0:
+      return 'Password';
+    default:
+      return 'Card / Scan';
+  }
+}
+
 export async function cleanseAndIngestAdmsLogs(
   pool: { connect(): Promise<PoolClient> },
   options: IngestOptions
@@ -144,7 +160,7 @@ export async function cleanseAndIngestAdmsLogs(
     if (cleanedPunches.length > 0) {
       // 4. Ingest into attendance_device_raw_logs
       for (const p of cleanedPunches) {
-        const verifyMode = p.rawVerify === 1 ? 'Fingerprint' : p.rawVerify === 2 ? 'Password' : 'Card / Scan';
+        const verifyMode = mapAdmsVerifyMode(p.rawVerify);
         const inOutState = p.rawStatus === 0 ? 'Masuk' : p.rawStatus === 1 ? 'Pulang' : 'Scan';
         const rawPayload = JSON.stringify({
           source: 'ADMS',

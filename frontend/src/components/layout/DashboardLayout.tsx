@@ -96,7 +96,7 @@ export const navGroups: NavGroup[] = [
         name: 'Mesin Presensi',
         icon: Cpu,
         children: [
-          { name: 'Status Server ADMS', href: '/dashboard/attendance/adms', icon: Cpu, anyPermissions: ['attendance.import', 'attendance.manage'] },
+          { name: 'Status Server ADMS', href: '/dashboard/attendance/adms', icon: Cpu, permission: 'attendance.adms.view' },
           { name: 'Daftar Mesin', href: '/dashboard/attendance/devices', icon: Cpu, permission: 'attendance.import' },
           { name: 'Log Presensi', href: '/dashboard/attendance/raw-logs', icon: ListFilter, permission: 'attendance.import' },
           { name: 'Hasil Tarik Presensi', href: '/dashboard/attendance/transactions', icon: FileCheck2, permission: 'attendance.view' },
@@ -196,7 +196,7 @@ const ROUTE_PERMISSION_MAP: { prefix: string; permission: string; moduleName: st
   { prefix: '/dashboard/infrastructure', permission: 'infrastructure.view', moduleName: 'Server Accurate' },
   { prefix: '/dashboard/servers', permission: 'infrastructure.view', moduleName: 'Server & VPS' },
   { prefix: '/dashboard/subscriptions', permission: 'infrastructure.view', moduleName: 'Domain & Hosting' },
-  { prefix: '/dashboard/attendance/adms', permission: 'attendance.import atau attendance.manage', moduleName: 'Status Server ADMS' },
+  { prefix: '/dashboard/attendance/adms', permission: 'attendance.adms.view', moduleName: 'Status Server ADMS' },
   { prefix: '/dashboard/attendance/devices', permission: 'attendance.import', moduleName: 'Daftar Mesin' },
   { prefix: '/dashboard/attendance/approvals/rules', permission: 'attendance.manage', moduleName: 'Aturan Auto-Approve' },
   { prefix: '/dashboard/attendance/approvals/photos', permission: 'attendance.mobile.verify', moduleName: 'Validasi Foto Wajah' },

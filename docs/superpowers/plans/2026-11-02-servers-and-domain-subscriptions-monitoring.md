@@ -52,3 +52,4 @@
 - [ ] Jalankan full test suite: `cd frontend && npm test`.
 - [ ] Jalankan static analysis: `cd frontend && npx tsc --noEmit`.
 - [ ] Commit rapi dengan conventional commits.
+

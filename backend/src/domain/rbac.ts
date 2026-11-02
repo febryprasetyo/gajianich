@@ -39,6 +39,7 @@ export const DEFAULT_PERMISSIONS: PermissionSeed[] = [
   { code: 'attendance.view', name: 'View Attendance', module: 'attendance', description: 'Melihat rekap & kartu absensi' },
   { code: 'attendance.import', name: 'Import Attendance', module: 'attendance', description: 'Mengunggah file log absensi mesin' },
   { code: 'attendance.manage', name: 'Manage Attendance', module: 'attendance', description: 'Koreksi log & pengaturan absensi' },
+  { code: 'attendance.adms.view', name: 'View ADMS Server Status', module: 'attendance', description: 'Melihat status server ADMS dan monitor realtime mesin presensi' },
 
   // Master Data
   { code: 'master.view', name: 'View Master Data', module: 'master', description: 'Melihat master data organisasi' },
@@ -61,6 +62,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'hardware_audits.view', 'hardware_audits.manage',
     'master.view', 'master.manage',
     'access.users.view',
+    'attendance.adms.view',
   ],
   it_staff: [
     'assets.view', 'assets.assign',

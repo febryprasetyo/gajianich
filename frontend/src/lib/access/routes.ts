@@ -12,7 +12,7 @@ export const IT_ROLES = ['superadmin', 'super_admin', 'itadmin', 'it_admin', 'it
 export const ADMIN_ROLES = ['superadmin', 'super_admin', 'itadmin', 'it_admin', 'admin'];
 
 export const DASHBOARD_ROUTE_RULES: RouteRule[] = [
-  { prefix: '/dashboard/attendance/adms', anyPermissions: ['attendance.import', 'attendance.manage'], moduleName: 'Status Server ADMS' },
+  { prefix: '/dashboard/attendance/adms', permission: 'attendance.adms.view', moduleName: 'Status Server ADMS' },
   { prefix: '/dashboard/attendance/devices', permission: 'attendance.import', moduleName: 'Daftar Mesin Presensi' },
   { prefix: '/dashboard/attendance/raw-logs', permission: 'attendance.import', moduleName: 'Log Mesin Presensi' },
   { prefix: '/dashboard/attendance/transactions', permission: 'attendance.view', moduleName: 'Hasil Tarik Presensi' },

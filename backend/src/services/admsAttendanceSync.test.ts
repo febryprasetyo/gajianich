@@ -4,8 +4,18 @@ import {
   filterDebouncePunches,
   cleanseAndIngestAdmsLogs,
   resolveUnmappedAdmsPin,
+  mapAdmsVerifyMode,
   type AdmsRawLogItem,
 } from './admsAttendanceSync';
+
+test('mapAdmsVerifyMode maps rawVerify accurately matching physical ADMS biometric rules', () => {
+  assert.equal(mapAdmsVerifyMode(15), 'Face');
+  assert.equal(mapAdmsVerifyMode(20), 'Face');
+  assert.equal(mapAdmsVerifyMode(1), 'Fingerprint');
+  assert.equal(mapAdmsVerifyMode(2), 'Card');
+  assert.equal(mapAdmsVerifyMode(0), 'Password');
+  assert.equal(mapAdmsVerifyMode(99), 'Card / Scan');
+});
 
 test('filterDebouncePunches removes accidental duplicate taps within 60 seconds for same PIN', () => {
   const punches: AdmsRawLogItem[] = [

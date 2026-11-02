@@ -600,7 +600,7 @@ export default function AttendanceDevicesPage() {
                   <th className="py-2.5 px-4">Alamat IP Mesin & Allowlist</th>
                   <th className="py-2.5 px-4">Lokasi</th>
                   <th className="py-2.5 px-4">Terakhir Aktif</th>
-                  <th className="py-2.5 px-4 text-center w-28">Aksi</th>
+                  {canManage && <th className="py-2.5 px-4 text-center w-28">Aksi</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -654,9 +654,9 @@ export default function AttendanceDevicesPage() {
                       )}
                     </td>
 
-                    <td className="py-3 px-4 text-center whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-1">
-                        {canManage && (
+                    {canManage && (
+                      <td className="py-3 px-4 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1">
                           <RowActionButton
                             icon={Settings2}
                             label="Allowlist ADMS"
@@ -681,8 +681,6 @@ export default function AttendanceDevicesPage() {
                               setIsAdmsAllowlistModalOpen(true);
                             }}
                           />
-                        )}
-                        {canManage && (
                           <RowActionButton
                             icon={Power}
                             label={device.admsEnabled ? "Nonaktifkan ADMS" : "Aktifkan ADMS"}
@@ -690,8 +688,6 @@ export default function AttendanceDevicesPage() {
                             variant={device.admsEnabled ? "amber" : "emerald"}
                             onClick={() => handleToggleAdmsDevice(device)}
                           />
-                        )}
-                        {canManage && (
                           <RowActionButton
                             icon={Edit3}
                             label="Edit Mesin"
@@ -699,8 +695,6 @@ export default function AttendanceDevicesPage() {
                             variant="default"
                             onClick={() => handleOpenEditModal(device)}
                           />
-                        )}
-                        {canManage && (
                           <RowActionButton
                             icon={Trash2}
                             label="Hapus Mesin"
@@ -711,9 +705,9 @@ export default function AttendanceDevicesPage() {
                               setIsDeleteModalOpen(true);
                             }}
                           />
-                        )}
-                      </div>
-                    </td>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -772,7 +766,7 @@ export default function AttendanceDevicesPage() {
                   <th className="py-2.5 px-4">No. Mesin & CommKey</th>
                   <th className="py-2.5 px-4">Lokasi</th>
                   <th className="py-2.5 px-4">Terakhir Tarik Data</th>
-                  <th className="py-2.5 px-4 text-center w-24">Aksi</th>
+                  {canManage && <th className="py-2.5 px-4 text-center w-24">Aksi</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -879,9 +873,9 @@ export default function AttendanceDevicesPage() {
                         )}
                       </td>
 
-                      <td className="py-3 px-4 text-center whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-1">
-                          {canManage && (
+                      {canManage && (
+                        <td className="py-3 px-4 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-1">
                             <RowActionButton
                               icon={Edit3}
                               label="Edit Mesin"
@@ -889,9 +883,6 @@ export default function AttendanceDevicesPage() {
                               variant="default"
                               onClick={() => handleOpenEditModal(device)}
                             />
-                          )}
-
-                          {canManage && (
                             <RowActionButton
                               icon={Trash2}
                               label="Hapus Mesin"
@@ -902,9 +893,9 @@ export default function AttendanceDevicesPage() {
                                 setIsDeleteModalOpen(true);
                               }}
                             />
-                          )}
-                        </div>
-                      </td>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
