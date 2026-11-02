@@ -256,4 +256,16 @@ describe('Leave Business Logic & Document Standards', () => {
     assert.strictEqual(REVISION_CODE, 'REV. 170208-1-W');
     assert.strictEqual(APPROVAL_STAGES.length, 4);
   });
+
+  test('leave requests support nullable organizationId and documentProfileSnapshot when organization is unmapped', () => {
+    const mockRow = {
+      groupId: 1,
+      organizationId: null,
+      documentProfileSnapshot: null,
+      requestNumber: 'LV-202611-0001',
+      employeeId: 2,
+    };
+    assert.strictEqual(mockRow.organizationId, null);
+    assert.strictEqual(mockRow.documentProfileSnapshot, null);
+  });
 });

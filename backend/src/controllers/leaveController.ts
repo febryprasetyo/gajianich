@@ -1,5 +1,5 @@
 import {employeeScopePredicate,historicalScopePredicate,requireHrScope,requireScopedEmployee} from '../services/hrOrganizationScope';
-import {resolveDocumentProfile} from '../services/documentProfile';
+import {resolveDocumentProfile, DocumentProfileUnavailableError} from '../services/documentProfile';
 import {loadCurrentIdentity} from '../services/currentIdentity';
 import { resolveAuditContext, appendHrAudit } from '../services/hrAudit';
 import { sanitizeAuditTarget } from '../domain/hrAudit';
@@ -378,7 +378,13 @@ export async function createLeaveRequest(req: Request, res: Response) {
       .from(leaveBalances)
       .where(and(eq(leaveBalances.employeeId, data.employeeId), eq(leaveBalances.year, startYear)));
 
-    if (balance && balance.groupId !== owner.groupId) throw new Error('Historical leave balance ownership unresolved or different');
+    if (balance && balance.groupId && balance.groupId !== owner.groupId) {
+      return res.status(403).json({ error: 'Historical leave balance ownership unresolved or different' });
+    }
+    if (balance && !balance.groupId) {
+      await db.update(leaveBalances).set({ groupId: owner.groupId }).where(eq(leaveBalances.id, balance.id));
+      balance.groupId = owner.groupId;
+    }
     if (!balance) {
       const [inserted] = await db
         .insert(leaveBalances)
@@ -431,13 +437,29 @@ export async function createLeaveRequest(req: Request, res: Response) {
 
     // Database transaction
     const createdRequest = await db.transaction(async (tx) => {
-      if (!owner.organizationId) throw new Error("Employee document identity is unresolved");
-      const documentProfileSnapshot = await resolveDocumentProfile(tx,{kind:"LEAVE",groupId:owner.groupId,organizationId:owner.organizationId});
+      let documentProfileSnapshot = null;
+      if (owner.organizationId) {
+        try {
+          documentProfileSnapshot = await resolveDocumentProfile(tx, {
+            kind: 'LEAVE',
+            groupId: owner.groupId,
+            organizationId: owner.organizationId,
+          });
+        } catch (err) {
+          if (err instanceof DocumentProfileUnavailableError) {
+            documentProfileSnapshot = null;
+          } else {
+            throw err;
+          }
+        }
+      }
       const [leaveReq] = await tx
         .insert(leaveRequests)
         .values({
           requestNumber,
-          groupId: owner.groupId, organizationId: owner.organizationId, documentProfileSnapshot,
+          groupId: owner.groupId,
+          organizationId: owner.organizationId ?? null,
+          documentProfileSnapshot,
           employeeId: data.employeeId,
           leaveType: data.leaveType,
           specialLeaveReason: data.specialLeaveReason || null,
@@ -522,9 +544,12 @@ export async function createLeaveRequest(req: Request, res: Response) {
       message: 'Permohonan cuti berhasil diajukan',
       data: createdRequest,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error createLeaveRequest:', error);
-    return res.status(500).json({ error: 'Gagal mengajukan permohonan cuti' });
+    if (error?.statusCode || error?.status) {
+      return res.status(error.statusCode || error.status).json({ error: error.message });
+    }
+    return res.status(500).json({ error: error?.message || 'Gagal mengajukan permohonan cuti' });
   }
 }
 
