@@ -12,7 +12,7 @@ test('profile identity and kind are scoped, missing MGM fails closed and prior s
  const database = drizzle(fixture.owner);
  const snapshot = await resolveDocumentProfile(database,owner);
  assert.equal(snapshot.identity.name,'Arvirotech'); assert.equal(snapshot.layoutKey,'cmc-ga-v1');
- const {rows:[mgm]} = await fixture.owner.query("INSERT INTO organization_groups(code,name) VALUES('MGM','MGM') RETURNING id");
+ const {rows:[mgm]} = await fixture.owner.query("INSERT INTO organization_groups(code,name) VALUES('MGM','MGM') ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name RETURNING id");
  await assert.rejects(resolveDocumentProfile(database,{...owner,groupId:Number(mgm.id)}),DocumentProfileUnavailableError);
  await assert.rejects(resolveDocumentProfile(database,{...owner,kind:'LEAVE'}),DocumentProfileUnavailableError);
  const {rows:[nextIdentity]} = await fixture.owner.query("INSERT INTO document_identity_versions(group_id,organization_id,version,name,logo_asset_key,approved_reference,is_active) VALUES($1,$2,2,'New approved name','/approved/arvirotech-v2.png','test-reference-v2',true) RETURNING id",[owner.groupId,owner.organizationId]);

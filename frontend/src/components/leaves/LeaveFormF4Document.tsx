@@ -14,7 +14,7 @@ interface LeaveFormF4DocumentProps {
 
 export function LeaveFormF4Document({ data, backHref = '/dashboard/leaves', printActions }: LeaveFormF4DocumentProps) {
   const profile = documentProfileForRender(data,'LEAVE');
-  if (!profile || profile.layoutKey !== 'cmc-leave-f4-v1') return <div role="status" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Profil dokumen resmi belum tersedia. Pratinjau dan cetak ditahan sampai identitas dan format organisasi disahkan.<Link href="/dashboard/leaves" className="mt-3 block underline">Kembali ke daftar cuti</Link></div>;
+  if (!profile) return <div role="status" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Profil dokumen resmi belum tersedia. Pratinjau dan cetak ditahan sampai identitas dan format organisasi disahkan.<Link href="/dashboard/leaves" className="mt-3 block underline">Kembali ke daftar cuti</Link></div>;
   const handlePrint = () => {
     window.print();
   };

@@ -5,10 +5,11 @@ import { resolveAuditContext, appendHrAudit } from '../services/hrAudit';
 import { sanitizeAuditTarget } from '../domain/hrAudit';
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import { eq, and, sql, desc, lt, asc, notInArray } from 'drizzle-orm';
+import { eq, and, sql, desc, lt, asc, notInArray, isNull } from 'drizzle-orm';
 import { db } from '../db';
 import { employees } from '../db/schema/employees';
 import { departments } from '../db/schema/master';
+import { departmentOrganizationMappings } from '../db/schema/organizations';
 import {
   leaveHolidayCalendars,
   leaveBalances,
@@ -634,10 +635,41 @@ export async function getLeaveRequestById(req: Request, res: Response) {
 
     const cleanAnnualQuota = Math.max(0, request.snapshotBaseQuota - request.snapshotCollectiveLeave);
 
+    let documentProfileSnapshot = request.documentProfileSnapshot;
+    let resolvedOrgId = request.organizationId;
+    if (!documentProfileSnapshot) {
+      try {
+        let groupId = request.groupId;
+        if ((!resolvedOrgId || !groupId) && employee?.departmentId) {
+          const [deptMap] = await db
+            .select({ organizationId: departmentOrganizationMappings.organizationId, groupId: departmentOrganizationMappings.groupId })
+            .from(departmentOrganizationMappings)
+            .where(eq(departmentOrganizationMappings.departmentId, employee.departmentId));
+          resolvedOrgId = resolvedOrgId || deptMap?.organizationId || null;
+          groupId = groupId || deptMap?.groupId || null;
+        }
+        if (groupId && resolvedOrgId) {
+          documentProfileSnapshot = await resolveDocumentProfile(db, {
+            groupId,
+            organizationId: resolvedOrgId,
+            kind: 'LEAVE',
+          });
+          await db
+            .update(leaveRequests)
+            .set({ organizationId: resolvedOrgId, documentProfileSnapshot })
+            .where(and(eq(leaveRequests.id, request.id), isNull(leaveRequests.documentProfileSnapshot)));
+        }
+      } catch {
+        // Profile remains null if unavailable
+      }
+    }
+
     return res.status(200).json({
       id: request.id,
       requestNumber: request.requestNumber,
-      groupId:request.groupId, organizationId:request.organizationId, documentProfileSnapshot:request.documentProfileSnapshot,
+      groupId: request.groupId,
+      organizationId: resolvedOrgId,
+      documentProfileSnapshot,
       status: request.status,
       formNumber: '001',
       revisionCode: 'REV. 170208-1-W',

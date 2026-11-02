@@ -51,6 +51,19 @@ export function requireOrganizationScope(module: ScopeModule, mode: 'read' | 'wr
               selectedGroupId = deptMapping.groupId;
             }
           }
+        } else if (req.body?.employeeId) {
+          const empId = Number(req.body.employeeId);
+          if (Number.isSafeInteger(empId) && empId > 0) {
+            const [empMapping] = await db
+              .select({ groupId: departmentOrganizationMappings.groupId })
+              .from(employees)
+              .innerJoin(departmentOrganizationMappings, eq(departmentOrganizationMappings.departmentId, employees.departmentId))
+              .where(eq(employees.id, empId))
+              .limit(1);
+            if (empMapping) {
+              selectedGroupId = empMapping.groupId;
+            }
+          }
         }
       }
       const access = await loadGroupAccess(req.user.userId);

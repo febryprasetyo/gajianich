@@ -18,7 +18,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export function LeaveFormF4NewDocument({ data }: { data: FullLeaveDocumentData }) {
   const profile = documentProfileForRender(data,'LEAVE');
-  if (!profile || profile.layoutKey !== 'cmc-leave-f4-new-v1') return <div role="status" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Profil dokumen resmi belum tersedia. Pratinjau dan cetak ditahan sampai identitas dan format organisasi disahkan.<Link href="/dashboard/leaves" className="mt-3 block underline">Kembali ke daftar cuti</Link></div>;
+  if (!profile) return <div role="status" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Profil dokumen resmi belum tersedia. Pratinjau dan cetak ditahan sampai identitas dan format organisasi disahkan.<Link href="/dashboard/leaves" className="mt-3 block underline">Kembali ke daftar cuti</Link></div>;
   const historyItems = data.detailedHistoryItems ?? data.historyItems;
   const history = Array.from({ length: Math.max(5, historyItems?.length || 0) }, (_, index) => historyItems?.[index]);
   const approvalLabels = profile.signatories.length ? profile.signatories.map(s => s.label) : ['Pemohon', 'Atasan Langsung', 'HRD', 'Atasan dari Atasan Langsung'];

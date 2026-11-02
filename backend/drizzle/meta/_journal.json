@@ -287,6 +287,13 @@
       "when": 1793334000000,
       "tag": "0040_attendance_daily_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1793335000000,
+      "tag": "0041_seed_cmc_official_document_profiles",
+      "breakpoints": true
     }
   ],
   "version": "7"
