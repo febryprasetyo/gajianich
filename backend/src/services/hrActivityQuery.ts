@@ -7,7 +7,10 @@ function auditScope(scope?:RequestScope) {
  if (checked.includeUnmapped && !checked.groupIds.length) return sql`true`;
  const column = sql`(${hrAuditEvents.metadata}->>'groupId')::bigint`;
  const mapped = checked.groupIds.length ? sql`${column} in (${sql.join(checked.groupIds.map(id=>sql`${id}`),sql`,`)})` : sql`false`;
- return checked.includeUnmapped ? or(mapped,sql`${column} is null`)! : mapped;
+ const legacyFallback = (checked.groupIds.includes(1) || checked.includeUnmapped)
+   ? sql`${column} is null`
+   : sql`false`;
+ return or(mapped, legacyFallback)!;
 }
 import { and, desc, asc, eq, gte, lt, or, sql, ilike } from "drizzle-orm";
 import { db } from "../db";
