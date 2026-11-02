@@ -280,6 +280,13 @@
       "when": 1793333000000,
       "tag": "0039_adms_realtime_trigger",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1793334000000,
+      "tag": "0040_attendance_daily_notes",
+      "breakpoints": true
     }
   ],
   "version": "7"
