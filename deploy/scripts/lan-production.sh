@@ -101,7 +101,7 @@ PY
     export APP_VERSION="$VERSION"
     compose config -q
     compose up -d --wait postgres
-    docker compose --env-file "$ENV_FILE" -p gajianich-live -f "$RELEASE_DIR/compose.yml" -f "$RELEASE_DIR/compose.migrate.yml" run --rm --no-deps -T backend node dist/db/migrate.js
+    docker compose --env-file "$ENV_FILE" -p "$PROJECT_NAME" -f "$RELEASE_DIR/compose.yml" -f "$RELEASE_DIR/compose.migrate.yml" run --rm --no-deps -T backend node dist/db/migrate.js
     if test -z "$PREVIOUS"; then
       INITIAL_ADMIN_PASSWORD="$(cat "$RUNTIME_DIR/initial-admin-password")"
       export INITIAL_ADMIN_PASSWORD
