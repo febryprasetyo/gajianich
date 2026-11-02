@@ -30,6 +30,6 @@ export async function requireScopedEmployee(scope: RequestScope, employeeId: num
 }
 export async function requireScopedDepartment(scope: RequestScope, departmentId: number | null | undefined, runner: any = db) {
  const [mapping] = departmentId == null ? [] : await runner.select().from(mappings).where(and(eq(mappings.departmentId,departmentId),inArray(mappings.groupId,scope.groupIds)));
- if (!mapping || mapping.groupId !== scope.selectedGroupId) throw Object.assign(new Error('Department unavailable in this destination group'),{statusCode:403});
+ if (!mapping || (scope.selectedGroupId !== null && mapping.groupId !== scope.selectedGroupId)) throw Object.assign(new Error('Department unavailable in this destination group'),{statusCode:403});
  return mapping;
 }

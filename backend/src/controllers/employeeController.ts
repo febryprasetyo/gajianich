@@ -59,7 +59,7 @@ const employeeFields = {
 const createEmployeeSchema = z.object({
   employeeCode: z.string().min(1, 'Employee code is required').max(50),
   fullName: z.string().min(1, 'Full name is required').max(150),
-  email: z.string().email('Invalid email').max(150).optional().nullable(),
+  email: z.preprocess(v => (typeof v === 'string' && v.trim() === '' ? null : v), z.string().email('Invalid email').max(150).optional().nullable()),
   phone: z.string().max(50).optional().nullable(),
   mobilePhone: z.string().max(50).optional().nullable(),
   secondaryPhone: z.string().max(50).optional().nullable(),
@@ -72,7 +72,7 @@ const createEmployeeSchema = z.object({
   joinDate: z.string().optional().nullable(),
   birthDate: z.string().optional().nullable(),
   birthPlace: z.string().max(100).optional().nullable(),
-  age: z.number().int().optional().nullable(),
+  age: z.union([z.string(), z.number()]).transform(v => String(v)).pipe(z.string().max(50)).optional().nullable(),
   gender: z.string().max(20).optional().nullable(),
   religion: z.string().max(50).optional().nullable(),
   maritalStatus: z.string().max(50).optional().nullable(),
@@ -90,9 +90,9 @@ const createEmployeeSchema = z.object({
   bankAccountHolder: z.string().max(150).optional().nullable(),
   bpjsKetenagakerjaan: z.string().max(50).optional().nullable(),
   bpjsKesehatan: z.string().max(50).optional().nullable(),
-  barcode: z.string().max(50).optional().nullable(),
+  barcode: z.string().max(100).optional().nullable(),
   currency: z.string().max(10).default('IDR'),
-  lengthOfService: z.string().max(50).optional().nullable(),
+  lengthOfService: z.string().max(100).optional().nullable(),
 });
 
 const updateEmployeeSchema = createEmployeeSchema.partial();
@@ -184,9 +184,11 @@ export async function updateEmployee(req: Request, res: Response) {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid employee ID' });
 
-    const parsed = updateEmployeeSchema.parse(req.body);
+    const parsed = normalizeEmployeeInput(updateEmployeeSchema.parse(req.body) as any);
     await requireScopedEmployee(requireHrScope(req as any), id);
-    if (parsed.departmentId !== undefined) await requireScopedDepartment(requireHrScope(req as any),parsed.departmentId);
+    if (parsed.departmentId !== undefined && parsed.departmentId !== null) {
+      await requireScopedDepartment(requireHrScope(req as any), parsed.departmentId);
+    }
 
     if (parsed.employeeCode || parsed.email) {
       const uniqueConditions = [];

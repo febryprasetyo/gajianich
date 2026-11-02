@@ -46,3 +46,16 @@ test('automatically calculates age and lengthOfService in normalizeEmployeeInput
   assert.ok(result.age && (result.age as string).includes('Year'));
   assert.ok(result.lengthOfService && (result.lengthOfService as string).includes('Year'));
 });
+
+test('preserves existing Talenta string age and lengthOfService in normalizeEmployeeInput', () => {
+  const result = normalizeEmployeeInput({
+    employeeCode: 'EMP-089',
+    birthDate: '1984-02-07',
+    age: '42 Year 7 Month 19 Day',
+    joinDate: '2017-03-13',
+    lengthOfService: '9 Year 6 Month 13 Day',
+  });
+
+  assert.equal(result.age, '42 Year 7 Month 19 Day');
+  assert.equal(result.lengthOfService, '9 Year 6 Month 13 Day');
+});

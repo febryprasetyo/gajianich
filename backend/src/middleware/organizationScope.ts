@@ -1,4 +1,8 @@
 import type { Response, NextFunction } from 'express';
+import { eq } from 'drizzle-orm';
+import { db } from '../db';
+import { employees } from '../db/schema/employees';
+import { departmentOrganizationMappings } from '../db/schema/organizations';
 import type { AuthenticatedRequest } from './auth';
 import { loadGroupAccess } from '../services/organizationScope';
 import { OrganizationScopeError, parseGroupSelection, resolveRequestScope, type ScopeModule, type RequestScope } from '../domain/organizationAccess';
@@ -20,6 +24,34 @@ export function requireOrganizationScope(module: ScopeModule, mode: 'read' | 'wr
       let selectedGroupId = parseGroupSelection(req.headers['x-organization-group-id']);
       if (selectedGroupId === null && req.body?.groupId !== undefined) {
         selectedGroupId = parseGroupSelection(String(req.body.groupId));
+      }
+      if (selectedGroupId === null && module === 'hr' && mode === 'write') {
+        if (req.params?.id) {
+          const empId = Number(req.params.id);
+          if (Number.isSafeInteger(empId) && empId > 0) {
+            const [empMapping] = await db
+              .select({ groupId: departmentOrganizationMappings.groupId })
+              .from(employees)
+              .innerJoin(departmentOrganizationMappings, eq(departmentOrganizationMappings.departmentId, employees.departmentId))
+              .where(eq(employees.id, empId))
+              .limit(1);
+            if (empMapping) {
+              selectedGroupId = empMapping.groupId;
+            }
+          }
+        } else if (req.body?.departmentId) {
+          const deptId = Number(req.body.departmentId);
+          if (Number.isSafeInteger(deptId) && deptId > 0) {
+            const [deptMapping] = await db
+              .select({ groupId: departmentOrganizationMappings.groupId })
+              .from(departmentOrganizationMappings)
+              .where(eq(departmentOrganizationMappings.departmentId, deptId))
+              .limit(1);
+            if (deptMapping) {
+              selectedGroupId = deptMapping.groupId;
+            }
+          }
+        }
       }
       const access = await loadGroupAccess(req.user.userId);
       const scope = resolveRequestScope({access, module, mode, selectedGroupId});
