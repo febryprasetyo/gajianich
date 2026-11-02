@@ -33,7 +33,9 @@ Laporan ini merangkum kehadiran karyawan per tanggal tertentu yang memuat:
   - Mobile Face / Dinas Luar $\rightarrow$ dinamis parsing `city/county` + `state` dari data geolokasi Nominatim `attendance_self_logs.address`.
 - Menyediakan halaman dashboard interaktif di frontend yang memenuhi standar *Emerald Enterprise Design System* (`PageHeader`, filter tanggal historis, filter departemen, ringkasan KPI).
 - Menyediakan fitur cetak (*print preview & window.print*) format **Landscape** dengan styling `@page { size: landscape; margin: 10mm; }`, border hitam rapi, highlight sel merah untuk keterlambatan, dan highlight kuning untuk nama terpilih persis seperti contoh fisik.
-- Mendukung cetak khusus departemen Marketing maupun gabungan seluruh departemen dengan pemisah halaman (*page-break*) per departemen.
+- **Tunggal (Single Table Layout)**: Seluruh daftar karyawan ditampilkan dalam **1 tabel tunggal yang seragam** (bukan dipecah per card departemen terpisah).
+- **Pembagian Berdasarkan Filter Departemen**: Filter dropdown departemen di toolbar memungkinkan pemilihan langsung (misal: *MARKETING*, *CMC I*, dsb., atau *Semua Departemen*). Header kolom nama karyawan secara dinamis menampilkan nama departemen yang dipilih (misal: `MARKETING`), persis seperti format fisik.
+- **Layout Filter Rapi**: Komponen input Tanggal dan select Departemen ditempatkan dalam grid filter mandiri sehingga tidak ada elemen yang tumpang tindih (*no overlapping*).
 
 ### Non-Goals
 - Tidak mengubah alur kerja sinkronisasi mesin ADMS atau protokol pengenalan wajah mobile yang sudah berjalan.
