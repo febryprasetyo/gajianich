@@ -10,7 +10,7 @@ import { BRAND_NAME } from '@/lib/gajianichBrand';
 import { getDashboardHrefForUser, canAccessRoute, isRouteMatchingHref } from '@/lib/access/routes';
 import NotificationBell from './NotificationBell';
 import OrganizationScopeSelector from './OrganizationScopeSelector';
-import {OrganizationScopeBoundary} from '@/context/OrganizationScopeContext';
+import { OrganizationScopeBoundary } from '@/context/OrganizationScopeContext';
 import {
   Building2,
   MapPin,
@@ -90,7 +90,7 @@ export const navGroups: NavGroup[] = [
           { name: 'Impor Presensi', href: '/dashboard/attendance/imports', icon: FileInput, permission: 'attendance.import' },
           { name: 'Kartu Presensi', href: '/dashboard/attendance/employees', icon: ClipboardList, permission: 'attendance.view' },
           { name: 'Laporan Presensi', href: '/dashboard/attendance/reports', icon: FileBarChart, permission: 'attendance.view' },
-          { name: 'Laporan Harian (Landscape)', href: '/dashboard/attendance/daily-report', icon: Printer, permission: 'attendance.view' },
+          { name: 'Laporan Harian', href: '/dashboard/attendance/daily-report', icon: Printer, permission: 'attendance.view' },
           { name: 'Riwayat Aktivitas HR', href: '/dashboard/attendance/activity', icon: History, permission: 'attendance.view' },
         ],
       },
@@ -491,8 +491,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           key={item.name}
                           href={item.children[0]?.href || '/dashboard'}
                           className={`flex items-center justify-center p-2.5 rounded-xl transition-all duration-200 group relative ${activeSubmenu
-                              ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 shadow-sm'
-                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-transparent'
+                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 shadow-sm'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-transparent'
                             }`}
                           title={`${item.name}: ${item.children.map((c) => c.name).join(', ')}`}
                         >
@@ -513,8 +513,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           type="button"
                           onClick={() => toggleSubmenu(item.name)}
                           className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer group ${activeSubmenu
-                              ? 'text-emerald-700 bg-emerald-50/70 font-bold'
-                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                            ? 'text-emerald-700 bg-emerald-50/70 font-bold'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                             }`}
                         >
                           <div className="flex items-center gap-3 min-w-0">
@@ -547,8 +547,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                   href={child.href}
                                   onClick={() => setMobileOpen(false)}
                                   className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs transition-all duration-150 cursor-pointer relative ${isChildActive
-                                      ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 shadow-2xs'
-                                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50 font-medium'
+                                    ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 shadow-2xs'
+                                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50 font-medium'
                                     }`}
                                 >
                                   {isChildActive && (
@@ -579,8 +579,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       href={item.href || '#'}
                       onClick={() => setMobileOpen(false)}
                       className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer group relative ${isActive
-                          ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 shadow-sm shadow-emerald-500/5'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-transparent'
+                        ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 shadow-sm shadow-emerald-500/5'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-transparent'
                         }`}
                       title={collapsed ? item.name : undefined}
                     >
