@@ -30,32 +30,91 @@ test('determineAttendanceSource correctly identifies ADMS, MOBILE, LEAVE, or NON
   assert.strictEqual(determineAttendanceSource({ hasSelfLog: false, hasRecordScan: false, hasLeave: false }), 'NONE');
 });
 
-test('resolveKeterangan prioritizes manual notes, then leaves, then TDK ADA ABSEN', () => {
+test('resolveKeterangan prioritizes manual notes, then leaves, then attendance status, then TDK ADA ABSEN', () => {
   // Manual note takes highest priority
   assert.strictEqual(
     resolveKeterangan({
       manualNote: 'SAKIT (SDH INFO PAK SENDY) ADA SURAT DOKTER',
       leaveReason: 'Sakit flu',
+      attendanceStatus: 'SAKIT',
       hasScanIn: false,
     }),
     'SAKIT (SDH INFO PAK SENDY) ADA SURAT DOKTER'
   );
 
-  // Leave fallback
+  // Leave reason takes priority over generic status
   assert.strictEqual(
     resolveKeterangan({
       manualNote: null,
       leaveReason: 'CUTI TAHUNAN',
+      attendanceStatus: 'CUTI',
       hasScanIn: false,
     }),
     'CUTI TAHUNAN'
   );
 
-  // Absent fallback
+  // Attendance status CUTI in attendance_records without manual note or leave reason
   assert.strictEqual(
     resolveKeterangan({
       manualNote: null,
       leaveReason: null,
+      attendanceStatus: 'CUTI',
+      hasScanIn: false,
+    }),
+    'CUTI'
+  );
+
+  // Attendance status SAKIT
+  assert.strictEqual(
+    resolveKeterangan({
+      manualNote: null,
+      leaveReason: null,
+      attendanceStatus: 'SAKIT',
+      hasScanIn: false,
+    }),
+    'SAKIT'
+  );
+
+  // Attendance status IZIN
+  assert.strictEqual(
+    resolveKeterangan({
+      manualNote: null,
+      leaveReason: null,
+      attendanceStatus: 'IZIN',
+      hasScanIn: false,
+    }),
+    'IZIN'
+  );
+
+  // Attendance status DINAS_LUAR
+  assert.strictEqual(
+    resolveKeterangan({
+      manualNote: null,
+      leaveReason: null,
+      attendanceStatus: 'DINAS_LUAR',
+      hasScanIn: false,
+    }),
+    'DINAS LUAR'
+  );
+
+  // isDayOff / LIBUR
+  assert.strictEqual(
+    resolveKeterangan({
+      manualNote: null,
+      leaveReason: null,
+      attendanceStatus: 'PRESENT',
+      isDayOff: true,
+      hasScanIn: false,
+    }),
+    'LIBUR'
+  );
+
+  // Absent fallback (ALPHA or no record)
+  assert.strictEqual(
+    resolveKeterangan({
+      manualNote: null,
+      leaveReason: null,
+      attendanceStatus: 'ALPHA',
       hasScanIn: false,
     }),
     'TDK ADA ABSEN'
@@ -66,8 +125,10 @@ test('resolveKeterangan prioritizes manual notes, then leaves, then TDK ADA ABSE
     resolveKeterangan({
       manualNote: null,
       leaveReason: null,
+      attendanceStatus: 'PRESENT',
       hasScanIn: true,
     }),
     ''
   );
 });
+

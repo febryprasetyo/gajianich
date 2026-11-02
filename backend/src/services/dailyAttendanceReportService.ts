@@ -89,18 +89,42 @@ export function determineAttendanceSource(params: {
 }
 
 /**
- * Resolves keterangan text following priority hierarchy
+ * Resolves keterangan text following priority hierarchy:
+ * 1. manualNote from HR (persisted in attendance_daily_notes)
+ * 2. leaveReason from leave_requests
+ * 3. attendanceStatus from attendance_records ('CUTI', 'SAKIT', 'IZIN', 'DINAS_LUAR', 'LIBUR')
+ * 4. isDayOff ('LIBUR')
+ * 5. !hasScanIn ('TDK ADA ABSEN')
+ * 6. hasScanIn ('')
  */
 export function resolveKeterangan(params: {
   manualNote?: string | null;
   leaveReason?: string | null;
+  attendanceStatus?: string | null;
+  isDayOff?: boolean;
   hasScanIn: boolean;
 }): string {
   if (params.manualNote !== undefined && params.manualNote !== null && params.manualNote.trim() !== '') {
     return params.manualNote.trim();
   }
-  if (params.leaveReason) {
+  if (params.leaveReason && params.leaveReason.trim() !== '') {
     return params.leaveReason.trim();
+  }
+  const status = (params.attendanceStatus || '').toUpperCase();
+  if (status === 'CUTI') {
+    return 'CUTI';
+  }
+  if (status === 'SAKIT') {
+    return 'SAKIT';
+  }
+  if (status === 'IZIN') {
+    return 'IZIN';
+  }
+  if (status === 'DINAS_LUAR') {
+    return 'DINAS LUAR';
+  }
+  if (status === 'LIBUR' || params.isDayOff) {
+    return 'LIBUR';
   }
   if (!params.hasScanIn) {
     return 'TDK ADA ABSEN';
@@ -192,9 +216,9 @@ export async function getDailyAttendanceReport(
     .where(
       and(
         inArray(leaveRequests.employeeId, empIds),
-        lte(leaveRequests.startDate, workDate),
-        gte(leaveRequests.endDate, workDate),
-        eq(leaveRequests.status, 'APPROVED')
+        sql`${leaveRequests.startDate} <= ${workDate}::date`,
+        sql`${leaveRequests.endDate} >= ${workDate}::date`,
+        or(eq(leaveRequests.status, 'APPROVED'), eq(leaveRequests.status, 'approved'))
       )
     );
 
@@ -241,9 +265,10 @@ export async function getDailyAttendanceReport(
       continue;
     }
 
+    const rawStatus = (record?.attendanceStatus || '').toUpperCase();
     const hasSelfLog = Boolean(selfLog);
     const hasRecordScan = Boolean(record?.scanIn);
-    const hasLeave = Boolean(leave);
+    const hasLeave = Boolean(leave) || rawStatus === 'CUTI' || rawStatus === 'SAKIT' || rawStatus === 'IZIN';
 
     const sourceType = determineAttendanceSource({ hasSelfLog, hasRecordScan, hasLeave });
 
@@ -265,16 +290,23 @@ export async function getDailyAttendanceReport(
     const isLate = lateMinutes > 0 || Boolean(scanIn && scanIn > scheduleIn);
 
     // Keterangan
-    const leaveReason = leave
-      ? (leave.specialLeaveReason || leave.leaveType || 'CUTI').toUpperCase()
-      : null;
+    let leaveReason: string | null = null;
+    if (leave) {
+      const type = (leave.leaveType || '').toUpperCase();
+      const spec = leave.specialLeaveReason ? ` (${leave.specialLeaveReason})` : '';
+      const base = type === 'ANNUAL' ? 'CUTI TAHUNAN' : type === 'SPECIAL' ? `CUTI KHUSUS${spec}` : type || 'CUTI';
+      leaveReason = base;
+    }
+
     const keterangan = resolveKeterangan({
       manualNote: dailyNote?.manualNote,
       leaveReason,
+      attendanceStatus: record?.attendanceStatus,
+      isDayOff: record?.isDayOff,
       hasScanIn: Boolean(scanIn),
     });
 
-    const attendanceStatus = record?.attendanceStatus || (scanIn ? 'PRESENT' : leave ? 'SAKIT' : 'ALPHA');
+    const attendanceStatus = record?.attendanceStatus || (scanIn ? 'PRESENT' : leave ? 'CUTI' : 'ALPHA');
 
     if (scanIn) {
       totalPresent++;
@@ -401,3 +433,4 @@ export async function upsertDailyAttendanceNote(
     manualNote: updateValues.manualNote,
   };
 }
+
