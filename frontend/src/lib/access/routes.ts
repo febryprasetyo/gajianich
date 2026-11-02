@@ -166,6 +166,11 @@ export const DASHBOARD_ROUTE_RULES: RouteRule[] = [
     moduleName: 'Riwayat Aktivitas HR',
   },
   {
+    prefix: '/dashboard/attendance/daily-report',
+    permission: 'attendance.view',
+    moduleName: 'Laporan Absensi Harian',
+  },
+  {
     prefix: '/dashboard/attendance/imports',
     permission: 'attendance.import',
     moduleName: 'Impor Presensi',
