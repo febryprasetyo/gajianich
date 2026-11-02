@@ -12,8 +12,29 @@ import {
   getAttendanceWorkspace,
   postAttendanceCommand,
 } from '../controllers/attendanceCommandController';
+import {
+  getDailyAttendanceReportHandler,
+  upsertDailyAttendanceNoteHandler,
+} from '../controllers/dailyAttendanceReportController';
 
 const router = Router();
+
+// Daily Attendance Report (Print Landscape)
+router.get(
+  '/daily-report',
+  authenticateToken,
+  requirePermission(['attendance.view', 'attendance.manage', 'attendance.import']),
+  requireOrganizationScope('hr', 'read'),
+  getDailyAttendanceReportHandler
+);
+
+router.post(
+  '/daily-report/note',
+  authenticateToken,
+  requirePermission(['attendance.manage']),
+  requireOrganizationScope('hr', 'write'),
+  upsertDailyAttendanceNoteHandler
+);
 
 // Workspace & Commands (Server-backed Attendance Workspace)
 router.get(

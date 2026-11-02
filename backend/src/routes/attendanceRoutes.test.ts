@@ -12,4 +12,6 @@ test('attendance routes separate manual record updates and activity from imports
   assert.ok(routes.some(route => route.path === '/records' && route.methods.put));
   assert.ok(routes.some(route => route.path === '/activity' && route.methods.get));
   assert.ok(routes.some(route => route.path === '/commit-batch' && route.methods.post));
+  assert.ok(routes.some(route => route.path === '/daily-report' && route.methods.get));
+  assert.ok(routes.some(route => route.path === '/daily-report/note' && route.methods.post));
 });
