@@ -273,6 +273,13 @@
       "when": 1793332000000,
       "tag": "0038_adms_ingestion_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1793333000000,
+      "tag": "0039_adms_realtime_trigger",
+      "breakpoints": true
     }
   ],
   "version": "7"
