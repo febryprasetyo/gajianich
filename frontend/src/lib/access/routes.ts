@@ -318,3 +318,71 @@ export function getDashboardHrefForUser(
 ): string {
   return getDefaultRedirectForUser(user);
 }
+
+/**
+ * Evaluates whether a sidebar navigation item with `href` should be marked active
+ * for `currentPath`.
+ *
+ * Prevents parent subpaths (e.g. `/dashboard/attendance/approvals`) from remaining active
+ * when navigating to child sibling routes (e.g. `/dashboard/attendance/approvals/rules` or `/photos`).
+ */
+export function isRouteMatchingHref(
+  href: string,
+  currentPath: string,
+  allHrefs?: string[]
+): boolean {
+  if (href === '/dashboard/assets') {
+    return (
+      currentPath === '/dashboard/assets' ||
+      (currentPath.startsWith('/dashboard/assets/') && !currentPath.startsWith('/dashboard/assets/overview'))
+    );
+  }
+  if (href === '/dashboard/attendance') {
+    return currentPath === '/dashboard/attendance';
+  }
+  if (href === '/dashboard/attendance/approvals') {
+    return (
+      currentPath === '/dashboard/attendance/approvals' ||
+      (currentPath.startsWith('/dashboard/attendance/approvals/') &&
+        !currentPath.startsWith('/dashboard/attendance/approvals/photos') &&
+        !currentPath.startsWith('/dashboard/attendance/approvals/rules'))
+    );
+  }
+  if (href === '/dashboard/leaves') {
+    return (
+      currentPath === '/dashboard/leaves' ||
+      (currentPath.startsWith('/dashboard/leaves/') &&
+        !currentPath.startsWith('/dashboard/leaves/balances') &&
+        !currentPath.startsWith('/dashboard/leaves/settings'))
+    );
+  }
+  if (href === '/dashboard/master/asset-custodians') {
+    return (
+      currentPath === '/dashboard/master/asset-custodians' ||
+      (currentPath.startsWith('/dashboard/master/asset-custodians/') &&
+        !currentPath.startsWith('/dashboard/master/asset-custodians/reconciliation'))
+    );
+  }
+
+  if (currentPath === href) {
+    return true;
+  }
+
+  if (currentPath.startsWith(`${href}/`)) {
+    if (allHrefs && allHrefs.length > 0) {
+      const hasMoreSpecificRoute = allHrefs.some(
+        (otherHref) =>
+          otherHref !== href &&
+          otherHref.startsWith(`${href}/`) &&
+          (currentPath === otherHref || currentPath.startsWith(`${otherHref}/`))
+      );
+      if (hasMoreSpecificRoute) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  return false;
+}
+

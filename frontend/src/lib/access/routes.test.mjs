@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canAccessRoute, findMatchingRouteRule, getDefaultRedirectForUser, getDashboardHrefForUser } from './routes.ts';
+import { canAccessRoute, findMatchingRouteRule, getDefaultRedirectForUser, getDashboardHrefForUser, isRouteMatchingHref } from './routes.ts';
 
 test('findMatchingRouteRule matches the most specific prefix first', () => {
   const equipRule = findMatchingRouteRule('/dashboard/master/equipment-types');
@@ -142,3 +142,50 @@ test('ADMS monitoring accepts import or management permission and rejects genera
   assert.equal(canAccessRoute('/dashboard/attendance/adms', { roleName: 'CustomManager', permissions: ['attendance.manage'] }), true);
   assert.equal(canAccessRoute('/dashboard/attendance/devices', { roleName: 'CustomManager', permissions: ['attendance.manage'] }), false);
 });
+
+test('isRouteMatchingHref highlights only the active sub-item under Verifikasi Presensi', () => {
+  const allHrefs = [
+    '/dashboard/attendance/approvals',
+    '/dashboard/attendance/approvals/photos',
+    '/dashboard/attendance/approvals/rules',
+  ];
+
+  // 1. When on /dashboard/attendance/approvals/rules (Aturan Auto-Approve)
+  assert.equal(isRouteMatchingHref('/dashboard/attendance/approvals/rules', '/dashboard/attendance/approvals/rules', allHrefs), true);
+  assert.equal(isRouteMatchingHref('/dashboard/attendance/approvals', '/dashboard/attendance/approvals/rules', allHrefs), false);
+  assert.equal(isRouteMatchingHref('/dashboard/attendance/approvals/photos', '/dashboard/attendance/approvals/rules', allHrefs), false);
+
+  // 2. When on /dashboard/attendance/approvals/photos (Validasi Foto Wajah)
+  assert.equal(isRouteMatchingHref('/dashboard/attendance/approvals/photos', '/dashboard/attendance/approvals/photos', allHrefs), true);
+  assert.equal(isRouteMatchingHref('/dashboard/attendance/approvals', '/dashboard/attendance/approvals/photos', allHrefs), false);
+  assert.equal(isRouteMatchingHref('/dashboard/attendance/approvals/rules', '/dashboard/attendance/approvals/photos', allHrefs), false);
+
+  // 3. When on /dashboard/attendance/approvals (Review Absensi main page)
+  assert.equal(isRouteMatchingHref('/dashboard/attendance/approvals', '/dashboard/attendance/approvals', allHrefs), true);
+  assert.equal(isRouteMatchingHref('/dashboard/attendance/approvals/photos', '/dashboard/attendance/approvals', allHrefs), false);
+  assert.equal(isRouteMatchingHref('/dashboard/attendance/approvals/rules', '/dashboard/attendance/approvals', allHrefs), false);
+
+  // 4. Also works without allHrefs parameter through explicit guard
+  assert.equal(isRouteMatchingHref('/dashboard/attendance/approvals', '/dashboard/attendance/approvals/rules'), false);
+  assert.equal(isRouteMatchingHref('/dashboard/attendance/approvals', '/dashboard/attendance/approvals/photos'), false);
+  assert.equal(isRouteMatchingHref('/dashboard/attendance/approvals', '/dashboard/attendance/approvals'), true);
+});
+
+test('isRouteMatchingHref handles asset custodians and leaves correctly', () => {
+  const allHrefs = [
+    '/dashboard/master/asset-custodians',
+    '/dashboard/master/asset-custodians/reconciliation',
+    '/dashboard/leaves',
+    '/dashboard/leaves/balances',
+    '/dashboard/leaves/settings',
+  ];
+
+  // When on reconciliation, asset-custodians parent should not be active
+  assert.equal(isRouteMatchingHref('/dashboard/master/asset-custodians/reconciliation', '/dashboard/master/asset-custodians/reconciliation', allHrefs), true);
+  assert.equal(isRouteMatchingHref('/dashboard/master/asset-custodians', '/dashboard/master/asset-custodians/reconciliation', allHrefs), false);
+
+  // When on leave balances, leaves parent should not be active
+  assert.equal(isRouteMatchingHref('/dashboard/leaves/balances', '/dashboard/leaves/balances', allHrefs), true);
+  assert.equal(isRouteMatchingHref('/dashboard/leaves', '/dashboard/leaves/balances', allHrefs), false);
+});
+

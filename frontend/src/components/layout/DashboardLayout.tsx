@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { canManageCustodians } from '@/lib/assetCustodian';
 import { BRAND_NAME } from '@/lib/gajianichBrand';
-import { getDashboardHrefForUser, canAccessRoute } from '@/lib/access/routes';
+import { getDashboardHrefForUser, canAccessRoute, isRouteMatchingHref } from '@/lib/access/routes';
 import NotificationBell from './NotificationBell';
 import OrganizationScopeSelector from './OrganizationScopeSelector';
 import {OrganizationScopeBoundary} from '@/context/OrganizationScopeContext';
@@ -368,28 +368,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     });
   });
 
-  const isRouteMatchingHref = (href: string, currentPath: string): boolean => {
-    if (href === '/dashboard/assets') {
-      return currentPath === '/dashboard/assets' || (currentPath.startsWith('/dashboard/assets/') && !currentPath.startsWith('/dashboard/assets/overview'));
-    }
-    if (href === '/dashboard/attendance') {
-      return currentPath === '/dashboard/attendance';
-    }
-    if (href === '/dashboard/leaves') {
-      return currentPath === '/dashboard/leaves' || (currentPath.startsWith('/dashboard/leaves/') && !currentPath.startsWith('/dashboard/leaves/balances') && !currentPath.startsWith('/dashboard/leaves/settings'));
-    }
-    return currentPath === href || currentPath.startsWith(`${href}/`);
+  const registeredHrefs = allNavigableItems.map((item) => item.href);
+
+  const isRouteActive = (href: string, currentPath: string): boolean => {
+    return isRouteMatchingHref(href, currentPath, registeredHrefs);
   };
 
   const currentNavigableItem = allNavigableItems
     .filter((item) => item.groupTitle !== "Utama" || pathname === item.href)
     .sort((a, b) => b.href.length - a.href.length)
-    .find((item) => isRouteMatchingHref(item.href, pathname)) ||
+    .find((item) => isRouteActive(item.href, pathname)) ||
     allNavigableItems[0];
 
   const isSubmenuActive = (item: NavItem): boolean => {
     if (!item.children) return false;
-    return item.children.some((child) => isRouteMatchingHref(child.href, pathname));
+    return item.children.some((child) => isRouteActive(child.href, pathname));
   };
 
   const isSubmenuOpen = (item: NavItem): boolean => {
@@ -531,7 +524,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         {open && (
                           <div className="ml-4 pl-3 border-l-2 border-slate-200/80 space-y-1 mt-1 transition-all duration-200">
                             {item.children.map((child) => {
-                              const isChildActive = isRouteMatchingHref(child.href, pathname);
+                              const isChildActive = isRouteActive(child.href, pathname);
                               const ChildIcon = child.icon;
 
                               return (
@@ -564,7 +557,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   }
 
                   // Case B: Standard Nav Item
-                  const isActive = item.href && (item.href === dashboardHref && pathname === dashboardHref ? true : isRouteMatchingHref(item.href, pathname));
+                  const isActive = item.href && (item.href === dashboardHref && pathname === dashboardHref ? true : isRouteActive(item.href, pathname));
 
                   return (
                     <Link
