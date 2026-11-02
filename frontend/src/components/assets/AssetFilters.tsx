@@ -37,7 +37,7 @@ export default function AssetFilters({
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Cari Label Aset, Nomor Seri, Nama Perangkat, Penanggung Jawab..."
+            placeholder="Cari Asset Tag, Nomor Seri, Nama Perangkat, Pemegang Aset..."
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-emerald-500 transition-colors"

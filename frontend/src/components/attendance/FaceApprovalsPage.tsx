@@ -51,7 +51,7 @@ export default function FaceApprovalsPage() {
       const res = await apiFetch<{ data: FaceRequest[] }>('/attendance/mobile/face-requests');
       setPhotos(res.data || []);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Gagal memuat permohonan foto wajah.');
+      setError(err instanceof Error ? err.message : 'Gagal memuat pengajuan foto wajah.');
     } finally {
       setLoading(false);
     }
@@ -72,7 +72,7 @@ export default function FaceApprovalsPage() {
         headers: selected.groupId ? { 'X-Organization-Group-Id': String(selected.groupId) } : undefined,
         body: JSON.stringify({ groupId: selected.groupId, status: decision, note: note.trim() }),
       });
-      setMessage(`Permohonan foto wajah ${selected.employeeName} berhasil ${decision === 'APPROVED' ? 'disetujui' : 'ditolak'}.`);
+      setMessage(`Pengajuan foto wajah ${selected.employeeName} berhasil ${decision === 'APPROVED' ? 'disetujui' : 'ditolak'}.`);
       setSelected(null);
       await loadData();
     } catch (err: unknown) {
@@ -102,11 +102,11 @@ export default function FaceApprovalsPage() {
               <ScanFace className="w-5 h-5" />
             </div>
             <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-              Verifikasi Swafoto Presensi
+              Validasi Foto Wajah
             </h1>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Verifikasi antrean permohonan pembaruan foto biometrik wajah karyawan.
+            Validasi foto profil dan biometrik wajah karyawan untuk absensi mobile.
           </p>
         </div>
       </div>
@@ -137,7 +137,7 @@ export default function FaceApprovalsPage() {
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">Semua Permohonan</span>
+            <span className="text-xs font-medium text-slate-500">Semua Pengajuan</span>
             <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
               <ScanFace className="w-4 h-4" />
             </div>
@@ -242,7 +242,7 @@ export default function FaceApprovalsPage() {
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Cari permohonan foto berdasarkan nama karyawan atau NIK..."
+              placeholder="Cari pengajuan foto berdasarkan nama karyawan atau NIK..."
               value={query}
               onChange={e => setQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500 transition-colors"
@@ -275,7 +275,7 @@ export default function FaceApprovalsPage() {
                 className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-semibold text-xs border border-emerald-200 transition-colors cursor-pointer flex items-center gap-1.5"
               >
                 <X className="w-3.5 h-3.5" />
-                <span>Atur Ulang</span>
+                <span>Reset Filter</span>
               </button>
             )}
           </div>
@@ -285,11 +285,11 @@ export default function FaceApprovalsPage() {
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-12 text-xs text-slate-500">
           <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
-          <span>Memuat permohonan foto wajah...</span>
+          <span>Memuat data pengajuan foto wajah...</span>
         </div>
       ) : visiblePhotos.length === 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-xs text-slate-500 shadow-xs">
-          Tidak ada permohonan foto wajah yang sesuai dengan filter.
+          Tidak ada pengajuan foto wajah yang sesuai dengan filter.
         </div>
       ) : (
         <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
@@ -326,7 +326,7 @@ export default function FaceApprovalsPage() {
                       setError('');
                     }}
                   >
-                    Verifikasi Foto
+                    Tinjau Foto
                   </button>
                 </div>
               </div>
@@ -337,7 +337,7 @@ export default function FaceApprovalsPage() {
             limit={limit}
             total={visiblePhotos.length}
             onPageChange={setPage}
-            itemName="permohonan foto"
+            itemName="pengajuan foto"
           />
         </div>
       )}
@@ -346,7 +346,7 @@ export default function FaceApprovalsPage() {
         <ModalShell
           isOpen={Boolean(selected)}
           onClose={() => setSelected(null)}
-          title="Verifikasi Swafoto Karyawan"
+          title="Validasi Foto Wajah Karyawan"
           isLoading={busy}
           footer={
             selected.status === 'PENDING' ? (

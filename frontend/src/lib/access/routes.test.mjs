@@ -120,15 +120,34 @@ test('HR role with access.users.view can access /dashboard/access', () => {
 
   assert.equal(canAccessRoute('/dashboard/access', hrdUser), true);
 });
-test('access route moduleName is Akses & Peran Pengguna and accessible to HR', () => {
+test('access route moduleName is Kelola Pengguna and accessible to HR', () => {
   const rule = findMatchingRouteRule('/dashboard/access');
-  assert.equal(rule?.moduleName, 'Akses & Peran Pengguna');
+  assert.equal(rule?.moduleName, 'Kelola Pengguna');
 
   const hrdBasic = {
     roleName: 'HR Attendance & Time',
     permissions: [],
   };
   assert.equal(canAccessRoute('/dashboard/access', hrdBasic), true);
+});
+
+test('infrastructure, servers, and subscriptions routes are accessible to IT roles with infrastructure.view', () => {
+  const serverRule = findMatchingRouteRule('/dashboard/servers');
+  assert.equal(serverRule?.moduleName, 'Monitoring Server & VPS');
+  assert.equal(serverRule?.permission, 'infrastructure.view');
+
+  const subRule = findMatchingRouteRule('/dashboard/subscriptions');
+  assert.equal(subRule?.moduleName, 'Monitoring Domain, Hosting & Email');
+  assert.equal(subRule?.permission, 'infrastructure.view');
+
+  const itUser = { roleName: 'ITStaff', permissions: ['infrastructure.view'] };
+  assert.equal(canAccessRoute('/dashboard/servers', itUser), true);
+  assert.equal(canAccessRoute('/dashboard/subscriptions', itUser), true);
+  assert.equal(canAccessRoute('/dashboard/infrastructure', itUser), true);
+
+  const regularEmployee = { roleName: 'Employee', permissions: [] };
+  assert.equal(canAccessRoute('/dashboard/servers', regularEmployee), false);
+  assert.equal(canAccessRoute('/dashboard/subscriptions', regularEmployee), false);
 });
 
 test('mobile approvals require their dedicated permission for a custom reviewer', () => {

@@ -91,11 +91,11 @@ export default function LicenseTable({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-slate-200/80 bg-slate-50/50 text-[11px] font-mono font-semibold uppercase tracking-wider text-slate-500">
-              <th className="py-3.5 px-5">Nama & Detail Perangkat Lunak</th>
+              <th className="py-3.5 px-5">Nama & Detail Software</th>
               <th className="py-3.5 px-4">Tipe Lisensi</th>
-              <th className="py-3.5 px-4">Penggunaan Kursi (Seat)</th>
-              <th className="py-3.5 px-4">Masa Berlaku</th>
-              <th className="py-3.5 px-4">Vendor / Pemasok</th>
+              <th className="py-3.5 px-4">Kapasitas Lisensi (Seats)</th>
+              <th className="py-3.5 px-4">Tanggal Kedaluwarsa</th>
+              <th className="py-3.5 px-4">Vendor</th>
               <th className="py-3.5 px-4">Status</th>
               <th className="py-3.5 px-5 text-right">Aksi</th>
             </tr>
@@ -135,7 +135,7 @@ export default function LicenseTable({
                 const isFull = lic.usedSeats >= lic.totalSeats;
 
                 // Expiration calculation
-                let expText = 'Tanpa Kedaluwarsa (Permanen)';
+                let expText = 'Permanen (No Expiry)';
                 let isExpiringSoon = false;
                 let isExpired = lic.status === 'Expired';
                 if (lic.expirationDate) {

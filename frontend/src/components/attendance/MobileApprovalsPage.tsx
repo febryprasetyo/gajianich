@@ -111,11 +111,11 @@ export default function MobileApprovalsPage() {
               <CalendarCheck className="w-5 h-5" />
             </div>
             <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-              Antrean Persetujuan Presensi
+              Review Presensi
             </h1>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Verifikasi antrean log presensi mandiri karyawan yang memerlukan peninjauan manual HRD.
+            Review dan verifikasi presensi mandiri karyawan yang memerlukan persetujuan HR.
           </p>
         </div>
       </div>
@@ -289,7 +289,7 @@ export default function MobileApprovalsPage() {
                 className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-semibold text-xs border border-emerald-200 transition-colors cursor-pointer flex items-center gap-1.5"
               >
                 <X className="w-3.5 h-3.5" />
-                <span>Atur Ulang</span>
+                <span>Reset Filter</span>
               </button>
             )}
           </div>

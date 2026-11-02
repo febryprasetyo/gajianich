@@ -143,10 +143,10 @@ export default function InfrastructurePage() {
             </div>
             <div>
               <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                Accurate Database & Server Monitoring
+                Monitoring Server Accurate
               </h1>
               <p className="text-xs text-slate-500 mt-1">
-                Telemetry server, Firebird database, dan lisensi Accurate dari agent yang terdaftar otomatis.
+                Monitoring server, Firebird database, dan lisensi Accurate yang terhubung secara realtime.
               </p>
             </div>
           </div>

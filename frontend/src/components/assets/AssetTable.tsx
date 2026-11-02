@@ -105,7 +105,7 @@ export default function AssetTable({
               className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold inline-flex items-center gap-2 text-xs transition-colors cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Daftarkan Aset Pertama</span>
+              <span>Tambah Aset Pertama</span>
             </button>
           )}
         </div>
@@ -114,11 +114,11 @@ export default function AssetTable({
           <table className="w-full text-left text-xs font-mono">
             <thead className="bg-slate-50 border-b border-slate-200 text-[10px] uppercase text-slate-500 tracking-wider">
               <tr>
-                <th className="px-4 py-3.5 font-bold">Label Aset</th>
-                <th className="px-4 py-3.5 font-bold">Perangkat & Spesifikasi</th>
+                <th className="px-4 py-3.5 font-bold">Asset Tag</th>
+                <th className="px-4 py-3.5 font-bold">Nama Perangkat & Spesifikasi</th>
                 <th className="px-4 py-3.5 font-bold">Kategori</th>
                 <th className="px-4 py-3.5 font-bold">Lokasi</th>
-                <th className="px-4 py-3.5 font-bold">Penanggung Jawab</th>
+                <th className="px-4 py-3.5 font-bold">Pemegang Aset</th>
                 <th className="px-4 py-3.5 font-bold">Kondisi</th>
                 <th className="px-4 py-3.5 font-bold">Status</th>
                 <th className="px-4 py-3.5 font-bold text-right">Aksi</th>
