@@ -29,3 +29,12 @@ test('group selection rejects coercion, duplicates, overflow and ambiguous IDs',
   assert.equal(parseGroupSelection(undefined), null);
   assert.equal(parseGroupSelection('2'), 2);
 });
+test('global administrator can mutate user accounts without navbar scope selection', () => {
+  const global = {groupIds: [1, 2], isGlobalAdministrator: true};
+  const scope = resolveRequestScope({access: global, module: 'users', selectedGroupId: null, mode: 'write'});
+  assert.equal(scope.selectedGroupId, null);
+  assert.deepEqual(scope.groupIds, [1, 2]);
+
+  const nonGlobal = {groupIds: [1, 2], isGlobalAdministrator: false};
+  assert.throws(() => resolveRequestScope({access: nonGlobal, module: 'users', selectedGroupId: null, mode: 'write'}));
+});

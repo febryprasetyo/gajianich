@@ -2,7 +2,8 @@ import type { Response, NextFunction } from 'express';
 import { eq } from 'drizzle-orm';
 import { db } from '../db';
 import { employees } from '../db/schema/employees';
-import { departmentOrganizationMappings } from '../db/schema/organizations';
+import { users } from '../db/schema/users';
+import { departmentOrganizationMappings, userOrganizationGroupAccess } from '../db/schema/organizations';
 import type { AuthenticatedRequest } from './auth';
 import { loadGroupAccess } from '../services/organizationScope';
 import { OrganizationScopeError, parseGroupSelection, resolveRequestScope, type ScopeModule, type RequestScope } from '../domain/organizationAccess';
@@ -25,18 +26,43 @@ export function requireOrganizationScope(module: ScopeModule, mode: 'read' | 'wr
       if (selectedGroupId === null && req.body?.groupId !== undefined) {
         selectedGroupId = parseGroupSelection(String(req.body.groupId));
       }
-      if (selectedGroupId === null && module === 'hr' && mode === 'write') {
+      if (selectedGroupId === null && Array.isArray(req.body?.groupIds) && req.body.groupIds.length === 1) {
+        selectedGroupId = parseGroupSelection(String(req.body.groupIds[0]));
+      }
+      if (selectedGroupId === null && (module === 'hr' || module === 'users') && mode === 'write') {
         if (req.params?.id) {
-          const empId = Number(req.params.id);
-          if (Number.isSafeInteger(empId) && empId > 0) {
-            const [empMapping] = await db
-              .select({ groupId: departmentOrganizationMappings.groupId })
-              .from(employees)
-              .innerJoin(departmentOrganizationMappings, eq(departmentOrganizationMappings.departmentId, employees.departmentId))
-              .where(eq(employees.id, empId))
-              .limit(1);
-            if (empMapping) {
-              selectedGroupId = empMapping.groupId;
+          const targetId = Number(req.params.id);
+          if (Number.isSafeInteger(targetId) && targetId > 0) {
+            if (module === 'hr') {
+              const [empMapping] = await db
+                .select({ groupId: departmentOrganizationMappings.groupId })
+                .from(employees)
+                .innerJoin(departmentOrganizationMappings, eq(departmentOrganizationMappings.departmentId, employees.departmentId))
+                .where(eq(employees.id, targetId))
+                .limit(1);
+              if (empMapping) {
+                selectedGroupId = empMapping.groupId;
+              }
+            } else if (module === 'users') {
+              const [userGroup] = await db
+                .select({ groupId: userOrganizationGroupAccess.groupId })
+                .from(userOrganizationGroupAccess)
+                .where(eq(userOrganizationGroupAccess.userId, targetId))
+                .limit(1);
+              if (userGroup) {
+                selectedGroupId = userGroup.groupId;
+              } else {
+                const [emp] = await db
+                  .select({ groupId: departmentOrganizationMappings.groupId })
+                  .from(users)
+                  .innerJoin(employees, eq(users.employeeId, employees.id))
+                  .innerJoin(departmentOrganizationMappings, eq(departmentOrganizationMappings.departmentId, employees.departmentId))
+                  .where(eq(users.id, targetId))
+                  .limit(1);
+                if (emp) {
+                  selectedGroupId = emp.groupId;
+                }
+              }
             }
           }
         } else if (req.body?.departmentId) {

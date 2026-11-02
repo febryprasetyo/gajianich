@@ -17,7 +17,9 @@ export function resolveRequestScope(input: {access: GroupAccess; module: ScopeMo
   let selectedGroupId = input.selectedGroupId;
   if (selectedGroupId !== null && !groupIds.includes(selectedGroupId)) throw new OrganizationScopeError('Group access denied');
   if (selectedGroupId === null && groupIds.length === 1 && (mode === 'write' || !access.isGlobalAdministrator)) selectedGroupId = groupIds[0];
-  if (mode === 'write' && selectedGroupId === null) throw new OrganizationScopeError('Choose a destination group', 400);
+  if (mode === 'write' && selectedGroupId === null && !(module === 'users' && access.isGlobalAdministrator)) {
+    throw new OrganizationScopeError('Choose a destination group', 400);
+  }
   if (!groupIds.length && !access.isGlobalAdministrator) throw new OrganizationScopeError('Organization access not provisioned');
   return {module, groupIds: selectedGroupId === null ? groupIds : [selectedGroupId], selectedGroupId,
     includeUnmapped: mode === 'read' && selectedGroupId === null && access.isGlobalAdministrator};
