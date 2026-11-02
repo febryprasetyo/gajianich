@@ -58,18 +58,18 @@ export interface UpsertDailyNotePayload {
 ## 2. Phase-by-Phase Tasks
 
 ### Phase 1: Database Schema & Migration
-- [ ] Buat file skema Drizzle ORM: `backend/src/db/schema/attendanceDailyNotes.ts`.
-- [ ] Daftarkan skema baru di `backend/src/db/index.ts`.
-- [ ] Tulis unit test untuk verifikasi skema: `backend/src/db/schema/attendanceDailyNotes.test.ts`.
-- [ ] Buat file migrasi database SQL menggunakan Drizzle Kit (`drizzle-kit generate`).
-- [ ] Jalankan migrasi dan pastikan tabel `attendance_daily_notes` terbuat.
+- [x] Buat file skema Drizzle ORM: `backend/src/db/schema/attendanceDailyNotes.ts`.
+- [x] Daftarkan skema baru di `backend/src/db/index.ts`.
+- [x] Tulis unit test untuk verifikasi skema: `backend/src/db/schema/attendanceDailyNotes.test.ts`.
+- [x] Buat file migrasi database SQL menggunakan Drizzle Kit (`drizzle-kit generate`).
+- [x] Jalankan migrasi dan pastikan tabel `attendance_daily_notes` terbuat.
 
 ### Phase 2: Location Parser & Daily Report Query Service (TDD)
-- [ ] Buat utilitas parser lokasi `backend/src/domain/attendanceLocationFormat.ts`:
+- [x] Buat utilitas parser lokasi `backend/src/domain/attendanceLocationFormat.ts`:
   - Jika sumber mesin ADMS/kantor: return statis `"Jakarta/ Kantor"`.
   - Jika sumber mobile GPS/Nominatim address: ekstrak `[Kabupaten/Kota], [Provinsi]` (contoh: `"Kabupaten Serang, Banten"` atau `"Kabupaten Gowa, Sulawesi Selatan"`).
   - Tulis unit test di `backend/src/domain/attendanceLocationFormat.test.ts`.
-- [ ] Buat service `backend/src/services/dailyAttendanceReportService.ts`:
+- [x] Buat service `backend/src/services/dailyAttendanceReportService.ts`:
   - Query gabungan seluruh karyawan aktif per departemen yang dipilih (default `MARKETING`).
   - Mengambil data untuk tanggal berapapun (`workDate` hari ini maupun tanggal-tanggal sebelumnya).
   - Mengambil dan menggabungkan data dari `attendance_records`, `attendance_self_logs`, `leave_requests`, dan catatan persisten historis dari `attendance_daily_notes`.
@@ -83,15 +83,15 @@ export interface UpsertDailyNotePayload {
   - Tulis unit & integration tests di `backend/src/services/dailyAttendanceReportService.test.ts`.
 
 ### Phase 3: Backend API Routes & Permissions
-- [ ] Daftarkan endpoint baru di `backend/src/routes/attendanceRoutes.ts`:
+- [x] Daftarkan endpoint baru di `backend/src/routes/attendanceRoutes.ts`:
   - `GET /api/attendance/daily-report`: Mengembalikan payload `DailyAttendanceReportResponse`.
   - `POST /api/attendance/daily-report/note`: Simpan/update penandaan kuning dan catatan manual HRD.
-- [ ] Terapkan validasi input dengan Zod schema: `workDate` (YYYY-MM-DD), `employeeId`, `isHighlighted`, `manualNote`.
-- [ ] Uji endpoint dengan integration test di `backend/src/routes/attendanceDailyReport.integration.test.ts`.
+- [x] Terapkan validasi input dengan Zod schema: `workDate` (YYYY-MM-DD), `employeeId`, `isHighlighted`, `manualNote`.
+- [x] Uji endpoint dengan integration test di `backend/src/routes/attendanceRoutes.test.ts`.
 
 ### Phase 4: Frontend UI Halaman Laporan Harian
-- [ ] Buat halaman baru: `frontend/src/app/dashboard/attendance/daily-report/page.tsx`.
-- [ ] Buat komponen utama `DailyAttendanceReportPage.tsx`:
+- [x] Buat halaman baru: `frontend/src/app/dashboard/attendance/daily-report/page.tsx`.
+- [x] Buat komponen utama `DailyAttendanceReportPage.tsx`:
   - `PageHeader` standar Emerald Enterprise.
   - Filter Tanggal tunggal & Dropdown Departemen (Default: MARKETING).
   - Ringkasan KPI strip (Total Karyawan, Hadir, Terlambat, Tidak Hadir).
@@ -102,7 +102,7 @@ export interface UpsertDailyNotePayload {
   - Tombol aksi: **"Cetak Laporan (Landscape)"** dan **"Export Excel"**.
 
 ### Phase 5: Landscape Print View & Styling Presisi
-- [ ] Buat komponen dokumen cetak: `frontend/src/components/attendance/DailyAttendancePrintDocument.tsx`:
+- [x] Buat komponen dokumen cetak: `frontend/src/components/attendance/DailyAttendancePrintDocument.tsx`:
   - Header tanggal terpusat (`30-Oct-26`).
   - Header kolom departemen (misal `MARKETING`).
   - CSS `@media print` murni:
@@ -111,14 +111,14 @@ export interface UpsertDailyNotePayload {
     - Border tabel 1px solid hitam tegas tanpa border ganda.
     - Pewarnaan sel keterlambatan (merah muda) dan baris nama terpilih (kuning stabilo) dengan `print-color-adjust: exact`.
     - Dukungan *page-break* per departemen bila mode cetak gabungan dipilih.
-- [ ] Tulis unit test untuk helper render cetak di `frontend/src/lib/attendance/dailyReportPrint.test.mjs`.
+- [x] Tulis unit test untuk helper render cetak di `frontend/src/lib/attendance/dailyReportPrint.test.mjs`.
 
 ### Phase 6: Automated Verification Loop & Final Handoff
-- [ ] Jalankan backend test: `cd backend && npm test`.
-- [ ] Jalankan frontend test: `cd frontend && npm test`.
-- [ ] Jalankan typecheck frontend & backend: `npm run build` atau `npx tsc --noEmit`.
-- [ ] Verifikasi visual cetak melalui browser preview mode landscape.
-- [ ] Git commit atomic dengan format conventional commit.
+- [x] Jalankan backend test: `cd backend && npm test`.
+- [x] Jalankan frontend test: `cd frontend && npm test`.
+- [x] Jalankan typecheck frontend & backend: `npm run build` atau `npx tsc --noEmit`.
+- [x] Verifikasi visual cetak melalui browser preview mode landscape.
+- [x] Git commit atomic dengan format conventional commit.
 
 ---
 
