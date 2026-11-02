@@ -440,7 +440,7 @@ export default function AttendanceDevicesPage() {
     (d) => d.connectionType === "ADMS" || Boolean(d.admsRegistered)
   );
   const ethernetDevices = devices.filter(
-    (d) => d.connectionType === "Ethernet" || (Boolean(d.ip) && d.ip !== "0.0.0.0" && d.ip !== "Auto / DHCP")
+    (d) => d.connectionType === "Ethernet" && !d.admsRegistered
   );
 
   // Candidates list for editing allowlist
