@@ -15,8 +15,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 *.log
-docs/config.json
-docs/agent.log
 
 # Coverage
 coverage/
@@ -50,17 +48,15 @@ SKILL.md
 
 # AI Tools & skills
 /.superpowers/
-/docs/superpowers/
 /graphify-out/
 /anti-slop/
 
+# Documentation (local only)
+docs/
+/docs/
+
 # Sensitive / local data & prompt references
 *.xlsx
-docs/WhatsApp Image*
-/docs/*
-!/docs/todo/
-!/docs/superpowers/
-!/docs/plan/
 /design-system/*
 /hardware-collector/*
 

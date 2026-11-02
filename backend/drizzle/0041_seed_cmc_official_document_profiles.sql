@@ -162,3 +162,4 @@ JOIN "document_identity_versions" i ON i.id = p.identity_version_id
 WHERE lr.group_id = g.id
   AND o.code = 'CMC'
   AND lr.document_profile_snapshot IS NULL;
+

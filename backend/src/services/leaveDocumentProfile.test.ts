@@ -52,3 +52,4 @@ test('CMC official leave document profile resolves with approved F4 template and
     DocumentProfileUnavailableError
   );
 });
+
