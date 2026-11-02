@@ -14,9 +14,11 @@ services:
       ADMS_TIMEZONE_HOURS: ${ADMS_TIMEZONE_HOURS:-7}
       MAX_BODY_BYTES: ${MAX_BODY_BYTES:-1048576}
     ports:
-      - "${ADMS_BIND_ADDRESS:-127.0.0.1}:${ADMS_PORT:-8081}:8081"
+      - "${ADMS_BIND_ADDRESS:-0.0.0.0}:${ADMS_PORT:-8081}:8081"
     networks:
-      - gajianich_database
+      gajianich_database:
+        aliases:
+          - adms
     read_only: true
     tmpfs:
       - /tmp:size=16m,noexec,nosuid
