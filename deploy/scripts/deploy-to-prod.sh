@@ -52,7 +52,7 @@ check_ssh_connection() {
 do_sync() {
   log_info "Sinkronisasi source code dari Dev ke Production..."
   rsync -avz --delete \
-    --exclude='.git/index.lock' \
+    --exclude='.git' \
     --exclude='node_modules' \
     --exclude='.next' \
     --exclude='dist' \
