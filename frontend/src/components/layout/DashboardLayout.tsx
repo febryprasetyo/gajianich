@@ -76,134 +76,134 @@ export interface NavGroup {
 
 export const navGroups: NavGroup[] = [
   {
-    title: 'HR',
+    title: 'Manajemen SDM (HR)',
     items: [
       {
-        name: 'Attendance',
+        name: 'Kehadiran & Waktu',
         icon: CalendarCheck,
         children: [
-          { name: 'Ringkasan HR', href: '/dashboard/attendance/overview', icon: LayoutDashboard, permission: 'attendance.view' },
-          { name: 'Data Absensi', href: '/dashboard/attendance', icon: CalendarCheck, permission: 'attendance.view' },
-          { name: 'Impor Absensi', href: '/dashboard/attendance/imports', icon: FileInput, permission: 'attendance.import' },
-          { name: 'Kartu Absensi', href: '/dashboard/attendance/employees', icon: ClipboardList, permission: 'attendance.view' },
-          { name: 'Laporan Absensi', href: '/dashboard/attendance/reports', icon: FileBarChart, permission: 'attendance.view' },
-          { name: 'Riwayat Aktivitas HR', href: '/dashboard/attendance/activity', icon: History, permission: 'attendance.view' },
+          { name: 'Dasbor Kehadiran', href: '/dashboard/attendance/overview', icon: LayoutDashboard, permission: 'attendance.view' },
+          { name: 'Rekap Kehadiran', href: '/dashboard/attendance', icon: CalendarCheck, permission: 'attendance.view' },
+          { name: 'Impor Data Presensi', href: '/dashboard/attendance/imports', icon: FileInput, permission: 'attendance.import' },
+          { name: 'Lembar Waktu Karyawan', href: '/dashboard/attendance/employees', icon: ClipboardList, permission: 'attendance.view' },
+          { name: 'Laporan Kehadiran', href: '/dashboard/attendance/reports', icon: FileBarChart, permission: 'attendance.view' },
+          { name: 'Log Aktivitas HR', href: '/dashboard/attendance/activity', icon: History, permission: 'attendance.view' },
         ],
       },
       {
-        name: 'Mesin Presensi',
+        name: 'Integrasi Mesin & IoT',
         icon: Cpu,
         children: [
-          { name: 'Review ADMS', href: '/dashboard/attendance/adms', icon: Cpu, anyPermissions: ['attendance.import', 'attendance.manage'] },
-          { name: 'Mesin Presensi', href: '/dashboard/attendance/devices', icon: Cpu, permission: 'attendance.import' },
-          { name: 'Data Presensi', href: '/dashboard/attendance/raw-logs', icon: ListFilter, permission: 'attendance.import' },
-          { name: 'Laporan Presensi', href: '/dashboard/attendance/transactions', icon: FileCheck2, permission: 'attendance.view' },
+          { name: 'Monitor Server ADMS', href: '/dashboard/attendance/adms', icon: Cpu, anyPermissions: ['attendance.import', 'attendance.manage'] },
+          { name: 'Terminal Mesin Presensi', href: '/dashboard/attendance/devices', icon: Cpu, permission: 'attendance.import' },
+          { name: 'Log Mentah Presensi', href: '/dashboard/attendance/raw-logs', icon: ListFilter, permission: 'attendance.import' },
+          { name: 'Log Transaksi Presensi', href: '/dashboard/attendance/transactions', icon: FileCheck2, permission: 'attendance.view' },
         ],
       },
       {
-        name: 'Verifikasi Presensi',
+        name: 'Persetujuan Presensi',
         icon: ShieldCheck,
         children: [
-          { name: 'Review Absensi', href: '/dashboard/attendance/approvals', icon: CalendarCheck, permission: 'attendance.mobile.verify' },
-          { name: 'Validasi Foto Wajah', href: '/dashboard/attendance/approvals/photos', icon: ScanFace, permission: 'attendance.mobile.verify' },
-          { name: 'Aturan Auto-Approve', href: '/dashboard/attendance/approvals/rules', icon: Sliders, permission: 'attendance.manage' },
+          { name: 'Antrean Persetujuan', href: '/dashboard/attendance/approvals', icon: CalendarCheck, permission: 'attendance.mobile.verify' },
+          { name: 'Verifikasi Swafoto Presensi', href: '/dashboard/attendance/approvals/photos', icon: ScanFace, permission: 'attendance.mobile.verify' },
+          { name: 'Kebijakan Auto-Approval', href: '/dashboard/attendance/approvals/rules', icon: Sliders, permission: 'attendance.manage' },
         ],
       },
       {
-        name: 'Cuti',
+        name: 'Manajemen Cuti & Izin',
         icon: CalendarDays,
         children: [
-          { name: 'Pengajuan Cuti', href: '/dashboard/leaves', icon: CalendarDays, permission: 'attendance.view' },
-          { name: 'Rekap Saldo Cuti', href: '/dashboard/leaves/balances', icon: Users, permission: 'attendance.view' },
-          { name: 'Pengaturan Cuti', href: '/dashboard/leaves/settings', icon: Settings, permission: 'attendance.manage' },
+          { name: 'Permohonan Cuti', href: '/dashboard/leaves', icon: CalendarDays, permission: 'attendance.view' },
+          { name: 'Saldo & Kuota Cuti', href: '/dashboard/leaves/balances', icon: Users, permission: 'attendance.view' },
+          { name: 'Kebijakan & Kuota Cuti', href: '/dashboard/leaves/settings', icon: Settings, permission: 'attendance.manage' },
         ],
       },
       {
-        name: 'Master Data',
+        name: 'Data Master Karyawan',
         icon: Users,
         children: [
-          { name: 'Karyawan Absensi', href: '/dashboard/attendance/master/employees', icon: Users, permission: 'attendance.view' },
-          { name: 'Departemen Absensi', href: '/dashboard/attendance/master/departments', icon: Building2, permission: 'attendance.view' },
-          { name: 'Shift & Jam Kerja', href: '/dashboard/attendance/master/shifts', icon: Clock, permission: 'attendance.view' },
-          { name: 'Akun Pengguna', href: '/dashboard/access', icon: UserRoundCog, permission: 'access.users.view' },
-          { name: 'Pengaturan', href: '/dashboard/attendance/settings', icon: Settings, permission: 'attendance.manage', adminOnly: true },
+          { name: 'Direktori Karyawan', href: '/dashboard/attendance/master/employees', icon: Users, permission: 'attendance.view' },
+          { name: 'Struktur Departemen', href: '/dashboard/attendance/master/departments', icon: Building2, permission: 'attendance.view' },
+          { name: 'Jadwal & Pola Shift', href: '/dashboard/attendance/master/shifts', icon: Clock, permission: 'attendance.view' },
+          { name: 'Akses Pengguna', href: '/dashboard/access', icon: UserRoundCog, permission: 'access.users.view' },
+          { name: 'Konfigurasi Sistem HR', href: '/dashboard/attendance/settings', icon: Settings, permission: 'attendance.manage', adminOnly: true },
         ],
       },
     ],
   },
   {
-    title: 'GA',
+    title: 'Umum & Pengadaan (GA)',
     items: [
-      { name: 'Permintaan Barang', href: '/dashboard/ga/requests', icon: ClipboardList, permission: 'ga.requests.view' },
+      { name: 'Pengajuan Pengadaan', href: '/dashboard/ga/requests', icon: ClipboardList, permission: 'ga.requests.view' },
     ],
   },
   {
-    title: 'IT & Assets',
+    title: 'IT & Aset Perusahaan',
     items: [
       {
-        name: 'Asset Management',
+        name: 'Aset Inventaris',
         icon: HardDrive,
         children: [
-          { name: 'Ringkasan Aset', href: '/dashboard/assets/overview', icon: LayoutDashboard, permission: 'assets.view' },
-          { name: 'Inventaris Aset', href: '/dashboard/assets', icon: HardDrive, permission: 'assets.view' },
-          { name: 'Hardware Audits', href: '/dashboard/hardware-audits', icon: Cpu, permission: 'hardware_audits.view' },
-          { name: 'Software Licenses', href: '/dashboard/licenses', icon: Key, permission: 'licenses.view' },
+          { name: 'Dasbor Aset', href: '/dashboard/assets/overview', icon: LayoutDashboard, permission: 'assets.view' },
+          { name: 'Daftar Aset Perangkat', href: '/dashboard/assets', icon: HardDrive, permission: 'assets.view' },
+          { name: 'Audit Fisik Perangkat', href: '/dashboard/hardware-audits', icon: Cpu, permission: 'hardware_audits.view' },
+          { name: 'Lisensi Perangkat Lunak', href: '/dashboard/licenses', icon: Key, permission: 'licenses.view' },
         ],
       },
       {
-        name: 'Operations',
+        name: 'Layanan & Operasional IT',
         icon: Server,
         children: [
-          { name: 'Service Desk', href: '/dashboard/tickets', icon: Ticket, permission: 'tickets.view' },
-          { name: 'Accurate & Servers', href: '/dashboard/infrastructure', icon: Server, permission: 'infrastructure.view' },
+          { name: 'Tiket Bantuan IT', href: '/dashboard/tickets', icon: Ticket, permission: 'tickets.view' },
+          { name: 'Infrastruktur & Server', href: '/dashboard/infrastructure', icon: Server, permission: 'infrastructure.view' },
         ],
       },
       {
-        name: 'Master Data IT',
+        name: 'Konfigurasi Master IT',
         icon: Shapes,
         children: [
-          { name: 'IT Equipment Types', href: '/dashboard/master/equipment-types', icon: Shapes, permission: 'master.view' },
-          { name: 'Asset Custodians', href: '/dashboard/master/asset-custodians', icon: UserRoundCog, permission: 'master.manage', adminOnly: true },
-          { name: 'HR Reconciliation', href: '/dashboard/master/asset-custodians/reconciliation', icon: GitMerge, permission: 'master.manage', adminOnly: true },
-          { name: 'Locations', href: '/dashboard/master/locations', icon: MapPin, permission: 'master.view' },
-          { name: 'Vendors', href: '/dashboard/master/vendors', icon: Store, permission: 'master.view' },
-          { name: 'Departments', href: '/dashboard/master/departments', icon: Building2, permission: 'master.view' },
-          { name: 'Employees', href: '/dashboard/master/employees', icon: Users, permission: 'master.view' },
+          { name: 'Kategori & Jenis Perangkat', href: '/dashboard/master/equipment-types', icon: Shapes, permission: 'master.view' },
+          { name: 'Penanggung Jawab Aset', href: '/dashboard/master/asset-custodians', icon: UserRoundCog, permission: 'master.manage', adminOnly: true },
+          { name: 'Rekonsiliasi Data HR', href: '/dashboard/master/asset-custodians/reconciliation', icon: GitMerge, permission: 'master.manage', adminOnly: true },
+          { name: 'Lokasi & Cabang', href: '/dashboard/master/locations', icon: MapPin, permission: 'master.view' },
+          { name: 'Rekanan & Vendor', href: '/dashboard/master/vendors', icon: Store, permission: 'master.view' },
+          { name: 'Departemen (Sinkron IT)', href: '/dashboard/master/departments', icon: Building2, permission: 'master.view' },
+          { name: 'Karyawan (Sinkron IT)', href: '/dashboard/master/employees', icon: Users, permission: 'master.view' },
         ],
       },
     ],
   },
   {
-    title: 'Pengguna & Akses',
+    title: 'Pengaturan & Keamanan',
     items: [
-      { name: 'Manajemen Pengguna', href: '/dashboard/access', icon: UserRoundCog, permission: 'access.users.view' },
+      { name: 'Akses & Peran Pengguna', href: '/dashboard/access', icon: UserRoundCog, permission: 'access.users.view' },
     ],
   },
 ];
 
 const ROUTE_PERMISSION_MAP: { prefix: string; permission: string; moduleName: string }[] = [
-  { prefix: '/dashboard/ga/requests/new', permission: 'ga.requests.create', moduleName: 'Buat Permintaan Barang' },
-  { prefix: '/dashboard/ga/requests', permission: 'ga.requests.view', moduleName: 'Permintaan Barang GA' },
-  { prefix: '/dashboard/assets/overview', permission: 'assets.view', moduleName: 'Asset Management Dashboard' },
-  { prefix: '/dashboard/assets', permission: 'assets.view', moduleName: 'IT Asset Inventory' },
-  { prefix: '/dashboard/hardware-audits', permission: 'hardware_audits.view', moduleName: 'Hardware Audits' },
-  { prefix: '/dashboard/licenses', permission: 'licenses.view', moduleName: 'Software Licenses' },
-  { prefix: '/dashboard/tickets', permission: 'tickets.view', moduleName: 'Service Desk Tickets' },
-  { prefix: '/dashboard/infrastructure', permission: 'infrastructure.view', moduleName: 'Accurate & Server Infrastructure' },
-  { prefix: '/dashboard/attendance/adms', permission: 'attendance.import atau attendance.manage', moduleName: 'Review ADMS' },
-  { prefix: '/dashboard/attendance/devices', permission: 'attendance.import', moduleName: 'Mesin Presensi' },
-  { prefix: '/dashboard/attendance/approvals/rules', permission: 'attendance.manage', moduleName: 'Aturan Auto-Approve Shift' },
-  { prefix: '/dashboard/attendance/approvals/photos', permission: 'attendance.mobile.verify', moduleName: 'Validasi Foto Wajah' },
-  { prefix: '/dashboard/attendance/approvals', permission: 'attendance.mobile.verify', moduleName: 'Review Absensi Mobile' },
-  { prefix: '/dashboard/attendance', permission: 'attendance.view', moduleName: 'HR Attendance' },
-  { prefix: '/dashboard/leaves/settings', permission: 'attendance.manage', moduleName: 'Leave Settings' },
-  { prefix: '/dashboard/leaves/balances', permission: 'attendance.view', moduleName: 'Leave Balances' },
-  { prefix: '/dashboard/leaves', permission: 'attendance.view', moduleName: 'Leave Requests' },
-  { prefix: '/dashboard/master', permission: 'master.view', moduleName: 'Master Data' },
-  { prefix: '/dashboard/access', permission: 'access.users.view', moduleName: 'Manajemen Pengguna' },
-  { prefix: '/dashboard/employee/overview', permission: '', moduleName: 'Employee Workspace' },
-  { prefix: '/dashboard/management/overview', permission: '', moduleName: 'Management Workspace' },
-  { prefix: '/dashboard/welcome', permission: '', moduleName: 'Welcome Overview' },
+  { prefix: '/dashboard/ga/requests/new', permission: 'ga.requests.create', moduleName: 'Buat Pengajuan Pengadaan' },
+  { prefix: '/dashboard/ga/requests', permission: 'ga.requests.view', moduleName: 'Pengajuan Pengadaan (GA)' },
+  { prefix: '/dashboard/assets/overview', permission: 'assets.view', moduleName: 'Dasbor Aset' },
+  { prefix: '/dashboard/assets', permission: 'assets.view', moduleName: 'Daftar Aset Perangkat' },
+  { prefix: '/dashboard/hardware-audits', permission: 'hardware_audits.view', moduleName: 'Audit Fisik Perangkat' },
+  { prefix: '/dashboard/licenses', permission: 'licenses.view', moduleName: 'Lisensi Perangkat Lunak' },
+  { prefix: '/dashboard/tickets', permission: 'tickets.view', moduleName: 'Tiket Bantuan IT' },
+  { prefix: '/dashboard/infrastructure', permission: 'infrastructure.view', moduleName: 'Infrastruktur & Server' },
+  { prefix: '/dashboard/attendance/adms', permission: 'attendance.import atau attendance.manage', moduleName: 'Monitor Server ADMS' },
+  { prefix: '/dashboard/attendance/devices', permission: 'attendance.import', moduleName: 'Terminal Mesin Presensi' },
+  { prefix: '/dashboard/attendance/approvals/rules', permission: 'attendance.manage', moduleName: 'Kebijakan Auto-Approval' },
+  { prefix: '/dashboard/attendance/approvals/photos', permission: 'attendance.mobile.verify', moduleName: 'Verifikasi Swafoto Presensi' },
+  { prefix: '/dashboard/attendance/approvals', permission: 'attendance.mobile.verify', moduleName: 'Antrean Persetujuan' },
+  { prefix: '/dashboard/attendance', permission: 'attendance.view', moduleName: 'Rekap Kehadiran' },
+  { prefix: '/dashboard/leaves/settings', permission: 'attendance.manage', moduleName: 'Kebijakan & Kuota Cuti' },
+  { prefix: '/dashboard/leaves/balances', permission: 'attendance.view', moduleName: 'Saldo & Kuota Cuti' },
+  { prefix: '/dashboard/leaves', permission: 'attendance.view', moduleName: 'Permohonan Cuti' },
+  { prefix: '/dashboard/master', permission: 'master.view', moduleName: 'Konfigurasi Master IT' },
+  { prefix: '/dashboard/access', permission: 'access.users.view', moduleName: 'Akses & Peran Pengguna' },
+  { prefix: '/dashboard/employee/overview', permission: '', moduleName: 'Ruang Kerja Karyawan' },
+  { prefix: '/dashboard/management/overview', permission: '', moduleName: 'Ruang Kerja Manajemen' },
+  { prefix: '/dashboard/welcome', permission: '', moduleName: 'Selamat Datang' },
 ];
 
 const DashboardLayoutContext = React.createContext<boolean>(false);
@@ -254,10 +254,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const dashboardHref = getDashboardHrefForUser(user);
 
   const mainNavGroup: NavGroup = {
-    title: 'Utama',
+    title: 'Ikhtisar',
     items: [
       {
-        name: 'Dashboard',
+        name: 'Dasbor Utama',
         href: dashboardHref,
         icon: LayoutDashboard,
       },
@@ -325,7 +325,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     ...navGroups
       .filter((group) => {
         // Remove IT & Assets menu for HR Attendance role
-        if (isHrRole && (group.title.toLowerCase() === 'it & assets' || group.title.toLowerCase() === 'master data')) {
+        if (
+          isHrRole &&
+          (group.title.toLowerCase() === 'it & assets' ||
+            group.title.toLowerCase() === 'it & aset perusahaan' ||
+            group.title.toLowerCase() === 'master data' ||
+            group.title.toLowerCase() === 'konfigurasi master it')
+        ) {
           return false;
         }
         return true;
@@ -375,7 +381,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   const currentNavigableItem = allNavigableItems
-    .filter((item) => item.groupTitle !== "Utama" || pathname === item.href)
+    .filter((item) => (item.groupTitle !== "Utama" && item.groupTitle !== "Ikhtisar") || pathname === item.href)
     .sort((a, b) => b.href.length - a.href.length)
     .find((item) => isRouteActive(item.href, pathname)) ||
     allNavigableItems[0];

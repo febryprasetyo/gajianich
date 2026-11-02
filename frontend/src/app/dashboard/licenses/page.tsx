@@ -144,11 +144,11 @@ export default function LicensesPage() {
                 <Key className="w-5 h-5" />
               </div>
               <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                Software License Catalog
+                Katalog Lisensi Perangkat Lunak
               </h1>
             </div>
             <p className="text-xs text-slate-500 mt-1">
-              Manage software keys, CD/Dongle hardware keys, OEM OS bundles, subscriptions, and seat allocations.
+              Kelola lisensi software, kunci perangkat keras (CD/Dongle), bundel OS OEM, langganan, dan alokasi lisensi karyawan.
             </p>
           </div>
 
@@ -159,7 +159,7 @@ export default function LicensesPage() {
               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Add Software License</span>
+              <span>Tambah Lisensi Baru</span>
             </button>
           </div>
         </div>

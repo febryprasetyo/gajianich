@@ -477,10 +477,10 @@ export default function AttendanceDevicesPage() {
           </div>
           <div>
             <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-              Mesin Presensi
+              Terminal Mesin Presensi
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              Pusat pengelolaan seluruh mesin absensi kantor — Mesin Cloud ADMS dan Mesin Fisik (Ethernet/TCP).
+              Pusat pengelolaan seluruh terminal mesin presensi kantor — Mesin Cloud ADMS dan Mesin Fisik (Ethernet/TCP).
             </p>
           </div>
         </div>

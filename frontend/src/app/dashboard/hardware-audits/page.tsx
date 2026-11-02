@@ -161,11 +161,11 @@ export default function HardwareAuditsPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                  Hardware Audits & Collector Sync
+                  Audit Fisik Perangkat & Sinkronisasi
                 </h1>
                 {pendingCount > 0 && (
                   <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-mono font-bold">
-                    {pendingCount} Pending
+                    {pendingCount} Menunggu
                   </span>
                 )}
               </div>

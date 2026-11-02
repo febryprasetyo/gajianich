@@ -20,7 +20,7 @@ interface FaceRequest {
 }
 
 const statuses: Record<string, string> = {
-  PENDING: 'Menunggu review',
+  PENDING: 'Menunggu Verifikasi',
   APPROVED: 'Disetujui',
   REJECTED: 'Ditolak',
 };
@@ -102,11 +102,11 @@ export default function FaceApprovalsPage() {
               <ScanFace className="w-5 h-5" />
             </div>
             <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-              Validasi Foto Wajah
+              Verifikasi Swafoto Presensi
             </h1>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Verifikasi antrean permohonan pembaruan foto profil biometrik wajah karyawan.
+            Verifikasi antrean permohonan pembaruan foto biometrik wajah karyawan.
           </p>
         </div>
       </div>
@@ -162,7 +162,7 @@ export default function FaceApprovalsPage() {
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-amber-800">Menunggu Validasi</span>
+            <span className="text-xs font-medium text-amber-800">Menunggu Verifikasi</span>
             <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
               <Clock className="w-4 h-4" />
             </div>
@@ -275,7 +275,7 @@ export default function FaceApprovalsPage() {
                 className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-semibold text-xs border border-emerald-200 transition-colors cursor-pointer flex items-center gap-1.5"
               >
                 <X className="w-3.5 h-3.5" />
-                <span>Reset</span>
+                <span>Atur Ulang</span>
               </button>
             )}
           </div>
@@ -326,7 +326,7 @@ export default function FaceApprovalsPage() {
                       setError('');
                     }}
                   >
-                    Tinjau Foto
+                    Verifikasi Foto
                   </button>
                 </div>
               </div>
@@ -346,7 +346,7 @@ export default function FaceApprovalsPage() {
         <ModalShell
           isOpen={Boolean(selected)}
           onClose={() => setSelected(null)}
-          title="Verifikasi Pembaruan Foto Wajah"
+          title="Verifikasi Swafoto Karyawan"
           isLoading={busy}
           footer={
             selected.status === 'PENDING' ? (

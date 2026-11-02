@@ -91,7 +91,7 @@ export default function AttendanceDataPage() {
   return (
     <div className="space-y-6">
       <Heading
-        title="Data Absensi"
+        title="Rekap Kehadiran"
         description="Jadwal, catatan kehadiran, dan durasi kerja per karyawan dalam satu tampilan."
       >
         <button className="hr-btn" onClick={() => setHelpOpen(true)}>
@@ -100,7 +100,7 @@ export default function AttendanceDataPage() {
         </button>
         <Link className="hr-btn" href="/dashboard/attendance/imports">
           <Upload size={15} />
-          Impor absensi
+          Impor Data Presensi
         </Link>
         {canWrite && (
           <button

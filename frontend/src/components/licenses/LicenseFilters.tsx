@@ -41,7 +41,7 @@ export default function LicenseFilters({
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search software name, key, vendor..."
+            placeholder="Cari nama software, kunci lisensi, vendor..."
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-sans text-slate-800"
@@ -63,11 +63,11 @@ export default function LicenseFilters({
             onChange={(e) => onTypeChange(e.target.value)}
             className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium text-slate-700 cursor-pointer"
           >
-            <option value="">All License Types</option>
+            <option value="">Semua Tipe Lisensi</option>
             <option value="CD / Dongle">CD / Dongle</option>
             <option value="OEM Bundled">OEM Bundled</option>
-            <option value="Subscription">Subscription</option>
-            <option value="Perpetual">Perpetual</option>
+            <option value="Subscription">Langganan (Subscription)</option>
+            <option value="Perpetual">Permanen (Perpetual)</option>
           </select>
         </div>
 
@@ -78,10 +78,10 @@ export default function LicenseFilters({
             onChange={(e) => onStatusChange(e.target.value)}
             className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium text-slate-700 cursor-pointer"
           >
-            <option value="">All Statuses</option>
-            <option value="Active">Active</option>
-            <option value="Expired">Expired</option>
-            <option value="Deactivated">Deactivated</option>
+            <option value="">Semua Status</option>
+            <option value="Active">Aktif</option>
+            <option value="Expired">Kedaluwarsa</option>
+            <option value="Deactivated">Dinonaktifkan</option>
           </select>
         </div>
 
@@ -92,7 +92,7 @@ export default function LicenseFilters({
             onChange={(e) => onVendorChange(e.target.value)}
             className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium text-slate-700 cursor-pointer"
           >
-            <option value="">All Vendors</option>
+            <option value="">Semua Vendor</option>
             {vendors.map((v) => (
               <option key={v.id} value={v.id}>
                 {v.name}
@@ -108,7 +108,7 @@ export default function LicenseFilters({
             onChange={(e) => onLocationChange(e.target.value)}
             className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium text-slate-700 cursor-pointer"
           >
-            <option value="">All Locations / PT</option>
+            <option value="">Semua Lokasi / Entitas</option>
             {locations.map((loc) => (
               <option key={loc.id} value={loc.id}>
                 {loc.code} - {loc.name}

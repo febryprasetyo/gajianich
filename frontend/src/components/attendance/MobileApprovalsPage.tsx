@@ -20,7 +20,7 @@ interface Log extends MobileAttendanceEvent {
 }
 
 const statuses: Record<string, string> = {
-  PENDING: 'Menunggu review',
+  PENDING: 'Menunggu Persetujuan',
   APPROVED: 'Disetujui',
   REJECTED: 'Ditolak',
 };
@@ -111,11 +111,11 @@ export default function MobileApprovalsPage() {
               <CalendarCheck className="w-5 h-5" />
             </div>
             <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-              Review Absensi
+              Antrean Persetujuan Presensi
             </h1>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Verifikasi antrean log absensi mandiri karyawan yang memerlukan peninjauan manual HRD.
+            Verifikasi antrean log presensi mandiri karyawan yang memerlukan peninjauan manual HRD.
           </p>
         </div>
       </div>
@@ -175,7 +175,7 @@ export default function MobileApprovalsPage() {
         >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
-              Menunggu Review
+              Menunggu Persetujuan
             </span>
             <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
               <Clock className="w-4 h-4" />
@@ -289,7 +289,7 @@ export default function MobileApprovalsPage() {
                 className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-semibold text-xs border border-emerald-200 transition-colors cursor-pointer flex items-center gap-1.5"
               >
                 <X className="w-3.5 h-3.5" />
-                <span>Reset</span>
+                <span>Atur Ulang</span>
               </button>
             )}
           </div>
@@ -356,7 +356,7 @@ export default function MobileApprovalsPage() {
         <ModalShell
           isOpen={Boolean(selected)}
           onClose={() => setSelected(null)}
-          title="Review Presensi Karyawan"
+          title="Persetujuan Presensi Karyawan"
           isLoading={busy}
           footer={
             selected.approvalStatus === 'PENDING' ? (
@@ -397,10 +397,10 @@ export default function MobileApprovalsPage() {
             {selected.notes?.includes('[DIRECT_OUT]') && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
                 <p className="font-bold flex items-center gap-1.5">
-                  <span>⚠️</span> Presensi Langsung Pulang (Tanpa Absen Masuk)
+                  <span>⚠️</span> Presensi Langsung Pulang (Tanpa Presensi Masuk)
                 </p>
                 <p className="mt-1 leading-relaxed">
-                  Karyawan tidak melakukan absen masuk pada shift ini. Jika disetujui, kehadiran akan dicatat dengan jam masuk kosong.
+                  Karyawan tidak melakukan presensi masuk pada shift ini. Jika disetujui, kehadiran akan dicatat dengan jam masuk kosong.
                 </p>
                 {selected.notes && (
                   <p className="mt-1.5 font-medium italic text-amber-800">
@@ -415,7 +415,7 @@ export default function MobileApprovalsPage() {
             <AttendancePhoto url={selected.photoUrl} alt="Foto saat scan presensi" />
 
             <div className="space-y-2 pt-2 border-t border-slate-100">
-              <h3 className="text-xs font-bold text-slate-900">Riwayat Pengajuan</h3>
+              <h3 className="text-xs font-bold text-slate-900">Riwayat Peninjauan Presensi</h3>
               {selected.reviewHistory?.length ? (
                 selected.reviewHistory.map((item, index) => (
                   <p key={index} className="text-xs leading-relaxed text-slate-600">

@@ -64,9 +64,9 @@ export default function ShiftApprovalSettingsCard() {
           <Sliders className="w-5 h-5" />
         </div>
         <div className="space-y-1">
-          <h2 className="text-sm font-bold text-slate-900">Persetujuan Otomatis Presensi Shift</h2>
+          <h2 className="text-sm font-bold text-slate-900">Kebijakan Persetujuan Otomatis Shift</h2>
           <p className="text-xs text-slate-500 leading-relaxed">
-            Atur apakah presensi mobile pada shift tertentu otomatis disetujui setelah verifikasi biometrik wajah atau wajib ditinjau manual oleh HRD.
+            Atur apakah presensi mandiri pada shift tertentu otomatis disetujui setelah verifikasi biometrik wajah atau wajib disetujui manual oleh HRD.
           </p>
         </div>
       </div>
@@ -122,7 +122,7 @@ export default function ShiftApprovalSettingsCard() {
                     }
                     className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                   />
-                  <span>Masuk otomatis</span>
+                  <span>Persetujuan Otomatis Jam Masuk</span>
                 </label>
 
                 <label className="flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer">
@@ -137,7 +137,7 @@ export default function ShiftApprovalSettingsCard() {
                     }
                     className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                   />
-                  <span>Pulang otomatis</span>
+                  <span>Persetujuan Otomatis Jam Pulang</span>
                 </label>
 
                 <button
@@ -146,7 +146,7 @@ export default function ShiftApprovalSettingsCard() {
                   disabled={busy}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors cursor-pointer"
                 >
-                  Simpan
+                  Simpan Kebijakan
                 </button>
               </div>
             </div>

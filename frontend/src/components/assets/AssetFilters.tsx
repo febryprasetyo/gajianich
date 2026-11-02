@@ -37,7 +37,7 @@ export default function AssetFilters({
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search Asset Tag, Serial Number, Name, User..."
+            placeholder="Cari Label Aset, Nomor Seri, Nama Perangkat, Penanggung Jawab..."
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-emerald-500 transition-colors"
@@ -51,7 +51,7 @@ export default function AssetFilters({
             onChange={(e) => onCategoryChange(e.target.value)}
             className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-medium focus:outline-none focus:border-emerald-500 cursor-pointer"
           >
-            <option value="ALL">All Categories</option>
+            <option value="ALL">Semua Kategori</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name} ({c.codePrefix})
@@ -67,7 +67,7 @@ export default function AssetFilters({
             onChange={(e) => onLocationChange(e.target.value)}
             className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-medium focus:outline-none focus:border-emerald-500 cursor-pointer"
           >
-            <option value="ALL">All Locations</option>
+            <option value="ALL">Semua Lokasi</option>
             {locations.map((loc) => (
               <option key={loc.id} value={loc.id}>
                 {loc.name} ({loc.code})
@@ -83,11 +83,11 @@ export default function AssetFilters({
             onChange={(e) => onStatusChange(e.target.value)}
             className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-medium focus:outline-none focus:border-emerald-500 cursor-pointer"
           >
-            <option value="ALL">All Statuses</option>
-            <option value="Available">Available (Stock)</option>
-            <option value="Assigned">Assigned (In Use)</option>
-            <option value="Maintenance">Maintenance</option>
-            <option value="Disposed">Disposed</option>
+            <option value="ALL">Semua Status</option>
+            <option value="Available">Tersedia (Stok)</option>
+            <option value="Assigned">Digunakan (Aktif)</option>
+            <option value="Maintenance">Perbaikan / Servis</option>
+            <option value="Disposed">Dihapuskan / Afkir</option>
           </select>
         </div>
       </div>

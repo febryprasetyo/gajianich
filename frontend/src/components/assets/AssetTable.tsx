@@ -88,7 +88,7 @@ export default function AssetTable({
       {loading ? (
         <div className="p-16 flex flex-col items-center justify-center gap-3 text-slate-500 font-mono text-xs">
           <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
-          <span>Loading inventory registry...</span>
+          <span>Memuat data inventaris aset...</span>
         </div>
       ) : error ? (
         <div className="p-8 text-center text-red-600 text-xs font-mono space-y-2">
@@ -98,14 +98,14 @@ export default function AssetTable({
       ) : assets.length === 0 ? (
         <div className="p-16 text-center text-slate-400 font-mono text-xs space-y-3">
           <HardDrive className="w-10 h-10 mx-auto text-slate-300" />
-          <p className="text-slate-600 font-bold">No assets found matching your filter criteria.</p>
+          <p className="text-slate-600 font-bold">Tidak ada aset yang sesuai dengan kriteria filter.</p>
           {canManage && (
             <button
               onClick={onRegisterFirst}
               className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold inline-flex items-center gap-2 text-xs transition-colors cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Register First Asset</span>
+              <span>Daftarkan Aset Pertama</span>
             </button>
           )}
         </div>
@@ -114,14 +114,14 @@ export default function AssetTable({
           <table className="w-full text-left text-xs font-mono">
             <thead className="bg-slate-50 border-b border-slate-200 text-[10px] uppercase text-slate-500 tracking-wider">
               <tr>
-                <th className="px-4 py-3.5 font-bold">Asset Tag</th>
-                <th className="px-4 py-3.5 font-bold">Device & Specs</th>
-                <th className="px-4 py-3.5 font-bold">Category</th>
-                <th className="px-4 py-3.5 font-bold">Location</th>
-                <th className="px-4 py-3.5 font-bold">Custodian</th>
-                <th className="px-4 py-3.5 font-bold">Condition</th>
+                <th className="px-4 py-3.5 font-bold">Label Aset</th>
+                <th className="px-4 py-3.5 font-bold">Perangkat & Spesifikasi</th>
+                <th className="px-4 py-3.5 font-bold">Kategori</th>
+                <th className="px-4 py-3.5 font-bold">Lokasi</th>
+                <th className="px-4 py-3.5 font-bold">Penanggung Jawab</th>
+                <th className="px-4 py-3.5 font-bold">Kondisi</th>
                 <th className="px-4 py-3.5 font-bold">Status</th>
-                <th className="px-4 py-3.5 font-bold text-right">Actions</th>
+                <th className="px-4 py-3.5 font-bold text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-sans">

@@ -13,11 +13,11 @@ export default function ApprovalRulesPage() {
               <Sliders className="w-5 h-5" />
             </div>
             <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-              Aturan Auto-Approve
+              Kebijakan Auto-Approval Presensi
             </h1>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Atur kebijakan persetujuan otomatis presensi masuk dan pulang untuk masing-masing jadwal shift kerja.
+            Atur kebijakan persetujuan otomatis presensi masuk dan pulang untuk setiap jadwal shift kerja.
           </p>
         </div>
       </div>

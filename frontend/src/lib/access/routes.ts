@@ -12,58 +12,58 @@ export const IT_ROLES = ['superadmin', 'super_admin', 'itadmin', 'it_admin', 'it
 export const ADMIN_ROLES = ['superadmin', 'super_admin', 'itadmin', 'it_admin', 'admin'];
 
 export const DASHBOARD_ROUTE_RULES: RouteRule[] = [
-  { prefix: '/dashboard/attendance/adms', anyPermissions: ['attendance.import', 'attendance.manage'], moduleName: 'Review ADMS' },
-  { prefix: '/dashboard/attendance/devices', permission: 'attendance.import', moduleName: 'Mesin Presensi' },
-  { prefix: '/dashboard/attendance/raw-logs', permission: 'attendance.import', moduleName: 'Data Presensi Log Mentah' },
-  { prefix: '/dashboard/attendance/transactions', permission: 'attendance.view', moduleName: 'Laporan Presensi Final' },
-  { prefix: '/dashboard/attendance/approvals/rules', permission: 'attendance.manage', moduleName: 'Aturan Auto-Approve Shift' },
-  { prefix: '/dashboard/attendance/approvals/photos', permission: 'attendance.mobile.verify', moduleName: 'Validasi Foto Wajah' },
-  { prefix: '/dashboard/attendance/approvals', permission: 'attendance.mobile.verify', moduleName: 'Review Absensi Mobile' },
-  { prefix: '/dashboard/ga/requests/new', permission: 'ga.requests.create', moduleName: 'Buat Permintaan Barang' },
-  { prefix: '/dashboard/ga/requests', permission: 'ga.requests.view', moduleName: 'Permintaan Barang GA' },
+  { prefix: '/dashboard/attendance/adms', anyPermissions: ['attendance.import', 'attendance.manage'], moduleName: 'Monitor Server ADMS' },
+  { prefix: '/dashboard/attendance/devices', permission: 'attendance.import', moduleName: 'Terminal Mesin Presensi' },
+  { prefix: '/dashboard/attendance/raw-logs', permission: 'attendance.import', moduleName: 'Log Mentah Presensi' },
+  { prefix: '/dashboard/attendance/transactions', permission: 'attendance.view', moduleName: 'Log Transaksi Presensi' },
+  { prefix: '/dashboard/attendance/approvals/rules', permission: 'attendance.manage', moduleName: 'Kebijakan Auto-Approval' },
+  { prefix: '/dashboard/attendance/approvals/photos', permission: 'attendance.mobile.verify', moduleName: 'Verifikasi Swafoto Presensi' },
+  { prefix: '/dashboard/attendance/approvals', permission: 'attendance.mobile.verify', moduleName: 'Antrean Persetujuan' },
+  { prefix: '/dashboard/ga/requests/new', permission: 'ga.requests.create', moduleName: 'Buat Pengajuan Pengadaan' },
+  { prefix: '/dashboard/ga/requests', permission: 'ga.requests.view', moduleName: 'Pengajuan Pengadaan (GA)' },
   // Super App Landing & Overviews
   {
     prefix: '/dashboard/assets/overview',
     permission: 'assets.view',
-    moduleName: 'Asset Management Dashboard',
+    moduleName: 'Dasbor Aset',
   },
   {
     prefix: '/dashboard/employee/overview',
-    moduleName: 'Employee Workspace',
+    moduleName: 'Ruang Kerja Karyawan',
   },
   {
     prefix: '/dashboard/management/overview',
-    moduleName: 'Management Workspace',
+    moduleName: 'Ruang Kerja Manajemen',
   },
   {
     prefix: '/dashboard/welcome',
-    moduleName: 'Welcome Overview',
+    moduleName: 'Selamat Datang',
   },
 
   // HR Leave Settings & Requests
   {
     prefix: '/dashboard/leaves/settings',
     permission: 'attendance.manage',
-    moduleName: 'Pengaturan Cuti',
+    moduleName: 'Kebijakan & Kuota Cuti',
   },
   {
     prefix: '/dashboard/leaves',
     permission: 'attendance.view',
-    moduleName: 'Pengajuan Cuti',
+    moduleName: 'Permohonan Cuti',
   },
   // HR Attendance Settings (Admin Only - restricted from ordinary HRD)
   {
     prefix: '/dashboard/attendance/settings',
     permission: 'attendance.manage',
     adminOnly: true,
-    moduleName: 'Pengaturan Absensi',
+    moduleName: 'Konfigurasi Sistem HR',
   },
 
   // User Management
   {
     prefix: '/dashboard/access',
     permission: 'access.users.view',
-    moduleName: 'Manajemen Pengguna',
+    moduleName: 'Akses & Peran Pengguna',
   },
 
   // IT Master Data (Restricted from HRD / General Users)
@@ -71,99 +71,99 @@ export const DASHBOARD_ROUTE_RULES: RouteRule[] = [
     prefix: '/dashboard/master/asset-custodians',
     permission: 'master.manage',
     adminOnly: true,
-    moduleName: 'Asset Custodians',
+    moduleName: 'Penanggung Jawab Aset',
   },
   {
     prefix: '/dashboard/master/equipment-types',
     permission: 'assets.view',
     itOnly: true,
-    moduleName: 'IT Equipment Types',
+    moduleName: 'Kategori & Jenis Perangkat',
   },
   {
     prefix: '/dashboard/master/vendors',
     permission: 'assets.view',
     itOnly: true,
-    moduleName: 'Vendors',
+    moduleName: 'Rekanan & Vendor',
   },
 
   // Shared Master Data
   {
     prefix: '/dashboard/master/departments',
     permission: 'master.view',
-    moduleName: 'Departments',
+    moduleName: 'Departemen',
   },
   {
     prefix: '/dashboard/master/employees',
     permission: 'master.view',
-    moduleName: 'Employees',
+    moduleName: 'Data Karyawan',
   },
   {
     prefix: '/dashboard/master/locations',
     permission: 'master.view',
-    moduleName: 'Locations',
+    moduleName: 'Lokasi & Cabang',
   },
   {
     prefix: '/dashboard/master',
     exact: true,
     permission: 'master.view',
-    moduleName: 'Master Data',
+    moduleName: 'Konfigurasi Master IT',
   },
 
   // Asset Lifecycle
   {
     prefix: '/dashboard/assets',
     permission: 'assets.view',
-    moduleName: 'IT Asset Inventory',
+    moduleName: 'Daftar Aset Perangkat',
   },
   {
     prefix: '/dashboard/hardware-audits',
     permission: 'hardware_audits.view',
-    moduleName: 'Hardware Audits',
+    moduleName: 'Audit Fisik Perangkat',
   },
   {
     prefix: '/dashboard/licenses',
     permission: 'licenses.view',
-    moduleName: 'Software Licenses',
+    moduleName: 'Lisensi Perangkat Lunak',
   },
 
   // IT Operations
   {
     prefix: '/dashboard/tickets',
     permission: 'tickets.view',
-    moduleName: 'Service Desk Tickets',
+    moduleName: 'Tiket Bantuan IT',
   },
   {
     prefix: '/dashboard/infrastructure',
     permission: 'infrastructure.view',
-    moduleName: 'Server & Accurate Infrastructure',
+    moduleName: 'Infrastruktur & Server',
   },
 
   // HR Leave Requests
   {
     prefix: '/dashboard/leaves',
     permission: 'attendance.view',
-    moduleName: 'Pengajuan Cuti',
+    moduleName: 'Permohonan Cuti',
   },
   // HR Attendance
   {
     prefix: '/dashboard/attendance/identities',
     permission: 'attendance.manage',
-    moduleName: 'Attendance Biometric Identities',
+    moduleName: 'Identitas Biometrik Karyawan',
   },
   {
     prefix: '/dashboard/attendance/activity',
     permission: 'attendance.view',
-    moduleName: 'Riwayat Aktivitas HR',
+    moduleName: 'Log Aktivitas HR',
   },
   {
     prefix: '/dashboard/attendance/imports',
     permission: 'attendance.import',
-    moduleName: 'Attendance Machine Imports',
+    moduleName: 'Impor Data Presensi',
   },
   {
     prefix: '/dashboard/attendance',
     permission: 'attendance.view',
-    moduleName: 'HR Attendance',
+    moduleName: 'Rekap Kehadiran',
   },
 ];
 

@@ -91,13 +91,13 @@ export default function LicenseTable({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-slate-200/80 bg-slate-50/50 text-[11px] font-mono font-semibold uppercase tracking-wider text-slate-500">
-              <th className="py-3.5 px-5">Software Name & Details</th>
-              <th className="py-3.5 px-4">Type</th>
-              <th className="py-3.5 px-4">Seat Utilization</th>
-              <th className="py-3.5 px-4">Expiration Date</th>
-              <th className="py-3.5 px-4">Vendor</th>
+              <th className="py-3.5 px-5">Nama & Detail Perangkat Lunak</th>
+              <th className="py-3.5 px-4">Tipe Lisensi</th>
+              <th className="py-3.5 px-4">Penggunaan Kursi (Seat)</th>
+              <th className="py-3.5 px-4">Masa Berlaku</th>
+              <th className="py-3.5 px-4">Vendor / Pemasok</th>
               <th className="py-3.5 px-4">Status</th>
-              <th className="py-3.5 px-5 text-right">Actions</th>
+              <th className="py-3.5 px-5 text-right">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-xs font-sans">
@@ -107,7 +107,7 @@ export default function LicenseTable({
                   <div className="flex flex-col items-center justify-center gap-2">
                     <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
                     <span className="font-mono text-xs text-slate-500">
-                      Loading Software Catalog...
+                      Memuat Katalog Lisensi...
                     </span>
                   </div>
                 </td>
@@ -117,11 +117,11 @@ export default function LicenseTable({
                 <td colSpan={7} className="py-12 text-center">
                   <div className="max-w-xs mx-auto text-slate-400 space-y-2">
                     <Key className="w-10 h-10 mx-auto text-slate-300" />
-                    <p className="text-sm font-semibold text-slate-700">No software licenses found</p>
+                    <p className="text-sm font-semibold text-slate-700">Tidak ada lisensi perangkat lunak ditemukan</p>
                     <p className="text-xs text-slate-500">
                       {search || selectedType || selectedStatus || selectedVendor
-                        ? 'Try adjusting your filters or search query.'
-                        : 'Click "Add Software License" to register your first license.'}
+                        ? 'Coba sesuaikan filter atau kata kunci pencarian Anda.'
+                        : 'Klik "Tambah Lisensi Baru" untuk mendaftarkan lisensi pertama Anda.'}
                     </p>
                   </div>
                 </td>
@@ -135,7 +135,7 @@ export default function LicenseTable({
                 const isFull = lic.usedSeats >= lic.totalSeats;
 
                 // Expiration calculation
-                let expText = 'No Expiry (Perpetual)';
+                let expText = 'Tanpa Kedaluwarsa (Permanen)';
                 let isExpiringSoon = false;
                 let isExpired = lic.status === 'Expired';
                 if (lic.expirationDate) {

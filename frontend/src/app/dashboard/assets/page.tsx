@@ -204,10 +204,10 @@ export default function AssetsPage() {
           <div>
             <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
               <HardDrive className="w-6 h-6 text-emerald-600" />
-              <span>IT Asset & Hardware Inventory</span>
+              <span>Daftar Aset Perangkat</span>
             </h1>
             <p className="text-xs text-slate-500 font-mono mt-1">
-              Comprehensive hardware registry, computer specifications, accessory tracking, and custody lifecycle.
+              Pusat inventaris perangkat keras, spesifikasi komputer, pelacakan aksesori, dan riwayat penanggung jawab aset.
             </p>
           </div>
 
@@ -218,7 +218,7 @@ export default function AssetsPage() {
                   onClick={handleDownloadTemplate}
                   disabled={downloadingTemplate}
                   className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-mono font-bold flex items-center gap-2 shadow-2xs transition-all cursor-pointer disabled:opacity-50"
-                  title="Download standard 4-sheet XLSX bulk import template"
+                  title="Unduh template Excel 4-sheet standar untuk impor massal"
                 >
                   {downloadingTemplate ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -234,16 +234,16 @@ export default function AssetsPage() {
                   title="Lihat antrean scan hardware dari portable tool flashdisk"
                 >
                   <Cpu className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Hardware Audits</span>
+                  <span>Audit Fisik Perangkat</span>
                 </Link>
 
                 <button
                   onClick={() => setIsImportModalOpen(true)}
                   className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-mono font-bold flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
-                  title="Bulk import assets from 4-sheet XLSX template"
+                  title="Impor massal data aset dari file template Excel"
                 >
                   <Upload className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Bulk Import</span>
+                  <span>Impor Massal Excel</span>
                 </button>
 
                 <button
@@ -251,7 +251,7 @@ export default function AssetsPage() {
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-mono font-bold flex items-center gap-2 shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Register Asset</span>
+                  <span>Daftarkan Aset Baru</span>
                 </button>
               </>
             )}

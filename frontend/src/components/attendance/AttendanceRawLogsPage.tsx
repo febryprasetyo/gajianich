@@ -186,7 +186,7 @@ export default function AttendanceRawLogsPage() {
           </div>
           <div>
             <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-              Data Log Presensi Mesin
+              Log Mentah Presensi Mesin
             </h1>
             <p className="text-xs text-slate-500 mt-1">
               Daftar seluruh riwayat tap masuk dan pulang yang ditarik langsung dari mesin absensi.
