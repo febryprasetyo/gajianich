@@ -80,7 +80,7 @@ export function formatLocationUpdate(input: LocationFormatInput): string {
     if (input.latitude && input.longitude) {
       return `${input.latitude}, ${input.longitude}`;
     }
-    return 'Dinas Luar';
+    return '';
   }
 
   if (input.sourceType === 'LEAVE' || input.sourceType === 'NONE') {

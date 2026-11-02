@@ -86,7 +86,16 @@ test('resolveKeterangan prioritizes manual notes, then leaves, then attendance s
     'IZIN'
   );
 
-  // Attendance status DINAS_LUAR
+  // Attendance status DINAS_LUAR: tidak perlu teks 'DINAS LUAR' di keterangan karena lokasi sudah di kolom Lokasi Update
+  assert.strictEqual(
+    resolveKeterangan({
+      manualNote: null,
+      leaveReason: null,
+      attendanceStatus: 'DINAS_LUAR',
+      hasScanIn: true,
+    }),
+    ''
+  );
   assert.strictEqual(
     resolveKeterangan({
       manualNote: null,
@@ -94,7 +103,7 @@ test('resolveKeterangan prioritizes manual notes, then leaves, then attendance s
       attendanceStatus: 'DINAS_LUAR',
       hasScanIn: false,
     }),
-    'DINAS LUAR'
+    'TDK ADA ABSEN'
   );
 
   // isDayOff / LIBUR

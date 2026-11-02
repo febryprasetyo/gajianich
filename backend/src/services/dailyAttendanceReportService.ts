@@ -120,9 +120,6 @@ export function resolveKeterangan(params: {
   if (status === 'IZIN') {
     return 'IZIN';
   }
-  if (status === 'DINAS_LUAR') {
-    return 'DINAS LUAR';
-  }
   if (status === 'LIBUR' || params.isDayOff) {
     return 'LIBUR';
   }
