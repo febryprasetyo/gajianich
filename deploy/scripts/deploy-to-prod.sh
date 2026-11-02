@@ -62,6 +62,8 @@ do_sync() {
     --exclude='.worktrees' \
     --exclude='test-results' \
     --exclude='coverage' \
+    --exclude='data' \
+    --exclude='backend/data' \
     "$REPO_DIR/" "$PROD_HOST:$PROD_DIR/"
   log_success "Sinkronisasi source code selesai."
 }
