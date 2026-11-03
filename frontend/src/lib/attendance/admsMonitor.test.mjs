@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { admsReadCommandStatus, buildAdmsReviewQuery, filterMonitorDevices, formatAdmsLocalTimestamp, startMonitorPolling, validateAdmsHistoryRequest, validateAdmsReviewRange, withMonitorDeadline, validateCidrInput, validateAdmsRegistration, validateNewAdmsDevice } from './admsMonitor.ts';
+import { admsReadCommandStatus, buildAdmsReviewQuery, filterMonitorDevices, formatAdmsLocalTimestamp, startMonitorPolling, validateAdmsHistoryRequest, validateAdmsReviewRange, withMonitorDeadline, validateCidrInput, validateAdmsRegistration, validateNewAdmsDevice, parseEmployeeOptions } from './admsMonitor.ts';
 
 test('slow responses never accumulate overlapping monitor requests', async context => {
   context.mock.timers.enable(Number(process.versions.node.split('.')[0]) < 20 ? ['setTimeout'] : { apis: ['setTimeout'] });
@@ -219,4 +219,43 @@ test('validateNewAdmsDevice validates name, group, and serial without requiring 
   assert.ok(validateNewAdmsDevice(1, 'Absensi Baru', ''));
   assert.ok(validateNewAdmsDevice(1, 'Absensi Baru', 'WAE9999999999', 'not an ip'));
   assert.ok(validateNewAdmsDevice(1, 'Absensi Baru', 'WAE9999999999', '192.168.10.50', 99999));
+});
+
+test('parseEmployeeOptions parses both direct array and object with data array', () => {
+  const directArray = [
+    { id: 10, fullName: 'Budi Santoso', employeeCode: 'EMP001', departmentName: 'IT' },
+    { id: '11', name: 'Siti Aminah', nik: 'EMP002', department: { name: 'HR' } },
+  ];
+  const parsed1 = parseEmployeeOptions(directArray);
+  assert.equal(parsed1.length, 2);
+  assert.deepEqual(parsed1[0], {
+    id: 10,
+    fullName: 'Budi Santoso',
+    employeeCode: 'EMP001',
+    departmentName: 'IT',
+  });
+  assert.deepEqual(parsed1[1], {
+    id: 11,
+    fullName: 'Siti Aminah',
+    employeeCode: 'EMP002',
+    departmentName: 'HR',
+  });
+
+  const wrappedObject = {
+    success: true,
+    data: [
+      { id: 25, fullName: 'Andi Pratama', employeeNumber: 'EMP025', departmentName: 'Finance' },
+    ],
+  };
+  const parsed2 = parseEmployeeOptions(wrappedObject);
+  assert.equal(parsed2.length, 1);
+  assert.equal(parsed2[0].id, 25);
+  assert.equal(parsed2[0].fullName, 'Andi Pratama');
+  assert.equal(parsed2[0].employeeCode, 'EMP025');
+
+  // Fallbacks & edge cases
+  assert.deepEqual(parseEmployeeOptions(null), []);
+  assert.deepEqual(parseEmployeeOptions(undefined), []);
+  assert.deepEqual(parseEmployeeOptions({}), []);
+  assert.deepEqual(parseEmployeeOptions([{ id: 'invalid' }]), []);
 });

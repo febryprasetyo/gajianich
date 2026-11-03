@@ -4,13 +4,7 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { UserCheck, ShieldAlert, Loader2 } from 'lucide-react';
 import ModalShell from '@/components/ui/ModalShell';
 import { apiFetch } from '@/lib/api';
-
-interface EmployeeOption {
-  id: number;
-  fullName: string;
-  employeeCode: string;
-  departmentName?: string;
-}
+import { parseEmployeeOptions, type EmployeeResolveOption } from '@/lib/attendance/admsMonitor';
 
 interface AdmsResolvePinModalProps {
   isOpen: boolean;
@@ -32,7 +26,7 @@ export default function AdmsResolvePinModal({
 }: AdmsResolvePinModalProps) {
   const [employeeId, setEmployeeId] = useState('');
   const [processLogs, setProcessLogs] = useState(true);
-  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
+  const [employees, setEmployees] = useState<EmployeeResolveOption[]>([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,17 +37,10 @@ export default function AdmsResolvePinModal({
     setError(null);
     setEmployeeId('');
 
-    apiFetch<{ success: boolean; data: any[] }>('/employees?limit=200')
+    apiFetch<unknown>('/employees?limit=200')
       .then(res => {
-        if (res.success && Array.isArray(res.data)) {
-          const mapped = res.data.map((e: any) => ({
-            id: Number(e.id),
-            fullName: e.fullName || e.name || 'Karyawan',
-            employeeCode: e.employeeNumber || e.employeeCode || e.nik || String(e.id),
-            departmentName: e.departmentName || e.department?.name || '',
-          }));
-          setEmployees(mapped);
-        }
+        const mapped = parseEmployeeOptions(res);
+        setEmployees(mapped);
       })
       .catch(() => {
         setError('Gagal memuat daftar karyawan untuk pemetaan.');

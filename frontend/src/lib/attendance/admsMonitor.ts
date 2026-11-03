@@ -219,3 +219,29 @@ export function validateNewAdmsDevice(
   }
   return null;
 }
+
+export interface EmployeeResolveOption {
+  id: number;
+  fullName: string;
+  employeeCode: string;
+  departmentName?: string;
+}
+
+export function parseEmployeeOptions(raw: unknown): EmployeeResolveOption[] {
+  let list: unknown[] = [];
+  if (Array.isArray(raw)) {
+    list = raw;
+  } else if (raw && typeof raw === 'object' && 'data' in raw && Array.isArray((raw as any).data)) {
+    list = (raw as any).data;
+  }
+
+  return list
+    .filter((item): item is Record<string, any> => Boolean(item && typeof item === 'object'))
+    .map(e => ({
+      id: Number(e.id),
+      fullName: String(e.fullName || e.name || 'Karyawan'),
+      employeeCode: String(e.employeeCode || e.employeeNumber || e.nik || e.id),
+      departmentName: e.departmentName || e.department?.name || '',
+    }))
+    .filter(e => !Number.isNaN(e.id) && e.id > 0);
+}
