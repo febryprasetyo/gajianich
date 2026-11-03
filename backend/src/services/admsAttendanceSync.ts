@@ -257,7 +257,7 @@ export async function cleanseAndIngestAdmsLogs(
           scheduleIn: previous?.scheduleIn || rec.scheduleIn || '08:00',
           scheduleOut: previous?.scheduleOut || rec.scheduleOut || '17:00',
           attendanceStatus: rec.attendanceStatus,
-        });
+        }, { lateToleranceMinutes: 5 });
 
         await client.query(
           `INSERT INTO public.attendance_records

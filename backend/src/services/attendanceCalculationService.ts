@@ -3,7 +3,7 @@ import {
   getWorkingScheduleForDate,
   DEFAULT_OFFICE_SHIFT,
 } from "../domain/attendanceSchedule";
-import type { WorkShift, ShiftAssignment } from "../domain/attendanceTypes";
+import type { WorkShift, ShiftAssignment, WorkHoursTemplate } from "../domain/attendanceTypes";
 
 export interface RawPunchInput {
   id?: number | string;
@@ -78,7 +78,11 @@ export function calculateAttendanceFromPunches(
   employeesMap: Map<string | number, { id: number; nik: string; fullName: string; departmentName?: string; departmentId?: number | null }>,
   shifts: WorkShift[],
   assignments: ShiftAssignment[],
-  options: { assignDefaultShiftIfUnassigned?: boolean } = {}
+  options: {
+    assignDefaultShiftIfUnassigned?: boolean;
+    workHoursMap?: Map<number, WorkHoursTemplate>;
+    defaultLateToleranceMinutes?: number;
+  } = {}
 ): CalculationResult {
   // 1. Group punches by employee + workDate
   const groups = new Map<string, RawPunchInput[]>();
@@ -144,14 +148,18 @@ export function calculateAttendanceFromPunches(
 
     // Active or Default Assigned Shift Calculation
     const effectiveShift = shift || DEFAULT_OFFICE_SHIFT;
-    const schedule = getWorkingScheduleForDate(workDate, effectiveShift);
+    const schedule = getWorkingScheduleForDate(workDate, effectiveShift, options.workHoursMap);
     const resolvedScheduleIn = schedule.scheduleIn ?? '';
     const resolvedScheduleOut = schedule.scheduleOut ?? '';
 
     const scanInMins = parseMinutesFromTime(scanIn);
     const schedInMins = parseMinutesFromTime(resolvedScheduleIn);
+    const lateTolerance = options.defaultLateToleranceMinutes !== undefined
+      ? Math.max(0, options.defaultLateToleranceMinutes)
+      : Math.max(0, schedule.lateToleranceMinutes ?? 0);
+    const lateThreshold = schedInMins + lateTolerance;
 
-    const lateMinutes = scanInMins > schedInMins ? scanInMins - schedInMins : 0;
+    const lateMinutes = scanInMins > lateThreshold ? scanInMins - lateThreshold : 0;
 
     let earlyMinutes = 0;
     if (scanOut) {
@@ -205,7 +213,8 @@ export function calculateAttendanceFromPunches(
 
 export function mergeAttendanceScans(
   previous: { scanIn?: string | null; scanOut?: string | null; scheduleIn?: string | null; scheduleOut?: string | null; attendanceStatus?: string | null } | null | undefined,
-  calculated: { scanIn?: string | null; scanOut?: string | null; scheduleIn?: string | null; scheduleOut?: string | null; attendanceStatus?: string | null }
+  calculated: { scanIn?: string | null; scanOut?: string | null; scheduleIn?: string | null; scheduleOut?: string | null; attendanceStatus?: string | null },
+  options: { lateToleranceMinutes?: number } = {}
 ): {
   scanIn: string | null;
   scanOut: string | null;
@@ -247,7 +256,9 @@ export function mergeAttendanceScans(
 
   const scanInMins = finalScanIn ? parseMinutesFromTime(finalScanIn) : 0;
   const schedInMins = parseMinutesFromTime(effectiveScheduleIn);
-  const lateMinutes = scanInMins > schedInMins ? scanInMins - schedInMins : 0;
+  const lateTolerance = Math.max(0, options.lateToleranceMinutes ?? 0);
+  const lateThreshold = schedInMins + lateTolerance;
+  const lateMinutes = scanInMins > lateThreshold ? scanInMins - lateThreshold : 0;
 
   let earlyMinutes = 0;
   if (finalScanOut) {

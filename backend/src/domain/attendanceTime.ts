@@ -43,12 +43,20 @@ export function localAttendanceTime(date: Date, timeZone: string) {
 
 export const minuteValue = (value: string) => Number(value.slice(0, 2)) * 60 + Number(value.slice(3, 5));
 
-export function attendanceMetrics(scheduleIn: string, scheduleOut: string, scanIn: string | null, scanOut: string | null, outDayOffset = 0) {
+export function attendanceMetrics(
+  scheduleIn: string,
+  scheduleOut: string,
+  scanIn: string | null,
+  scanOut: string | null,
+  outDayOffset = 0,
+  lateToleranceMinutes = 0
+) {
   const start = minuteValue(scheduleIn);
   const end = minuteValue(scheduleOut) + (minuteValue(scheduleOut) <= start ? 1440 : 0);
   const actualEnd = scanOut ? minuteValue(scanOut) + outDayOffset * 1440 : null;
+  const toleranceThreshold = start + Math.max(0, lateToleranceMinutes);
   return {
-    lateMinutes: scanIn ? Math.max(0, minuteValue(scanIn) - start) : 0,
+    lateMinutes: scanIn ? Math.max(0, minuteValue(scanIn) - toleranceThreshold) : 0,
     earlyMinutes: actualEnd === null ? 0 : Math.max(0, end - actualEnd),
     overtimeMinutes: actualEnd === null ? 0 : Math.max(0, actualEnd - end),
   };

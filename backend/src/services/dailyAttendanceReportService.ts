@@ -12,6 +12,7 @@ import {
   formatLocationUpdate,
   shouldAutoHighlightEmployee,
 } from '../domain/attendanceLocationFormat';
+import { minuteValue } from '../domain/attendanceTime';
 
 export interface DailyAttendanceEmployeeRow {
   no: number;
@@ -72,6 +73,44 @@ export function formatDateHeader(dateStr: string): string {
 export function formatTimeOnly(timeStr?: string | null): string | null {
   if (!timeStr) return null;
   return timeStr.slice(0, 5);
+}
+
+/**
+ * Computes whether an employee is late, honoring shift tolerance minutes.
+ * If recordedLateMinutes is present (from attendance_records), it is respected directly.
+ * Otherwise, calculates with tolerance: late if scanIn > scheduleIn + tolerance.
+ */
+export function computeIsLate(params: {
+  scanIn?: string | null;
+  scheduleIn?: string | null;
+  recordedLateMinutes?: number | null;
+  lateToleranceMinutes?: number;
+}): { isLate: boolean; lateMinutes: number } {
+  const { scanIn, scheduleIn, recordedLateMinutes, lateToleranceMinutes = 5 } = params;
+  if (!scanIn) {
+    return { isLate: false, lateMinutes: 0 };
+  }
+
+  // Pre-calculated lateMinutes from database record
+  if (typeof recordedLateMinutes === 'number') {
+    return {
+      isLate: recordedLateMinutes > 0,
+      lateMinutes: recordedLateMinutes,
+    };
+  }
+
+  // Fallback calculation using schedule and tolerance
+  const effectiveSchedIn = scheduleIn || '08:00';
+  const scanMins = minuteValue(scanIn);
+  const schedMins = minuteValue(effectiveSchedIn);
+  const tolerance = Math.max(0, lateToleranceMinutes);
+  const threshold = schedMins + tolerance;
+
+  const lateMinutes = scanMins > threshold ? scanMins - threshold : 0;
+  return {
+    isLate: lateMinutes > 0,
+    lateMinutes,
+  };
 }
 
 /**
@@ -281,10 +320,16 @@ export async function getDailyAttendanceReport(
     const rawScanIn = record?.scanIn || selfLog?.scanTime || null;
     const scanIn = formatTimeOnly(rawScanIn);
 
-    // Late calculation
-    const lateMinutes = record?.lateMinutes || 0;
+    // Late calculation with tolerance
     const scheduleIn = record?.scheduleIn || selfLog?.scheduleIn || '08:00';
-    const isLate = lateMinutes > 0 || Boolean(scanIn && scanIn > scheduleIn);
+    const lateCalc = computeIsLate({
+      scanIn,
+      scheduleIn,
+      recordedLateMinutes: record?.lateMinutes,
+      lateToleranceMinutes: 5,
+    });
+    const lateMinutes = lateCalc.lateMinutes;
+    const isLate = lateCalc.isLate;
 
     // Keterangan
     let leaveReason: string | null = null;

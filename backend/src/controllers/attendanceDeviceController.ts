@@ -714,7 +714,7 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
           scheduleIn: effectiveScheduleIn,
           scheduleOut: effectiveScheduleOut,
           attendanceStatus: rec.attendanceStatus,
-        });
+        }, { lateToleranceMinutes: 5 });
 
         await db
           .insert(attendanceRecords)

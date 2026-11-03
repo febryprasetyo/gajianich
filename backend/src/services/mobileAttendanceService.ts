@@ -166,7 +166,7 @@ export async function projectApprovedLog(tx: any, log: SelfLog) {
     scheduleIn,
     scheduleOut,
     shift,
-    ...attendanceMetrics(scheduleIn, scheduleOut, scanIn, scanOut, offset),
+    ...attendanceMetrics(scheduleIn, scheduleOut, scanIn, scanOut, offset, (log as any).lateToleranceMinutes ?? 0),
     attendanceStatus: approved.some(l => !l.isWithinGeofence) ? 'DINAS_LUAR' : (storedRecord?.attendanceStatus || 'PRESENT'),
     updatedAt: new Date()
   };

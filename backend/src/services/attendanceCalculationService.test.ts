@@ -80,9 +80,45 @@ test("calculateAttendanceFromPunches flags tardiness correctly", () => {
   const result = calculateAttendanceFromPunches(punches, employeesMap, MOCK_SHIFTS, MOCK_ASSIGNMENTS);
 
   const record = result.processedRecords[0];
-  assert.strictEqual(record.lateMinutes, 25);
+  // Toleransi 5m: 08:25 adalah 25 menit setelah jadwal 08:00, dikurangi toleransi 5m -> terlambat 20 menit
+  assert.strictEqual(record.lateMinutes, 20);
   assert.strictEqual(record.statusLabel, "Terlambat");
   assert.strictEqual(record.attendanceStatus, "LATE");
+});
+
+test("calculateAttendanceFromPunches respects late tolerance for 08:01 and 08:05 (on-time) and 08:06 (late 1m)", () => {
+  const employeesMap = new Map();
+  employeesMap.set(101, { id: 101, nik: "101", fullName: "Budi Santoso", departmentName: "IT", departmentId: 1 });
+
+  // 1. Scan 08:01 (telat 1m, masih dalam batas toleransi 5m) -> on time
+  const punches0801 = [
+    { pin: "101", employeeId: 101, timestamp: "2026-10-27 08:01:00", workDate: "2026-10-27" },
+    { pin: "101", employeeId: 101, timestamp: "2026-10-27 17:00:00", workDate: "2026-10-27" },
+  ];
+  const res0801 = calculateAttendanceFromPunches(punches0801, employeesMap, MOCK_SHIFTS, MOCK_ASSIGNMENTS);
+  assert.strictEqual(res0801.processedRecords[0].lateMinutes, 0);
+  assert.strictEqual(res0801.processedRecords[0].statusLabel, "Hadir Tepat Waktu");
+  assert.strictEqual(res0801.processedRecords[0].attendanceStatus, "PRESENT");
+
+  // 2. Scan 08:05 (tepat batas toleransi 5m) -> on time
+  const punches0805 = [
+    { pin: "101", employeeId: 101, timestamp: "2026-10-27 08:05:00", workDate: "2026-10-27" },
+    { pin: "101", employeeId: 101, timestamp: "2026-10-27 17:00:00", workDate: "2026-10-27" },
+  ];
+  const res0805 = calculateAttendanceFromPunches(punches0805, employeesMap, MOCK_SHIFTS, MOCK_ASSIGNMENTS);
+  assert.strictEqual(res0805.processedRecords[0].lateMinutes, 0);
+  assert.strictEqual(res0805.processedRecords[0].statusLabel, "Hadir Tepat Waktu");
+  assert.strictEqual(res0805.processedRecords[0].attendanceStatus, "PRESENT");
+
+  // 3. Scan 08:06 (lewat 1 menit dari batas toleransi 5m) -> terlambat 1 menit
+  const punches0806 = [
+    { pin: "101", employeeId: 101, timestamp: "2026-10-27 08:06:00", workDate: "2026-10-27" },
+    { pin: "101", employeeId: 101, timestamp: "2026-10-27 17:00:00", workDate: "2026-10-27" },
+  ];
+  const res0806 = calculateAttendanceFromPunches(punches0806, employeesMap, MOCK_SHIFTS, MOCK_ASSIGNMENTS);
+  assert.strictEqual(res0806.processedRecords[0].lateMinutes, 1);
+  assert.strictEqual(res0806.processedRecords[0].statusLabel, "Terlambat");
+  assert.strictEqual(res0806.processedRecords[0].attendanceStatus, "LATE");
 });
 
 test("calculateAttendanceFromPunches routes unassigned employees to unassignedShiftRecords", () => {
@@ -197,6 +233,10 @@ test("mergeAttendanceScans correctly computes late minutes from mobile IN with m
   assert.strictEqual(merged.scanOut, "17:00");
   assert.strictEqual(merged.lateMinutes, 25);
   assert.strictEqual(merged.earlyMinutes, 0);
+
+  // With tolerance 5m: 08:25 - 08:05 = 20m
+  const mergedWithTol = mergeAttendanceScans(previousMobileRecord, machineCalculation, { lateToleranceMinutes: 5 });
+  assert.strictEqual(mergedWithTol.lateMinutes, 20);
 });
 
 test("mergeAttendanceScans preserves machine scans when no previous mobile record exists", () => {
