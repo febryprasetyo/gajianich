@@ -25,6 +25,7 @@ import {
 } from "../db/schema/attendanceWorkspace";
 import { appendHrAudit, type AuditTx } from "./hrAudit";
 import { sanitizeAuditTarget, type AuditContext } from "../domain/hrAudit";
+import { minuteValue } from "../domain/attendanceTime";
 import type {
   AttendanceDataset,
   WorkShift,
@@ -215,26 +216,50 @@ export async function loadAttendanceWorkspace(
       externalNoId: i.externalNoId,
       employeeId: i.employeeId,
     })),
-    records: (await approvedAttendanceRecords(recRows, tx)).map((r) => ({
-      id: r.id,
-      employeeId: r.employeeId,
-      workDate: r.workDate,
-      shift: r.shift,
-      scheduleIn: r.scheduleIn,
-      scheduleOut: r.scheduleOut,
-      scanIn: r.scanIn,
-      scanOut: r.scanOut,
-      rawScanIn: r.rawScanIn,
-      rawScanOut: r.rawScanOut,
-      lateMinutes: r.lateMinutes,
-      earlyMinutes: r.earlyMinutes,
-      overtimeMinutes: r.overtimeMinutes,
-      attendanceStatus: r.attendanceStatus as any,
-      isDayOff: r.isDayOff,
-      normalized: r.normalized,
-      revision: r.revision,
-      sourceBatchId: r.sourceBatchId,
-    })),
+    records: (await approvedAttendanceRecords(recRows, tx)).map((r) => {
+      let lateMinutes = r.lateMinutes;
+      let attendanceStatus = r.attendanceStatus;
+      if (
+        r.scanIn &&
+        r.scheduleIn &&
+        !r.isDayOff &&
+        r.attendanceStatus !== 'DINAS_LUAR' &&
+        r.attendanceStatus !== 'CUTI' &&
+        r.attendanceStatus !== 'SAKIT' &&
+        r.attendanceStatus !== 'IZIN'
+      ) {
+        const scanMins = minuteValue(r.scanIn);
+        const schedMins = minuteValue(r.scheduleIn);
+        const tolerance = 5;
+        const threshold = schedMins + tolerance;
+        lateMinutes = scanMins > threshold ? scanMins - threshold : 0;
+        if (lateMinutes === 0 && attendanceStatus === 'LATE') {
+          attendanceStatus = 'PRESENT';
+        } else if (lateMinutes > 0 && attendanceStatus === 'PRESENT') {
+          attendanceStatus = 'LATE';
+        }
+      }
+      return {
+        id: r.id,
+        employeeId: r.employeeId,
+        workDate: r.workDate,
+        shift: r.shift,
+        scheduleIn: r.scheduleIn,
+        scheduleOut: r.scheduleOut,
+        scanIn: r.scanIn,
+        scanOut: r.scanOut,
+        rawScanIn: r.rawScanIn,
+        rawScanOut: r.rawScanOut,
+        lateMinutes,
+        earlyMinutes: r.earlyMinutes,
+        overtimeMinutes: r.overtimeMinutes,
+        attendanceStatus: attendanceStatus as any,
+        isDayOff: r.isDayOff,
+        normalized: r.normalized,
+        revision: r.revision,
+        sourceBatchId: r.sourceBatchId,
+      };
+    }),
     batches,
     audit: [],
     revisions: revRows.map((rv) => ({
@@ -1221,16 +1246,24 @@ export async function executeAttendanceCommand(
 
           const owner = await requireScopedEmployee(scope,r.employeeId,tx);
           if (existingRec && existingRec.groupId !== owner.groupId) throw new ValidationError("Historical attendance ownership mismatch");
+          const scanInMins = r.scanIn ? minuteValue(r.scanIn) : null;
+          const schedInMins = schedule.scheduleIn ? minuteValue(schedule.scheduleIn) : null;
+          const tol = Math.max(0, (schedule as any).lateToleranceMinutes ?? 5);
+          const effectiveLate = scanInMins !== null && schedInMins !== null
+            ? (scanInMins > schedInMins + tol ? scanInMins - (schedInMins + tol) : 0)
+            : (r.lateMinutes || 0);
+          const effectiveStatus = effectiveLate > 0 ? "LATE" : (r.attendanceStatus === "LATE" ? "PRESENT" : (r.attendanceStatus || "PRESENT"));
+
           if (existingRec) {
             await tx
               .update(attendanceRecords)
               .set({
                 scanIn: r.scanIn,
                 scanOut: r.scanOut,
-                lateMinutes: r.lateMinutes,
+                lateMinutes: effectiveLate,
                 earlyMinutes: r.earlyMinutes,
                 overtimeMinutes: r.overtimeMinutes,
-                attendanceStatus: r.attendanceStatus || "PRESENT",
+                attendanceStatus: effectiveStatus,
                 sourceBatchId: command.batchId,
                 ...schedule,
                 revision: existingRec.revision + 1,
@@ -1246,10 +1279,10 @@ export async function executeAttendanceCommand(
               scanOut: r.scanOut,
               rawScanIn: r.rawScanIn,
               rawScanOut: r.rawScanOut,
-              lateMinutes: r.lateMinutes,
+              lateMinutes: effectiveLate,
               earlyMinutes: r.earlyMinutes,
               overtimeMinutes: r.overtimeMinutes,
-              attendanceStatus: r.attendanceStatus || "PRESENT",
+              attendanceStatus: effectiveStatus,
               sourceBatchId: command.batchId,
               ...schedule,
               revision: 1,
