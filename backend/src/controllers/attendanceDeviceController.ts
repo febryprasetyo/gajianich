@@ -193,17 +193,14 @@ export async function deleteAttendanceDeviceHandler(req: Request, res: Response)
     let deleted: any = null;
     await db.transaction(async (tx) => {
       // Hapus relasi pendaftaran ADMS jika tabel adms.devices tersedia
-      await tx.execute(sql`
-        DO $$
-        BEGIN
-          IF EXISTS (
-            SELECT 1 FROM information_schema.tables 
-            WHERE table_schema = 'adms' AND table_name = 'devices'
-          ) THEN
-            DELETE FROM adms.devices WHERE device_id = ${deviceId};
-          END IF;
-        END $$;
+      const checkAdms = await tx.execute(sql`
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'adms' AND table_name = 'devices'
       `);
+      if (checkAdms.rowCount && checkAdms.rowCount > 0) {
+        await tx.execute(sql`DELETE FROM adms.devices WHERE device_id = ${deviceId}`);
+      }
+
       const [res] = await tx
         .delete(attendanceDevices)
         .where(eq(attendanceDevices.id, deviceId))
