@@ -14,3 +14,4 @@ WHERE scan_in IS NOT NULL
   AND schedule_in ~ '^[0-9]{2}:[0-9]{2}'
   AND is_day_off = false
   AND attendance_status IN ('PRESENT', 'LATE');
+
