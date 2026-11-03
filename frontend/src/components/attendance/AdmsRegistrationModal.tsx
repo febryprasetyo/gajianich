@@ -179,7 +179,7 @@ export default function AdmsRegistrationModal({
           ? `Perbarui nomor seri dan status penerimaan data untuk ${editDevice.name}`
           : 'Daftarkan perangkat presensi untuk penerimaan data otomatis via Nama Domain'
       }
-      size="md"
+      maxWidthClass="max-w-md"
       footer={
         <div className="flex w-full items-center justify-between gap-3">
           <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
