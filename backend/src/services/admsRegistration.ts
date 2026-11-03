@@ -16,12 +16,14 @@ const fail = (message: string, statusCode = 400) => Object.assign(new Error(mess
 
 /**
  * Validates and normalizes IPv4 or CIDR notation.
- * Rejects too broad masks (< 16), invalid octets, 0.0.0.0/0, and non-IPv4 strings.
+ * If raw is empty or undefined, returns '0.0.0.0/0' (accepts all push sources for domain-based setup).
+ * Rejects too broad masks (< 16 except /0), invalid octets, and non-IPv4 strings.
  */
 export function parseSourceCidr(raw: unknown): string {
+  if (raw === undefined || raw === null || raw === '') return '0.0.0.0/0';
   if (typeof raw !== 'string') throw fail('IP / CIDR tidak valid.');
   const trimmed = raw.trim();
-  if (!trimmed) throw fail('IP / CIDR tidak valid.');
+  if (!trimmed || trimmed === '0.0.0.0/0') return '0.0.0.0/0';
 
   const parts = trimmed.split('/');
   if (parts.length > 2) throw fail('IP / CIDR tidak valid.');
@@ -39,15 +41,16 @@ export function parseSourceCidr(raw: unknown): string {
     if (num < 0 || num > 255) throw fail('IP / CIDR tidak valid.');
   }
 
-  // Reject 0.0.0.0
-  if (ip === '0.0.0.0') throw fail('IP / CIDR tidak valid.');
-
   let mask = 32;
   if (maskStr !== undefined) {
     if (!/^\d{1,2}$/.test(maskStr)) throw fail('IP / CIDR tidak valid.');
     mask = Number(maskStr);
+    if (mask === 0 && ip === '0.0.0.0') return '0.0.0.0/0';
     if (mask < 16 || mask > 32) throw fail('IP / CIDR tidak valid (subnet mask harus antara /16 dan /32).');
   }
+
+  // Reject 0.0.0.0 unless /0
+  if (ip === '0.0.0.0' && mask !== 0) throw fail('IP / CIDR tidak valid.');
 
   return `${ip}/${mask}`;
 }
@@ -57,17 +60,17 @@ export type RegisterAdmsInput =
       mode: 'existing';
       deviceId: number;
       serial: string;
-      sourceCidr: string;
+      sourceCidr?: string;
       enabled: boolean;
     }
   | {
       mode: 'new';
       name: string;
-      ip: string;
-      port: number;
+      ip?: string;
+      port?: number;
       groupId?: number;
       serial: string;
-      sourceCidr: string;
+      sourceCidr?: string;
       enabled: boolean;
     };
 
@@ -108,15 +111,18 @@ export function parseRegisterInput(input: Record<string, unknown>): RegisterAdms
   }
   const name = rawName.trim();
 
-  const rawIp = input.ip;
-  if (typeof rawIp !== 'string' || !rawIp.trim()) {
-    throw fail('Input registrasi ADMS tidak valid: Alamat IP mesin harus diisi.');
-  }
-  const ip = rawIp.trim();
-  // Validate IPv4 format
-  const octets = ip.split('.');
-  if (octets.length !== 4 || octets.some(o => !/^\d{1,3}$/.test(o) || Number(o) < 0 || Number(o) > 255)) {
-    throw fail('Input registrasi ADMS tidak valid: Format IP mesin tidak valid.');
+  // For domain-based ADMS, IP is optional. If not provided, fallback to "adms-${serial}"
+  let ip = `adms-${serial}`;
+  if (input.ip !== undefined && input.ip !== null && input.ip !== '') {
+    const rawIp = String(input.ip).trim();
+    if (rawIp) {
+      // Validate IPv4 format if explicit IP is supplied
+      const octets = rawIp.split('.');
+      if (octets.length !== 4 || octets.some(o => !/^\d{1,3}$/.test(o) || Number(o) < 0 || Number(o) > 255)) {
+        throw fail('Input registrasi ADMS tidak valid: Format IP mesin tidak valid.');
+      }
+      ip = rawIp;
+    }
   }
 
   let port = 4370;
@@ -137,7 +143,7 @@ export function parseRegisterInput(input: Record<string, unknown>): RegisterAdms
     groupId = parsedGroupId;
   }
 
-  const rawSourceCidr = input.sourceCidr ? String(input.sourceCidr).trim() : `${ip}/32`;
+  const rawSourceCidr = input.sourceCidr ? String(input.sourceCidr).trim() : (ip.startsWith('adms-') ? '0.0.0.0/0' : `${ip}/32`);
   const sourceCidr = parseSourceCidr(rawSourceCidr);
 
   return { mode: 'new', name, ip, port, groupId, serial, sourceCidr, enabled };

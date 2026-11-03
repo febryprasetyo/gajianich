@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, type FormEvent } from 'react';
-import { Cpu, ShieldCheck, PlusCircle, Server, Loader2 } from 'lucide-react';
+import { Cpu, ShieldCheck, PlusCircle, Server, Loader2, Globe } from 'lucide-react';
 import ModalShell from '@/components/ui/ModalShell';
 import { apiFetch } from '@/lib/api';
 import { useOrganizationScope } from '@/context/OrganizationScopeContext';
@@ -37,18 +37,13 @@ export default function AdmsRegistrationModal({
   // Form State: Existing Device Mode
   const [deviceId, setDeviceId] = useState('');
   const [serial, setSerial] = useState('');
-  const [sourceCidr, setSourceCidr] = useState('');
   const [enabled, setEnabled] = useState(true);
 
   // Form State: New Device Mode
   const [newName, setNewName] = useState('');
   const [newGroupId, setNewGroupId] = useState<number | null>(selectedGroupId);
-  const [newIp, setNewIp] = useState('');
-  const [newPort, setNewPort] = useState('4370');
   const [newSerial, setNewSerial] = useState('');
-  const [newSourceCidr, setNewSourceCidr] = useState('');
   const [newEnabled, setNewEnabled] = useState(true);
-  const [allowlistTouched, setAllowlistTouched] = useState(false);
 
   // Direct candidates fallback fetching
   const [fetchedCandidates, setFetchedCandidates] = useState<AdmsCandidateDevice[]>([]);
@@ -68,23 +63,17 @@ export default function AdmsRegistrationModal({
       setMode('existing');
       setDeviceId(String(editDevice.id));
       setSerial(editDevice.serialNumber || '');
-      setSourceCidr(editDevice.allowedNetwork || (editDevice.ip ? `${editDevice.ip}/32` : ''));
       setEnabled(editDevice.admsEnabled);
     } else {
       setMode('existing');
       setDeviceId('');
       setSerial('');
-      setSourceCidr('');
       setEnabled(true);
 
       setNewName('');
       setNewGroupId(selectedGroupId ?? availableGroups[0]?.id ?? null);
-      setNewIp('');
-      setNewPort('4370');
       setNewSerial('');
-      setNewSourceCidr('');
       setNewEnabled(true);
-      setAllowlistTouched(false);
 
       // Fetch candidates directly if candidates prop is empty
       if (candidates.length === 0) {
@@ -113,22 +102,7 @@ export default function AdmsRegistrationModal({
     const found = activeCandidates.find(c => String(c.id) === selectedId);
     if (found) {
       if (found.serialNumber) setSerial(found.serialNumber);
-      if (found.allowedNetwork) {
-        setSourceCidr(found.allowedNetwork);
-      } else if (found.ip) {
-        setSourceCidr(`${found.ip}/32`);
-      }
       setEnabled(found.admsRegistered ? found.admsEnabled : true);
-    }
-  };
-
-  // When user types IP in new device mode, auto-fill sourceCidr if untouched
-  const handleNewIpChange = (ipVal: string) => {
-    setNewIp(ipVal);
-    setError(null);
-    if (!allowlistTouched) {
-      const trimmed = ipVal.trim();
-      setNewSourceCidr(trimmed ? `${trimmed}/32` : '');
     }
   };
 
@@ -137,14 +111,14 @@ export default function AdmsRegistrationModal({
     if (submitting) return;
 
     if (mode === 'existing') {
-      const validation = validateAdmsRegistration(selectedGroupId, deviceId, serial, sourceCidr);
+      const validation = validateAdmsRegistration(selectedGroupId, deviceId, serial);
       if (validation) {
         setError(validation);
         return;
       }
     } else {
       const targetGroup = newGroupId ?? selectedGroupId;
-      const validation = validateNewAdmsDevice(targetGroup, newName, newIp, newPort, newSerial, newSourceCidr);
+      const validation = validateNewAdmsDevice(targetGroup, newName, newSerial);
       if (validation) {
         setError(validation);
         return;
@@ -161,17 +135,13 @@ export default function AdmsRegistrationModal({
         payload = {
           deviceId: Number(deviceId),
           serial: serial.trim(),
-          sourceCidr: sourceCidr.trim(),
           enabled,
         };
       } else {
         payload = {
           name: newName.trim(),
           groupId: newGroupId ?? selectedGroupId,
-          ip: newIp.trim(),
-          port: Number(newPort),
           serial: newSerial.trim(),
-          sourceCidr: (newSourceCidr || `${newIp.trim()}/32`).trim(),
           enabled: newEnabled,
         };
       }
@@ -203,53 +173,80 @@ export default function AdmsRegistrationModal({
     <ModalShell
       isOpen={isOpen}
       onClose={onClose}
-      isLoading={submitting}
-      title={editDevice ? 'Edit Allowlist Mesin ADMS' : 'Registrasi Mesin ADMS'}
+      title={editDevice ? 'Pengaturan Mesin ADMS' : 'Registrasi Mesin ADMS'}
       subtitle={
         editDevice
-          ? `Perbarui IP allowlist untuk mesin ${editDevice.name}`
-          : 'Daftarkan perangkat dan atur allowlist jaringan untuk penerimaan data ADMS'
+          ? `Perbarui nomor seri dan status penerimaan data untuk ${editDevice.name}`
+          : 'Daftarkan perangkat presensi untuk penerimaan data otomatis via Nama Domain'
       }
-      icon={<Cpu className="h-5 w-5 text-emerald-600" aria-hidden="true" />}
+      size="md"
       footer={
-        <>
-          <button
-            type="button"
-            disabled={submitting}
-            onClick={onClose}
-            className="min-h-10 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-          >
-            Batal
-          </button>
-          <button
-            type="submit"
-            form="adms-registration-form"
-            disabled={submitting || effectiveGroupId === null}
-            className="min-h-10 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-          >
-            {submitting ? 'Menyimpan…' : editDevice ? 'Simpan Perubahan' : mode === 'new' ? 'Buat & Daftarkan ADMS' : 'Simpan & Daftarkan'}
-          </button>
-        </>
+        <div className="flex w-full items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+            <Globe className="h-3.5 w-3.5 text-emerald-600" />
+            <span>Koneksi Cloud Domain (Port 8081)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={onClose}
+              className="min-h-10 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              form="adms-registration-form"
+              disabled={submitting}
+              className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 disabled:opacity-60 cursor-pointer"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Menyimpan…</span>
+                </>
+              ) : editDevice ? (
+                'Simpan Perubahan'
+              ) : mode === 'new' ? (
+                'Buat & Daftarkan ADMS'
+              ) : (
+                'Simpan & Daftarkan'
+              )}
+            </button>
+          </div>
+        </div>
       }
     >
       <div className="space-y-4 text-xs">
-        {/* Tab Selection: Only visible when NOT editing */}
+        {/* Banner Petunjuk Domain */}
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-emerald-900 flex items-start gap-2.5">
+          <Globe className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+          <div className="space-y-0.5 leading-relaxed text-[11px]">
+            <p className="font-semibold text-emerald-950">Koneksi Otomatis Berbasis Nama Domain</p>
+            <p className="text-emerald-800">
+              Mesin absensi akan mengirim log presensi secara otomatis via internet menggunakan nama domain server ADMS. Alamat IP tidak diperlukan lagi.
+            </p>
+          </div>
+        </div>
+
+        {/* Mode Switcher Tabs (Only when not in edit mode) */}
         {!editDevice && (
-          <div className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1">
+          <div className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 font-medium text-slate-600">
             <button
               type="button"
               onClick={() => {
                 setMode('existing');
                 setError(null);
               }}
-              className={`flex items-center justify-center gap-2 rounded-lg py-2 text-xs font-semibold transition-all ${
+              className={`flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs transition-colors cursor-pointer ${
                 mode === 'existing'
-                  ? 'bg-white text-emerald-800 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white font-semibold text-emerald-800 shadow-2xs'
+                  : 'hover:text-slate-900'
               }`}
             >
-              <Server className="h-4 w-4" />
-              <span>Pilih Mesin Terdaftar</span>
+              <Cpu className="h-3.5 w-3.5" />
+              <span>Daftarkan Mesin yang Ada</span>
             </button>
             <button
               type="button"
@@ -257,13 +254,13 @@ export default function AdmsRegistrationModal({
                 setMode('new');
                 setError(null);
               }}
-              className={`flex items-center justify-center gap-2 rounded-lg py-2 text-xs font-semibold transition-all ${
+              className={`flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs transition-colors cursor-pointer ${
                 mode === 'new'
-                  ? 'bg-white text-emerald-800 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white font-semibold text-emerald-800 shadow-2xs'
+                  : 'hover:text-slate-900'
               }`}
             >
-              <PlusCircle className="h-4 w-4" />
+              <PlusCircle className="h-3.5 w-3.5" />
               <span>Daftarkan Mesin Baru</span>
             </button>
           </div>
@@ -271,29 +268,32 @@ export default function AdmsRegistrationModal({
 
         <form id="adms-registration-form" onSubmit={handleSubmit} className="space-y-3.5">
           {mode === 'existing' ? (
-            /* Mode 1: Existing Device Selection */
+            /* Mode 1: Existing Device Registration */
             <>
+              {/* Device Selector */}
               <label className="block space-y-1 font-medium text-slate-700">
-                <div className="flex items-center justify-between">
-                  <span>Pilih Mesin Absensi</span>
+                <span className="flex items-center justify-between">
+                  <span>Pilih Mesin Absensi Terdaftar</span>
                   {loadingCandidates && (
-                    <span className="flex items-center gap-1 text-[11px] text-slate-400">
-                      <Loader2 className="h-3 w-3 animate-spin" /> Memuat mesin…
+                    <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Memuat daftar…
                     </span>
                   )}
-                </div>
+                </span>
                 <select
                   required
-                  disabled={submitting || Boolean(editDevice) || loadingCandidates}
+                  disabled={submitting || Boolean(editDevice)}
                   className={inputClass}
                   value={deviceId}
                   onChange={e => handleDeviceChange(e.target.value)}
                 >
-                  <option value="">-- Pilih Mesin Absensi --</option>
+                  <option value="">-- Pilih Mesin --</option>
                   {activeCandidates.map(device => (
                     <option key={device.id} value={device.id}>
-                      {device.name} · IP: {device.ip}
-                      {device.groupName ? ` (${device.groupName})` : ''}
+                      {device.name}
+                      {device.serialNumber ? ` (${device.serialNumber})` : ''}
+                      {device.groupName ? ` · [${device.groupName}]` : ''}
                       {device.admsRegistered ? ' [Terdaftar ADMS]' : ''}
                     </option>
                   ))}
@@ -326,26 +326,6 @@ export default function AdmsRegistrationModal({
                 />
                 <span className="block text-[11px] font-normal text-slate-500">
                   Harus sesuai dengan nomor seri yang tertera pada stiker fisik atau menu info perangkat.
-                </span>
-              </label>
-
-              {/* Allowed Network (CIDR) */}
-              <label className="block space-y-1 font-medium text-slate-700">
-                <span>Alamat IP / Subnet Mesin (Allowlist)</span>
-                <input
-                  required
-                  type="text"
-                  placeholder="Contoh: 192.168.10.224 atau 192.168.10.0/24"
-                  disabled={submitting}
-                  className={inputClass}
-                  value={sourceCidr}
-                  onChange={e => {
-                    setSourceCidr(e.target.value);
-                    setError(null);
-                  }}
-                />
-                <span className="block text-[11px] font-normal text-slate-500">
-                  Gunakan format IP (/32) misal <code className="font-mono">192.168.10.224</code> atau subnet kantor misal <code className="font-mono">192.168.10.0/24</code>.
                 </span>
               </label>
 
@@ -404,41 +384,6 @@ export default function AdmsRegistrationModal({
                 </label>
               )}
 
-              {/* IP & Port Grid */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-2">
-                  <label className="block space-y-1 font-medium text-slate-700">
-                    <span>Alamat IP Mesin (LAN)</span>
-                    <input
-                      required
-                      type="text"
-                      placeholder="Contoh: 192.168.10.250"
-                      disabled={submitting}
-                      className={inputClass}
-                      value={newIp}
-                      onChange={e => handleNewIpChange(e.target.value)}
-                    />
-                  </label>
-                </div>
-                <div>
-                  <label className="block space-y-1 font-medium text-slate-700">
-                    <span>Port Mesin</span>
-                    <input
-                      required
-                      type="number"
-                      placeholder="4370"
-                      disabled={submitting}
-                      className={inputClass}
-                      value={newPort}
-                      onChange={e => {
-                        setNewPort(e.target.value);
-                        setError(null);
-                      }}
-                    />
-                  </label>
-                </div>
-              </div>
-
               {/* Serial Number */}
               <label className="block space-y-1 font-medium text-slate-700">
                 <span>Nomor Seri Mesin (SN)</span>
@@ -454,26 +399,8 @@ export default function AdmsRegistrationModal({
                     setError(null);
                   }}
                 />
-              </label>
-
-              {/* Allowlist CIDR */}
-              <label className="block space-y-1 font-medium text-slate-700">
-                <span>Alamat IP / Subnet Allowlist ADMS</span>
-                <input
-                  required
-                  type="text"
-                  placeholder="Contoh: 192.168.10.250/32 atau 192.168.10.0/24"
-                  disabled={submitting}
-                  className={inputClass}
-                  value={newSourceCidr}
-                  onChange={e => {
-                    setAllowlistTouched(true);
-                    setNewSourceCidr(e.target.value);
-                    setError(null);
-                  }}
-                />
                 <span className="block text-[11px] font-normal text-slate-500">
-                  Otomatis disamakan dengan IP mesin jika tidak diubah.
+                  Nomor seri unik mesin yang akan mengirim data ke server ADMS.
                 </span>
               </label>
 

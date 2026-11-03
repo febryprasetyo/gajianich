@@ -189,8 +189,9 @@ test('validateCidrInput validates IPv4 and subnet mask boundaries', () => {
   assert.equal(validateCidrInput('192.168.10.224/32'), null);
   assert.equal(validateCidrInput('192.168.10.0/24'), null);
   assert.equal(validateCidrInput('10.0.0.0/16'), null);
+  assert.equal(validateCidrInput('0.0.0.0/0'), null);
+  assert.equal(validateCidrInput(''), null); // Empty allowlist is permitted (defaults to domain push)
 
-  assert.ok(validateCidrInput(''));
   assert.ok(validateCidrInput('0.0.0.0'));
   assert.ok(validateCidrInput('192.168.10.256'));
   assert.ok(validateCidrInput('192.168.10.0/8'));
@@ -198,22 +199,24 @@ test('validateCidrInput validates IPv4 and subnet mask boundaries', () => {
   assert.ok(validateCidrInput('not an ip'));
 });
 
-test('validateAdmsRegistration validates group, device, serial, and cidr', () => {
+test('validateAdmsRegistration validates group, device, and serial without requiring cidr', () => {
+  assert.equal(validateAdmsRegistration(1, '2', 'WAE4242300038'), null);
   assert.equal(validateAdmsRegistration(1, '2', 'WAE4242300038', '192.168.10.4'), null);
-  assert.ok(validateAdmsRegistration(null, '2', 'WAE4242300038', '192.168.10.4'));
-  assert.ok(validateAdmsRegistration(1, '', 'WAE4242300038', '192.168.10.4'));
-  assert.ok(validateAdmsRegistration(1, '2', '', '192.168.10.4'));
-  assert.ok(validateAdmsRegistration(1, '2', 'INVALID SERIAL$$', '192.168.10.4'));
+  assert.ok(validateAdmsRegistration(null, '2', 'WAE4242300038'));
+  assert.ok(validateAdmsRegistration(1, '', 'WAE4242300038'));
+  assert.ok(validateAdmsRegistration(1, '2', ''));
+  assert.ok(validateAdmsRegistration(1, '2', 'INVALID SERIAL$$'));
   assert.ok(validateAdmsRegistration(1, '2', 'WAE4242300038', 'invalid_cidr'));
 });
 
-test('validateNewAdmsDevice validates name, ip, port, group, serial, and cidr', () => {
-  assert.equal(validateNewAdmsDevice(1, 'Absensi Baru', '192.168.10.50', 4370, 'WAE9999999999', '192.168.10.50/32'), null);
-  // Auto defaults sourceCidr when empty
-  assert.equal(validateNewAdmsDevice(1, 'Absensi Baru', '192.168.10.50', '4370', 'WAE9999999999', ''), null);
-  assert.ok(validateNewAdmsDevice(null, 'Absensi Baru', '192.168.10.50', 4370, 'WAE9999999999', ''));
-  assert.ok(validateNewAdmsDevice(1, '', '192.168.10.50', 4370, 'WAE9999999999', ''));
-  assert.ok(validateNewAdmsDevice(1, 'Absensi Baru', 'not an ip', 4370, 'WAE9999999999', ''));
-  assert.ok(validateNewAdmsDevice(1, 'Absensi Baru', '192.168.10.50', 99999, 'WAE9999999999', ''));
-  assert.ok(validateNewAdmsDevice(1, 'Absensi Baru', '192.168.10.50', 4370, '', ''));
+test('validateNewAdmsDevice validates name, group, and serial without requiring ip or cidr', () => {
+  // Domain-based registration without IP/port/CIDR
+  assert.equal(validateNewAdmsDevice(1, 'Absensi Baru', 'WAE9999999999'), null);
+  // Optional IP and port
+  assert.equal(validateNewAdmsDevice(1, 'Absensi Baru', 'WAE9999999999', '192.168.10.50', 4370, '192.168.10.50/32'), null);
+  assert.ok(validateNewAdmsDevice(null, 'Absensi Baru', 'WAE9999999999'));
+  assert.ok(validateNewAdmsDevice(1, '', 'WAE9999999999'));
+  assert.ok(validateNewAdmsDevice(1, 'Absensi Baru', ''));
+  assert.ok(validateNewAdmsDevice(1, 'Absensi Baru', 'WAE9999999999', 'not an ip'));
+  assert.ok(validateNewAdmsDevice(1, 'Absensi Baru', 'WAE9999999999', '192.168.10.50', 99999));
 });

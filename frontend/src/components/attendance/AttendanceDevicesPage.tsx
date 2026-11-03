@@ -299,25 +299,14 @@ export default function AttendanceDevicesPage() {
           return;
         }
 
-        const cidr = newDeviceSourceCidr.trim()
-          ? newDeviceSourceCidr.includes("/")
-            ? newDeviceSourceCidr.trim()
-            : `${newDeviceSourceCidr.trim()}/32`
-          : newDeviceIp
-          ? `${newDeviceIp.trim()}/32`
-          : "127.0.0.1/32";
-
         const res = await apiFetch<{ success: boolean; message?: string }>(
           "/attendance/devices/adms/register",
           {
             method: "POST",
             body: JSON.stringify({
               mode: "new",
-              name: newDeviceName,
+              name: newDeviceName.trim(),
               serial: newDeviceSerial.trim(),
-              ip: newDeviceIp.trim() || "0.0.0.0",
-              port: 4370,
-              sourceCidr: cidr,
               enabled: true,
               groupId: selectedGroupId,
             }),
@@ -327,7 +316,7 @@ export default function AttendanceDevicesPage() {
         if (res.success) {
           setIsAddModalOpen(false);
           resetAddForm();
-          setPageToast("Mesin Cloud ADMS baru berhasil didaftarkan.");
+          setPageToast("Mesin Cloud ADMS baru berhasil didaftarkan via nama domain.");
           fetchDevices();
           setTimeout(() => setPageToast(null), 3000);
         }
@@ -597,7 +586,7 @@ export default function AttendanceDevicesPage() {
                   <th className="py-2.5 px-4">Nama Mesin ADMS</th>
                   <th className="py-2.5 px-4">Status Penerimaan</th>
                   <th className="py-2.5 px-4">Nomor Seri (SN)</th>
-                  <th className="py-2.5 px-4">Alamat IP Mesin & Allowlist</th>
+                  <th className="py-2.5 px-4">Koneksi ADMS</th>
                   <th className="py-2.5 px-4">Lokasi</th>
                   <th className="py-2.5 px-4">Terakhir Aktif</th>
                   {canManage && <th className="py-2.5 px-4 text-center w-28">Aksi</th>}
@@ -635,13 +624,14 @@ export default function AttendanceDevicesPage() {
                       {device.serialNumber || "-"}
                     </td>
 
-                    <td className="py-3 px-4 font-mono text-slate-700">
-                      <div>{device.ip ? device.ip : "Auto / DHCP"}</div>
-                      {device.allowedNetwork && (
-                        <div className="text-[10px] text-indigo-700 font-mono mt-0.5">
-                          Allowlist: {device.allowedNetwork}
-                        </div>
-                      )}
+                    <td className="py-3 px-4 text-slate-700">
+                      <div className="flex items-center gap-1.5 font-medium text-emerald-800">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                        <span>Cloud Domain Push</span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                        Port 8081 / iclock
+                      </div>
                     </td>
 
                     <td className="py-3 px-4 text-slate-600">{device.location || "-"}</td>
@@ -1147,41 +1137,23 @@ export default function AttendanceDevicesPage() {
               </>
             ) : (
               <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Nomor Seri Mesin (SN)</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Contoh: B3FT194260021"
-                      value={newDeviceSerial}
-                      onChange={(e) => setNewDeviceSerial(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">IP Mesin (Opsional)</label>
-                    <input
-                      type="text"
-                      placeholder="192.168.1.100"
-                      value={newDeviceIp}
-                      onChange={(e) => setNewDeviceIp(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
-                    />
-                  </div>
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-emerald-900 text-[11px] leading-relaxed">
+                  <p className="font-semibold text-emerald-950 mb-0.5">Koneksi Otomatis Domain Name</p>
+                  Mesin ADMS akan mengirimkan absensi secara otomatis via internet menggunakan nama domain server. Alamat IP atau subnet allowlist tidak diperlukan.
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">IP / Subnet Allowlist (CIDR)</label>
+                  <label className="block font-bold text-slate-700 mb-1">Nomor Seri Mesin (SN)</label>
                   <input
                     type="text"
-                    placeholder="Contoh: 192.168.1.100/32 atau 192.168.1.0/24"
-                    value={newDeviceSourceCidr}
-                    onChange={(e) => setNewDeviceSourceCidr(e.target.value)}
+                    required
+                    placeholder="Contoh: B3FT194260021 atau WAE4242900026"
+                    value={newDeviceSerial}
+                    onChange={(e) => setNewDeviceSerial(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
                   />
                   <p className="mt-1 text-[11px] text-slate-400">
-                    Hanya IP atau subnet ini yang diizinkan mengirim log ke port 8081.
+                    Sesuai dengan nomor seri yang tertera pada stiker atau menu info mesin.
                   </p>
                 </div>
               </>

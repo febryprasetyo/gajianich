@@ -7,11 +7,12 @@ test('parseSourceCidr normalizes IPv4 and validates CIDR boundaries', () => {
   assert.equal(parseSourceCidr('192.168.10.0/24'), '192.168.10.0/24');
   assert.equal(parseSourceCidr('  10.0.0.5/32  '), '10.0.0.5/32');
   assert.equal(parseSourceCidr('172.16.0.0/16'), '172.16.0.0/16');
+  assert.equal(parseSourceCidr('0.0.0.0/0'), '0.0.0.0/0');
+  assert.equal(parseSourceCidr(''), '0.0.0.0/0');
+  assert.equal(parseSourceCidr(undefined), '0.0.0.0/0');
 
-  // Disallowed: too broad or invalid
+  // Disallowed: invalid format or invalid mask
   for (const bad of [
-    '',
-    '0.0.0.0/0',
     '10.0.0.0/8',
     '192.168.1.0/15',
     '256.1.1.1',
@@ -25,8 +26,8 @@ test('parseSourceCidr normalizes IPv4 and validates CIDR boundaries', () => {
   }
 });
 
-test('parseRegisterInput validates existing and new device registration', () => {
-  // Existing mode
+test('parseRegisterInput validates existing and new device registration without requiring IP for ADMS', () => {
+  // Existing mode with explicit sourceCidr
   const existing = parseRegisterInput({
     deviceId: 2,
     serial: 'WAE4242300038',
@@ -41,7 +42,35 @@ test('parseRegisterInput validates existing and new device registration', () => 
     assert.equal(existing.enabled, true);
   }
 
-  // New device mode
+  // Existing mode without sourceCidr (defaults to 0.0.0.0/0 for domain-based push)
+  const existingNoCidr = parseRegisterInput({
+    deviceId: 3,
+    serial: 'WAE4242300099',
+    enabled: true,
+  });
+  assert.equal(existingNoCidr.mode, 'existing');
+  if (existingNoCidr.mode === 'existing') {
+    assert.equal(existingNoCidr.sourceCidr, '0.0.0.0/0');
+  }
+
+  // New device mode without IP/port/sourceCidr (domain-based push)
+  const newDomainDev = parseRegisterInput({
+    name: 'Absensi Cabang Bandung',
+    serial: 'WAE8888888888',
+    groupId: 1,
+    enabled: true,
+  });
+  assert.equal(newDomainDev.mode, 'new');
+  if (newDomainDev.mode === 'new') {
+    assert.equal(newDomainDev.name, 'Absensi Cabang Bandung');
+    assert.equal(newDomainDev.serial, 'WAE8888888888');
+    assert.equal(newDomainDev.ip, 'adms-WAE8888888888');
+    assert.equal(newDomainDev.port, 4370);
+    assert.equal(newDomainDev.sourceCidr, '0.0.0.0/0');
+    assert.equal(newDomainDev.groupId, 1);
+  }
+
+  // New device mode with optional IP specified
   const newDev = parseRegisterInput({
     name: 'Absensi Gudang Baru',
     ip: '192.168.10.50',
@@ -61,16 +90,16 @@ test('parseRegisterInput validates existing and new device registration', () => 
   }
 
   for (const bad of [
-    { serial: 'SN123' }, // no deviceId and no name/ip
-    { name: '', ip: '192.168.1.1', serial: 'SN123' },
+    { serial: 'SN123' }, // no deviceId and no name
+    { name: '', serial: 'SN123' },
     { name: 'Dev', ip: '999.999.1.1', serial: 'SN123' },
-    { name: 'Dev', ip: '192.168.1.1', port: 99999, serial: 'SN123' },
-    { deviceId: -1, serial: 'SN123', sourceCidr: '192.168.1.1' },
-    { deviceId: 'abc', serial: 'SN123', sourceCidr: '192.168.1.1' },
-    { deviceId: 1, serial: '', sourceCidr: '192.168.1.1' },
-    { deviceId: 1, serial: 'SN with space', sourceCidr: '192.168.1.1' },
-    { deviceId: 1, serial: 'SN123$!@', sourceCidr: '192.168.1.1' },
-    { deviceId: 1, serial: 'A'.repeat(101), sourceCidr: '192.168.1.1' },
+    { name: 'Dev', port: 99999, serial: 'SN123' },
+    { deviceId: -1, serial: 'SN123' },
+    { deviceId: 'abc', serial: 'SN123' },
+    { deviceId: 1, serial: '' },
+    { deviceId: 1, serial: 'SN with space' },
+    { deviceId: 1, serial: 'SN123$!@' },
+    { deviceId: 1, serial: 'A'.repeat(101) },
   ]) {
     assert.throws(() => parseRegisterInput(bad), /Input registrasi ADMS tidak valid/);
   }

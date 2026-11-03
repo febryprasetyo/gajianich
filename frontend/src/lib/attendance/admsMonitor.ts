@@ -150,7 +150,7 @@ export interface AdmsCandidateDevice {
 
 export function validateCidrInput(value: string): string | null {
   const trimmed = value.trim();
-  if (!trimmed) return 'IP / CIDR allowlist harus diisi.';
+  if (!trimmed || trimmed === '0.0.0.0/0') return null;
   const parts = trimmed.split('/');
   if (parts.length > 2) return 'Format IP / CIDR tidak valid.';
   const ip = parts[0].trim();
@@ -161,13 +161,14 @@ export function validateCidrInput(value: string): string | null {
       return 'Nilai oktet IP harus antara 0 dan 255.';
     }
   }
-  if (ip === '0.0.0.0') return 'Alamat 0.0.0.0 tidak diperbolehkan.';
   if (parts[1] !== undefined) {
     const mask = Number(parts[1].trim());
+    if (mask === 0 && ip === '0.0.0.0') return null;
     if (!/^\d{1,2}$/.test(parts[1].trim()) || mask < 16 || mask > 32) {
       return 'Subnet mask harus antara /16 dan /32 (misal: /32 untuk satu IP, /24 untuk satu subnet).';
     }
   }
+  if (ip === '0.0.0.0') return 'Alamat 0.0.0.0 tidak diperbolehkan kecuali 0.0.0.0/0.';
   return null;
 }
 
@@ -175,37 +176,46 @@ export function validateAdmsRegistration(
   groupId: number | null,
   deviceId: string,
   serial: string,
-  sourceCidr: string
+  sourceCidr?: string
 ): string | null {
   if (groupId === null) return 'Pilih kelompok organisasi terlebih dahulu.';
   if (!/^\d+$/.test(deviceId) || Number(deviceId) < 1) return 'Pilih mesin absensi yang akan didaftarkan.';
   if (!serial.trim() || !/^[A-Za-z0-9_-]{1,100}$/.test(serial.trim())) {
     return 'Nomor seri (SN) harus alfanumerik 1-100 karakter.';
   }
-  return validateCidrInput(sourceCidr);
+  if (sourceCidr && sourceCidr.trim()) {
+    return validateCidrInput(sourceCidr);
+  }
+  return null;
 }
 
 export function validateNewAdmsDevice(
   groupId: number | null,
   name: string,
-  ip: string,
-  port: string | number,
   serial: string,
-  sourceCidr: string
+  ip?: string,
+  port?: string | number,
+  sourceCidr?: string
 ): string | null {
   if (groupId === null) return 'Pilih kelompok unit / cabang organisasi terlebih dahulu.';
   if (!name.trim()) return 'Nama mesin absensi harus diisi.';
-  if (!ip.trim()) return 'Alamat IP mesin harus diisi.';
-  const octets = ip.trim().split('.');
-  if (octets.length !== 4 || octets.some(o => !/^\d{1,3}$/.test(o) || Number(o) < 0 || Number(o) > 255)) {
-    return 'Format IP mesin tidak valid (contoh: 192.168.10.50).';
-  }
-  const portNum = Number(port);
-  if (!Number.isInteger(portNum) || portNum < 1 || portNum > 65535) {
-    return 'Port harus berupa angka antara 1 dan 65535 (default: 4370).';
-  }
   if (!serial.trim() || !/^[A-Za-z0-9_-]{1,100}$/.test(serial.trim())) {
     return 'Nomor seri (SN) harus alfanumerik 1-100 karakter.';
   }
-  return validateCidrInput(sourceCidr || `${ip.trim()}/32`);
+  if (ip && ip.trim()) {
+    const octets = ip.trim().split('.');
+    if (octets.length !== 4 || octets.some(o => !/^\d{1,3}$/.test(o) || Number(o) < 0 || Number(o) > 255)) {
+      return 'Format IP mesin tidak valid (contoh: 192.168.10.50).';
+    }
+  }
+  if (port !== undefined && port !== null && String(port).trim() !== '') {
+    const portNum = Number(port);
+    if (!Number.isInteger(portNum) || portNum < 1 || portNum > 65535) {
+      return 'Port harus berupa angka antara 1 dan 65535 (default: 4370).';
+    }
+  }
+  if (sourceCidr && sourceCidr.trim()) {
+    return validateCidrInput(sourceCidr);
+  }
+  return null;
 }
