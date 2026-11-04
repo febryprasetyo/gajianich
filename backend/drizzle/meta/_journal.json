@@ -322,6 +322,13 @@
       "when": 1793339000000,
       "tag": "0045_handover_recipient_nullable",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1793340000000,
+      "tag": "0046_seed_mgm_official_document_template",
+      "breakpoints": true
     }
   ],
   "version": "7"

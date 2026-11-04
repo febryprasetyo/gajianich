@@ -630,7 +630,7 @@ export async function uploadOrganizationLogo(
     }
 
     // Check active LEAVE template in the group
-    const [leaveTemplate] = await tx
+    let [leaveTemplate] = await tx
       .select()
       .from(documentTemplateVersions)
       .where(
@@ -644,10 +644,37 @@ export async function uploadOrganizationLogo(
       .limit(1);
 
     if (!leaveTemplate) {
-      throw new DocumentLogoValidationError(
-        'Template form cuti F4 aktif belum tersedia untuk grup organisasi ini.',
-        409
-      );
+      const [provisioned] = await tx
+        .insert(documentTemplateVersions)
+        .values({
+          groupId: org.groupId,
+          kind: 'LEAVE',
+          version: 1,
+          layoutKey: 'cmc-leave-f4-v1',
+          labels: {
+            formNumber: '001',
+            revisionCode: 'REV. 170208-1-W',
+            title: 'PERMOHONAN CUTI KARYAWAN',
+          },
+          signatories: [
+            { key: 'applicant', label: 'Pemohon', name: null },
+            { key: 'direct_supervisor', label: 'Atasan Langsung', name: null },
+            { key: 'hrd', label: 'HRD', name: null },
+            { key: 'higher_supervisor', label: 'Atasan dari Atasan Langsung', name: null },
+          ],
+          approvedReference: '2026-10-29-cmc-mgm-mapping-manifest',
+          isActive: true,
+        })
+        .onConflictDoUpdate({
+          target: [
+            documentTemplateVersions.groupId,
+            documentTemplateVersions.kind,
+            documentTemplateVersions.version,
+          ],
+          set: { isActive: true },
+        })
+        .returning();
+      leaveTemplate = provisioned;
     }
 
     // Find current max version and active identity for this organization

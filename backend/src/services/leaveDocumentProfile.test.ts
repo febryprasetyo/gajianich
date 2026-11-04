@@ -295,5 +295,46 @@ test('resolveIssuingOrganizationForLeave enforces HR permission, same group, and
   );
 });
 
+test('MGM group can upload organization logo and resolve F4 leave profile without missing template error', async (t) => {
+  const fixture = await createHrAuditTestDatabase();
+  t.after(() => fixture.cleanup());
+  await runMigrations(fixture.ownerUrl, undefined, fixture.runtimeRole);
+  const database = drizzle(fixture.owner);
+
+  const { rows: mgmRows } = await fixture.owner.query("SELECT id FROM organization_groups WHERE code = 'MGM'");
+  assert.equal(mgmRows.length, 1);
+  const mgmGroupId = Number(mgmRows[0].id);
+
+  // Create organization under MGM group with logo
+  const created = await createOrganizationWithLogo(database, {
+    groupId: mgmGroupId,
+    name: 'PT Multi Gas Medika',
+    code: 'MGM_TEST',
+    allowedGroupIds: [mgmGroupId],
+    buffer: SAMPLE_PNG,
+    userId: null,
+  });
+
+  assert.equal(created.groupId, mgmGroupId);
+  assert.equal(created.name, 'PT Multi Gas Medika');
+  assert.equal(created.version, 1);
+  assert.match(created.logoAssetKey, /^\/api\/v1\/document-assets\/\d+$/);
+
+  // Profile resolution must succeed for MGM
+  const snapshot = await resolveDocumentProfile(database, {
+    groupId: mgmGroupId,
+    organizationId: created.organizationId,
+    kind: 'LEAVE',
+  });
+
+  assert.equal(snapshot.kind, 'LEAVE');
+  assert.equal(snapshot.groupId, mgmGroupId);
+  assert.equal(snapshot.organizationId, created.organizationId);
+  assert.equal(snapshot.identity.name, 'PT Multi Gas Medika');
+  assert.equal(snapshot.identity.logoAssetKey, created.logoAssetKey);
+  assert.equal(snapshot.layoutKey, 'cmc-leave-f4-v1');
+});
+
+
 
 
