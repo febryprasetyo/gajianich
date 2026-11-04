@@ -13,7 +13,14 @@ import {
   Lock,
 } from "lucide-react";
 import type { LeaveBalanceSummary, FullLeaveDocumentData } from "@/types/leaves";
+import type { LeaveDocumentOrganizationOption } from "@/types/documentProfile";
 import LeaveEmployeePicker, { LeaveEmployeeItem } from "@/components/leaves/LeaveEmployeePicker";
+import { LeaveOrganizationPicker } from "@/components/leaves/LeaveOrganizationPicker";
+import {
+  canSelectLeaveOrganization,
+  resolveDefaultLeaveOrganizationId,
+} from "@/lib/leaves/leaveOrganizationUtils";
+import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 
 export interface LeaveRequestFormProps {
@@ -25,6 +32,8 @@ export interface LeaveRequestFormProps {
 export function LeaveRequestForm({ mode = "create", requestId, initialData }: LeaveRequestFormProps) {
   const currentYear = new Date().getFullYear();
   const router = useRouter();
+  const { user } = useAuth();
+  const canPickOrganization = canSelectLeaveOrganization(user);
 
   // State Karyawan - Default KOSONG (null), diisi jika edit
   const [selectedEmployee, setSelectedEmployee] = useState<LeaveEmployeeItem | null>(() => {
@@ -39,6 +48,13 @@ export function LeaveRequestForm({ mode = "create", requestId, initialData }: Le
     }
     return null;
   });
+
+  const [organizationOptions, setOrganizationOptions] = useState<LeaveDocumentOrganizationOption[]>([]);
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState<number | null>(
+    initialData?.organizationId ?? initialData?.documentProfileSnapshot?.organizationId ?? null
+  );
+  const [isLoadingOrganizations, setIsLoadingOrganizations] = useState(false);
+  const [organizationsError, setOrganizationsError] = useState<string | null>(null);
 
   const [balanceSummary, setBalanceSummary] = useState<LeaveBalanceSummary | null>(null);
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
@@ -92,6 +108,53 @@ export function LeaveRequestForm({ mode = "create", requestId, initialData }: Le
     }
     loadBalance();
   }, [selectedEmployee, startDate ? startDate.split("-")[0] : null]);
+
+  // Fetch daftar organisasi penerbit saat karyawan dipilih (khusus HR/Admin)
+  useEffect(() => {
+    if (!canPickOrganization || !selectedEmployee) {
+      setOrganizationOptions([]);
+      setOrganizationsError(null);
+      if (!selectedEmployee) {
+        setSelectedOrganizationId(null);
+      }
+      return;
+    }
+
+    let cancelled = false;
+    async function loadDocumentOrganizations() {
+      setIsLoadingOrganizations(true);
+      setOrganizationsError(null);
+      try {
+        if (!selectedEmployee) return;
+        const res = await api.get<{ data: LeaveDocumentOrganizationOption[] }>(
+          `/leaves/document-organizations?employeeId=${selectedEmployee.id}`
+        );
+        if (cancelled) return;
+        const list = Array.isArray(res?.data) ? res.data : [];
+        setOrganizationOptions(list);
+        const preferredId =
+          mode === "edit"
+            ? initialData?.organizationId ?? initialData?.documentProfileSnapshot?.organizationId ?? null
+            : null;
+        setSelectedOrganizationId((prev) =>
+          prev && list.some((o) => o.organizationId === prev)
+            ? prev
+            : resolveDefaultLeaveOrganizationId(list, preferredId)
+        );
+      } catch (err: any) {
+        if (cancelled) return;
+        setOrganizationsError(err?.message || "Gagal memuat pilihan organisasi penerbit.");
+      } finally {
+        if (!cancelled) {
+          setIsLoadingOrganizations(false);
+        }
+      }
+    }
+    loadDocumentOrganizations();
+    return () => {
+      cancelled = true;
+    };
+  }, [canPickOrganization, selectedEmployee, mode, initialData?.organizationId, initialData?.documentProfileSnapshot?.organizationId]);
 
   // Hitung estimasi hari kerja otomatis saat tanggal dipilih (hanya pada mode create jika belum diisi)
   useEffect(() => {
@@ -200,6 +263,7 @@ export function LeaveRequestForm({ mode = "create", requestId, initialData }: Le
       if (mode === "edit" && requestId) {
         // Mode Edit: PUT /api/v1/leaves/requests/:id
         await api.put(`/leaves/requests/${requestId}`, {
+          ...(canPickOrganization && selectedOrganizationId ? { organizationId: selectedOrganizationId } : {}),
           leaveType,
           specialLeaveReason: leaveType === "SPECIAL" ? specialReason : undefined,
           reason,
@@ -218,6 +282,7 @@ export function LeaveRequestForm({ mode = "create", requestId, initialData }: Le
         // Mode Create: POST /api/v1/leaves/requests
         const resData = await api.post<{ message?: string; data?: { id: number } }>("/leaves/requests", {
           employeeId: Number(selectedEmployee.id),
+          ...(canPickOrganization && selectedOrganizationId ? { organizationId: selectedOrganizationId } : {}),
           leaveType,
           specialLeaveReason: leaveType === "SPECIAL" ? specialReason : undefined,
           reason,
@@ -336,6 +401,18 @@ export function LeaveRequestForm({ mode = "create", requestId, initialData }: Le
             <div className="flex items-center gap-2 text-xs text-slate-500 py-2">
               <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
               <span>Memuat data saldo cuti rill karyawan...</span>
+            </div>
+          )}
+
+          {canPickOrganization && selectedEmployee && (
+            <div className="pt-2">
+              <LeaveOrganizationPicker
+                options={organizationOptions}
+                value={selectedOrganizationId}
+                onChange={setSelectedOrganizationId}
+                loading={isLoadingOrganizations}
+                error={organizationsError}
+              />
             </div>
           )}
         </div>

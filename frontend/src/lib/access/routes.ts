@@ -88,6 +88,11 @@ export const DASHBOARD_ROUTE_RULES: RouteRule[] = [
 
   // Shared Master Data
   {
+    prefix: '/dashboard/master/organization-logos',
+    permission: 'attendance.manage',
+    moduleName: 'Logo Organisasi',
+  },
+  {
     prefix: '/dashboard/master/departments',
     permission: 'master.view',
     moduleName: 'Departemen IT',

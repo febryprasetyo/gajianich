@@ -25,3 +25,4 @@ BEGIN
     EXECUTE format('GRANT USAGE, SELECT ON SEQUENCE public.document_assets_id_seq, public.document_identity_versions_id_seq, public.document_profiles_id_seq TO %I', runtime_role);
   END IF;
 END $$;
+

@@ -20,6 +20,8 @@ import {
   UserCheck,
   Eye,
   Edit,
+  Building2,
+  RotateCcw,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 
@@ -29,6 +31,12 @@ interface LeaveItem {
   employeeId: number;
   employeeName: string;
   employeeCode: string;
+  organizationId?: number | null;
+  organization?: {
+    id: number;
+    name: string;
+    logoAssetKey: string | null;
+  } | null;
   leaveType: string;
   reason: string;
   startDate: string;
@@ -45,6 +53,7 @@ export default function LeaveRequestsListPage() {
   const [leaves, setLeaves] = useState<LeaveItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [organizationFilter, setOrganizationFilter] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -75,6 +84,17 @@ export default function LeaveRequestsListPage() {
     fetchLeaves(selectedYear);
   }, [selectedYear, fetchLeaves]);
 
+  // Daftar organisasi unik untuk filter dropdown
+  const availableOrganizations = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const item of leaves) {
+      if (item.organization?.id && item.organization?.name) {
+        map.set(item.organization.id, item.organization.name);
+      }
+    }
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [leaves]);
+
   // Filter & Search
   const filtered = useMemo(() => {
     const q = searchTerm.toLowerCase();
@@ -83,17 +103,21 @@ export default function LeaveRequestsListPage() {
         (item.requestNumber || '').toLowerCase().includes(q) ||
         (item.employeeName || '').toLowerCase().includes(q) ||
         (item.employeeCode || '').toLowerCase().includes(q) ||
+        (item.organization?.name || '').toLowerCase().includes(q) ||
         (item.reason || '').toLowerCase().includes(q);
 
       const matchesStatus = !statusFilter || item.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesOrg =
+        !organizationFilter ||
+        String(item.organization?.id ?? item.organizationId ?? '') === organizationFilter;
+      return matchesSearch && matchesStatus && matchesOrg;
     });
-  }, [leaves, searchTerm, statusFilter]);
+  }, [leaves, searchTerm, statusFilter, organizationFilter]);
 
   // Reset page when search or page size changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, pageSize]);
+  }, [searchTerm, statusFilter, organizationFilter, pageSize]);
 
   // Pagination slice
   const totalItems = filtered.length;
@@ -277,9 +301,23 @@ export default function LeaveRequestsListPage() {
             className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 text-xs focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition-all"
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
           <select
+            aria-label="Filter Organisasi"
+            value={organizationFilter}
+            onChange={(e) => setOrganizationFilter(e.target.value)}
+            className="py-2 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-emerald-400 transition-all cursor-pointer"
+          >
+            <option value="">Semua Organisasi</option>
+            {availableOrganizations.map((org) => (
+              <option key={org.id} value={String(org.id)}>
+                {org.name}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="Filter Status"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             className="py-2 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-emerald-400 transition-all cursor-pointer"
@@ -289,6 +327,20 @@ export default function LeaveRequestsListPage() {
             <option value="APPROVED">Disetujui</option>
             <option value="REJECTED">Ditolak</option>
           </select>
+          {(searchTerm || statusFilter || organizationFilter) && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchTerm('');
+                setStatusFilter('');
+                setOrganizationFilter('');
+              }}
+              className="flex items-center justify-center gap-1 text-xs text-slate-500 hover:text-rose-600 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-rose-200 transition-all font-medium cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset Filter</span>
+            </button>
+          )}
         </div>
         <span className="text-xs text-slate-500 ml-auto hidden sm:inline">
           Menampilkan <strong className="text-slate-900">{filtered.length}</strong> dari {leaves.length} permohonan
@@ -314,6 +366,7 @@ export default function LeaveRequestsListPage() {
                 <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-wider font-mono">
                   <th className="py-3.5 px-4">No. Permohonan</th>
                   <th className="py-3.5 px-4">Karyawan</th>
+                  <th className="py-3.5 px-4">Organisasi</th>
                   <th className="py-3.5 px-4">Jenis Cuti</th>
                   <th className="py-3.5 px-4">Periode</th>
                   <th className="py-3.5 px-4 text-center">Durasi</th>
@@ -341,6 +394,27 @@ export default function LeaveRequestsListPage() {
                         <p className="text-[11px] text-slate-400 font-mono mt-0.5">
                           {item.employeeCode}
                         </p>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {item.organization ? (
+                          <div className="flex items-center gap-2 min-w-0">
+                            {item.organization.logoAssetKey ? (
+                              /* eslint-disable-next-line @next/next/no-img-element */
+                              <img
+                                src={item.organization.logoAssetKey}
+                                alt={item.organization.name}
+                                className="h-6 w-6 rounded border border-slate-200 bg-white object-contain p-0.5 shrink-0"
+                              />
+                            ) : (
+                              <Building2 className="w-4 h-4 text-slate-400 shrink-0" />
+                            )}
+                            <span className="font-medium text-slate-700 truncate max-w-[160px]" title={item.organization.name}>
+                              {item.organization.name}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-slate-400">—</span>
+                        )}
                       </td>
                       <td className="py-3.5 px-4">
                         <span

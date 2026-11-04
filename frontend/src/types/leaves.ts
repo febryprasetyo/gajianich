@@ -50,6 +50,7 @@ export interface CalculateLeaveDurationOutput {
 
 export interface LeaveRequestFormData {
   employeeId: number;
+  organizationId?: number;
   leaveType: LeaveType;
   specialLeaveReason?: string;
   reason: string;

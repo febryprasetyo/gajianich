@@ -103,6 +103,8 @@ test('leave settings route requires attendance.manage and overrides generic leav
   assert.equal(canAccessRoute('/dashboard/leaves', staff), true);
   assert.equal(canAccessRoute('/dashboard/leaves/settings', staff), false);
   assert.equal(canAccessRoute('/dashboard/leaves/settings', manager), true);
+  assert.equal(canAccessRoute('/dashboard/master/organization-logos', staff), false);
+  assert.equal(canAccessRoute('/dashboard/master/organization-logos', manager), true);
 });
 
 test('HR role with access.users.view can access /dashboard/access', () => {
