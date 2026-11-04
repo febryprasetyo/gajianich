@@ -6,6 +6,7 @@ import {
   determineAttendanceSource,
   resolveKeterangan,
   computeIsLate,
+  resolveHierarchicalRosterOrder,
 } from './dailyAttendanceReportService';
 
 test('formatDateHeader formats YYYY-MM-DD into DD-MMM-YY standard print header', () => {
@@ -239,5 +240,31 @@ test('moving employee x from coordinator y to coordinator a correctly reposition
   assert.strictEqual(updatedRoster[1].employeeName, 'Sofyan');
   assert.strictEqual(updatedRoster[2].employeeName, 'Yuli Yuliansari');
   assert.strictEqual(updatedRoster[3].employeeName, 'Reza Adityawarman');
+});
+
+test('resolveHierarchicalRosterOrder groups employees under their coordinator regardless of initial position', () => {
+  const unorderedList = [
+    { employeeId: 10, employeeName: 'Reza Adityawarman', sortOrder: 5, isCoordinator: true, coordinatorId: null },
+    { employeeId: 1, employeeName: 'Sendy', sortOrder: 1, isCoordinator: true, coordinatorId: null },
+    { employeeId: 15, employeeName: 'Dian', sortOrder: 15, isCoordinator: false, coordinatorId: 1 }, // Dian assigned to Sendy (ID 1)
+    { employeeId: 11, employeeName: 'Aris Rahman', sortOrder: 12, isCoordinator: false, coordinatorId: 10 }, // Aris assigned to Reza (ID 10)
+    { employeeId: 2, employeeName: 'Sofyan', sortOrder: 2, isCoordinator: false, coordinatorId: 1 }, // Sofyan assigned to Sendy (ID 1)
+  ];
+
+  const ordered = resolveHierarchicalRosterOrder(unorderedList);
+
+  // Sendy and his subordinates MUST come first
+  assert.strictEqual(ordered[0].employeeName, 'Sendy');
+  assert.strictEqual(ordered[0].sortOrder, 1);
+  assert.strictEqual(ordered[1].employeeName, 'Sofyan');
+  assert.strictEqual(ordered[1].sortOrder, 2);
+  assert.strictEqual(ordered[2].employeeName, 'Dian'); // Dian follows Sendy above Reza!
+  assert.strictEqual(ordered[2].sortOrder, 3);
+
+  // Reza and his subordinates come next
+  assert.strictEqual(ordered[3].employeeName, 'Reza Adityawarman');
+  assert.strictEqual(ordered[3].sortOrder, 4);
+  assert.strictEqual(ordered[4].employeeName, 'Aris Rahman');
+  assert.strictEqual(ordered[4].sortOrder, 5);
 });
 

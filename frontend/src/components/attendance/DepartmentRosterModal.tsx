@@ -108,25 +108,30 @@ export default function DepartmentRosterModal({
 
   // 5. Move employee directly into target coordinator's team
   const handleMoveToCoordinator = (itemIndex: number, targetCoordinatorId: number) => {
-    if (!targetCoordinatorId) return;
-
     setItems((prev) => {
       const copy = [...prev];
-      const [movingItem] = copy.splice(itemIndex, 1);
-      movingItem.coordinatorId = targetCoordinatorId;
+      const movingItem = {
+        ...copy[itemIndex],
+        coordinatorId: targetCoordinatorId ? targetCoordinatorId : null,
+      };
+      copy.splice(itemIndex, 1);
+
+      if (!targetCoordinatorId) {
+        copy.push(movingItem);
+        return copy.map((item, idx) => ({ ...item, sortOrder: idx + 1 }));
+      }
 
       // Find index of target coordinator
       const coordIndex = copy.findIndex((it) => it.employeeId === targetCoordinatorId);
       if (coordIndex === -1) {
         copy.push(movingItem);
       } else {
-        // Find last consecutive member under this coordinator
+        // Find end of this coordinator's team members (before the next coordinator or other team starts)
         let insertIndex = coordIndex + 1;
-        while (
-          insertIndex < copy.length &&
-          !copy[insertIndex].isCoordinator &&
-          copy[insertIndex].coordinatorId === targetCoordinatorId
-        ) {
+        while (insertIndex < copy.length && !copy[insertIndex].isCoordinator) {
+          if (copy[insertIndex].coordinatorId && copy[insertIndex].coordinatorId !== targetCoordinatorId) {
+            break;
+          }
           insertIndex++;
         }
         copy.splice(insertIndex, 0, movingItem);

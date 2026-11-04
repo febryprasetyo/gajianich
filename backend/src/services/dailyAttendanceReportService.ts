@@ -81,6 +81,77 @@ export interface UpsertDailyNoteInput {
 }
 
 /**
+ * Resolves hierarchical ordering placing subordinates directly beneath their coordinator
+ */
+export function resolveHierarchicalRosterOrder<
+  T extends {
+    employeeId: number;
+    employeeName: string;
+    isCoordinator?: boolean;
+    coordinatorId?: number | null;
+    sortOrder?: number;
+  }
+>(items: T[]): T[] {
+  if (!items || items.length === 0) return [];
+
+  const coordinatorIds = new Set<number>();
+  for (const it of items) {
+    if (it.isCoordinator) {
+      coordinatorIds.add(it.employeeId);
+    }
+  }
+
+  // Group subordinates by valid coordinatorId
+  const subordinatesByCoord = new Map<number, T[]>();
+  const topLevelItems: T[] = [];
+
+  for (const it of items) {
+    if (!it.isCoordinator && it.coordinatorId && coordinatorIds.has(it.coordinatorId)) {
+      const list = subordinatesByCoord.get(it.coordinatorId) || [];
+      list.push(it);
+      subordinatesByCoord.set(it.coordinatorId, list);
+    } else {
+      topLevelItems.push(it);
+    }
+  }
+
+  // Sort subordinates of each coordinator by sortOrder, then name
+  for (const list of subordinatesByCoord.values()) {
+    list.sort((a, b) => {
+      const ordA = a.sortOrder ?? 999999;
+      const ordB = b.sortOrder ?? 999999;
+      if (ordA !== ordB) return ordA - ordB;
+      return a.employeeName.localeCompare(b.employeeName);
+    });
+  }
+
+  // Sort top-level items by sortOrder, then name
+  topLevelItems.sort((a, b) => {
+    const ordA = a.sortOrder ?? 999999;
+    const ordB = b.sortOrder ?? 999999;
+    if (ordA !== ordB) return ordA - ordB;
+    return a.employeeName.localeCompare(b.employeeName);
+  });
+
+  // Interleave: coordinator followed immediately by its subordinates
+  const result: T[] = [];
+  for (const top of topLevelItems) {
+    result.push(top);
+    if (top.isCoordinator) {
+      const subs = subordinatesByCoord.get(top.employeeId) || [];
+      for (const sub of subs) {
+        result.push(sub);
+      }
+    }
+  }
+
+  return result.map((item, idx) => ({
+    ...item,
+    sortOrder: idx + 1,
+  }));
+}
+
+/**
  * Formats YYYY-MM-DD into "30-Oct-26" standard print header
  */
 export function formatDateHeader(dateStr: string): string {
@@ -430,16 +501,9 @@ export async function getDailyAttendanceReport(
     });
   }
 
-  // Sort and renumber within each department according to custom roster order
+  // Sort and renumber within each department hierarchically (subordinates under their coordinator)
   for (const group of deptGroupsMap.values()) {
-    group.employees.sort((a, b) => {
-      const orderA = a.sortOrder ?? 999999;
-      const orderB = b.sortOrder ?? 999999;
-      if (orderA !== orderB) {
-        return orderA - orderB;
-      }
-      return a.employeeName.localeCompare(b.employeeName);
-    });
+    group.employees = resolveHierarchicalRosterOrder(group.employees);
     group.employees.forEach((e, idx) => {
       e.no = idx + 1;
     });
@@ -594,18 +658,8 @@ export async function getDepartmentRoster(
     };
   });
 
-  items.sort((a, b) => {
-    if (a.sortOrder !== b.sortOrder) {
-      return a.sortOrder - b.sortOrder;
-    }
-    return a.employeeName.localeCompare(b.employeeName);
-  });
-
-  // Re-index sortOrder consecutively 1, 2, 3...
-  return items.map((item, idx) => ({
-    ...item,
-    sortOrder: idx + 1,
-  }));
+  // Resolve hierarchical order placing subordinates immediately under their coordinator
+  return resolveHierarchicalRosterOrder(items);
 }
 
 /**
@@ -640,8 +694,19 @@ export async function saveDepartmentRoster(
   const groupId = deptMapping?.groupId || null;
   const organizationId = deptMapping?.organizationId || null;
 
+  // Enforce hierarchical roster ordering before saving to database
+  const resolvedItems = resolveHierarchicalRosterOrder(
+    items.map((it) => ({
+      employeeId: Number(it.employeeId),
+      employeeName: '',
+      isCoordinator: Boolean(it.isCoordinator),
+      coordinatorId: it.coordinatorId ? Number(it.coordinatorId) : null,
+      sortOrder: Number(it.sortOrder) || 999999,
+    }))
+  );
+
   await runner.transaction(async (tx: any) => {
-    for (const item of items) {
+    for (const item of resolvedItems) {
       if (!item.employeeId) continue;
       const empId = Number(item.employeeId);
 
@@ -660,7 +725,7 @@ export async function saveDepartmentRoster(
         await tx
           .update(departmentReportRosters)
           .set({
-            sortOrder: Number(item.sortOrder) || 0,
+            sortOrder: item.sortOrder,
             isCoordinator: Boolean(item.isCoordinator),
             coordinatorId: item.coordinatorId ? Number(item.coordinatorId) : null,
             updatedById: userId,
@@ -673,7 +738,7 @@ export async function saveDepartmentRoster(
           organizationId,
           departmentId: numDeptId,
           employeeId: empId,
-          sortOrder: Number(item.sortOrder) || 0,
+          sortOrder: item.sortOrder,
           isCoordinator: Boolean(item.isCoordinator),
           coordinatorId: item.coordinatorId ? Number(item.coordinatorId) : null,
           updatedById: userId,
