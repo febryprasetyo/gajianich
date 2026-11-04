@@ -49,6 +49,7 @@ import {
   Settings,
   Globe,
   Database,
+  FileSignature,
 } from 'lucide-react';
 
 export interface NavSubItem {
@@ -151,6 +152,7 @@ export const navGroups: NavGroup[] = [
         children: [
           { name: 'Ringkasan Aset', href: '/dashboard/assets/overview', icon: LayoutDashboard, permission: 'assets.view' },
           { name: 'Daftar Aset', href: '/dashboard/assets', icon: HardDrive, permission: 'assets.view' },
+          { name: 'Tanda Terima', href: '/dashboard/assets/handovers', icon: FileSignature, permission: 'assets.view' },
           { name: 'Audit Hardware', href: '/dashboard/hardware-audits', icon: Cpu, permission: 'hardware_audits.view' },
           { name: 'Lisensi Software', href: '/dashboard/licenses', icon: Key, permission: 'licenses.view' },
         ],

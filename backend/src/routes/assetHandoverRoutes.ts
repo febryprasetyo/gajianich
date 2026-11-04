@@ -1,5 +1,8 @@
 import { Router, type Response } from 'express';
 import { db } from '../db';
+import { asc, eq, ne, sql } from 'drizzle-orm';
+import { employees } from '../db/schema/employees';
+import { assets } from '../db/schema/assets';
 import { authenticateToken, requirePermission, type AuthenticatedRequest } from '../middleware/auth';
 import {
   listHandovers,
@@ -14,6 +17,62 @@ import { HandoverInputError } from '../domain/assetHandover';
 const router = Router();
 
 router.use(authenticateToken);
+
+// GET /api/v1/assets/handovers/options/employees
+router.get(
+  '/options/employees',
+  requirePermission('assets.view'),
+  async (_req: AuthenticatedRequest, res: Response) => {
+    try {
+      const data = await db
+        .select({
+          id: employees.id,
+          employeeCode: employees.employeeCode,
+          fullName: employees.fullName,
+          position: employees.position,
+          address: sql<string | null>`coalesce(${employees.residentialAddress}, ${employees.citizenIdAddress})`,
+          phone: sql<string | null>`coalesce(${employees.mobilePhone}, ${employees.phone})`,
+        })
+        .from(employees)
+        .where(eq(employees.status, 'Active'))
+        .orderBy(asc(employees.fullName))
+        .limit(300);
+
+      return res.json(data);
+    } catch (err: any) {
+      console.error('Error fetching employee options for handover:', err);
+      return res.status(500).json({ error: 'Gagal mengambil daftar karyawan' });
+    }
+  }
+);
+
+// GET /api/v1/assets/handovers/options/assets
+router.get(
+  '/options/assets',
+  requirePermission('assets.view'),
+  async (_req: AuthenticatedRequest, res: Response) => {
+    try {
+      const data = await db
+        .select({
+          id: assets.id,
+          assetCode: assets.assetCode,
+          name: assets.name,
+          serialNumber: assets.serialNumber,
+          status: assets.status,
+          condition: assets.condition,
+        })
+        .from(assets)
+        .where(ne(assets.status, 'Disposed'))
+        .orderBy(asc(assets.assetCode))
+        .limit(300);
+
+      return res.json(data);
+    } catch (err: any) {
+      console.error('Error fetching asset options for handover:', err);
+      return res.status(500).json({ error: 'Gagal mengambil daftar aset' });
+    }
+  }
+);
 
 // GET /api/v1/assets/handovers/stats
 router.get(

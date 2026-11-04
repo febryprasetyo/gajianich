@@ -26,6 +26,7 @@ import {
   ShieldCheck,
   Loader2,
   AlertCircle,
+  FileSignature,
 } from 'lucide-react';
 import { AssetDetail } from '@/lib/assets/types';
 
@@ -171,6 +172,14 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
               <Printer className="w-4 h-4 text-emerald-600" />
               <span>Print Asset Tag QR</span>
             </button>
+
+            <Link
+              href={`/dashboard/assets/handovers/new?assetId=${asset.id}`}
+              className="px-3.5 py-2.5 bg-white border border-slate-200 hover:border-emerald-300 text-slate-700 hover:text-emerald-700 font-bold rounded-xl text-xs shadow-2xs flex items-center gap-2 transition-all cursor-pointer"
+            >
+              <FileSignature className="w-4 h-4 text-emerald-600" />
+              <span>Buat Tanda Terima</span>
+            </Link>
 
             <button
               onClick={() => setIsMaintenanceModalOpen(true)}
