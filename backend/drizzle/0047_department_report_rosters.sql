@@ -14,3 +14,4 @@ CREATE TABLE IF NOT EXISTS "department_report_rosters" (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "uq_dept_roster_dept_emp" ON "department_report_rosters" ("department_id","employee_id");
+

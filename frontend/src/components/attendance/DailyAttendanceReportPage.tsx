@@ -43,7 +43,9 @@ export default function DailyAttendanceReportPage() {
 
   const [workDate, setWorkDate] = useState<string>(getTodayJakarta());
   const [departments, setDepartments] = useState<{ id: number; name: string }[]>([]);
-  const [selectedDeptId, setSelectedDeptId] = useState<number | 'ALL'>('ALL');
+  // Start with null until initial department resolution completes to avoid race conditions
+  const [selectedDeptId, setSelectedDeptId] = useState<number | 'ALL' | null>(null);
+  const [deptInitialized, setDeptInitialized] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeKpiFilter, setActiveKpiFilter] = useState<'ALL' | 'PRESENT' | 'LATE' | 'ABSENT'>('ALL');
   const [isRosterModalOpen, setIsRosterModalOpen] = useState(false);
@@ -58,26 +60,43 @@ export default function DailyAttendanceReportPage() {
 
   // 1. Load departments and default to MARKETING if available
   useEffect(() => {
+    let active = true;
     async function loadDepts() {
       try {
         const res = await api.get<{ id: number; name: string }[]>('/master/departments');
         const list = Array.isArray(res) ? res : [];
+        if (!active) return;
         setDepartments(list);
 
         const mkt = list.find((d) => d.name.toUpperCase().includes('MARKETING'));
         if (mkt) {
           setSelectedDeptId(mkt.id);
+        } else if (list.length > 0) {
+          setSelectedDeptId(list[0].id);
+        } else {
+          // Fallback to Marketing department id 6
+          setSelectedDeptId(6);
         }
-      } catch {
-        // Fallback gracefully
+      } catch (err) {
+        console.error('Failed to load departments:', err);
+        if (active) {
+          setSelectedDeptId(6);
+        }
+      } finally {
+        if (active) {
+          setDeptInitialized(true);
+        }
       }
     }
     void loadDepts();
+    return () => {
+      active = false;
+    };
   }, []);
 
   // 2. Fetch daily report from backend
   const fetchReport = useCallback(async () => {
-    if (!workDate) return;
+    if (!workDate || selectedDeptId === null) return;
     setLoading(true);
     setError(null);
     try {
@@ -94,14 +113,18 @@ export default function DailyAttendanceReportPage() {
   }, [workDate, selectedDeptId]);
 
   useEffect(() => {
-    void fetchReport();
-  }, [fetchReport]);
+    if (deptInitialized && selectedDeptId !== null) {
+      void fetchReport();
+    }
+  }, [deptInitialized, selectedDeptId, fetchReport]);
 
   // Selected department label
   const selectedDepartmentName = useMemo(() => {
     if (selectedDeptId === 'ALL') return 'Semua Departemen (Gabungan)';
     const dept = departments.find((d) => d.id === selectedDeptId);
-    return dept ? dept.name : 'Departemen';
+    if (dept) return dept.name;
+    if (selectedDeptId === 6) return 'MARKETING';
+    return 'Departemen';
   }, [selectedDeptId, departments]);
 
   // Toggle yellow highlight on employee
@@ -336,7 +359,7 @@ export default function DailyAttendanceReportPage() {
                   Departemen
                 </span>
                 <select
-                  value={selectedDeptId}
+                  value={selectedDeptId ?? ''}
                   onChange={(e) =>
                     setSelectedDeptId(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))
                   }
@@ -348,13 +371,23 @@ export default function DailyAttendanceReportPage() {
                       {dept.name}
                     </option>
                   ))}
+                  {!departments.some((d) => d.id === 6 || d.name.toUpperCase().includes('MARKETING')) && (
+                    <option value={6}>MARKETING</option>
+                  )}
                 </select>
               </label>
             </>
           }
-          hasActiveFilters={selectedDeptId !== 'ALL' || activeKpiFilter !== 'ALL' || Boolean(searchQuery)}
+          hasActiveFilters={
+            (selectedDeptId !== null &&
+              selectedDeptId !==
+                (departments.find((d) => d.name.toUpperCase().includes('MARKETING'))?.id || 6)) ||
+            activeKpiFilter !== 'ALL' ||
+            Boolean(searchQuery)
+          }
           onResetFilters={() => {
-            setSelectedDeptId('ALL');
+            const mkt = departments.find((d) => d.name.toUpperCase().includes('MARKETING'));
+            setSelectedDeptId(mkt ? mkt.id : 6);
             setActiveKpiFilter('ALL');
             setSearchQuery('');
           }}

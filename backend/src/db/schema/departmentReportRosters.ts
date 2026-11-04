@@ -24,3 +24,4 @@ export const departmentReportRosters = pgTable('department_report_rosters', {
   }).onDelete('restrict'),
   uniqueIndex('uq_dept_roster_dept_emp').on(table.departmentId, table.employeeId),
 ]);
+

@@ -15,3 +15,4 @@ test('departmentReportRosters schema defines required columns for persistent ros
   assert.ok(departmentReportRosters.createdAt, 'createdAt column must exist');
   assert.ok(departmentReportRosters.updatedAt, 'updatedAt column must exist');
 });
+
