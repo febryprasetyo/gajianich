@@ -1,3 +1,4 @@
+import { invalidateCacheOnMutation } from '../services/referenceCache';
 import {
   getAdmsMonitoringHandler,
   getAdmsReviewLogsHandler,
@@ -25,6 +26,7 @@ import {
 } from "../controllers/attendanceDeviceController";
 
 const router = Router();
+router.use(invalidateCacheOnMutation(['attendance:summary:*', 'adms:pin:*']));
 
 router.get(
   "/adms/monitor",

@@ -1,3 +1,4 @@
+import { getCachedMasterData } from '../services/referenceCache';
 import { Request, Response } from 'express';
 import { db } from '../db';
 import { departments, locations } from '../db/schema/master';
@@ -52,7 +53,7 @@ const updateVendorSchema = createVendorSchema.partial();
 export async function getDepartments(req: Request, res: Response) {
   try {
     const scope=requireHrScope(req as any);
-    const list = await db.select(getTableColumns(departments)).from(departments).leftJoin(departmentOrganizationMappings,eq(departmentOrganizationMappings.departmentId,departments.id)).where(historicalScopePredicate(scope,departmentOrganizationMappings.groupId));
+    const list = await getCachedMasterData('departments', scope, () => db.select(getTableColumns(departments)).from(departments).leftJoin(departmentOrganizationMappings,eq(departmentOrganizationMappings.departmentId,departments.id)).where(historicalScopePredicate(scope,departmentOrganizationMappings.groupId)));
     return res.status(200).json(list);
   } catch (err: any) {
     return res.status(500).json({ error: err.message || 'Internal server error' });
@@ -169,7 +170,7 @@ export async function deleteDepartment(req: Request, res: Response) {
 export async function getLocations(req: Request, res: Response) {
   try {
     const scope=requireHrScope(req as any);
-    const list = await db.select(getTableColumns(locations)).from(locations).leftJoin(locationOrganizationMappings,eq(locationOrganizationMappings.locationId,locations.id)).where(historicalScopePredicate(scope,locationOrganizationMappings.groupId));
+    const list = await getCachedMasterData('locations', scope, () => db.select(getTableColumns(locations)).from(locations).leftJoin(locationOrganizationMappings,eq(locationOrganizationMappings.locationId,locations.id)).where(historicalScopePredicate(scope,locationOrganizationMappings.groupId)));
     return res.status(200).json(list);
   } catch (err: any) {
     return res.status(500).json({ error: err.message || 'Internal server error' });
@@ -280,7 +281,7 @@ export async function deleteLocation(req: Request, res: Response) {
 // --- Vendor Controllers ---
 export async function getVendors(req: Request, res: Response) {
   try {
-    const list = await db.select().from(vendors);
+    const list = await getCachedMasterData('vendors', null, () => db.select().from(vendors));
     return res.status(200).json(list);
   } catch (err: any) {
     return res.status(500).json({ error: err.message || 'Internal server error' });

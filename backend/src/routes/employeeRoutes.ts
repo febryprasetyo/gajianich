@@ -1,3 +1,4 @@
+import { invalidateCacheOnMutation } from '../services/referenceCache';
 import {requireOrganizationScope} from '../middleware/organizationScope';
 import { Router } from 'express';
 import multer from 'multer';
@@ -17,6 +18,7 @@ import { exportEmployeesToExcel } from '../controllers/employeeExportController'
 import { authenticateToken, requirePermission } from '../middleware/auth';
 
 const router = Router();
+router.use(invalidateCacheOnMutation(['auth:org-access:*', 'kpi:assets:*', 'attendance:summary:*', 'adms:pin:*']));
 
 // Protect all employee routes with authentication
 router.use(authenticateToken);

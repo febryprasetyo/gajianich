@@ -1,3 +1,4 @@
+import { getCachedAssetCategories } from '../services/referenceCache';
 import { authorizeCustodianSelection, assetRequestScope, assetScopePredicate, requireAssetLocation, authorizeAssetMutation, requireScopedAsset } from '../services/assetOrganizationScope';
 import { Request, Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
@@ -162,7 +163,7 @@ async function hydrateAssetsWithDetails<T extends { id: number; currentCustodian
 // --- Category Controllers ---
 export async function getCategories(req: Request, res: Response) {
   try {
-    const categories = await db.select().from(assetCategories).orderBy(assetCategories.id);
+    const categories = await getCachedAssetCategories((req as any).organizationScope, () => db.select().from(assetCategories).orderBy(assetCategories.id));
     return res.status(200).json(categories);
   } catch (err: any) {
     if (sendCustodianError(res, err)) return;

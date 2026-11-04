@@ -1,9 +1,11 @@
+import { getCachedAttendanceSummary } from '../services/referenceCache';
 import {requireHrScope} from '../services/hrOrganizationScope';
 import {db} from '../db';
 import { Response } from "express";
 import { AuthenticatedRequest } from "../middleware/auth";
 import {
   getMobileTodaySummary,
+  getWibDateAndTimeString,
   recordMobileClock,
   getMobileAttendanceHistory,
   getFaceProfile,
@@ -48,7 +50,8 @@ export async function getTodaySummaryController(req: AuthenticatedRequest, res: 
       return res.status(401).json({ success: false, error: "Unauthorized" });
     }
 
-    const data = await getMobileTodaySummary(userId);
+    const workDate = getWibDateAndTimeString().workDate;
+    const data = await getCachedAttendanceSummary(`user:${userId}`, workDate, () => getMobileTodaySummary(userId));
     return res.status(200).json({ success: true, data });
   } catch (err: any) {
     const isClientError = err.message?.includes("dikaitkan") || err.message?.includes("tidak ditemukan");

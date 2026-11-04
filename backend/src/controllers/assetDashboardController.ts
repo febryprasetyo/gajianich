@@ -1,4 +1,5 @@
-import { assetScopePredicate } from '../services/assetOrganizationScope';
+import { assetRequestScope, assetScopePredicate } from '../services/assetOrganizationScope';
+import { getCachedAssetDashboardSummary } from '../services/referenceCache';
 import { Request, Response } from 'express';
 import { db } from '../db';
 import { assets, assetCategories } from '../db/schema/assets';
@@ -140,6 +141,8 @@ export function formatPurchaseTrend(
 
 export async function getAssetDashboardSummary(req: Request, res: Response) {
   try {
+    const scope = (req as any).organizationScope ?? null;
+    const summaryData = await getCachedAssetDashboardSummary(scope, async () => {
     // 1. Fetch raw assets with joined details
     const rows = await db
       .select({
@@ -261,15 +264,18 @@ export async function getAssetDashboardSummary(req: Request, res: Response) {
       warrantyExpiry: r.warrantyExpiry ? new Date(r.warrantyExpiry).toISOString() : null,
     }));
 
-    return res.status(200).json({
-      success: true,
-      data: {
+      return {
         kpis,
         purchaseTrend,
         byDepartment,
         byCategory,
         recentAssets,
-      },
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: summaryData,
     });
   } catch (err: any) {
     console.error('Failed to get asset dashboard summary:', err);

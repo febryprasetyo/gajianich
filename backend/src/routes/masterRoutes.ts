@@ -1,3 +1,4 @@
+import { invalidateCacheOnMutation } from '../services/referenceCache';
 import { Router } from 'express';
 import {
   getDepartments,
@@ -17,6 +18,7 @@ import { authenticateToken, requirePermission } from '../middleware/auth';
 import {requireOrganizationScope,requireGlobalAdministrator} from '../middleware/organizationScope';
 
 const router = Router();
+router.use(invalidateCacheOnMutation(['ref:master:*', 'auth:org-access:*', 'kpi:assets:*']));
 
 // Protect all master data routes with authentication
 router.use(authenticateToken);

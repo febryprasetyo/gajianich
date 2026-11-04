@@ -1,3 +1,4 @@
+import { getOrSetCache } from '../lib/redis';
 import { and, eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { db } from '../db';
@@ -10,6 +11,13 @@ export { resolveRequestScope } from '../domain/organizationAccess';
 export type {GroupAccess, RequestScope, ScopeModule} from '../domain/organizationAccess';
 
 export async function loadOrganizationAccess(userId: number, database: Pick<NodePgDatabase, 'select'> = db) {
+  if (database === db) {
+    return getOrSetCache(`auth:org-access:${userId}`, 60, () => loadOrganizationAccessUncached(userId, database));
+  }
+  return loadOrganizationAccessUncached(userId, database);
+}
+
+async function loadOrganizationAccessUncached(userId: number, database: Pick<NodePgDatabase, 'select'> = db) {
   const current = await loadCurrentIdentity(userId, database);
   if (!current) throw new OrganizationScopeError('Account unavailable');
   const columns = {id: organizationGroups.id, code: organizationGroups.code, name: organizationGroups.name};

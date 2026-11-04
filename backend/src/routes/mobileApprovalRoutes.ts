@@ -1,3 +1,4 @@
+import { invalidateCacheOnMutation } from '../services/referenceCache';
 import {requireOrganizationScope} from '../middleware/organizationScope';
 import {requireHrScope,historicalScopePredicate} from '../services/hrOrganizationScope';
 import {loadCurrentIdentity} from '../services/currentIdentity';
@@ -13,6 +14,7 @@ import { users } from '../db/schema/users';
 import { and,eq, sql } from 'drizzle-orm';
 import { resolveEmployeeUser, correctMobileAttendance, listFaceRequests, verifyFaceRequest } from '../services/mobileAttendanceService';
 const router = Router();
+router.use(invalidateCacheOnMutation(['attendance:summary:*']));
 const review = requirePermission('attendance.mobile.verify');
 const handle = (fn: (req: AuthenticatedRequest, res: Response) => Promise<unknown>) => async (req: AuthenticatedRequest, res: Response) => {
   try { await fn(req, res); } catch (error) { res.status(400).json({ success: false, error: error instanceof z.ZodError ? 'Data pengajuan tidak valid.' : error instanceof Error ? error.message : 'Permintaan gagal.' }); }

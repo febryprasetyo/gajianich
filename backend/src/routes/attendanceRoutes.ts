@@ -1,3 +1,4 @@
+import { invalidateCacheOnMutation } from '../services/referenceCache';
 import {requireOrganizationScope} from '../middleware/organizationScope';
 import { Router } from 'express';
 import { authenticateToken, requirePermission } from '../middleware/auth';
@@ -18,6 +19,7 @@ import {
 } from '../controllers/dailyAttendanceReportController';
 
 const router = Router();
+router.use(invalidateCacheOnMutation(['attendance:summary:*']));
 
 // Daily Attendance Report (Print Landscape)
 router.get(

@@ -1,3 +1,4 @@
+import { invalidateCacheOnMutation } from '../services/referenceCache';
 import { Router } from 'express';
 import multer from 'multer';
 import {
@@ -28,6 +29,7 @@ import { authenticateToken, requirePermission } from '../middleware/auth';
 
 import { requireOrganizationScope } from '../middleware/organizationScope';
 const router = Router();
+router.use(invalidateCacheOnMutation(['ref:asset-categories:*', 'kpi:assets:*']));
 
 // Protect all asset routes with authentication
 router.use(authenticateToken);
