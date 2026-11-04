@@ -1,4 +1,14 @@
-import Redis from 'ioredis';
+import type Redis from 'ioredis';
+
+function loadIoRedis(): (new (...args: any[]) => Redis) | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require('ioredis');
+    return mod?.default || mod;
+  } catch {
+    return null;
+  }
+}
 
 let redisInstance: Redis | null = null;
 let isRedisAvailable = false;
@@ -10,11 +20,15 @@ export function getRedisClient(): Redis | null {
   }
 
   if (!redisInstance) {
+    const RedisCtor = loadIoRedis();
+    if (!RedisCtor) {
+      return null;
+    }
     try {
-      redisInstance = new Redis(redisUrl, {
+      redisInstance = new RedisCtor(redisUrl, {
         lazyConnect: true,
         maxRetriesPerRequest: 1,
-        retryStrategy(times) {
+        retryStrategy(times: number) {
           if (times > 3) {
             return null; // Stop reconnecting after 3 attempts
           }

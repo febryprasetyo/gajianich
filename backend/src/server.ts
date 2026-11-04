@@ -4,6 +4,9 @@ import { closeDatabase } from './db';
 import { startAdmsRealtimeListener, stopAdmsRealtimeListener } from './services/admsRealtimeListener';
 
 const env = loadEnv();
+if (!process.env.REDIS_URL && env.nodeEnv === 'development') {
+  process.env.REDIS_URL = 'redis://redis:6379';
+}
 const app = createApp();
 
 const server = app.listen(env.port, () => {
