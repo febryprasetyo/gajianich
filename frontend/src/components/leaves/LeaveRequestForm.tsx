@@ -109,14 +109,11 @@ export function LeaveRequestForm({ mode = "create", requestId, initialData }: Le
     loadBalance();
   }, [selectedEmployee, startDate ? startDate.split("-")[0] : null]);
 
-  // Fetch daftar organisasi penerbit saat karyawan dipilih (khusus HR/Admin)
+  // Fetch daftar organisasi penerbit saat form dibuka atau karyawan dipilih (khusus HR/Admin)
   useEffect(() => {
-    if (!canPickOrganization || !selectedEmployee) {
+    if (!canPickOrganization) {
       setOrganizationOptions([]);
       setOrganizationsError(null);
-      if (!selectedEmployee) {
-        setSelectedOrganizationId(null);
-      }
       return;
     }
 
@@ -125,10 +122,10 @@ export function LeaveRequestForm({ mode = "create", requestId, initialData }: Le
       setIsLoadingOrganizations(true);
       setOrganizationsError(null);
       try {
-        if (!selectedEmployee) return;
-        const res = await api.get<{ data: LeaveDocumentOrganizationOption[] }>(
-          `/leaves/document-organizations?employeeId=${selectedEmployee.id}`
-        );
+        const endpoint = selectedEmployee
+          ? `/leaves/document-organizations?employeeId=${selectedEmployee.id}`
+          : `/leaves/document-organizations`;
+        const res = await api.get<{ data: LeaveDocumentOrganizationOption[] }>(endpoint);
         if (cancelled) return;
         const list = Array.isArray(res?.data) ? res.data : [];
         setOrganizationOptions(list);
@@ -354,6 +351,16 @@ export function LeaveRequestForm({ mode = "create", requestId, initialData }: Le
         </div>
 
         <div className="space-y-4">
+          {canPickOrganization && (
+            <LeaveOrganizationPicker
+              options={organizationOptions}
+              value={selectedOrganizationId}
+              onChange={setSelectedOrganizationId}
+              loading={isLoadingOrganizations}
+              error={organizationsError}
+            />
+          )}
+
           {mode === "create" ? (
             <div className="max-w-xl">
               <LeaveEmployeePicker
@@ -401,18 +408,6 @@ export function LeaveRequestForm({ mode = "create", requestId, initialData }: Le
             <div className="flex items-center gap-2 text-xs text-slate-500 py-2">
               <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
               <span>Memuat data saldo cuti rill karyawan...</span>
-            </div>
-          )}
-
-          {canPickOrganization && selectedEmployee && (
-            <div className="pt-2">
-              <LeaveOrganizationPicker
-                options={organizationOptions}
-                value={selectedOrganizationId}
-                onChange={setSelectedOrganizationId}
-                loading={isLoadingOrganizations}
-                error={organizationsError}
-              />
             </div>
           )}
         </div>

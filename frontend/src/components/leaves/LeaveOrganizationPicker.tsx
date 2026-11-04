@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useRef } from 'react';
-import Link from 'next/link';
-import { Building2, AlertCircle, CheckCircle2, Plus } from 'lucide-react';
+import { Building2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import type { LeaveDocumentOrganizationOption } from '@/types/documentProfile';
 import { stepOrganizationSelectionByKey } from '@/lib/leaves/leaveOrganizationUtils';
 
@@ -36,7 +35,7 @@ export function LeaveOrganizationPicker({
     return (
       <div className="space-y-2" aria-busy="true" aria-label="Memuat daftar organisasi">
         <span className="block text-xs font-semibold text-slate-700 uppercase font-mono">
-          Organisasi Penerbit Form Cuti
+          Pilih Organisasi <span className="text-rose-500">*</span>
         </span>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {[1, 2].map((idx) => (
@@ -60,7 +59,7 @@ export function LeaveOrganizationPicker({
     return (
       <div className="space-y-2">
         <span className="block text-xs font-semibold text-slate-700 uppercase font-mono">
-          Organisasi Penerbit Form Cuti
+          Pilih Organisasi <span className="text-rose-500">*</span>
         </span>
         <div className="p-3.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 text-xs flex items-start gap-2.5">
           <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
@@ -78,60 +77,12 @@ export function LeaveOrganizationPicker({
   if (options.length === 0) {
     return (
       <div className="space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <span className="block text-xs font-semibold text-slate-700 uppercase font-mono">
-            Organisasi Penerbit Form Cuti
-          </span>
-          <Link
-            href="/dashboard/master/organization-logos"
-            className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Tambah / Kelola Organisasi</span>
-          </Link>
-        </div>
+        <span className="block text-xs font-semibold text-slate-700 uppercase font-mono">
+          Pilih Organisasi <span className="text-rose-500">*</span>
+        </span>
         <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 text-xs flex items-center gap-2.5">
           <Building2 className="w-4 h-4 text-slate-400 shrink-0" />
           <span>Belum ada profil dokumen cuti aktif — form memakai organisasi karyawan.</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (options.length === 1) {
-    const only = options[0];
-    return (
-      <div className="space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <span className="block text-xs font-semibold text-slate-700 uppercase font-mono">
-            Organisasi Penerbit Form Cuti
-          </span>
-          <Link
-            href="/dashboard/master/organization-logos"
-            className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Tambah / Kelola Organisasi</span>
-          </Link>
-        </div>
-        <div className="max-w-md p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/40 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={only.logoAssetKey}
-              alt={only.name}
-              className="h-10 w-10 object-contain rounded-lg bg-white border border-slate-200 p-1 shrink-0"
-            />
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-slate-900 truncate">{only.name}</p>
-              <p className="text-[11px] text-slate-500">Logo kop cetakan F4 mengikuti organisasi ini</p>
-            </div>
-          </div>
-          {only.isEmployeeDefault && (
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md shrink-0">
-              Default
-            </span>
-          )}
         </div>
       </div>
     );
@@ -144,15 +95,11 @@ export function LeaveOrganizationPicker({
           id="leave-org-picker-label"
           className="block text-xs font-semibold text-slate-700 uppercase font-mono"
         >
-          Organisasi Penerbit Form Cuti
+          Pilih Organisasi <span className="text-rose-500">*</span>
         </span>
-        <Link
-          href="/dashboard/master/organization-logos"
-          className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Tambah / Kelola Organisasi</span>
-        </Link>
+        <span className="text-[11px] text-slate-500">
+          Menentukan logo kop pada cetakan form F4
+        </span>
       </div>
 
       <div
@@ -160,7 +107,7 @@ export function LeaveOrganizationPicker({
         aria-labelledby="leave-org-picker-label"
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
       >
-        {options.map((opt) => {
+        {options.map((opt, index) => {
           const isSelected = value === opt.organizationId;
           return (
             <button
@@ -172,7 +119,7 @@ export function LeaveOrganizationPicker({
               type="button"
               role="radio"
               aria-checked={isSelected}
-              tabIndex={isSelected || (value === null && opt.isEmployeeDefault) ? 0 : -1}
+              tabIndex={isSelected || (value === null && index === 0) ? 0 : -1}
               onClick={() => onChange(opt.organizationId)}
               onKeyDown={(e) => handleKeyDown(e, opt.organizationId)}
               className={`min-h-14 text-left rounded-xl p-3.5 transition-all flex items-center justify-between gap-3 cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/40 ${
@@ -221,4 +168,3 @@ export function LeaveOrganizationPicker({
     </div>
   );
 }
-

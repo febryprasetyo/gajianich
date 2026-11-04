@@ -41,8 +41,8 @@ router.get(
 );
 router.get(
   '/document-organizations',
-  requirePermission(['attendance.manage']),
-  requireOrganizationScope('hr', 'write'),
+  requirePermission(['attendance.view', 'attendance.manage']),
+  requireOrganizationScope('hr', 'read'),
   getLeaveDocumentOrganizations
 );
 router.post(

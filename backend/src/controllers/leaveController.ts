@@ -132,7 +132,7 @@ function canUserSelectLeaveOrganization(req: Request): boolean {
 }
 
 const documentOrganizationsQuerySchema = z.object({
-  employeeId: z.coerce.number().int().positive(),
+  employeeId: z.coerce.number().int().positive().optional(),
 });
 
 // 0b. GET /document-organizations?employeeId=
@@ -142,10 +142,22 @@ export async function getLeaveDocumentOrganizations(req: Request, res: Response)
     if (!parsed.success) {
       return res.status(400).json({ error: 'employeeId wajib berupa angka positif' });
     }
-    const owner = await requireScopedEmployee(requireHrScope(req as any), parsed.data.employeeId);
+    const scope = requireHrScope(req as any);
+    if (parsed.data.employeeId) {
+      try {
+        const owner = await requireScopedEmployee(scope, parsed.data.employeeId);
+        const data = await listLeaveDocumentOrganizations(db, {
+          groupId: owner.groupId,
+          defaultOrganizationId: owner.organizationId,
+        });
+        return res.status(200).json({ data });
+      } catch {
+        // Fallback to user's allowed groups if employee is unmapped
+      }
+    }
     const data = await listLeaveDocumentOrganizations(db, {
-      groupId: owner.groupId,
-      defaultOrganizationId: owner.organizationId,
+      groupIds: scope.groupIds,
+      defaultOrganizationId: null,
     });
     return res.status(200).json({ data });
   } catch (error: any) {

@@ -247,8 +247,27 @@ export async function resolveDocumentProfile(
 
 export async function listLeaveDocumentOrganizations(
   tx: Pick<NodePgDatabase<any>, 'select'>,
-  input: { groupId: number; defaultOrganizationId?: number | null }
+  input: { groupId?: number; groupIds?: number[]; defaultOrganizationId?: number | null }
 ): Promise<LeaveDocumentOrganizationOption[]> {
+  const groupCondition =
+    input.groupId !== undefined
+      ? eq(documentProfiles.groupId, input.groupId)
+      : Array.isArray(input.groupIds) && input.groupIds.length > 0
+        ? inArray(documentProfiles.groupId, input.groupIds)
+        : undefined;
+
+  const whereClauses = [
+    eq(documentProfiles.kind, 'LEAVE'),
+    eq(documentProfiles.isActive, true),
+    eq(documentTemplateVersions.isActive, true),
+    eq(documentIdentityVersions.isActive, true),
+    eq(organizations.isActive, true),
+    eq(organizationGroups.isActive, true),
+  ];
+  if (groupCondition) {
+    whereClauses.unshift(groupCondition);
+  }
+
   const rows = await tx
     .select({
       organizationId: organizations.id,
@@ -284,17 +303,7 @@ export async function listLeaveDocumentOrganizations(
       )
     )
     .innerJoin(organizationGroups, eq(organizationGroups.id, documentProfiles.groupId))
-    .where(
-      and(
-        eq(documentProfiles.groupId, input.groupId),
-        eq(documentProfiles.kind, 'LEAVE'),
-        eq(documentProfiles.isActive, true),
-        eq(documentTemplateVersions.isActive, true),
-        eq(documentIdentityVersions.isActive, true),
-        eq(organizations.isActive, true),
-        eq(organizationGroups.isActive, true)
-      )
-    )
+    .where(and(...whereClauses))
     .orderBy(asc(organizations.id));
 
   const supportedLayouts = ['cmc-leave-f4-v1', 'cmc-leave-f4-new-v1'];
