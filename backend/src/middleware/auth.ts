@@ -4,6 +4,7 @@ import { db } from '../db';
 import { roles, permissions, rolePermissions } from '../db/schema/users';
 import { eq, and, or, inArray } from 'drizzle-orm';
 import { loadCurrentIdentity } from '../services/currentIdentity';
+import { getCachedIdentity, getCachedPermissions } from '../services/authCache';
 
 export interface AuthenticatedRequest extends Request {
   user?: TokenPayload;
@@ -58,9 +59,10 @@ export async function authenticateToken(req: AuthenticatedRequest, res: Response
     return res.status(403).json({ error: 'Forbidden: Invalid or expired token' });
   }
   try {
-    const payload = await loadCurrentIdentity(verified.userId);
+    const cachedIdentity = await getCachedIdentity(verified.userId, () => loadCurrentIdentity(verified.userId));
+    const payload = cachedIdentity ? { ...cachedIdentity } : null;
     if (!payload) return res.status(403).json({ error: 'Forbidden: Account unavailable' });
-    payload.permissions = await getUserPermissions(payload.roleId, payload.roleName);
+    payload.permissions = [...(await getCachedPermissions(payload.roleId, payload.roleName, () => getUserPermissions(payload.roleId, payload.roleName)))];
     req.user = payload;
     const path = (req.originalUrl || '').split('?')[0];
     const canCompletePasswordChange =

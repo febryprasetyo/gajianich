@@ -1,3 +1,4 @@
+import { invalidateAuthOnSuccessfulMutation } from '../services/authCache';
 import { Router } from 'express';
 import { authenticateToken, requirePermission } from '../middleware/auth';
 import {requireOrganizationScope} from '../middleware/organizationScope';
@@ -13,6 +14,7 @@ import {
 const router = Router();
 
 router.get('/', authenticateToken, requirePermission('access.users.view'),requireOrganizationScope('users','read'), getUsers);
+router.use(invalidateAuthOnSuccessfulMutation);
 router.post('/', authenticateToken, requirePermission('access.users.manage'),requireOrganizationScope('users','write'), createUser);
 router.put('/:id', authenticateToken, requirePermission('access.users.manage'),requireOrganizationScope('users','write'), updateUser);
 router.patch('/:id/status', authenticateToken, requirePermission('access.users.manage'),requireOrganizationScope('users','write'), toggleUserStatus);

@@ -25,6 +25,19 @@ services:
     cpus: 1.0
     logging: *logging
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--maxmemory", "96mb", "--maxmemory-policy", "allkeys-lru", "--save", ""]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    mem_limit: 128m
+    cpus: 0.25
+    logging: *logging
+
   backend:
     image: ams-lan-backend:${APP_VERSION:?Release version required}
     pull_policy: never
@@ -32,6 +45,7 @@ services:
     environment:
       PORT: 5000
       NODE_ENV: production
+      REDIS_URL: redis://redis:6379
       GA_STORAGE_DIR: /app/data/ga-evidence
       DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-ams_app}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ams_prod_db}}
       JWT_SECRET: ${JWT_SECRET:?JWT secret required}
@@ -41,6 +55,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started
     volumes:
       - ga_evidence:/app/data/ga-evidence
     healthcheck:

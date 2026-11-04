@@ -28,3 +28,4 @@ Integrasi Redis 7 sebagai fast in-memory caching layer untuk mempercepat respons
 - [ ] Jalankan typecheck build (`npm run build --prefix backend`).
 - [ ] Deploy ke server produksi (`cmc@192.168.10.23`) dengan `deploy/scripts/deploy-to-prod.sh deploy`.
 - [ ] Verifikasi benchmark latency TTFB sebelum vs sesudah Redis pada endpoint API.
+

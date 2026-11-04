@@ -1,3 +1,4 @@
+import { invalidateAuthOnSuccessfulMutation } from '../services/authCache';
 import { Router } from 'express';
 import { authenticateToken, requirePermission } from '../middleware/auth';
 import {requireGlobalAdministrator} from '../middleware/organizationScope';
@@ -20,6 +21,7 @@ const roleViewAuth = [
 
 router.get('/permissions', ...roleManageAuth, getPermissionsCatalog);
 router.get('/', ...roleViewAuth, getRoles);
+router.use(invalidateAuthOnSuccessfulMutation);
 router.post('/', ...roleManageAuth, createRole);
 router.put('/:id', ...roleManageAuth, updateRole);
 router.delete('/:id', ...roleManageAuth, deleteRole);

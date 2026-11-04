@@ -1,5 +1,7 @@
 # Design Spec: Redis Caching Layer for GAJIANICH
 
+> **Superseded** oleh [2026-11-04-performance-caching-design.md](./2026-11-04-performance-caching-design.md).
+
 ## 1. Summary & Problem Statement
 Aplikasi GAJIANICH saat ini melakukan hit langsung ke basis data PostgreSQL untuk setiap permintaan API, termasuk:
 - Pengecekan sesi pengguna dan role permissions pada setiap transisi halaman.
@@ -63,3 +65,4 @@ Jika koneksi Redis mengalami gangguan atau timeout:
 ## 5. Security & Isolation
 - Port Redis `6379` **TIDAK DIEKSPOS** ke publik atau host network luar; hanya dapat diakses di dalam Docker bridge network internal antar kontainer backend.
 - Opsional: Password proteksi via environment variable `REDIS_PASSWORD` jika diperlukan.
+
