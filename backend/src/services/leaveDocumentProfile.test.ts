@@ -7,6 +7,7 @@ import {
   resolveDocumentProfile,
   DocumentProfileUnavailableError,
   detectImageMime,
+  createOrganizationWithLogo,
   uploadOrganizationLogo,
   listOrganizationLogos,
   listLeaveDocumentOrganizations,
@@ -186,6 +187,25 @@ test('uploadOrganizationLogo provisions LEAVE profile, deduplicates assets, and 
   assert.equal(subOpt.isEmployeeDefault, false);
   assert.equal(subOpt.logoAssetKey, uploaded1.logoAssetKey);
   assert.ok(empId > 0);
+
+  // Create a brand new organization with logo via createOrganizationWithLogo using runtimeDb
+  const createdOrg = await createOrganizationWithLogo(runtimeDb, {
+    groupId: cmcGroupId,
+    name: 'PT Mitra Global Mandiri',
+    allowedGroupIds: [cmcGroupId],
+    buffer: SAMPLE_JPEG,
+    userId: null,
+  });
+  assert.equal(createdOrg.code, 'MGM');
+  assert.equal(createdOrg.name, 'PT Mitra Global Mandiri');
+  assert.equal(createdOrg.version, 1);
+  assert.match(createdOrg.logoAssetKey, /^\/api\/v1\/document-assets\/\d+$/);
+
+  const optionsAfterCreate = await listLeaveDocumentOrganizations(runtimeDb, {
+    groupId: cmcGroupId,
+    defaultOrganizationId: cmcOrgId,
+  });
+  assert.equal(optionsAfterCreate.length, 3);
 });
 
 test('resolveIssuingOrganizationForLeave enforces HR permission, same group, and active LEAVE profile', async (t) => {

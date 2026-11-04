@@ -53,8 +53,9 @@ documentAssets = pgTable('document_assets', {
 | Method | Path | Auth | Keterangan |
 |---|---|---|---|
 | GET | `/api/document-assets/:id` | login | Kirim bytes; `Content-Type` dari DB, `X-Content-Type-Options: nosniff`, `Cache-Control: private, max-age=31536000, immutable`. 404 jika tidak ada / di luar grup scope |
-| GET | `/api/hr/organization-logos` | `hr` read | `[{organizationId, groupId, name, logoAssetKey \| null, version \| null, updatedAt}]` |
-| POST | `/api/hr/organization-logos/:organizationId` | `hr` write | multipart `file`. Validasi Zod param + MIME via **magic bytes** (bukan header saja) + ukuran. 201 `{logoAssetKey, version}`. 400 format/ukuran, 404 org, 409 tidak ada template F4 aktif di grup |
+| GET | `/api/hr/organization-logos` | `hr` read | `[{organizationId, groupId, code, name, logoAssetKey \| null, version \| null, updatedAt}]` |
+| POST | `/api/hr/organization-logos` | `hr` write | multipart `name`, `code?`, `file` (logo). Buat organisasi baru di grup aktif + simpan logo & profil LEAVE dalam satu transaksi. 201 `{organizationId, code, name, logoAssetKey, version}` |
+| POST | `/api/hr/organization-logos/:organizationId` | `hr` write | multipart `file?`, `name?`, `code?`. Perbarui nama/kode dan/atau unggah logo versi baru (validasi magic bytes + maks 512 KB). 201 `{organizationId, logoAssetKey, version}` |
 | GET | `/api/leaves/document-organizations?employeeId=` | `hr` write | `LeaveDocumentOrganizationOption[]` dalam grup karyawan |
 | POST/PUT | `/api/leaves`, `/api/leaves/:id` | existing | `organizationId?: number`. Non-HR: diabaikan. HR: wajib satu grup + profil aktif, else 422 `"Organisasi tidak valid untuk form cuti"`. PUT pada status selain DRAFT/PENDING → 409 |
 | GET | `/api/leaves` | existing | Tambah query `organizationId?` + field respons `organization: {id, name, logoAssetKey}` |

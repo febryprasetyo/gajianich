@@ -24,7 +24,7 @@ export interface OrganizationLogoRow {
 ## Phase 2 — Backend (TDD)
 - [x] Test → impl `detectImageMime(buffer)` (magic bytes PNG/JPEG/WebP, tolak lainnya).
 - [x] Test → impl `uploadOrganizationLogo(tx, {organizationId, file, userId})`: dedupe aset, identity versi baru, aktivasi, auto-create profil LEAVE, 409 tanpa template, audit.
-- [x] Test → impl `listOrganizationLogos`, route `GET/POST /api/hr/organization-logos`.
+- [x] Test → impl `listOrganizationLogos`, `createOrganizationWithLogo`, `updateOrganizationAndLogo`, route `GET/POST /api/hr/organization-logos` & `POST /api/hr/organization-logos/:organizationId`.
 - [x] Test → impl `GET /api/document-assets/:id` (header aman, scope grup, 404).
 - [x] Test → impl `listLeaveDocumentOrganizations(employeeId)` + route.
 - [x] Test → create/update cuti dengan `organizationId`: HR valid, non-HR diabaikan, beda grup 422, status APPROVED 409, audit.

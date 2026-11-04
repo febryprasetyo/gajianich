@@ -52,6 +52,7 @@ test('organization logo and document asset routes register expected endpoints', 
     .map((layer: any) => `${Object.keys(layer.route.methods)[0].toUpperCase()} ${layer.route.path}`);
 
   assert.ok(logoPaths.includes('GET /'), 'GET /hr/organization-logos must exist');
+  assert.ok(logoPaths.includes('POST /'), 'POST /hr/organization-logos must exist');
   assert.ok(logoPaths.includes('POST /:organizationId'), 'POST /hr/organization-logos/:organizationId must exist');
 
   const assetPaths = documentAssetRoutes.stack

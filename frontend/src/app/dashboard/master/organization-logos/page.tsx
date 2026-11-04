@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Building2, Upload, Image as ImageIcon, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Building2, Upload, Plus, Edit, Image as ImageIcon, CheckCircle2, AlertCircle } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import FilterToolbar from '@/components/ui/FilterToolbar';
 import TableShell from '@/components/ui/TableShell';
@@ -20,6 +20,7 @@ export default function OrganizationLogosPage() {
   const [page, setPage] = useState(1);
   const limit = 10;
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState<OrganizationLogoRow | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -72,12 +73,32 @@ export default function OrganizationLogosPage() {
     }
   };
 
+  const handleOpenCreate = () => {
+    setSelectedOrg(null);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (org: OrganizationLogoRow) => {
+    setSelectedOrg(org);
+    setIsModalOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Logo Organisasi"
-        subtitle="Kelola identitas logo per organisasi untuk kop cetakan formulir permohonan cuti (F4)."
+        subtitle="Kelola daftar organisasi dan identitas logo kop cetakan formulir permohonan cuti (F4)."
         icon={Building2}
+        actions={
+          <button
+            type="button"
+            onClick={handleOpenCreate}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Tambah Organisasi</span>
+          </button>
+        }
       />
 
       {toast && (
@@ -119,7 +140,7 @@ export default function OrganizationLogosPage() {
         error={error}
         isEmpty={!loading && !error && filtered.length === 0}
         emptyTitle="Tidak Ada Organisasi"
-        emptyDescription="Tidak ada organisasi yang sesuai dengan kata kunci pencarian."
+        emptyDescription="Belum ada organisasi yang sesuai pencarian, atau tambahkan organisasi baru menggunakan tombol Tambah Organisasi."
       >
         <table className="w-full text-left border-collapse">
           <thead>
@@ -184,11 +205,18 @@ export default function OrganizationLogosPage() {
                 <td className="py-3 px-4 text-right">
                   <div className="flex items-center justify-end gap-1">
                     <RowActionButton
+                      icon={Edit}
+                      label={`Edit organisasi ${item.name}`}
+                      title="Edit Nama / Kode & Logo"
+                      variant="default"
+                      onClick={() => handleOpenEdit(item)}
+                    />
+                    <RowActionButton
                       icon={Upload}
                       label={`Unggah logo ${item.name}`}
                       title="Unggah / Ganti Logo"
                       variant="emerald"
-                      onClick={() => setSelectedOrg(item)}
+                      onClick={() => handleOpenEdit(item)}
                     />
                   </div>
                 </td>
@@ -207,13 +235,19 @@ export default function OrganizationLogosPage() {
       </TableShell>
 
       <OrganizationLogoUploadModal
-        isOpen={Boolean(selectedOrg)}
+        isOpen={isModalOpen}
         organization={selectedOrg}
-        onClose={() => setSelectedOrg(null)}
-        onSuccess={() => {
+        defaultGroupId={rows[0]?.groupId ?? null}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedOrg(null);
+        }}
+        onSuccess={(orgName, isNew) => {
           setToast({
             type: 'success',
-            message: `Logo organisasi ${selectedOrg?.name || ''} berhasil diperbarui.`,
+            message: isNew
+              ? `Organisasi "${orgName}" beserta logo berhasil ditambahkan dan siap dipilih pada Form Cuti.`
+              : `Identitas dan logo organisasi "${orgName}" berhasil diperbarui.`,
           });
           loadLogos();
         }}

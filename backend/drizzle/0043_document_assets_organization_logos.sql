@@ -21,8 +21,8 @@ DECLARE runtime_role text := current_setting('gajianich.hr_audit_runtime_role', 
 BEGIN
   IF runtime_role IS NOT NULL AND runtime_role <> '' THEN
     EXECUTE format('GRANT SELECT, INSERT ON TABLE public.document_assets TO %I', runtime_role);
-    EXECUTE format('GRANT SELECT, INSERT, UPDATE ON TABLE public.document_identity_versions, public.document_profiles TO %I', runtime_role);
-    EXECUTE format('GRANT USAGE, SELECT ON SEQUENCE public.document_assets_id_seq, public.document_identity_versions_id_seq, public.document_profiles_id_seq TO %I', runtime_role);
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE ON TABLE public.organizations, public.document_identity_versions, public.document_profiles TO %I', runtime_role);
+    EXECUTE format('GRANT USAGE, SELECT ON SEQUENCE public.organizations_id_seq, public.document_assets_id_seq, public.document_identity_versions_id_seq, public.document_profiles_id_seq TO %I', runtime_role);
   END IF;
 END $$;
 

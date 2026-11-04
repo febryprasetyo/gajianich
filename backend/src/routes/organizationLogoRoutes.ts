@@ -1,7 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { z } from 'zod';
+import { and, desc, eq } from 'drizzle-orm';
 import { db } from '../db';
+import { documentTemplateVersions } from '../db/schema/documentProfiles';
 import { authenticateToken, requirePermission, type AuthenticatedRequest } from '../middleware/auth';
 import { requireOrganizationScope, type OrganizationScopedRequest } from '../middleware/organizationScope';
 import { requireHrScope } from '../services/hrOrganizationScope';
@@ -11,6 +13,7 @@ import { verifyToken } from '../utils/jwt';
 import {
   MAX_LOGO_BYTE_SIZE,
   DocumentLogoValidationError,
+  createOrganizationWithLogo,
   getDocumentAssetById,
   listOrganizationLogos,
   uploadOrganizationLogo,
@@ -126,6 +129,86 @@ organizationLogoRoutes.get(
   }
 );
 
+async function ensureTargetGroupForCreate(req: Request, _res: Response, next: NextFunction) {
+  try {
+    if (req.body && req.body.groupId !== undefined && req.body.groupId !== '') {
+      const num = Number(req.body.groupId);
+      if (Number.isSafeInteger(num) && num > 0) {
+        req.body.groupId = num;
+        return next();
+      }
+    }
+    if (!req.headers['x-organization-group-id']) {
+      const [leaveTpl] = await db
+        .select({ groupId: documentTemplateVersions.groupId })
+        .from(documentTemplateVersions)
+        .where(
+          and(
+            eq(documentTemplateVersions.kind, 'LEAVE'),
+            eq(documentTemplateVersions.isActive, true)
+          )
+        )
+        .orderBy(desc(documentTemplateVersions.version))
+        .limit(1);
+      if (leaveTpl) {
+        req.body = { ...(req.body || {}), groupId: leaveTpl.groupId };
+      }
+    }
+  } catch {
+    // fallback to standard scope resolution
+  }
+  next();
+}
+
+// POST /api/v1/hr/organization-logos (Create new organization + logo)
+organizationLogoRoutes.post(
+  '/',
+  requirePermission(['attendance.manage']),
+  handleLogoUpload,
+  ensureTargetGroupForCreate,
+  requireOrganizationScope('hr', 'write'),
+  async (req: OrganizationScopedRequest, res: Response) => {
+    try {
+      const scope = requireHrScope(req);
+      const targetGroupId = scope.selectedGroupId ?? scope.groupIds[0];
+      if (!targetGroupId) {
+        return res.status(400).json({ error: 'Grup organisasi tujuan tidak ditemukan' });
+      }
+      if (!req.file || !req.file.buffer) {
+        return res.status(400).json({ error: 'File logo wajib diunggah untuk organisasi baru' });
+      }
+
+      let auditContext = null;
+      if (req.user) {
+        try {
+          auditContext = await resolveAuditContext(req);
+        } catch {
+          // ignore if unavailable in isolated test
+        }
+      }
+
+      const result = await createOrganizationWithLogo(db, {
+        groupId: targetGroupId,
+        name: typeof req.body?.name === 'string' ? req.body.name : '',
+        code: typeof req.body?.code === 'string' ? req.body.code : undefined,
+        allowedGroupIds: scope.groupIds,
+        buffer: req.file.buffer,
+        userId: req.user?.userId ?? null,
+        auditContext,
+      });
+
+      return res.status(201).json(result);
+    } catch (error: any) {
+      if (error instanceof DocumentLogoValidationError) {
+        return res.status(error.status).json({ error: error.message });
+      }
+      return res.status(error?.statusCode || 500).json({
+        error: 'Gagal menambahkan organisasi baru',
+      });
+    }
+  }
+);
+
 // POST /api/v1/hr/organization-logos/:organizationId
 organizationLogoRoutes.post(
   '/:organizationId',
@@ -137,9 +220,6 @@ organizationLogoRoutes.post(
       const orgIdParsed = z.coerce.number().int().positive().safeParse(req.params.organizationId);
       if (!orgIdParsed.success) {
         return res.status(400).json({ error: 'ID organisasi tidak valid' });
-      }
-      if (!req.file || !req.file.buffer) {
-        return res.status(400).json({ error: 'File logo wajib diunggah' });
       }
 
       const scope = requireHrScope(req);
@@ -155,7 +235,9 @@ organizationLogoRoutes.post(
       const result = await uploadOrganizationLogo(db, {
         organizationId: orgIdParsed.data,
         allowedGroupIds: scope.groupIds,
-        buffer: req.file.buffer,
+        buffer: req.file?.buffer ?? null,
+        name: typeof req.body?.name === 'string' && req.body.name.trim() !== '' ? req.body.name : undefined,
+        code: typeof req.body?.code === 'string' && req.body.code.trim() !== '' ? req.body.code : undefined,
         userId: req.user?.userId ?? null,
         auditContext,
       });
@@ -164,6 +246,8 @@ organizationLogoRoutes.post(
         logoAssetKey: result.logoAssetKey,
         version: result.version,
         organizationId: result.organizationId,
+        code: result.code,
+        name: result.name,
       });
     } catch (error: any) {
       if (error instanceof DocumentLogoValidationError) {

@@ -25,7 +25,7 @@ Dokumen ini adalah **indeks utama roadmap**. Setiap item prioritas dipecah ke be
 | **15** | Pemisahan CMC/MGM, Cakupan Akses & Identitas Dokumen | **Implementasi terverifikasi; menunggu aktivasi** | [15-cmc-mgm-organization-scope.md](./15-cmc-mgm-organization-scope.md) | [Spec](../superpowers/specs/2026-10-29-cmc-mgm-organization-scope-design.md) \| [Plan](../superpowers/plans/2026-10-29-cmc-mgm-organization-scope.md) |
 | **16** | Kalkulasi Toleransi Keterlambatan Presensi (Late Tolerance) | **Selesai** | [16-kalkulasi-toleransi-keterlambatan.md](./16-kalkulasi-toleransi-keterlambatan.md) | [Spec](../superpowers/specs/2026-11-03-late-tolerance-calculation-design.md) \| [Plan](../superpowers/plans/2026-11-03-late-tolerance-calculation.md) |
 | **17** | Performance Caching (Redis + Frontend SWR) | **Selesai** | [17-performance-caching.md](./17-performance-caching.md) | [Spec](../superpowers/specs/2026-11-04-performance-caching-design.md) \| [Plan](../superpowers/plans/2026-11-04-performance-caching.md) |
-| **18** | Pilihan Organisasi pada Form Cuti + Manajemen Logo Organisasi | **Implementasi terverifikasi; menunggu aktivasi** | [18-pilihan-organisasi-form-cuti.md](./18-pilihan-organisasi-form-cuti.md) | [Spec](../superpowers/specs/2026-11-04-leave-form-organization-select-design.md) \| [Plan](../superpowers/plans/2026-11-04-leave-form-organization-select.md) |
+| **18** | Pilihan Organisasi pada Form Cuti + Manajemen Logo Organisasi | **Selesai** | [18-pilihan-organisasi-form-cuti.md](./18-pilihan-organisasi-form-cuti.md) | [Spec](../superpowers/specs/2026-11-04-leave-form-organization-select-design.md) \| [Plan](../superpowers/plans/2026-11-04-leave-form-organization-select.md) |
 
 ---
 

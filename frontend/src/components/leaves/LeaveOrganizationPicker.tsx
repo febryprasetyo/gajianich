@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useRef } from 'react';
-import { Building2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import Link from 'next/link';
+import { Building2, AlertCircle, CheckCircle2, Plus } from 'lucide-react';
 import type { LeaveDocumentOrganizationOption } from '@/types/documentProfile';
 import { stepOrganizationSelectionByKey } from '@/lib/leaves/leaveOrganizationUtils';
 
@@ -77,9 +78,18 @@ export function LeaveOrganizationPicker({
   if (options.length === 0) {
     return (
       <div className="space-y-2">
-        <span className="block text-xs font-semibold text-slate-700 uppercase font-mono">
-          Organisasi Penerbit Form Cuti
-        </span>
+        <div className="flex items-center justify-between gap-2">
+          <span className="block text-xs font-semibold text-slate-700 uppercase font-mono">
+            Organisasi Penerbit Form Cuti
+          </span>
+          <Link
+            href="/dashboard/master/organization-logos"
+            className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Tambah / Kelola Organisasi</span>
+          </Link>
+        </div>
         <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 text-xs flex items-center gap-2.5">
           <Building2 className="w-4 h-4 text-slate-400 shrink-0" />
           <span>Belum ada profil dokumen cuti aktif — form memakai organisasi karyawan.</span>
@@ -92,9 +102,18 @@ export function LeaveOrganizationPicker({
     const only = options[0];
     return (
       <div className="space-y-2">
-        <span className="block text-xs font-semibold text-slate-700 uppercase font-mono">
-          Organisasi Penerbit Form Cuti
-        </span>
+        <div className="flex items-center justify-between gap-2">
+          <span className="block text-xs font-semibold text-slate-700 uppercase font-mono">
+            Organisasi Penerbit Form Cuti
+          </span>
+          <Link
+            href="/dashboard/master/organization-logos"
+            className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Tambah / Kelola Organisasi</span>
+          </Link>
+        </div>
         <div className="max-w-md p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/40 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -127,9 +146,13 @@ export function LeaveOrganizationPicker({
         >
           Organisasi Penerbit Form Cuti
         </span>
-        <span className="text-[11px] text-slate-500">
-          Menentukan logo kop pada cetakan form F4
-        </span>
+        <Link
+          href="/dashboard/master/organization-logos"
+          className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Tambah / Kelola Organisasi</span>
+        </Link>
       </div>
 
       <div
