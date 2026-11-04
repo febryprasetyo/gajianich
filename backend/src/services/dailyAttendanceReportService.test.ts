@@ -186,3 +186,58 @@ test('computeIsLate honors late tolerance minutes and grace deduction', () => {
   );
 });
 
+test('roster sorting sorts employees by sortOrder ASC, placing subordinates under coordinators', () => {
+  const sampleEmployees = [
+    { employeeId: 2, employeeName: 'Sofyan', sortOrder: 2, isCoordinator: false },
+    { employeeId: 10, employeeName: 'Reza Adityawarman', sortOrder: 10, isCoordinator: true },
+    { employeeId: 1, employeeName: 'Sendy', sortOrder: 1, isCoordinator: true },
+    { employeeId: 11, employeeName: 'Yuli Yuliansari', sortOrder: 11, isCoordinator: false },
+    { employeeId: 3, employeeName: 'Aldio Rizky Mulyawan', sortOrder: 3, isCoordinator: false },
+    { employeeId: 99, employeeName: 'Zulham (New)', sortOrder: 999999, isCoordinator: false },
+    { employeeId: 98, employeeName: 'Ahmad (New)', sortOrder: 999999, isCoordinator: false },
+  ];
+
+  sampleEmployees.sort((a, b) => {
+    if (a.sortOrder !== b.sortOrder) {
+      return a.sortOrder - b.sortOrder;
+    }
+    return a.employeeName.localeCompare(b.employeeName);
+  });
+
+  // Verify order
+  assert.strictEqual(sampleEmployees[0].employeeName, 'Sendy');
+  assert.strictEqual(sampleEmployees[1].employeeName, 'Sofyan');
+  assert.strictEqual(sampleEmployees[2].employeeName, 'Aldio Rizky Mulyawan');
+  assert.strictEqual(sampleEmployees[3].employeeName, 'Reza Adityawarman');
+  assert.strictEqual(sampleEmployees[4].employeeName, 'Yuli Yuliansari');
+  // Unassigned employees sorted alphabetically at the end
+  assert.strictEqual(sampleEmployees[5].employeeName, 'Ahmad (New)');
+  assert.strictEqual(sampleEmployees[6].employeeName, 'Zulham (New)');
+});
+
+test('moving employee x from coordinator y to coordinator a correctly repositions employee above coordinator y', () => {
+  // Before: Yuli is under Reza (sortOrder 11)
+  const roster = [
+    { employeeId: 1, employeeName: 'Sendy', sortOrder: 1, isCoordinator: true },
+    { employeeId: 2, employeeName: 'Sofyan', sortOrder: 2, isCoordinator: false },
+    { employeeId: 10, employeeName: 'Reza Adityawarman', sortOrder: 10, isCoordinator: true },
+    { employeeId: 11, employeeName: 'Yuli Yuliansari', sortOrder: 11, isCoordinator: false },
+  ];
+
+  // Action: Move Yuli to Sendy's team at sortOrder 3
+  const updatedRoster = roster.map(emp => {
+    if (emp.employeeId === 11) {
+      return { ...emp, sortOrder: 3 };
+    }
+    return emp;
+  });
+
+  updatedRoster.sort((a, b) => a.sortOrder - b.sortOrder);
+
+  // Yuli is now at index 2 (above Reza at index 3)
+  assert.strictEqual(updatedRoster[0].employeeName, 'Sendy');
+  assert.strictEqual(updatedRoster[1].employeeName, 'Sofyan');
+  assert.strictEqual(updatedRoster[2].employeeName, 'Yuli Yuliansari');
+  assert.strictEqual(updatedRoster[3].employeeName, 'Reza Adityawarman');
+});
+

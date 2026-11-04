@@ -6,6 +6,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import KpiGrid, { KpiCardItem } from '@/components/ui/KpiGrid';
 import FilterToolbar from '@/components/ui/FilterToolbar';
 import TableShell from '@/components/ui/TableShell';
+import DepartmentRosterModal from './DepartmentRosterModal';
 import { DailyAttendancePrintDocument } from './DailyAttendancePrintDocument';
 import { exportDailyAttendanceToExcel } from '@/lib/attendance/dailyReportExport';
 import type {
@@ -25,6 +26,7 @@ import {
   Check,
   X,
   Building,
+  ListOrdered,
 } from 'lucide-react';
 
 export default function DailyAttendanceReportPage() {
@@ -44,6 +46,7 @@ export default function DailyAttendanceReportPage() {
   const [selectedDeptId, setSelectedDeptId] = useState<number | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeKpiFilter, setActiveKpiFilter] = useState<'ALL' | 'PRESENT' | 'LATE' | 'ABSENT'>('ALL');
+  const [isRosterModalOpen, setIsRosterModalOpen] = useState(false);
 
   const [reportData, setReportData] = useState<DailyAttendanceReportData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -260,6 +263,17 @@ export default function DailyAttendanceReportPage() {
           icon={Printer}
           actions={
             <div className="flex items-center gap-2">
+              {selectedDeptId !== 'ALL' && (
+                <button
+                  type="button"
+                  onClick={() => setIsRosterModalOpen(true)}
+                  className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                  title={`Atur urutan dan susunan tim ${selectedDepartmentName}`}
+                >
+                  <ListOrdered className="w-4 h-4 text-amber-700" />
+                  Atur Susunan Tim
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleExportExcel}
@@ -532,6 +546,16 @@ export default function DailyAttendanceReportPage() {
           />
         )}
       </div>
+      {/* 6. Modal Pengaturan Format Susunan Roster Departemen */}
+      {selectedDeptId !== 'ALL' && (
+        <DepartmentRosterModal
+          isOpen={isRosterModalOpen}
+          onClose={() => setIsRosterModalOpen(false)}
+          departmentId={Number(selectedDeptId)}
+          departmentName={selectedDepartmentName}
+          onSaved={fetchReport}
+        />
+      )}
     </div>
   );
 }

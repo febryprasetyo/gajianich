@@ -16,6 +16,8 @@ import {
 import {
   getDailyAttendanceReportHandler,
   upsertDailyAttendanceNoteHandler,
+  getDepartmentRosterHandler,
+  saveDepartmentRosterHandler,
 } from '../controllers/dailyAttendanceReportController';
 
 const router = Router();
@@ -36,6 +38,22 @@ router.post(
   requirePermission(['attendance.manage']),
   requireOrganizationScope('hr', 'write'),
   upsertDailyAttendanceNoteHandler
+);
+
+router.get(
+  '/daily-report/roster',
+  authenticateToken,
+  requirePermission(['attendance.view', 'attendance.manage', 'attendance.import']),
+  requireOrganizationScope('hr', 'read'),
+  getDepartmentRosterHandler
+);
+
+router.put(
+  '/daily-report/roster',
+  authenticateToken,
+  requirePermission(['attendance.manage']),
+  requireOrganizationScope('hr', 'write'),
+  saveDepartmentRosterHandler
 );
 
 // Workspace & Commands (Server-backed Attendance Workspace)

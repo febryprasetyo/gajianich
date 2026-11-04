@@ -329,6 +329,13 @@
       "when": 1793340000000,
       "tag": "0046_seed_mgm_official_document_template",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1793341000000,
+      "tag": "0047_department_report_rosters",
+      "breakpoints": true
     }
   ],
   "version": "7"

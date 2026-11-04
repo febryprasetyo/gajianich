@@ -5,6 +5,9 @@ export interface DailyAttendanceEmployeeRow {
   jobLevel: string | null;
   position: string | null;
   isHighlighted: boolean;       // Stabilo kuning: otomatis jika Level Jabatan/Posisi = Koordinator / Direktur, atau di-override manual oleh HRD
+  isCoordinator?: boolean;
+  coordinatorId?: number | null;
+  sortOrder?: number;
   locationUpdate: string;       // "Jakarta/ Kantor" (mesin) atau "Kabupaten Serang, Banten" (mobile/dinas luar)
   scanIn: string | null;        // "HH:mm" atau null
   isLate: boolean;              // true jika scanIn > scheduleIn
@@ -37,4 +40,24 @@ export interface UpsertDailyNotePayload {
   employeeId: number;
   isHighlighted?: boolean;
   manualNote?: string;
+}
+
+export interface DepartmentRosterItem {
+  employeeId: number;
+  employeeName: string;
+  jobLevel: string | null;
+  position: string | null;
+  sortOrder: number;
+  isCoordinator: boolean;
+  coordinatorId: number | null;
+}
+
+export interface SaveDepartmentRosterPayload {
+  departmentId: number;
+  items: {
+    employeeId: number;
+    sortOrder: number;
+    isCoordinator: boolean;
+    coordinatorId: number | null;
+  }[];
 }

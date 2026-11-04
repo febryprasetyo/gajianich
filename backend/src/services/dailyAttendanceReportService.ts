@@ -6,6 +6,8 @@ import { attendanceRecords } from '../db/schema/attendance';
 import { attendanceSelfLogs } from '../db/schema/attendanceSelfLogs';
 import { leaveRequests } from '../db/schema/leaves';
 import { attendanceDailyNotes } from '../db/schema/attendanceDailyNotes';
+import { departmentReportRosters } from '../db/schema/departmentReportRosters';
+import { departmentOrganizationMappings } from '../db/schema/organizations';
 import { employeeScopePredicate, requireScopedEmployee } from './hrOrganizationScope';
 import type { RequestScope } from '../domain/organizationAccess';
 import {
@@ -21,6 +23,9 @@ export interface DailyAttendanceEmployeeRow {
   jobLevel: string | null;
   position: string | null;
   isHighlighted: boolean;
+  isCoordinator?: boolean;
+  coordinatorId?: number | null;
+  sortOrder?: number;
   locationUpdate: string;
   scanIn: string | null;
   isLate: boolean;
@@ -28,6 +33,26 @@ export interface DailyAttendanceEmployeeRow {
   keterangan: string;
   attendanceStatus: string;
   sourceType: 'ADMS' | 'MOBILE' | 'LEAVE' | 'MANUAL' | 'NONE';
+}
+
+export interface DepartmentRosterItem {
+  employeeId: number;
+  employeeName: string;
+  jobLevel: string | null;
+  position: string | null;
+  sortOrder: number;
+  isCoordinator: boolean;
+  coordinatorId: number | null;
+}
+
+export interface SaveDepartmentRosterInput {
+  departmentId: number;
+  items: {
+    employeeId: number;
+    sortOrder: number;
+    isCoordinator: boolean;
+    coordinatorId: number | null;
+  }[];
 }
 
 export interface DailyAttendanceDepartmentGroup {
@@ -279,6 +304,20 @@ export async function getDailyAttendanceReport(
     notesByEmpId.set(n.employeeId, n);
   }
 
+  // 5b. Query persistent department_report_rosters for ordering & coordinator mapping
+  const distinctDeptIds = Array.from(new Set(employeeRows.map((e: any) => e.departmentId).filter(Boolean))) as number[];
+  const rosterRecords = distinctDeptIds.length > 0
+    ? await runner
+        .select()
+        .from(departmentReportRosters)
+        .where(inArray(departmentReportRosters.departmentId, distinctDeptIds))
+    : [];
+
+  const rosterByDeptEmpId = new Map<string, (typeof departmentReportRosters.$inferSelect)>();
+  for (const r of rosterRecords) {
+    rosterByDeptEmpId.set(`${r.departmentId}:${r.employeeId}`, r);
+  }
+
   // 6. Aggregate into rows and group by department
   const deptGroupsMap = new Map<number, DailyAttendanceDepartmentGroup>();
   let totalPresent = 0;
@@ -290,9 +329,11 @@ export async function getDailyAttendanceReport(
     const selfLog = selfLogsByEmpId.get(emp.id);
     const leave = leavesByEmpId.get(emp.id);
     const dailyNote = notesByEmpId.get(emp.id);
+    const roster = rosterByDeptEmpId.get(`${emp.departmentId}:${emp.id}`);
+    const isCoordinator = roster ? roster.isCoordinator : false;
 
     // Auto or Manual Highlight
-    let isHighlighted = shouldAutoHighlightEmployee(emp.position, emp.jobLevel);
+    let isHighlighted = isCoordinator || shouldAutoHighlightEmployee(emp.position, emp.jobLevel);
     if (dailyNote && typeof dailyNote.isHighlighted === 'boolean') {
       isHighlighted = dailyNote.isHighlighted;
     }
@@ -376,6 +417,9 @@ export async function getDailyAttendanceReport(
       jobLevel: emp.jobLevel,
       position: emp.position,
       isHighlighted,
+      isCoordinator,
+      coordinatorId: roster ? roster.coordinatorId : null,
+      sortOrder: roster ? roster.sortOrder : 999999,
       locationUpdate,
       scanIn,
       isLate,
@@ -386,8 +430,16 @@ export async function getDailyAttendanceReport(
     });
   }
 
-  // Renumber within each department
+  // Sort and renumber within each department according to custom roster order
   for (const group of deptGroupsMap.values()) {
+    group.employees.sort((a, b) => {
+      const orderA = a.sortOrder ?? 999999;
+      const orderB = b.sortOrder ?? 999999;
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      return a.employeeName.localeCompare(b.employeeName);
+    });
     group.employees.forEach((e, idx) => {
       e.no = idx + 1;
     });
@@ -474,5 +526,162 @@ export async function upsertDailyAttendanceNote(
     isHighlighted: updateValues.isHighlighted,
     manualNote: updateValues.manualNote,
   };
+}
+
+/**
+ * Get current roster ordering and coordinator assignments for a department
+ */
+export async function getDepartmentRoster(
+  scope: RequestScope,
+  departmentId: number,
+  runner: any = db
+): Promise<DepartmentRosterItem[]> {
+  if (!departmentId || Number(departmentId) <= 0) {
+    throw Object.assign(new Error('departmentId wajib diisi dan valid'), { statusCode: 400 });
+  }
+
+  const numDeptId = Number(departmentId);
+
+  // Active employees in this department with scope filtering
+  const employeeConditions: any[] = [
+    eq(employees.status, 'Active'),
+    eq(employees.departmentId, numDeptId),
+    employeeScopePredicate(scope, employees.departmentId),
+  ];
+
+  const emps = await runner
+    .select({
+      id: employees.id,
+      fullName: employees.fullName,
+      position: employees.position,
+      jobLevel: employees.jobLevel,
+    })
+    .from(employees)
+    .where(and(...employeeConditions))
+    .orderBy(employees.fullName);
+
+  if (!emps.length) {
+    return [];
+  }
+
+  const empIds = emps.map((e: any) => e.id);
+  const rosterRows = await runner
+    .select()
+    .from(departmentReportRosters)
+    .where(
+      and(
+        eq(departmentReportRosters.departmentId, numDeptId),
+        inArray(departmentReportRosters.employeeId, empIds)
+      )
+    );
+
+  const rosterByEmpId = new Map<number, typeof departmentReportRosters.$inferSelect>();
+  for (const r of rosterRows) {
+    rosterByEmpId.set(r.employeeId, r);
+  }
+
+  const items: DepartmentRosterItem[] = emps.map((emp: any) => {
+    const r = rosterByEmpId.get(emp.id);
+    const isAutoCoordinator = shouldAutoHighlightEmployee(emp.position, emp.jobLevel);
+    return {
+      employeeId: emp.id,
+      employeeName: emp.fullName,
+      jobLevel: emp.jobLevel,
+      position: emp.position,
+      sortOrder: r ? r.sortOrder : 999999,
+      isCoordinator: r ? r.isCoordinator : isAutoCoordinator,
+      coordinatorId: r ? r.coordinatorId : null,
+    };
+  });
+
+  items.sort((a, b) => {
+    if (a.sortOrder !== b.sortOrder) {
+      return a.sortOrder - b.sortOrder;
+    }
+    return a.employeeName.localeCompare(b.employeeName);
+  });
+
+  // Re-index sortOrder consecutively 1, 2, 3...
+  return items.map((item, idx) => ({
+    ...item,
+    sortOrder: idx + 1,
+  }));
+}
+
+/**
+ * Save persistent roster ordering and coordinator assignments for a department
+ */
+export async function saveDepartmentRoster(
+  scope: RequestScope,
+  payload: SaveDepartmentRosterInput,
+  userId: number,
+  runner: any = db
+): Promise<{ success: boolean; count: number }> {
+  const { departmentId, items } = payload;
+  if (!departmentId || Number(departmentId) <= 0) {
+    throw Object.assign(new Error('departmentId wajib diisi dan valid'), { statusCode: 400 });
+  }
+  if (!Array.isArray(items)) {
+    throw Object.assign(new Error('items harus berupa array'), { statusCode: 400 });
+  }
+
+  const numDeptId = Number(departmentId);
+
+  // Retrieve organizational mapping for this department
+  const [deptMapping] = await runner
+    .select({
+      groupId: departmentOrganizationMappings.groupId,
+      organizationId: departmentOrganizationMappings.organizationId,
+    })
+    .from(departmentOrganizationMappings)
+    .where(eq(departmentOrganizationMappings.departmentId, numDeptId))
+    .limit(1);
+
+  const groupId = deptMapping?.groupId || null;
+  const organizationId = deptMapping?.organizationId || null;
+
+  await runner.transaction(async (tx: any) => {
+    for (const item of items) {
+      if (!item.employeeId) continue;
+      const empId = Number(item.employeeId);
+
+      const existing = await tx
+        .select()
+        .from(departmentReportRosters)
+        .where(
+          and(
+            eq(departmentReportRosters.departmentId, numDeptId),
+            eq(departmentReportRosters.employeeId, empId)
+          )
+        )
+        .limit(1);
+
+      if (existing.length > 0) {
+        await tx
+          .update(departmentReportRosters)
+          .set({
+            sortOrder: Number(item.sortOrder) || 0,
+            isCoordinator: Boolean(item.isCoordinator),
+            coordinatorId: item.coordinatorId ? Number(item.coordinatorId) : null,
+            updatedById: userId,
+            updatedAt: new Date(),
+          })
+          .where(eq(departmentReportRosters.id, existing[0].id));
+      } else {
+        await tx.insert(departmentReportRosters).values({
+          groupId,
+          organizationId,
+          departmentId: numDeptId,
+          employeeId: empId,
+          sortOrder: Number(item.sortOrder) || 0,
+          isCoordinator: Boolean(item.isCoordinator),
+          coordinatorId: item.coordinatorId ? Number(item.coordinatorId) : null,
+          updatedById: userId,
+        });
+      }
+    }
+  });
+
+  return { success: true, count: items.length };
 }
 
