@@ -1,3 +1,4 @@
+import { invalidateQueryCache } from './queryCache';
 import { AUTH_COOKIE_NAME } from "./authCookie";
 import {organizationRequests} from './access/organizationScope';
 
@@ -72,6 +73,9 @@ export async function apiFetch<T = unknown>(endpoint: string, options: ApiOption
     throw new Error(errorMessage);
   }
 
+  if (options.method && options.method.toUpperCase() !== 'GET') {
+    invalidateQueryCache();
+  }
   return data as T;
   }finally{scope?.finish();}
 }

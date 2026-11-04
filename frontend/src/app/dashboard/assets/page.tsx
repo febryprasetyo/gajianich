@@ -11,6 +11,7 @@ import AssignAssetModal from '@/components/assets/AssignAssetModal';
 import ReturnAssetModal from '@/components/assets/ReturnAssetModal';
 import AssetImportDialog from '@/components/assets/AssetImportDialog';
 import { api } from '@/lib/api';
+import { useCachedQuery } from '@/lib/useCachedQuery';
 import { useAuth } from '@/context/AuthContext';
 import { canManageAssets, canManageLifecycle } from '@/lib/assetImport';
 import {
@@ -27,15 +28,6 @@ export default function AssetsPage() {
   const { user } = useAuth();
   const canManage = canManageAssets(user?.roleName);
   const canLifecycle = canManageLifecycle(user?.roleName);
-
-  // Data States
-  const [assets, setAssets] = useState<AssetItem[]>([]);
-  const [categories, setCategories] = useState<CategoryItem[]>([]);
-  const [locations, setLocations] = useState<LocationItem[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
-
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Filters State
   const [search, setSearch] = useState('');
@@ -67,63 +59,63 @@ export default function AssetsPage() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [downloadingTemplate, setDownloadingTemplate] = useState(false);
 
-  // Fetch Auxiliary Reference Data
-  useEffect(() => {
-    const fetchAuxiliary = async () => {
-      try {
-        const [cats, locs] = await Promise.all([
-          api.get<CategoryItem[]>('/assets/categories').catch(() => []),
-          api.get<LocationItem[]>('/master/locations').catch(() => []),
-        ]);
-        setCategories(cats || []);
-        setLocations(locs || []);
-      } catch (err: any) {
-        console.error('Failed to load auxiliary filter data:', err);
-      }
-    };
-    fetchAuxiliary();
-  }, []);
+  // Cached Auxiliary Reference Data (Categories & Locations)
+  const { data: categories = [] } = useCachedQuery<CategoryItem[]>(
+    '/assets/categories',
+    (signal) => api.get<CategoryItem[]>('/assets/categories', { signal }).catch(() => []),
+    { staleTimeMs: 300_000 }
+  );
 
-  // Fetch Assets with Filtering & Pagination
-  const fetchAssets = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const { data: locations = [] } = useCachedQuery<LocationItem[]>(
+    '/master/locations',
+    (signal) => api.get<LocationItem[]>('/master/locations', { signal }).catch(() => []),
+    { staleTimeMs: 300_000 }
+  );
 
-      const params = new URLSearchParams();
-      if (search) params.append('search', search);
-      if (selectedCategory !== 'ALL') params.append('categoryId', selectedCategory);
-      if (selectedLocation !== 'ALL') params.append('locationId', selectedLocation);
-      if (selectedStatus !== 'ALL') params.append('status', selectedStatus);
-      params.append('page', String(page));
-      params.append('limit', String(limit));
-
-      const res = await api.get<AssetItem[] | { data: AssetItem[]; total?: number } | { assets: AssetItem[]; total?: number }>(
-        `/assets?${params.toString()}`
-      );
-      if (Array.isArray(res)) {
-        setAssets(res);
-        setTotalCount(res.length);
-      } else if (res && 'data' in res && Array.isArray(res.data)) {
-        setAssets(res.data);
-        setTotalCount(res.total ?? res.data.length);
-      } else if (res && 'assets' in res && Array.isArray(res.assets)) {
-        setAssets(res.assets);
-        setTotalCount(res.total ?? res.assets.length);
-      } else {
-        setAssets([]);
-        setTotalCount(0);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to load asset inventory');
-    } finally {
-      setLoading(false);
-    }
+  // Cached Assets List with keepPreviousData to eliminate full-page spinner on filter/page change
+  const assetsQueryKey = useMemo(() => {
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (selectedCategory !== 'ALL') params.append('categoryId', selectedCategory);
+    if (selectedLocation !== 'ALL') params.append('locationId', selectedLocation);
+    if (selectedStatus !== 'ALL') params.append('status', selectedStatus);
+    params.append('page', String(page));
+    params.append('limit', String(limit));
+    return `/assets?${params.toString()}`;
   }, [search, selectedCategory, selectedLocation, selectedStatus, page]);
 
-  useEffect(() => {
-    fetchAssets();
-  }, [fetchAssets]);
+  const {
+    data: assetsPayload,
+    error: assetsQueryError,
+    isLoading: loading,
+    revalidate: revalidateAssets,
+  } = useCachedQuery<{ items: AssetItem[]; total: number }>(
+    assetsQueryKey,
+    async (signal) => {
+      const res = await api.get<AssetItem[] | { data: AssetItem[]; total?: number } | { assets: AssetItem[]; total?: number }>(
+        assetsQueryKey,
+        { signal }
+      );
+      if (Array.isArray(res)) {
+        return { items: res, total: res.length };
+      }
+      if (res && 'data' in res && Array.isArray(res.data)) {
+        return { items: res.data, total: res.total ?? res.data.length };
+      }
+      if (res && 'assets' in res && Array.isArray(res.assets)) {
+        return { items: res.assets, total: res.total ?? res.assets.length };
+      }
+      return { items: [], total: 0 };
+    },
+    { staleTimeMs: 30_000, keepPreviousData: true }
+  );
+
+  const assets = assetsPayload?.items ?? [];
+  const totalCount = assetsPayload?.total ?? 0;
+  const error = assetsQueryError ? (assetsQueryError.message || 'Failed to load asset inventory') : null;
+  const fetchAssets = useCallback(() => {
+    void revalidateAssets();
+  }, [revalidateAssets]);
 
   // Handlers for Modals
   const handleOpenCreateModal = () => {

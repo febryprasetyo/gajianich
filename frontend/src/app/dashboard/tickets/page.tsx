@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
+import { useCachedQuery } from "@/lib/useCachedQuery";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import TicketStats, { KpiFilterKey } from "@/modules/ticket/components/TicketStats";
 import TicketFilters from "@/modules/ticket/components/TicketFilters";
@@ -15,19 +16,9 @@ import { listTickets, getTicketStats } from "@/modules/ticket/api";
 import { Ticket, Plus, X } from "lucide-react";
 
 export default function TicketsPage() {
-  // Stats state
-  const [stats, setStats] = useState<TicketStatsData | null>(null);
-  const [statsLoading, setStatsLoading] = useState(true);
-
-  // Tickets list state
-  const [tickets, setTickets] = useState<TicketSummary[]>([]);
-  const [total, setTotal] = useState(0);
+  // Pagination & Filters state
   const [page, setPage] = useState(1);
   const [limit] = useState(15);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Filters state
   const [filters, setFilters] = useState<TicketFilterParams>({
     isInternal: "all",
     page: 1,
@@ -39,49 +30,54 @@ export default function TicketsPage() {
   // Modal create state
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // Fetch stats
-  const fetchStats = useCallback(async () => {
-    try {
-      setStatsLoading(true);
+  // Cached KPI stats
+  const {
+    data: statsData,
+    isLoading: statsLoading,
+    revalidate: revalidateStats,
+  } = useCachedQuery<TicketStatsData | null>(
+    "/helpdesk/stats",
+    async () => {
       const res = await getTicketStats();
-      if (res.success && res.data) {
-        setStats(res.data);
-      }
-    } catch (err) {
-      console.error("Gagal memuat statistik helpdesk:", err);
-    } finally {
-      setStatsLoading(false);
-    }
-  }, []);
+      return res.success && res.data ? res.data : null;
+    },
+    { staleTimeMs: 30_000, keepPreviousData: true }
+  );
+  const stats = statsData ?? null;
 
-  // Fetch tickets
-  const fetchTickets = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await listTickets({
-        ...filters,
-        page,
-        limit,
-      });
-      if (res?.success || res?.data || (res as any)?.items) {
-        setTickets(res?.data || (res as any)?.items || []);
-        setTotal(res?.total ?? (res as any)?.totalCount ?? 0);
-      }
-    } catch (err: any) {
-      setError(err?.message || "Gagal memuat data tiket.");
-    } finally {
-      setLoading(false);
-    }
-  }, [filters, page, limit]);
+  // Cached tickets list
+  const ticketsQueryKey = useMemo(
+    () => `/helpdesk/tickets?${JSON.stringify({ ...filters, page, limit })}`,
+    [filters, page, limit]
+  );
 
-  useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+  const {
+    data: ticketsPayload,
+    error: ticketsQueryError,
+    isLoading: loading,
+    revalidate: revalidateTickets,
+  } = useCachedQuery<{ items: TicketSummary[]; total: number }>(
+    ticketsQueryKey,
+    async () => {
+      const res = await listTickets({ ...filters, page, limit });
+      const items = res?.data || (res as any)?.items || [];
+      const totalCount = res?.total ?? (res as any)?.totalCount ?? 0;
+      return { items, total: totalCount };
+    },
+    { staleTimeMs: 30_000, keepPreviousData: true }
+  );
 
-  useEffect(() => {
-    fetchTickets();
-  }, [fetchTickets]);
+  const tickets = ticketsPayload?.items ?? [];
+  const total = ticketsPayload?.total ?? 0;
+  const error = ticketsQueryError ? (ticketsQueryError.message || "Gagal memuat data tiket.") : null;
+
+  const fetchStats = useCallback(() => {
+    void revalidateStats();
+  }, [revalidateStats]);
+
+  const fetchTickets = useCallback(() => {
+    void revalidateTickets();
+  }, [revalidateTickets]);
 
   const handleSelectKpiFilter = (key: KpiFilterKey) => {
     if (activeKpiFilter === key) {

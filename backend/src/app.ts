@@ -1,3 +1,4 @@
+import { httpPerformanceMiddleware } from './middleware/httpPerformance';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -63,6 +64,7 @@ export function createApp(options: AppOptions = {}): express.Express {
 
   app.use(helmet());
   app.use(cors(corsConfig));
+  app.use(httpPerformanceMiddleware());
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 

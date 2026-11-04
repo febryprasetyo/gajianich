@@ -35,6 +35,10 @@ export function getPool(): Pool {
     const env = loadEnv();
     poolInstance = new Pool({
       connectionString: env.databaseUrl,
+      max: Number(process.env.DB_POOL_MAX) > 0 ? Number(process.env.DB_POOL_MAX) : 20,
+      idleTimeoutMillis: Number(process.env.DB_POOL_IDLE_TIMEOUT_MS) > 0 ? Number(process.env.DB_POOL_IDLE_TIMEOUT_MS) : 30000,
+      connectionTimeoutMillis: Number(process.env.DB_POOL_CONNECT_TIMEOUT_MS) > 0 ? Number(process.env.DB_POOL_CONNECT_TIMEOUT_MS) : 5000,
+      allowExitOnIdle: true,
     });
     poolInstance.on('error', () => {});
   }
