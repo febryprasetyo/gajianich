@@ -23,7 +23,7 @@ test('mobile API requires dedicated reviewer permission and protects employee ev
   await new Promise<void>(resolve => server.once('listening', resolve));
   t.after(async () => { await new Promise<void>(resolve => server.close(() => resolve())); await getPool().end(); process.env.DATABASE_URL = original; await fixture.cleanup(); });
   const database = drizzle(fixture.owner);
-  const {rows:[group]} = await fixture.owner.query("INSERT INTO organization_groups(code,name) VALUES('CMC','CMC') RETURNING id");
+  const {rows:[group]} = await fixture.owner.query("INSERT INTO organization_groups(code,name) VALUES('CMC','CMC') ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name RETURNING id");
   const {rows:[department]} = await fixture.owner.query("INSERT INTO departments(code,name) VALUES('MOBILE-API','Mobile API') RETURNING id");
   await fixture.owner.query("INSERT INTO department_organization_mappings(department_id,group_id,approval_reference) VALUES($1,$2,'test-approved')",[department.id,group.id]);
   const [reviewRole, employeeRole] = await database.insert(roles).values([{ code: 'custom_mobile_reviewer', name: 'Custom Mobile Reviewer' }, { code: 'custom_mobile_employee', name: 'Custom Mobile Employee' }]).returning();

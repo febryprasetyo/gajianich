@@ -13,7 +13,7 @@ test('primary facility isolates inventory independently of custodian and authori
     const app = await import('../app');
     closeDatabase = (await import('../db')).closeDatabase;
     const { generateToken } = await import('../utils/jwt');
-    await fixture.owner.query(`INSERT INTO organization_groups (code,name) VALUES ('CMC','CMC'),('MGM','MGM');
+    await fixture.owner.query(`INSERT INTO organization_groups (code,name) VALUES ('CMC','CMC'),('MGM','MGM') ON CONFLICT (code) DO NOTHING;
       INSERT INTO locations (code,name) VALUES ('CMC','CMC facility'),('MGM','MGM facility');
       INSERT INTO location_organization_mappings (location_id,group_id,approval_reference) SELECT l.id,g.id,'fixture' FROM locations l JOIN organization_groups g ON l.code=g.code;
       INSERT INTO users (username,password_hash,role) VALUES ('asset-global','fixture','SuperAdmin'),('asset-it','fixture','ITAdmin');

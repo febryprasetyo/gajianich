@@ -46,7 +46,7 @@ test("Attendance Command Controller Integration Tests", async (t) => {
   await owner.query(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO "${runtimeRole}"`);
   await owner.query(`REVOKE UPDATE, DELETE, TRUNCATE ON hr_audit_events, hr_audit_targets, hr_mutation_receipts FROM "${runtimeRole}"`);
 
-  const {rows:[group]} = await owner.query("INSERT INTO organization_groups(code,name) VALUES('CMC','CMC') RETURNING id");
+  const {rows:[group]} = await owner.query("INSERT INTO organization_groups(code,name) VALUES('CMC','CMC') ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name RETURNING id");
   const organizationScope = {module:'hr',groupIds:[Number(group.id)],selectedGroupId:Number(group.id),includeUnmapped:false};
   const adminDb = drizzle(owner);
   const testDb = drizzle(runtime);

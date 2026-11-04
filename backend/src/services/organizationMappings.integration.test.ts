@@ -84,6 +84,7 @@ test('journal upgrade applied twice preserves final employee and attendance reco
     await runMigrations(fixture.ownerUrl, legacy, fixture.runtimeRole);
     await fixture.owner.query(`INSERT INTO departments (name,code) VALUES ('Legacy department','LEGACY');
       INSERT INTO employees (employee_number, full_name, department_id, barcode) SELECT 'FINAL-001','Final employee fixture',id,'FINAL-BARCODE' FROM departments;
+      INSERT INTO employees (employee_number, full_name, department_id, barcode) VALUES ('FINAL-002','Unmapped employee fixture',NULL,'FINAL-BARCODE-2');
       INSERT INTO attendance_records (employee_id,work_date,scan_in,scan_out) SELECT id,'2026-10-29','08:00','17:00' FROM employees;`);
     const employees = (await fixture.owner.query('SELECT * FROM employees ORDER BY id')).rows;
     const attendance = (await fixture.owner.query('SELECT * FROM attendance_records ORDER BY id')).rows;
@@ -92,7 +93,10 @@ test('journal upgrade applied twice preserves final employee and attendance reco
     assert.deepEqual((await fixture.owner.query('SELECT * FROM employees ORDER BY id')).rows, employees);
     const upgradedAttendance=(await fixture.owner.query('SELECT * FROM attendance_records ORDER BY id')).rows;
     assert.deepEqual(upgradedAttendance.map(({group_id,organization_id,...legacy})=>legacy),attendance);
-    assert.ok(upgradedAttendance.every(row=>row.group_id===null && row.organization_id===null),'historical ownership is never invented by upgrade');
+    const cmcGroup = (await fixture.owner.query("SELECT id FROM organization_groups WHERE code = 'CMC'")).rows[0].id;
+    assert.equal(upgradedAttendance[0].group_id, cmcGroup, 'mapped employee attendance gets backfilled to group');
+    assert.equal(upgradedAttendance[1].group_id, null, 'unmapped employee attendance never has group ownership invented');
+    assert.ok(upgradedAttendance.every(row=>row.organization_id===null),'historical legal organization ownership is never invented by upgrade');
     assert.equal((await fixture.owner.query('SELECT count(*)::int AS count FROM user_organization_group_access')).rows[0].count,0);
   } finally {
     await fixture.cleanup();

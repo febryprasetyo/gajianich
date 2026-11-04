@@ -11,7 +11,7 @@ test('GA scope protects list totals, searches, parents, children and writes; sub
  await runMigrations(fixture.ownerUrl,undefined,fixture.runtimeRole);
  await fixture.owner.query('GRANT SELECT ON users,roles,permissions,role_permissions,organization_groups,organizations,user_organization_group_access,document_profiles,document_template_versions,document_identity_versions TO "'+fixture.runtimeRole+'"');
  const owner=await createDocumentProfileFixture(fixture.owner);
- const {rows:[mgm]}=await fixture.owner.query("INSERT INTO organization_groups(code,name) VALUES('MGM','MGM') RETURNING id");
+ const {rows:[mgm]}=await fixture.owner.query("INSERT INTO organization_groups(code,name) VALUES('MGM','MGM') ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name RETURNING id");
  const {rows:[org]}=await fixture.owner.query("INSERT INTO organizations(group_id,code,name) VALUES($1,'MGM-TEST','MGM fixture') RETURNING id",[mgm.id]);
  const {rows:[role]}=await fixture.owner.query("INSERT INTO roles(code,name) VALUES('super_admin','SuperAdmin') RETURNING id");
  const {rows:[user]}=await fixture.owner.query("INSERT INTO users(username,password_hash,role_id) VALUES('scope-ga','unused',$1) RETURNING id",[role.id]);
