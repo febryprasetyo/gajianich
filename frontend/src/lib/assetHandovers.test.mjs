@@ -55,3 +55,4 @@ test('HANDOVER_ITEM_TYPE_OPTIONS defines the 6 checklist options from the physic
   const ids = HANDOVER_ITEM_TYPE_OPTIONS.map((o) => o.id);
   assert.deepEqual(ids, ['laptop', 'monitor', 'printer', 'pc', 'mouse', 'lainnya']);
 });
+

@@ -38,7 +38,7 @@ export const handoverInputSchema = z.object({
   handoverDate: dateSchema,
   organizationId: z.number().int().positive().nullable().optional(),
   employeeId: z.number().int().positive().nullable().optional(),
-  recipientName: z.string().trim().min(1, 'Nama penerima wajib diisi').max(150),
+  recipientName: z.string().trim().max(150).nullable().optional().default(''),
   recipientAddress: z.string().trim().max(500).nullable().optional(),
   recipientPosition: z.string().trim().max(100).nullable().optional(),
   recipientPhone: z.string().trim().max(50).nullable().optional(),
@@ -47,7 +47,7 @@ export const handoverInputSchema = z.object({
   givenByName: z.string().trim().min(1, 'Nama pihak yang menyerahkan wajib diisi').max(150),
   givenByTitle: z.string().trim().max(100).nullable().optional(),
   givenByUserId: z.number().int().positive().nullable().optional(),
-  receivedByName: z.string().trim().min(1, 'Nama pihak yang menerima wajib diisi').max(150),
+  receivedByName: z.string().trim().max(150).nullable().optional().default(''),
   notes: z.string().trim().max(2000).nullable().optional(),
   status: z.enum(['DRAFT', 'COMPLETED', 'ARCHIVED']).default('COMPLETED'),
   items: z.array(handoverItemInputSchema).min(1, 'Minimal sertakan 1 rincian barang'),
@@ -65,3 +65,4 @@ export function validateHandoverInput(data: unknown): HandoverInput {
   }
   return parsed.data;
 }
+

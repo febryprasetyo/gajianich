@@ -99,3 +99,4 @@ export async function updateHandover(id: number | string, data: HandoverFormInpu
 export async function deleteHandover(id: number | string): Promise<{ success: boolean }> {
   return await api.delete<{ success: boolean }>(`/assets/handovers/${id}`);
 }
+

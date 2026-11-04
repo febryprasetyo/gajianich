@@ -34,3 +34,4 @@ test('assetHandoverItems schema exposes required item columns with cascade forei
   assert.ok(columns.description, 'description column must exist');
   assert.ok(columns.createdAt, 'createdAt column must exist');
 });
+

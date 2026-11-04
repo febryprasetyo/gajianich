@@ -212,7 +212,7 @@ export async function createHandover(
         handoverDate: input.handoverDate,
         organizationId: input.organizationId ?? null,
         employeeId: input.employeeId ?? null,
-        recipientName: input.recipientName,
+        recipientName: input.recipientName || null,
         recipientAddress: input.recipientAddress ?? null,
         recipientPosition: input.recipientPosition ?? null,
         recipientPhone: input.recipientPhone ?? null,
@@ -221,7 +221,7 @@ export async function createHandover(
         givenByName: input.givenByName,
         givenByTitle: input.givenByTitle ?? null,
         givenByUserId: input.givenByUserId ?? actorUserId ?? null,
-        receivedByName: input.receivedByName,
+        receivedByName: input.receivedByName || null,
         notes: input.notes ?? null,
         status: input.status ?? 'COMPLETED',
         createdById: actorUserId ?? null,
@@ -286,7 +286,7 @@ export async function updateHandover(
         handoverDate: input.handoverDate,
         organizationId: input.organizationId ?? null,
         employeeId: input.employeeId ?? null,
-        recipientName: input.recipientName,
+        recipientName: input.recipientName || null,
         recipientAddress: input.recipientAddress ?? null,
         recipientPosition: input.recipientPosition ?? null,
         recipientPhone: input.recipientPhone ?? null,
@@ -295,7 +295,7 @@ export async function updateHandover(
         givenByName: input.givenByName,
         givenByTitle: input.givenByTitle ?? null,
         givenByUserId: input.givenByUserId ?? null,
-        receivedByName: input.receivedByName,
+        receivedByName: input.receivedByName || null,
         notes: input.notes ?? null,
         status: input.status,
         updatedAt: new Date(),
@@ -370,3 +370,4 @@ export async function deleteHandover(
     return { success: true };
   });
 }
+

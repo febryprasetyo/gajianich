@@ -43,27 +43,36 @@ test('validateHandoverInput accepts complete valid input', () => {
   assert.equal(parsed.items[0].itemName, 'ThinkPad T14');
 });
 
-test('validateHandoverInput rejects missing required fields and empty items', () => {
+test('validateHandoverInput allows optional empty recipientName and receivedByName for manual fill', () => {
+  const manualData = {
+    handoverDate: '2026-11-04',
+    givenByName: 'Budi Santoso',
+    items: [{ itemName: 'Laptop Lenovo' }],
+  };
+
+  const parsed = validateHandoverInput(manualData);
+  assert.equal(parsed.recipientName, '');
+  assert.equal(parsed.receivedByName, '');
+  assert.equal(parsed.items.length, 1);
+});
+
+test('validateHandoverInput rejects missing givenByName and empty items', () => {
   assert.throws(
     () => {
       validateHandoverInput({
         handoverDate: '2026-11-04',
-        // recipientName missing
-        givenByName: 'Budi Santoso',
-        receivedByName: 'Ahmad Fauzi',
+        // givenByName missing
         items: [{ itemName: 'Barang' }],
       });
     },
-    (err: any) => err instanceof HandoverInputError && err.message.includes('recipientName')
+    (err: any) => err instanceof HandoverInputError && err.message.includes('givenByName')
   );
 
   assert.throws(
     () => {
       validateHandoverInput({
         handoverDate: '2026-11-04',
-        recipientName: 'Ahmad Fauzi',
         givenByName: 'Budi Santoso',
-        receivedByName: 'Ahmad Fauzi',
         items: [], // empty items
       });
     },
@@ -77,3 +86,4 @@ test('VALID_ITEM_TYPES contains standard office equipment checklist', () => {
     ['laptop', 'monitor', 'printer', 'pc', 'mouse', 'lainnya']
   );
 });
+

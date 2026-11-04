@@ -253,10 +253,6 @@ export function HandoverForm({ initialData, prefillAssetId }: HandoverFormProps)
     setErrorMessage(null);
 
     // Basic client validation
-    if (!recipientName.trim()) {
-      setErrorMessage('Nama penerima wajib diisi');
-      return;
-    }
     if (!givenByName.trim()) {
       setErrorMessage('Nama pihak yang menyerahkan wajib diisi');
       return;
@@ -270,7 +266,7 @@ export function HandoverForm({ initialData, prefillAssetId }: HandoverFormProps)
     const payload: HandoverFormInput = {
       handoverDate,
       employeeId,
-      recipientName: recipientName.trim(),
+      recipientName: recipientName.trim() || null,
       recipientAddress: recipientAddress.trim() || null,
       recipientPosition: recipientPosition.trim() || null,
       recipientPhone: recipientPhone.trim() || null,
@@ -278,7 +274,7 @@ export function HandoverForm({ initialData, prefillAssetId }: HandoverFormProps)
       itemTypesCustom: itemTypes.includes('lainnya') ? itemTypesCustom.trim() || null : null,
       givenByName: givenByName.trim(),
       givenByTitle: givenByTitle.trim() || null,
-      receivedByName: receivedByName.trim() || recipientName.trim(),
+      receivedByName: receivedByName.trim() || recipientName.trim() || null,
       notes: notes.trim() || null,
       status,
       items: validItems.map((it, idx) => ({
@@ -362,12 +358,11 @@ export function HandoverForm({ initialData, prefillAssetId }: HandoverFormProps)
             {/* Nama Penerima */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Nama Penerima <span className="text-rose-500">*</span>
+                Nama Penerima <span className="text-slate-400 font-normal text-[11px]">(Opsional / Isi Manual Nanti)</span>
               </label>
               <input
                 type="text"
-                required
-                placeholder="Nama lengkap pemegang barang"
+                placeholder="Dapat dikosongkan jika form diisi manual dengan tanda tangan basah"
                 value={recipientName}
                 onChange={(e) => {
                   setRecipientName(e.target.value);
@@ -634,18 +629,18 @@ export function HandoverForm({ initialData, prefillAssetId }: HandoverFormProps)
             </span>
             <div>
               <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                Nama Penerima <span className="text-rose-500">*</span>
+                Nama Penerima <span className="text-slate-400 font-normal text-[11px]">(Opsional / Isi Manual Nanti)</span>
               </label>
               <input
                 type="text"
-                required
+                placeholder="Kosongkan jika akan ditulis tangan saat serah terima"
                 value={receivedByName}
                 onChange={(e) => setReceivedByName(e.target.value)}
                 className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold"
               />
             </div>
             <p className="text-[11px] text-slate-400">
-              Secara default nama ini sama dengan nama penerima di atas.
+              Dapat dikosongkan jika dokumen akan dicetak dan diisi manual dengan tanda tangan basah di lapangan.
             </p>
           </div>
         </div>
@@ -687,3 +682,4 @@ export function HandoverForm({ initialData, prefillAssetId }: HandoverFormProps)
     </form>
   );
 }
+

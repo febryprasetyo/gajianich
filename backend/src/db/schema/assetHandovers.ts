@@ -12,7 +12,7 @@ export const assetHandovers = pgTable(
     handoverDate: date('handover_date').notNull(),
     organizationId: bigint('organization_id', { mode: 'number' }).references(() => organizations.id, { onDelete: 'set null' }),
     employeeId: bigint('employee_id', { mode: 'number' }).references(() => employees.id, { onDelete: 'set null' }),
-    recipientName: varchar('recipient_name', { length: 150 }).notNull(),
+    recipientName: varchar('recipient_name', { length: 150 }),
     recipientAddress: text('recipient_address'),
     recipientPosition: varchar('recipient_position', { length: 100 }),
     recipientPhone: varchar('recipient_phone', { length: 50 }),
@@ -21,7 +21,7 @@ export const assetHandovers = pgTable(
     givenByName: varchar('given_by_name', { length: 150 }).notNull(),
     givenByTitle: varchar('given_by_title', { length: 100 }),
     givenByUserId: bigint('given_by_user_id', { mode: 'number' }).references(() => users.id, { onDelete: 'set null' }),
-    receivedByName: varchar('received_by_name', { length: 150 }).notNull(),
+    receivedByName: varchar('received_by_name', { length: 150 }),
     notes: text('notes'),
     status: varchar('status', { length: 30 }).default('COMPLETED').notNull(),
     createdById: bigint('created_by_id', { mode: 'number' }).references(() => users.id, { onDelete: 'set null' }),
@@ -54,3 +54,4 @@ export const assetHandoverItems = pgTable(
     index('asset_handover_items_asset_id_idx').on(table.assetId),
   ]
 );
+

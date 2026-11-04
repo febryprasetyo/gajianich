@@ -316,7 +316,11 @@ export default function HandoversPage() {
                     {/* Penerima */}
                     <td className="py-3 px-4">
                       <div className="font-bold text-slate-900">
-                        {h.recipientName}
+                        {h.recipientName || (
+                          <span className="text-slate-400 font-normal italic">
+                            (Belum diisi / Manual)
+                          </span>
+                        )}
                       </div>
                       <div className="text-[11px] text-slate-500 mt-0.5">
                         {h.recipientPosition || 'Karyawan'}
@@ -443,3 +447,4 @@ export default function HandoversPage() {
     </DashboardLayout>
   );
 }
+

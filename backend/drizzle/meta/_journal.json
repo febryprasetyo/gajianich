@@ -315,6 +315,13 @@
       "when": 1793338000000,
       "tag": "0044_asset_handovers",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1793339000000,
+      "tag": "0045_handover_recipient_nullable",
+      "breakpoints": true
     }
   ],
   "version": "7"

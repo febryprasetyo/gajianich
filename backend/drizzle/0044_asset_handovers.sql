@@ -45,3 +45,4 @@ CREATE TABLE IF NOT EXISTS "asset_handover_items" (
 CREATE INDEX IF NOT EXISTS "asset_handover_items_handover_id_idx" ON "asset_handover_items" ("handover_id");
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "asset_handover_items_asset_id_idx" ON "asset_handover_items" ("asset_id");
+

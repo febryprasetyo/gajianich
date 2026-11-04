@@ -16,7 +16,7 @@ export interface AssetHandover {
   organizationId: number | null;
   organizationName?: string | null;
   employeeId: number | null;
-  recipientName: string;
+  recipientName: string | null;
   recipientAddress: string | null;
   recipientPosition: string | null;
   recipientPhone: string | null;
@@ -25,7 +25,7 @@ export interface AssetHandover {
   givenByName: string;
   givenByTitle: string | null;
   givenByUserId: number | null;
-  receivedByName: string;
+  receivedByName: string | null;
   status: string;
   notes: string | null;
   itemsCount?: number;
@@ -53,7 +53,7 @@ export interface HandoverFormInput {
   handoverDate: string;
   organizationId?: number | null;
   employeeId?: number | null;
-  recipientName: string;
+  recipientName?: string | null;
   recipientAddress?: string | null;
   recipientPosition?: string | null;
   recipientPhone?: string | null;
@@ -62,7 +62,7 @@ export interface HandoverFormInput {
   givenByName: string;
   givenByTitle?: string | null;
   givenByUserId?: number | null;
-  receivedByName: string;
+  receivedByName?: string | null;
   status?: string;
   notes?: string | null;
   items: HandoverItemInput[];
@@ -77,3 +77,4 @@ export interface HandoverListResponse {
     totalPages: number;
   };
 }
+
