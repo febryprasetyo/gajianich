@@ -4,6 +4,7 @@ import { authenticateToken, requirePermission } from '../middleware/auth';
 import {
   getActiveEmployeesForLeaves,
   getLeaveBalanceSummary,
+  getLeaveDocumentOrganizations,
   calculateWorkingDays,
   createLeaveRequest,
   getLeaveRequestById,
@@ -37,6 +38,12 @@ router.get(
   requirePermission(['attendance.view', 'attendance.manage']),
   requireOrganizationScope('hr', 'read'),
   getLeaveBalanceSummary
+);
+router.get(
+  '/document-organizations',
+  requirePermission(['attendance.manage']),
+  requireOrganizationScope('hr', 'write'),
+  getLeaveDocumentOrganizations
 );
 router.post(
   '/calculate-days',

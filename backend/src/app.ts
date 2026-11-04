@@ -21,6 +21,7 @@ import attendanceDeviceRoutes from './routes/attendanceDeviceRoutes';
 import mobileAttendanceRoutes from './routes/mobileAttendanceRoutes';
 import hrActivityRoutes from './routes/hrActivityRoutes';
 import goodsRequestRoutes from './routes/goodsRequestRoutes';
+import { documentAssetRoutes, organizationLogoRoutes } from './routes/organizationLogoRoutes';
 import { checkDatabase } from './db';
 
 import { loadEnv } from './config/env';
@@ -110,6 +111,10 @@ export function createApp(options: AppOptions = {}): express.Express {
   app.use('/api/v1/attendance', attendanceRoutes);
   app.use('/api/attendance', attendanceRoutes);
   app.use('/api/v1/hr/activities', hrActivityRoutes);
+  app.use('/api/v1/hr/organization-logos', organizationLogoRoutes);
+  app.use('/api/hr/organization-logos', organizationLogoRoutes);
+  app.use('/api/v1/document-assets', documentAssetRoutes);
+  app.use('/api/document-assets', documentAssetRoutes);
   app.use('/api/v1/ga/requests', goodsRequestRoutes);
   app.use('/api/hr/activities', hrActivityRoutes);
 

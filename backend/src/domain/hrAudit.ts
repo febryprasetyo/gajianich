@@ -88,7 +88,7 @@ export const ALLOWED_ENTITY_FIELDS: Record<string, string[]> = {
   attendance_shift: ['id', 'code', 'name', 'startTime', 'endTime'],
   attendance_shift_assignment: ['id', 'shiftId', 'employeeId', 'departmentId', 'startDate', 'endDate'],
   leave_request: [
-    'id', 'employeeId', 'employeeCode', 'employeeName', 'leaveType',
+    'id', 'employeeId', 'employeeCode', 'employeeName', 'organizationId', 'leaveType',
     'startDate', 'endDate', 'durationDays', 'status', 'requestNumber', 'reason',
   ],
   leave_balance: [

@@ -144,6 +144,46 @@ describe('Leave Controller Schema Validation', () => {
     });
     assert.strictEqual(crossYear.success, false);
   });
+
+  test('createLeaveRequestSchema and updateLeaveRequestSchema accept optional positive organizationId', () => {
+    const validCreate = createLeaveRequestSchema.safeParse({
+      employeeId: 5,
+      organizationId: 3,
+      leaveType: 'ANNUAL',
+      reason: 'Cuti dengan organisasi penerbit terpilih',
+      startDate: '2026-10-20',
+      endDate: '2026-10-22',
+      durationDays: 3,
+    });
+    assert.strictEqual(validCreate.success, true);
+    if (validCreate.success) {
+      assert.strictEqual((validCreate.data as any).organizationId, 3);
+    }
+
+    const validUpdate = updateLeaveRequestSchema.safeParse({
+      organizationId: 4,
+      leaveType: 'ANNUAL',
+      reason: 'Revisi organisasi penerbit',
+      startDate: '2026-10-25',
+      endDate: '2026-10-27',
+      durationDays: 3,
+    });
+    assert.strictEqual(validUpdate.success, true);
+    if (validUpdate.success) {
+      assert.strictEqual((validUpdate.data as any).organizationId, 4);
+    }
+
+    const invalidOrg = createLeaveRequestSchema.safeParse({
+      employeeId: 5,
+      organizationId: -1,
+      leaveType: 'ANNUAL',
+      reason: 'Organisasi tidak valid',
+      startDate: '2026-10-20',
+      endDate: '2026-10-22',
+      durationDays: 3,
+    });
+    assert.strictEqual(invalidOrg.success, false);
+  });
 });
 
 describe('Leave Business Logic & Document Standards', () => {

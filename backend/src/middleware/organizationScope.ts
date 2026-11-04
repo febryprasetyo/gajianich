@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '../db';
 import { employees } from '../db/schema/employees';
 import { users } from '../db/schema/users';
-import { departmentOrganizationMappings, userOrganizationGroupAccess } from '../db/schema/organizations';
+import { departmentOrganizationMappings, organizations, userOrganizationGroupAccess } from '../db/schema/organizations';
 import type { AuthenticatedRequest } from './auth';
 import { loadGroupAccess } from '../services/organizationScope';
 import { OrganizationScopeError, parseGroupSelection, resolveRequestScope, type ScopeModule, type RequestScope } from '../domain/organizationAccess';
@@ -77,8 +77,8 @@ export function requireOrganizationScope(module: ScopeModule, mode: 'read' | 'wr
               selectedGroupId = deptMapping.groupId;
             }
           }
-        } else if (req.body?.employeeId) {
-          const empId = Number(req.body.employeeId);
+        } else if (req.body?.employeeId || req.query?.employeeId) {
+          const empId = Number(req.body?.employeeId ?? req.query?.employeeId);
           if (Number.isSafeInteger(empId) && empId > 0) {
             const [empMapping] = await db
               .select({ groupId: departmentOrganizationMappings.groupId })
@@ -88,6 +88,18 @@ export function requireOrganizationScope(module: ScopeModule, mode: 'read' | 'wr
               .limit(1);
             if (empMapping) {
               selectedGroupId = empMapping.groupId;
+            }
+          }
+        } else if (req.params?.organizationId) {
+          const orgId = Number(req.params.organizationId);
+          if (Number.isSafeInteger(orgId) && orgId > 0) {
+            const [orgRow] = await db
+              .select({ groupId: organizations.groupId })
+              .from(organizations)
+              .where(eq(organizations.id, orgId))
+              .limit(1);
+            if (orgRow) {
+              selectedGroupId = orgRow.groupId;
             }
           }
         }

@@ -1,8 +1,16 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, bigint, varchar, text, jsonb, boolean, timestamp, unique, foreignKey, check } from 'drizzle-orm/pg-core';
+import { pgTable, bigint, varchar, text, jsonb, boolean, timestamp, integer, unique, foreignKey, check, customType } from 'drizzle-orm/pg-core';
 import { organizationGroups, organizations } from './organizations';
+import { users } from './users';
+
+export const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return 'bytea';
+  },
+});
 
 export type DocumentKind = 'LEAVE' | 'GA';
+export type DocumentAssetMimeType = 'image/png' | 'image/jpeg' | 'image/webp';
 export interface DocumentProfileSnapshot {
   groupId: number; organizationId: number; kind: DocumentKind;
   templateVersionId: number; identityVersionId: number; layoutKey: string;
@@ -10,6 +18,22 @@ export interface DocumentProfileSnapshot {
   labels: Record<string, string>;
   signatories: Array<{ key: string; label: string; name: string | null }>;
 }
+
+export const documentAssets = pgTable('document_assets', {
+  id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  groupId: bigint('group_id', { mode: 'number' }).notNull().references(() => organizationGroups.id),
+  mimeType: varchar('mime_type', { length: 50 }).$type<DocumentAssetMimeType>().notNull(),
+  byteSize: integer('byte_size').notNull(),
+  sha256: varchar('sha256', { length: 64 }).notNull(),
+  content: bytea('content').notNull(),
+  createdById: bigint('created_by_id', { mode: 'number' }).references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, t => [
+  unique('document_assets_group_sha256_unique').on(t.groupId, t.sha256),
+  check('document_assets_mime_check', sql`${t.mimeType} in ('image/png','image/jpeg','image/webp')`),
+  check('document_assets_size_check', sql`${t.byteSize} > 0 and ${t.byteSize} <= 524288`),
+  check('document_assets_sha256_check', sql`length(trim(${t.sha256})) = 64`),
+]);
 
 export const documentTemplateVersions = pgTable('document_template_versions', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),

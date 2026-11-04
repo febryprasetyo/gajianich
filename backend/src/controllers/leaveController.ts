@@ -1,5 +1,11 @@
 import {employeeScopePredicate,historicalScopePredicate,requireHrScope,requireScopedEmployee} from '../services/hrOrganizationScope';
-import {resolveDocumentProfile, DocumentProfileUnavailableError} from '../services/documentProfile';
+import {
+  resolveDocumentProfile,
+  DocumentProfileUnavailableError,
+  listLeaveDocumentOrganizations,
+  resolveIssuingOrganizationForLeave,
+  IssuingOrganizationInvalidError,
+} from '../services/documentProfile';
 import {loadCurrentIdentity} from '../services/currentIdentity';
 import { resolveAuditContext, appendHrAudit } from '../services/hrAudit';
 import { sanitizeAuditTarget } from '../domain/hrAudit';
@@ -9,7 +15,8 @@ import { eq, and, sql, desc, lt, asc, notInArray, isNull } from 'drizzle-orm';
 import { db } from '../db';
 import { employees } from '../db/schema/employees';
 import { departments } from '../db/schema/master';
-import { departmentOrganizationMappings } from '../db/schema/organizations';
+import { departmentOrganizationMappings, organizations } from '../db/schema/organizations';
+import { documentIdentityVersions } from '../db/schema/documentProfiles';
 import {
   leaveHolidayCalendars,
   leaveBalances,
@@ -58,6 +65,7 @@ export const updateLeaveBalanceSchema = z
   });
 
 export const updateLeaveRequestSchema = z.object({
+  organizationId: z.coerce.number().int().positive().optional(),
   leaveType: z.enum(['ANNUAL', 'SPECIAL']),
   specialLeaveReason: z.string().max(100).optional().nullable(),
   reason: z.string().min(1, 'Alasan cuti wajib diisi').max(500),
@@ -84,6 +92,7 @@ export const updateLeaveRequestSchema = z.object({
 
 export const createLeaveRequestSchema = z.object({
   employeeId: z.coerce.number().positive(),
+  organizationId: z.coerce.number().int().positive().optional(),
   leaveType: z.enum(['ANNUAL', 'SPECIAL']),
   specialLeaveReason: z.string().max(100).optional().nullable(),
   reason: z.string().min(1, 'Alasan cuti wajib diisi').max(500),
@@ -107,6 +116,46 @@ export const createLeaveRequestSchema = z.object({
   message: 'Tanggal selesai tidak boleh lebih awal dari tanggal mulai',
   path: ['endDate'],
 });
+
+// Helper: cek apakah pengguna memiliki hak kelola HR / pilih organisasi penerbit form cuti
+function canUserSelectLeaveOrganization(req: Request): boolean {
+  const user = (req as any).user;
+  if (!user) return false;
+  const normRole = String(user.roleName || user.role || '')
+    .toLowerCase()
+    .replace(/[\s_-]+/g, '');
+  if (normRole === 'superadmin') return true;
+  const perms: string[] = Array.isArray(user.permissions) ? user.permissions : [];
+  if (perms.includes('*') || perms.includes('attendance.manage')) return true;
+  const scope = (req as any).organizationScope;
+  return Boolean(scope && scope.module === 'hr' && scope.mode === 'write' && normRole.includes('hr'));
+}
+
+const documentOrganizationsQuerySchema = z.object({
+  employeeId: z.coerce.number().int().positive(),
+});
+
+// 0b. GET /document-organizations?employeeId=
+export async function getLeaveDocumentOrganizations(req: Request, res: Response) {
+  try {
+    const parsed = documentOrganizationsQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'employeeId wajib berupa angka positif' });
+    }
+    const owner = await requireScopedEmployee(requireHrScope(req as any), parsed.data.employeeId);
+    const data = await listLeaveDocumentOrganizations(db, {
+      groupId: owner.groupId,
+      defaultOrganizationId: owner.organizationId,
+    });
+    return res.status(200).json({ data });
+  } catch (error: any) {
+    if (error?.statusCode || error?.status) {
+      return res.status(error.statusCode || error.status).json({ error: error.message });
+    }
+    console.error('Error getLeaveDocumentOrganizations:', error);
+    return res.status(500).json({ error: 'Gagal memuat daftar organisasi form cuti' });
+  }
+}
 
 // Helper: ambil profil ringkas karyawan
 async function getEmployeeProfile(empId: number) {
@@ -437,30 +486,21 @@ export async function createLeaveRequest(req: Request, res: Response) {
     }
 
     // Database transaction
+    const canSelectOrg = canUserSelectLeaveOrganization(req);
     const createdRequest = await db.transaction(async (tx) => {
-      let documentProfileSnapshot = null;
-      if (owner.organizationId) {
-        try {
-          documentProfileSnapshot = await resolveDocumentProfile(tx, {
-            kind: 'LEAVE',
-            groupId: owner.groupId,
-            organizationId: owner.organizationId,
-          });
-        } catch (err) {
-          if (err instanceof DocumentProfileUnavailableError) {
-            documentProfileSnapshot = null;
-          } else {
-            throw err;
-          }
-        }
-      }
+      const resolvedOrg = await resolveIssuingOrganizationForLeave(tx, {
+        groupId: owner.groupId,
+        defaultOrganizationId: owner.organizationId,
+        requestedOrganizationId: data.organizationId,
+        canSelectOrganization: canSelectOrg,
+      });
       const [leaveReq] = await tx
         .insert(leaveRequests)
         .values({
           requestNumber,
           groupId: owner.groupId,
-          organizationId: owner.organizationId ?? null,
-          documentProfileSnapshot,
+          organizationId: resolvedOrg.organizationId,
+          documentProfileSnapshot: resolvedOrg.documentProfileSnapshot,
           employeeId: data.employeeId,
           leaveType: data.leaveType,
           specialLeaveReason: data.specialLeaveReason || null,
@@ -743,6 +783,7 @@ export async function getLeaveRequestById(req: Request, res: Response) {
 export async function getLeaveRequests(req: Request, res: Response) {
   try {
     const year = req.query.year ? Number(req.query.year) : undefined;
+    const organizationId = req.query.organizationId ? Number(req.query.organizationId) : undefined;
 
     let query = db
       .select({
@@ -751,6 +792,9 @@ export async function getLeaveRequests(req: Request, res: Response) {
         employeeId: leaveRequests.employeeId,
         employeeName: employees.fullName,
         employeeCode: employees.employeeCode,
+        organizationId: leaveRequests.organizationId,
+        organizationName: organizations.name,
+        documentProfileSnapshot: leaveRequests.documentProfileSnapshot,
         leaveType: leaveRequests.leaveType,
         reason: leaveRequests.reason,
         startDate: leaveRequests.startDate,
@@ -763,11 +807,30 @@ export async function getLeaveRequests(req: Request, res: Response) {
       })
       .from(leaveRequests)
       .leftJoin(employees, eq(leaveRequests.employeeId, employees.id))
+      .leftJoin(organizations, eq(leaveRequests.organizationId, organizations.id))
       .$dynamic();
 
-    query = query.where(and(historicalScopePredicate(requireHrScope(req as any),leaveRequests.groupId),year && !isNaN(year) ? eq(leaveRequests.balanceYear, year) : undefined));
+    query = query.where(
+      and(
+        historicalScopePredicate(requireHrScope(req as any), leaveRequests.groupId),
+        year && !isNaN(year) ? eq(leaveRequests.balanceYear, year) : undefined,
+        organizationId && !isNaN(organizationId) ? eq(leaveRequests.organizationId, organizationId) : undefined
+      )
+    );
 
-    const records = await query.orderBy(desc(leaveRequests.createdAt));
+    const rows = await query.orderBy(desc(leaveRequests.createdAt));
+
+    const records = rows.map((row) => {
+      const snap = row.documentProfileSnapshot;
+      const orgId = row.organizationId ?? snap?.organizationId ?? null;
+      const orgName = snap?.identity?.name || row.organizationName || null;
+      const logoAssetKey = snap?.identity?.logoAssetKey ?? null;
+      const { documentProfileSnapshot: _omit, organizationName: _omitName, ...rest } = row;
+      return {
+        ...rest,
+        organization: orgId && orgName ? { id: orgId, name: orgName, logoAssetKey } : null,
+      };
+    });
 
     return res.status(200).json(records);
   } catch (error) {
@@ -794,9 +857,9 @@ export async function updateLeaveRequest(req: Request, res: Response) {
       return res.status(404).json({ error: 'Data permohonan cuti tidak ditemukan' });
     }
 
-    if (request.status !== 'PENDING') {
-      return res.status(403).json({
-        error: `Permohonan cuti tidak dapat diedit karena berstatus ${request.status}. Hanya permohonan PENDING yang dapat diubah.`,
+    if (!['PENDING', 'DRAFT'].includes(request.status)) {
+      return res.status(409).json({
+        error: `Permohonan cuti tidak dapat diedit karena berstatus ${request.status}. Hanya permohonan DRAFT atau PENDING yang dapat diubah.`,
       });
     }
 
@@ -809,6 +872,7 @@ export async function updateLeaveRequest(req: Request, res: Response) {
     }
 
     const data = parseResult.data;
+    const owner = await requireScopedEmployee(requireHrScope(req as any), request.employeeId);
     if (data.handoverToEmployeeId) await requireScopedEmployee(requireHrScope(req as any),data.handoverToEmployeeId);
     const startYear = Number(data.startDate.split('-')[0]);
     const currentYear = new Date().getFullYear();
@@ -870,6 +934,8 @@ export async function updateLeaveRequest(req: Request, res: Response) {
       } catch (err) {}
     }
 
+    const canSelectOrg = canUserSelectLeaveOrganization(req);
+
     await db.transaction(async (tx) => {
       if (balance && deltaDays !== 0) {
         await tx
@@ -881,9 +947,24 @@ export async function updateLeaveRequest(req: Request, res: Response) {
           .where(eq(leaveBalances.id, balance.id));
       }
 
+      let nextOrganizationId = request.organizationId;
+      let nextDocumentProfileSnapshot = request.documentProfileSnapshot;
+      if (canSelectOrg && data.organizationId !== undefined) {
+        const resolvedOrg = await resolveIssuingOrganizationForLeave(tx, {
+          groupId: request.groupId ?? owner.groupId,
+          defaultOrganizationId: request.organizationId ?? owner.organizationId,
+          requestedOrganizationId: data.organizationId,
+          canSelectOrganization: true,
+        });
+        nextOrganizationId = resolvedOrg.organizationId;
+        nextDocumentProfileSnapshot = resolvedOrg.documentProfileSnapshot;
+      }
+
       await tx
         .update(leaveRequests)
         .set({
+          organizationId: nextOrganizationId,
+          documentProfileSnapshot: nextDocumentProfileSnapshot,
           leaveType: data.leaveType,
           specialLeaveReason: data.leaveType === 'SPECIAL' ? data.specialLeaveReason : null,
           reason: data.reason,
@@ -901,7 +982,7 @@ export async function updateLeaveRequest(req: Request, res: Response) {
         .where(and(eq(leaveRequests.id, id),historicalScopePredicate(requireHrScope(req as any),leaveRequests.groupId)));
 
       if (auditContext) {
-        const target = sanitizeAuditTarget('leave_request', request, { ...request, ...data }, {
+        const target = sanitizeAuditTarget('leave_request', request, { ...request, ...data, organizationId: nextOrganizationId }, {
           entityId: String(id),
           entityLabel: `Cuti ${request.requestNumber}`,
         });
@@ -914,6 +995,11 @@ export async function updateLeaveRequest(req: Request, res: Response) {
           entityLabel: `Cuti ${request.requestNumber}`,
           outcome: 'SUCCESS',
           summary: `Memperbarui permohonan cuti ${request.requestNumber} (${data.durationDays} hari)`,
+          metadata: {
+            groupId: request.groupId ?? owner.groupId,
+            previousOrganizationId: request.organizationId ?? null,
+            newOrganizationId: nextOrganizationId ?? null,
+          },
           targets: [target],
         });
       }
@@ -925,10 +1011,13 @@ export async function updateLeaveRequest(req: Request, res: Response) {
       data: {
         id,
         requestNumber: request.requestNumber,
-        status: 'PENDING',
+        status: request.status,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error instanceof IssuingOrganizationInvalidError || error?.statusCode || error?.status) {
+      return res.status(error.statusCode || error.status || 422).json({ error: error.message });
+    }
     console.error('Error updateLeaveRequest:', error);
     return res.status(500).json({ error: 'Gagal memperbarui permohonan cuti' });
   }
