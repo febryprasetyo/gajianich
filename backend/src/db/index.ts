@@ -27,6 +27,7 @@ import * as attendanceFaceRequestsSchema from './schema/attendanceFaceRequests';
 import * as attendanceDevicesSchema from './schema/attendanceDevices';
 
 import * as attendanceDailyNotesSchema from './schema/attendanceDailyNotes';
+import * as assetHandoversSchema from './schema/assetHandovers';
 
 let poolInstance: Pool | null = null;
 
@@ -77,6 +78,7 @@ export const db = drizzle(getPool(), {
     ...attendanceFaceRequestsSchema,
     ...attendanceDevicesSchema,
     ...attendanceDailyNotesSchema,
+    ...assetHandoversSchema,
   },
 });
 

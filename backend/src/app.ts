@@ -21,6 +21,7 @@ import attendanceDeviceRoutes from './routes/attendanceDeviceRoutes';
 import mobileAttendanceRoutes from './routes/mobileAttendanceRoutes';
 import hrActivityRoutes from './routes/hrActivityRoutes';
 import goodsRequestRoutes from './routes/goodsRequestRoutes';
+import assetHandoverRoutes from './routes/assetHandoverRoutes';
 import { documentAssetRoutes, organizationLogoRoutes } from './routes/organizationLogoRoutes';
 import { checkDatabase } from './db';
 
@@ -91,6 +92,7 @@ export function createApp(options: AppOptions = {}): express.Express {
   app.use('/api/v1/auth', authRoutes);
   app.use('/api/v1/master', masterRoutes);
   app.use('/api/v1/employees', employeeRoutes);
+  app.use('/api/v1/assets/handovers', assetHandoverRoutes);
   app.use('/api/v1/assets', assetRoutes);
   app.use('/api/v1/asset-custodians', assetCustodianRoutes);
   app.use('/api/v1/tickets', ticketRoutes);
