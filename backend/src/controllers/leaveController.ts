@@ -478,13 +478,6 @@ export async function createLeaveRequest(req: Request, res: Response) {
       });
     }
 
-    // Hitung sequence number untuk nomor permohonan
-    const [countResult] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(leaveRequests);
-    const seq = (countResult?.count || 0) + 1;
-    const requestNumber = formatLeaveRequestNumber(new Date(), seq);
-
     const snapshotRemaining =
       data.leaveType === 'ANNUAL'
         ? Math.max(0, balanceCalc.availableBefore - data.durationDays)
@@ -500,6 +493,26 @@ export async function createLeaveRequest(req: Request, res: Response) {
     // Database transaction
     const canSelectOrg = canUserSelectLeaveOrganization(req);
     const createdRequest = await db.transaction(async (tx) => {
+      const now = new Date();
+      const [stats] = await tx
+        .select({
+          countAll: sql<number>`count(*)::int`,
+          maxId: sql<number>`coalesce(max(${leaveRequests.id}), 0)::int`,
+        })
+        .from(leaveRequests);
+      let seq = Math.max(stats?.countAll || 0, stats?.maxId || 0) + 1;
+      let requestNumber = formatLeaveRequestNumber(now, seq);
+      while (true) {
+        const [dup] = await tx
+          .select({ id: leaveRequests.id })
+          .from(leaveRequests)
+          .where(eq(leaveRequests.requestNumber, requestNumber))
+          .limit(1);
+        if (!dup) break;
+        seq += 1;
+        requestNumber = formatLeaveRequestNumber(now, seq);
+      }
+
       const resolvedOrg = await resolveIssuingOrganizationForLeave(tx, {
         groupId: owner.groupId,
         defaultOrganizationId: owner.organizationId,
@@ -602,7 +615,7 @@ export async function createLeaveRequest(req: Request, res: Response) {
     if (error?.statusCode || error?.status) {
       return res.status(error.statusCode || error.status).json({ error: error.message });
     }
-    return res.status(500).json({ error: error?.message || 'Gagal mengajukan permohonan cuti' });
+    return res.status(500).json({ error: 'Gagal mengajukan permohonan cuti' });
   }
 }
 
