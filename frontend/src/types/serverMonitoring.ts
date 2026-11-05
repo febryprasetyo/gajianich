@@ -51,6 +51,8 @@ export interface ServerNodeItem {
   daemonCore: string;
   avgPingMs: number;
   agentVersion: string;
+  agentKeyPrefix?: string | null;
+  hasCustomAgentKey?: boolean;
   uptimeSeconds: number;
   notes?: string | null;
 
@@ -125,3 +127,4 @@ export interface TerminalLogEntry {
   lvl: 'INFO' | 'WARN' | 'ERROR';
   msg: string;
 }
+

@@ -343,6 +343,13 @@
       "when": 1793860000000,
       "tag": "0048_server_monitoring_360",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1793861000000,
+      "tag": "0049_per_server_agent_api_key",
+      "breakpoints": true
     }
   ],
   "version": "7"

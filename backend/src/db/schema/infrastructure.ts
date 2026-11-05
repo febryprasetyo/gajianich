@@ -27,6 +27,8 @@ export const servers = pgTable('servers', {
   notes: text('notes'),
   licenseServerUrl: varchar('license_server_url', { length: 255 }),
   agentVersion: varchar('agent_version', { length: 30 }),
+  agentKeyHash: varchar('agent_key_hash', { length: 128 }),
+  agentKeyPrefix: varchar('agent_key_prefix', { length: 32 }),
   uptimeSeconds: bigint('uptime_seconds', { mode: 'number' }).default(0),
   accurateStatus: varchar('accurate_status', { length: 30 }).default('UNKNOWN'),
   isAccurateActive: boolean('is_accurate_active').default(false).notNull(),

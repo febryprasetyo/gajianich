@@ -1,4 +1,5 @@
-import os from 'node:os';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
 export type ServiceCategory = 'pm2' | 'docker' | 'database' | 'systemd' | 'native';
 export type ServiceHealthStatus = 'active' | 'warning' | 'critical' | 'neutral';
@@ -95,11 +96,45 @@ export interface NormalizedServerTelemetry {
 
   openPorts: ServerOpenPortItem[];
   unifiedServices: UnifiedServerServiceItem[];
+  logs?: Array<{ time?: string; lvl?: 'INFO' | 'WARN' | 'ERROR'; msg: string; service?: string }>;
   commandResults: Array<{
     commandId: number;
     status: 'SUCCESS' | 'FAILED';
     outputText?: string;
+    serviceName?: string;
   }>;
+}
+
+export function hashServerAgentApiKey(rawKey: string): string {
+  return createHash('sha256').update(rawKey, 'utf8').digest('hex');
+}
+
+export function generateServerAgentApiKey(hostname = 'node'): {
+  rawKey: string;
+  keyHash: string;
+  keyPrefix: string;
+} {
+  const cleanHost =
+    hostname
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
+      .slice(0, 10) || 'node';
+  const tokenSecret = randomBytes(20).toString('hex');
+  const rawKey = `gjn_srv_${cleanHost}_${tokenSecret}`;
+  const keyHash = hashServerAgentApiKey(rawKey);
+  const keyPrefix = `${rawKey.slice(0, 18)}...`;
+  return { rawKey, keyHash, keyPrefix };
+}
+
+export function verifyServerAgentApiKey(
+  providedRawKey: string | undefined | null,
+  expectedHash: string | undefined | null,
+): boolean {
+  if (!providedRawKey || !expectedHash) return false;
+  const computedHash = hashServerAgentApiKey(providedRawKey.trim());
+  const a = Buffer.from(computedHash, 'utf8');
+  const b = Buffer.from(expectedHash.trim(), 'utf8');
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 function toFiniteNumber(val: unknown, fallback = 0): number {
@@ -115,7 +150,7 @@ const VALID_CATEGORIES = new Set<ServiceCategory>(['pm2', 'docker', 'database', 
 const VALID_STATUSES = new Set<ServiceHealthStatus>(['active', 'warning', 'critical', 'neutral']);
 
 export function normalizeServerTelemetryPayload(payload: any): NormalizedServerTelemetry {
-  const hostname = toCleanString(payload?.hostname ?? payload?.serverCode, '').toLowerCase();
+  const hostname = toCleanString(payload?.hostname ?? payload?.serverCode, '');
   if (!hostname) {
     throw new Error('hostname is required');
   }
@@ -123,20 +158,24 @@ export function normalizeServerTelemetryPayload(payload: any): NormalizedServerT
 
   const cpu = payload?.cpu ?? {};
   const memory = payload?.memory ?? {};
-  const storage = payload?.storage ?? {};
+  const storage = payload?.storage ?? payload?.disk ?? {};
   const network = payload?.network ?? {};
-  const secops = payload?.secops ?? {};
+  const secops = payload?.secops ?? payload?.security ?? {};
 
-  const rawLoad = Array.isArray(cpu.loadAvg) ? cpu.loadAvg : Array.isArray(payload?.loadAvg) ? payload.loadAvg : [0.4, 0.35, 0.3];
+  const rawLoad = Array.isArray(cpu.loadAvg)
+    ? cpu.loadAvg
+    : Array.isArray(payload?.loadAvg)
+      ? payload.loadAvg
+      : [0, 0, 0];
   const loadAvg: [number, number, number] = [
     Number(toFiniteNumber(rawLoad[0], 0).toFixed(2)),
     Number(toFiniteNumber(rawLoad[1], 0).toFixed(2)),
     Number(toFiniteNumber(rawLoad[2], 0).toFixed(2)),
   ];
 
-  const cpuCores = Math.max(1, Math.round(toFiniteNumber(payload?.cpuCores ?? cpu.cores, 4)));
-  const ramTotalBytes = Math.max(0, Math.round(toFiniteNumber(memory.totalBytes ?? payload?.ramTotalBytes, 8 * 1024 ** 3)));
-  const ramUsedBytes = Math.max(0, Math.round(toFiniteNumber(memory.usedBytes ?? payload?.ramUsedBytes, 3.6 * 1024 ** 3)));
+  const cpuCores = Math.max(1, Math.round(toFiniteNumber(payload?.cpuCores ?? cpu.cores, 1)));
+  const ramTotalBytes = Math.max(0, Math.round(toFiniteNumber(memory.totalBytes ?? payload?.ramTotalBytes, 0)));
+  const ramUsedBytes = Math.max(0, Math.round(toFiniteNumber(memory.usedBytes ?? payload?.ramUsedBytes, 0)));
   const ramUsagePct = Number(
     toFiniteNumber(
       memory.usagePct ?? payload?.ramUsagePct,
@@ -144,8 +183,8 @@ export function normalizeServerTelemetryPayload(payload: any): NormalizedServerT
     ).toFixed(1),
   );
 
-  const diskTotalBytes = Math.max(0, Math.round(toFiniteNumber(storage.totalBytes ?? payload?.diskTotalBytes, 160 * 1024 ** 3)));
-  const diskUsedBytes = Math.max(0, Math.round(toFiniteNumber(storage.usedBytes ?? payload?.diskUsedBytes, 64 * 1024 ** 3)));
+  const diskTotalBytes = Math.max(0, Math.round(toFiniteNumber(storage.totalBytes ?? payload?.diskTotalBytes, 0)));
+  const diskUsedBytes = Math.max(0, Math.round(toFiniteNumber(storage.usedBytes ?? payload?.diskUsedBytes, 0)));
   const diskUsagePct = Number(
     toFiniteNumber(
       storage.usagePct ?? payload?.diskUsagePct,
@@ -154,11 +193,24 @@ export function normalizeServerTelemetryPayload(payload: any): NormalizedServerT
   );
 
   const openPortsInput = Array.isArray(payload?.openPorts) ? payload.openPorts : [];
-  const openPorts: ServerOpenPortItem[] = openPortsInput.slice(0, 24).map((item: any) => ({
-    port: toCleanString(item?.port, ':80/tcp'),
-    name: toCleanString(item?.name, 'service'),
-    protocol: toCleanString(item?.protocol, 'tcp'),
-  }));
+  const openPorts: ServerOpenPortItem[] = openPortsInput.slice(0, 32).map((item: any) => {
+    if (typeof item === 'string') {
+      const m = item.trim().match(/^(:?\d+\/(?:tcp|udp))\s*(?:\(([^)]+)\))?/i);
+      if (m) {
+        return {
+          port: m[1],
+          name: m[2]?.trim() || 'service',
+          protocol: m[1].toLowerCase().endsWith('/udp') ? 'udp' : 'tcp',
+        };
+      }
+      return { port: item.trim(), name: 'service', protocol: 'tcp' };
+    }
+    return {
+      port: toCleanString(item?.port, ':80/tcp'),
+      name: toCleanString(item?.name, 'service'),
+      protocol: toCleanString(item?.protocol, 'tcp'),
+    };
+  });
 
   const servicesInput = Array.isArray(payload?.services)
     ? payload.services
@@ -166,7 +218,7 @@ export function normalizeServerTelemetryPayload(payload: any): NormalizedServerT
       ? payload.unifiedServices
       : [];
 
-  const unifiedServices: UnifiedServerServiceItem[] = servicesInput.slice(0, 100).map((item: any, idx: number) => {
+  const unifiedServices: UnifiedServerServiceItem[] = servicesInput.slice(0, 120).map((item: any, idx: number) => {
     const rawCat = toCleanString(item?.category, 'systemd').toLowerCase() as ServiceCategory;
     const category: ServiceCategory = VALID_CATEGORIES.has(rawCat) ? rawCat : 'systemd';
     const rawStatus = toCleanString(item?.status, 'active').toLowerCase() as ServiceHealthStatus;
@@ -194,77 +246,92 @@ export function normalizeServerTelemetryPayload(payload: any): NormalizedServerT
     .map((item: any) => ({
       commandId: Number(item.commandId),
       status: (item?.status === 'FAILED' ? 'FAILED' : 'SUCCESS') as 'SUCCESS' | 'FAILED',
-      outputText: typeof item?.outputText === 'string' ? item.outputText.slice(0, 8000) : undefined,
+      outputText: typeof item?.outputText === 'string' ? item.outputText.slice(0, 12000) : undefined,
+      serviceName: typeof item?.serviceName === 'string' ? item.serviceName : undefined,
     }));
 
-  const ramGb = Math.max(1, Math.round(ramTotalBytes / 1024 ** 3));
-  const diskGb = Math.max(1, Math.round(diskTotalBytes / 1024 ** 3));
-  const defaultSpecs = `${cpuCores} vCPU • ${ramGb} GB RAM • ${diskGb} GB NVMe`;
+  const logsInput = Array.isArray(payload?.logs) ? payload.logs : [];
+  const logs = logsInput.slice(0, 60).map((l: any) => ({
+    time: typeof l?.time === 'string' ? l.time : undefined,
+    lvl: (l?.lvl === 'WARN' || l?.lvl === 'ERROR' ? l.lvl : 'INFO') as 'INFO' | 'WARN' | 'ERROR',
+    msg: toCleanString(l?.msg, ''),
+    service: typeof l?.service === 'string' ? l.service : undefined,
+  })).filter((l: any) => l.msg !== '');
+
+  const ramGb = ramTotalBytes > 0 ? Math.max(1, Math.round(ramTotalBytes / 1024 ** 3)) : 0;
+  const diskGb = diskTotalBytes > 0 ? Math.max(1, Math.round(diskTotalBytes / 1024 ** 3)) : 0;
+  const cpuModelStr = toCleanString(payload?.cpuModel, 'Menunggu Telemetri...');
+  const osStr = toCleanString(payload?.os, 'Menunggu Telemetri...');
+  const defaultSpecs =
+    ramGb > 0 && diskGb > 0
+      ? `${cpuModelStr} (${cpuCores} vCPU) • ${ramGb} GB RAM • ${diskGb} GB Disk`
+      : 'Menunggu laporan telemetri dari agent...';
 
   return {
     hostname,
     name: toCleanString(payload?.name, hostname),
     ipAddress,
     macAddress: payload?.macAddress ? toCleanString(payload.macAddress) : null,
-    os: toCleanString(payload?.os, 'Ubuntu 24.04 LTS'),
+    os: osStr,
     specs: toCleanString(payload?.specs, defaultSpecs),
     serverType: payload?.serverType === 'Physical' ? 'Physical' : payload?.serverType === 'Cloud' ? 'Cloud' : 'VPS',
-    provider: toCleanString(payload?.provider, 'On-Premise / Cloud'),
-    location: toCleanString(payload?.location, 'Jakarta / Singapore'),
+    provider: toCleanString(payload?.provider, payload?.serverType === 'Physical' ? 'Local On-Premise' : 'Cloud VPS'),
+    location: toCleanString(payload?.location, payload?.serverType === 'Physical' ? 'LAN Local Network' : 'Cloud Datacenter'),
     environment: toCleanString(payload?.environment, 'Production'),
     roleBadge: toCleanString(payload?.roleBadge, 'ACTIVE PROD WORKER'),
     connectionMode: toCleanString(payload?.connectionMode, 'WS PUSH'),
-    cpuModel: toCleanString(payload?.cpuModel, `${cpuCores} vCPU Compute`),
+    cpuModel: cpuModelStr,
     cpuCores,
-    daemonCore: toCleanString(payload?.daemonCore, 'Systemd 249.11'),
-    avgPingMs: Number(toFiniteNumber(payload?.avgPingMs, 1.4).toFixed(1)),
-    uptimeSeconds: Math.max(0, Math.round(toFiniteNumber(payload?.uptimeSeconds, 86400))),
+    daemonCore: toCleanString(payload?.daemonCore, 'Systemd'),
+    avgPingMs: Number(toFiniteNumber(payload?.avgPingMs, 0.8).toFixed(1)),
+    uptimeSeconds: Math.max(0, Math.round(toFiniteNumber(payload?.uptimeSeconds, 0))),
     agentVersion: toCleanString(payload?.agentVersion, 'v2.4-TLS'),
 
-    cpuUsagePct: Number(toFiniteNumber(cpu.usagePct ?? payload?.cpuUsagePct, 18.5).toFixed(1)),
-    cpuIoWaitPct: Number(toFiniteNumber(cpu.ioWaitPct ?? payload?.cpuIoWaitPct, 0.3).toFixed(1)),
-    cpuStealPct: Number(toFiniteNumber(cpu.stealPct ?? payload?.cpuStealPct, 0.0).toFixed(1)),
+    cpuUsagePct: Number(toFiniteNumber(cpu.usagePct ?? payload?.cpuUsagePct, 0).toFixed(1)),
+    cpuIoWaitPct: Number(toFiniteNumber(cpu.ioWaitPct ?? payload?.cpuIoWaitPct, 0).toFixed(1)),
+    cpuStealPct: Number(toFiniteNumber(cpu.stealPct ?? payload?.cpuStealPct, 0).toFixed(1)),
     loadAvg,
-    contextSwitchesPerSec: Math.max(0, Math.round(toFiniteNumber(cpu.contextSwitchesPerSec ?? payload?.contextSwitchesPerSec, 8400))),
-    interruptsPerSec: Math.max(0, Math.round(toFiniteNumber(cpu.interruptsPerSec ?? payload?.interruptsPerSec, 4200))),
-    zombieProcesses: Math.max(0, Math.round(toFiniteNumber(cpu.zombieProcesses ?? payload?.zombieProcesses, 0))),
-    totalProcesses: Math.max(1, Math.round(toFiniteNumber(cpu.totalProcesses ?? payload?.totalProcesses, 140))),
+    contextSwitchesPerSec: Math.min(2_147_483_647, Math.max(0, Math.round(toFiniteNumber(cpu.contextSwitchesPerSec ?? payload?.contextSwitchesPerSec, 0)))),
+    interruptsPerSec: Math.min(2_147_483_647, Math.max(0, Math.round(toFiniteNumber(cpu.interruptsPerSec ?? payload?.interruptsPerSec, 0)))),
+    zombieProcesses: Math.min(2_147_483_647, Math.max(0, Math.round(toFiniteNumber(cpu.zombieProcesses ?? payload?.zombieProcesses, 0)))),
+    totalProcesses: Math.min(2_147_483_647, Math.max(0, Math.round(toFiniteNumber(cpu.totalProcesses ?? payload?.totalProcesses, 0)))),
 
     ramUsedBytes,
     ramTotalBytes,
     ramUsagePct,
-    ramBuffersBytes: Math.max(0, Math.round(toFiniteNumber(memory.buffersBytes ?? payload?.ramBuffersBytes, 1024 ** 3))),
+    ramBuffersBytes: Math.max(0, Math.round(toFiniteNumber(memory.buffersBytes ?? payload?.ramBuffersBytes, 0))),
     swapUsedPct: Number(toFiniteNumber(memory.swapUsedPct ?? payload?.swapUsedPct, 0).toFixed(1)),
 
     diskUsedBytes,
     diskTotalBytes,
     diskUsagePct,
-    diskReadBytesPerSec: Math.max(0, Math.round(toFiniteNumber(storage.readBytesPerSec ?? payload?.diskReadBytesPerSec, 2 * 1024 ** 2))),
-    diskWriteBytesPerSec: Math.max(0, Math.round(toFiniteNumber(storage.writeBytesPerSec ?? payload?.diskWriteBytesPerSec, 8 * 1024 ** 2))),
-    diskIops: Math.max(0, Math.round(toFiniteNumber(storage.iops ?? payload?.diskIops, 140))),
+    diskReadBytesPerSec: Math.max(0, Math.round(toFiniteNumber(storage.readBytesPerSec ?? payload?.diskReadBytesPerSec, 0))),
+    diskWriteBytesPerSec: Math.max(0, Math.round(toFiniteNumber(storage.writeBytesPerSec ?? payload?.diskWriteBytesPerSec, 0))),
+    diskIops: Math.min(2_147_483_647, Math.max(0, Math.round(toFiniteNumber(storage.iops ?? payload?.diskIops, 0)))),
     diskMountType: toCleanString(storage.mountType ?? payload?.diskMountType, 'ext4 / root'),
-    inodeUsed: Math.max(0, Math.round(toFiniteNumber(storage.inodeUsed ?? payload?.inodeUsed, 1200000))),
-    inodeTotal: Math.max(1, Math.round(toFiniteNumber(storage.inodeTotal ?? payload?.inodeTotal, 6500000))),
-    inodeUsagePct: Number(toFiniteNumber(storage.inodeUsagePct ?? payload?.inodeUsagePct, 18.4).toFixed(1)),
+    inodeUsed: Math.max(0, Math.round(toFiniteNumber(storage.inodeUsed ?? payload?.inodeUsed, 0))),
+    inodeTotal: Math.max(1, Math.round(toFiniteNumber(storage.inodeTotal ?? payload?.inodeTotal, 1))),
+    inodeUsagePct: Number(toFiniteNumber(storage.inodeUsagePct ?? payload?.inodeUsagePct, 0).toFixed(1)),
     smartStatus: toCleanString(storage.smartStatus ?? payload?.smartStatus, 'PASSED'),
 
-    netRxBytesPerSec: Math.max(0, Math.round(toFiniteNumber(network.rxBytesPerSec ?? payload?.netRxBytesPerSec, 4 * 1024 ** 2))),
-    netTxBytesPerSec: Math.max(0, Math.round(toFiniteNumber(network.txBytesPerSec ?? payload?.netTxBytesPerSec, 8 * 1024 ** 2))),
-    netDropPackets: Math.max(0, Math.round(toFiniteNumber(network.dropPackets ?? payload?.netDropPackets, 0))),
-    netRetransPct: Number(toFiniteNumber(network.retransPct ?? payload?.netRetransPct, 0.02).toFixed(2)),
-    tcpEstablished: Math.max(0, Math.round(toFiniteNumber(network.tcpEstablished ?? payload?.tcpEstablished, 142))),
-    tcpTimeWait: Math.max(0, Math.round(toFiniteNumber(network.tcpTimeWait ?? payload?.tcpTimeWait, 18))),
-    tcpSynRecv: Math.max(0, Math.round(toFiniteNumber(network.tcpSynRecv ?? payload?.tcpSynRecv, 2))),
-    fdAllocated: Math.max(0, Math.round(toFiniteNumber(network.fdAllocated ?? payload?.fdAllocated, 2410))),
-    fdMax: Math.max(1024, Math.round(toFiniteNumber(network.fdMax ?? payload?.fdMax, 65535))),
+    netRxBytesPerSec: Math.max(0, Math.round(toFiniteNumber(network.rxBytesPerSec ?? payload?.netRxBytesPerSec, 0))),
+    netTxBytesPerSec: Math.max(0, Math.round(toFiniteNumber(network.txBytesPerSec ?? payload?.netTxBytesPerSec, 0))),
+    netDropPackets: Math.min(2_147_483_647, Math.max(0, Math.round(toFiniteNumber(network.dropPackets ?? payload?.netDropPackets, 0)))),
+    netRetransPct: Number(toFiniteNumber(network.retransPct ?? payload?.netRetransPct, 0).toFixed(2)),
+    tcpEstablished: Math.min(2_147_483_647, Math.max(0, Math.round(toFiniteNumber(network.tcpEstablished ?? payload?.tcpEstablished, 0)))),
+    tcpTimeWait: Math.min(2_147_483_647, Math.max(0, Math.round(toFiniteNumber(network.tcpTimeWait ?? payload?.tcpTimeWait, 0)))),
+    tcpSynRecv: Math.min(2_147_483_647, Math.max(0, Math.round(toFiniteNumber(network.tcpSynRecv ?? payload?.tcpSynRecv, 0)))),
+    fdAllocated: Math.min(2_147_483_647, Math.max(0, Math.round(toFiniteNumber(network.fdAllocated ?? payload?.fdAllocated, 0)))),
+    fdMax: Math.min(1_048_576, Math.max(1024, Math.round(toFiniteNumber(network.fdMax ?? payload?.fdMax, 65535)))),
 
-    sslDaysRemaining: Math.max(0, Math.round(toFiniteNumber(secops.sslDaysRemaining ?? payload?.sslDaysRemaining, 74))),
+    sslDaysRemaining: Math.max(0, Math.round(toFiniteNumber(secops.sslDaysRemaining ?? payload?.sslDaysRemaining, 90))),
     ufwStatus: toCleanString(secops.ufwStatus ?? payload?.ufwStatus, 'UFW Active'),
-    fail2banBannedIps: Math.max(0, Math.round(toFiniteNumber(secops.fail2banBannedIps ?? payload?.fail2banBannedIps, 14))),
+    fail2banBannedIps: Math.max(0, Math.round(toFiniteNumber(secops.fail2banBannedIps ?? payload?.fail2banBannedIps, 0))),
     failedSshCount: Math.max(0, Math.round(toFiniteNumber(secops.failedSshCount ?? payload?.failedSshCount, 0))),
 
     openPorts,
     unifiedServices,
+    logs,
     commandResults,
   };
 }
@@ -280,16 +347,7 @@ export function appendSparkHistory(
       ? arr.map((item) => Number(toFiniteNumber(item, 0).toFixed(1)))
       : [];
     if (list.length === 0) {
-      // Seed 6 baseline points + current point for immediate smooth chart rendering
-      return [
-        Math.max(1, Number((cleanVal * 0.92).toFixed(1))),
-        Math.max(1, Number((cleanVal * 0.96).toFixed(1))),
-        Math.max(1, Number((cleanVal * 1.03).toFixed(1))),
-        Math.max(1, Number((cleanVal * 0.98).toFixed(1))),
-        Math.max(1, Number((cleanVal * 1.01).toFixed(1))),
-        Math.max(1, Number((cleanVal * 0.99).toFixed(1))),
-        cleanVal,
-      ];
+      return [cleanVal, cleanVal, cleanVal, cleanVal, cleanVal, cleanVal, cleanVal];
     }
     const next = [...list, cleanVal];
     return next.length > maxPoints ? next.slice(next.length - maxPoints) : next;
@@ -312,7 +370,7 @@ export function evaluateNodeHealth(
     unifiedServices?: UnifiedServerServiceItem[];
   },
   now = new Date(),
-  staleThresholdSeconds = 180,
+  staleThresholdSeconds = 60,
 ): 'Online' | 'Warning' | 'Offline' {
   if (!node.lastSeenAt) return 'Offline';
   const seen = node.lastSeenAt instanceof Date ? node.lastSeenAt : new Date(node.lastSeenAt);
@@ -323,8 +381,9 @@ export function evaluateNodeHealth(
   const cpu = toFiniteNumber(node.cpuUsagePct, 0);
   const ram = toFiniteNumber(node.ramUsagePct, 0);
   const disk = toFiniteNumber(node.diskUsagePct, 0);
-  const hasDegradedService = Array.isArray(node.unifiedServices)
-    && node.unifiedServices.some((s) => s.status === 'warning' || s.status === 'critical');
+  const hasDegradedService =
+    Array.isArray(node.unifiedServices) &&
+    node.unifiedServices.some((s) => s.status === 'warning' || s.status === 'critical');
 
   if (cpu >= 85 || ram >= 88 || disk >= 90 || hasDegradedService) {
     return 'Warning';
@@ -364,21 +423,21 @@ export function computeFleetSummary(nodes: Array<Record<string, any>>): FleetSum
   let minSslDays = nodes.length > 0 ? 999 : 0;
 
   for (const node of nodes) {
-    if (node.status === 'Offline') {
+    if (node.status === 'Offline' || node.healthStatus === 'Offline') {
       offlineNodes += 1;
-    } else if (node.status === 'Warning') {
+    } else if (node.status === 'Warning' || node.healthStatus === 'Warning') {
       onlineNodes += 1;
       warningNodes += 1;
     } else {
       onlineNodes += 1;
     }
 
-    totalVcpu += Math.max(0, toFiniteNumber(node.cpuCores, 4));
+    totalVcpu += Math.max(0, toFiniteNumber(node.cpuCores, 0));
     ramUsedBytes += Math.max(0, toFiniteNumber(node.ramUsedBytes, 0));
     ramTotalBytes += Math.max(0, toFiniteNumber(node.ramTotalBytes, 0));
     totalBannedIps += Math.max(0, toFiniteNumber(node.fail2banBannedIps, 0));
 
-    const sslDays = toFiniteNumber(node.sslDaysRemaining, 90);
+    const sslDays = toFiniteNumber(node.sslDaysRemaining, 0);
     if (sslDays > 0 && sslDays < minSslDays) {
       minSslDays = sslDays;
     }
@@ -394,13 +453,13 @@ export function computeFleetSummary(nodes: Array<Record<string, any>>): FleetSum
     }
   }
 
-  if (minSslDays === 999) minSslDays = 68;
+  if (minSslDays === 999) minSslDays = 0;
   const fleetRamUsedGb = Number((ramUsedBytes / 1024 ** 3).toFixed(1));
-  const fleetRamTotalGb = Math.max(1, Math.round(ramTotalBytes / 1024 ** 3));
+  const fleetRamTotalGb = Number((ramTotalBytes / 1024 ** 3).toFixed(1));
   const fleetRamPct = Number(
     (ramTotalBytes > 0 ? (ramUsedBytes / ramTotalBytes) * 100 : 0).toFixed(1),
   );
-  const uptimePct = totalNodes > 0 ? Math.round((onlineNodes / totalNodes) * 100) : 100;
+  const uptimePct = totalNodes > 0 ? Math.round((onlineNodes / totalNodes) * 100) : 0;
 
   return {
     totalNodes,
@@ -488,11 +547,14 @@ class ServerTelemetryHub {
     }
   }
 
-  appendLog(key: string, lvl: 'INFO' | 'WARN' | 'ERROR', msg: string): void {
-    const time = new Date().toTimeString().split(' ')[0];
+  appendLog(key: string, lvl: 'INFO' | 'WARN' | 'ERROR', msg: string, timeOverride?: string): void {
+    const time = timeOverride || new Date().toTimeString().split(' ')[0];
     const current = this.serviceLogs.get(key) ?? [];
+    // Prevent duplicate consecutive message at exact same second
+    const last = current[current.length - 1];
+    if (last && last.time === time && last.msg === msg) return;
     const next = [...current, { time, lvl, msg }];
-    this.serviceLogs.set(key, next.length > 100 ? next.slice(next.length - 100) : next);
+    this.serviceLogs.set(key, next.length > 120 ? next.slice(next.length - 120) : next);
   }
 
   getLogs(hostname: string, serviceName?: string): Array<{ time: string; lvl: 'INFO' | 'WARN' | 'ERROR'; msg: string }> {
@@ -501,546 +563,12 @@ class ServerTelemetryHub {
     if (existing && existing.length > 0) {
       return existing;
     }
-
-    const now = new Date();
-    const fmtTime = (offsetSec: number) =>
-      new Date(now.getTime() - offsetSec * 1000).toTimeString().split(' ')[0];
-
-    const targetLabel = serviceName || hostname;
-    return [
-      { time: fmtTime(18), lvl: 'INFO', msg: `Daemon initialized in namespace ${hostname} for [${targetLabel}]` },
-      { time: fmtTime(14), lvl: 'INFO', msg: `IPC socket channel bound and verified (/var/run/${targetLabel}.sock)` },
-      { time: fmtTime(10), lvl: 'INFO', msg: `Telemetry push payload acknowledged by GAJIANICH hub (1.2ms RTT)` },
-      { time: fmtTime(6), lvl: 'WARN', msg: `Burst tick rate observed: 54 req/s on internal worker bus` },
-      { time: fmtTime(2), lvl: 'INFO', msg: `Healthcheck probe GET /healthz 200 OK — connection pool nominal` },
-    ];
+    const hostFallback = this.serviceLogs.get(hostname);
+    if (hostFallback && hostFallback.length > 0) {
+      return hostFallback;
+    }
+    return [];
   }
 }
 
 export const serverTelemetryHub = new ServerTelemetryHub();
-
-/**
- * Generates live-pulsing telemetry for the 3 reference infrastructure nodes
- * (`srv-local-onprem`, `vps-sgp-01`, `vps-sgp-02`) enriched with real OS metrics
- * from the running host so the dashboard is immediately alive even before external agents connect.
- */
-export function buildDefaultFleetSeedNodes(): NormalizedServerTelemetry[] {
-  const cpus = os.cpus();
-  const realLoad = os.loadavg();
-  const totalMem = os.totalmem();
-  const freeMem = os.freemem();
-  const usedMem = Math.max(0, totalMem - freeMem);
-  const realRamPct = totalMem > 0 ? Number(((usedMem / totalMem) * 100).toFixed(1)) : 45.0;
-  const jitter = () => Number(((Math.random() - 0.5) * 2.4).toFixed(1));
-
-  const localCpuPct = Number(Math.min(92, Math.max(12, 24.2 + jitter())).toFixed(1));
-  const sgp1CpuPct = Number(Math.min(85, Math.max(10, 18.2 + jitter())).toFixed(1));
-  const sgp2CpuPct = Number(Math.min(94, Math.max(25, 46.5 + jitter())).toFixed(1));
-
-  return [
-    normalizeServerTelemetryPayload({
-      hostname: 'srv-local-onprem',
-      name: 'Local On-Premise Worker',
-      ipAddress: '192.168.1.100',
-      os: 'Ubuntu 24.04 LTS',
-      specs: 'AMD Ryzen 7 5700X (16 vCPU) • 32 GB RAM • 500 GB NVMe',
-      serverType: 'Physical',
-      provider: 'Local On-Premise',
-      location: 'LAN Data Room',
-      environment: 'Production',
-      roleBadge: 'ACTIVE PROD WORKER',
-      connectionMode: 'WS PUSH',
-      cpuModel: cpus[0]?.model || 'AMD Ryzen 7 5700X (8C/16T)',
-      cpuCores: 16,
-      daemonCore: 'Systemd 249.11',
-      avgPingMs: 1.2,
-      uptimeSeconds: Math.max(3680000, Math.round(os.uptime())),
-      cpu: {
-        usagePct: localCpuPct,
-        ioWaitPct: 0.4,
-        stealPct: 0.0,
-        loadAvg: [
-          Number((realLoad[0] || 0.82).toFixed(2)),
-          Number((realLoad[1] || 0.95).toFixed(2)),
-          Number((realLoad[2] || 0.90).toFixed(2)),
-        ],
-        contextSwitchesPerSec: 12450,
-        interruptsPerSec: 8940,
-        zombieProcesses: 0,
-        totalProcesses: 184,
-      },
-      memory: {
-        usedBytes: 14.2 * 1024 ** 3,
-        totalBytes: 32 * 1024 ** 3,
-        usagePct: realRamPct || 44.4,
-        buffersBytes: 8.0 * 1024 ** 3,
-        swapUsedPct: 0,
-      },
-      storage: {
-        usedBytes: 210 * 1024 ** 3,
-        totalBytes: 500 * 1024 ** 3,
-        usagePct: 42.0,
-        readBytesPerSec: 4.2 * 1024 ** 2,
-        writeBytesPerSec: 18.9 * 1024 ** 2,
-        iops: 182,
-        mountType: 'ext4 / root',
-        inodeUsed: 1200000,
-        inodeTotal: 6500000,
-        inodeUsagePct: 18.4,
-        smartStatus: 'PASSED',
-      },
-      network: {
-        rxBytesPerSec: 3.1 * 1024 ** 2,
-        txBytesPerSec: 4.8 * 1024 ** 2,
-        dropPackets: 0,
-        retransPct: 0.02,
-        tcpEstablished: 142,
-        tcpTimeWait: 18,
-        tcpSynRecv: 2,
-        fdAllocated: 2410,
-        fdMax: 65535,
-      },
-      secops: {
-        sslDaysRemaining: 74,
-        ufwStatus: 'UFW Active',
-        fail2banBannedIps: 14,
-        failedSshCount: 0,
-      },
-      openPorts: [
-        { port: ':2222/tcp', name: 'sshd' },
-        { port: ':80, :443', name: 'caddy' },
-        { port: ':5432/tcp', name: 'postgres' },
-        { port: ':6379/tcp', name: 'redis' },
-        { port: ':8080/tcp', name: 'gajianich' },
-        { port: ':3000/tcp', name: 'scada-twin' },
-      ],
-      services: [
-        {
-          id: 'pm2-col',
-          name: 'collector-agent',
-          category: 'pm2',
-          sub: 'cluster-mode • Node.js v20.11',
-          status: 'active',
-          statusLabel: 'Running (Online)',
-          pid: 2410,
-          cpu: 2.1,
-          ram: '48.2 MB',
-          uptime: '42d 14h',
-          restarts: 0,
-          port: 'ws://127.0.0.1:8089',
-        },
-        {
-          id: 'pm2-api-0',
-          name: 'gajianich-api-0',
-          category: 'pm2',
-          sub: 'cluster instance #0 • Express Payroll API',
-          status: 'active',
-          statusLabel: 'Running (Online)',
-          pid: 3108,
-          cpu: 4.8,
-          ram: '198.5 MB',
-          uptime: '14d 06h',
-          restarts: 1,
-          port: '0.0.0.0:5000',
-        },
-        {
-          id: 'pm2-ams',
-          name: 'ams-sync-bridge',
-          category: 'pm2',
-          sub: 'fork • ADMS & Asset Poller Engine',
-          status: 'active',
-          statusLabel: 'Running (Online)',
-          pid: 3190,
-          cpu: 1.4,
-          ram: '84.0 MB',
-          uptime: '42d 12h',
-          restarts: 0,
-          port: 'internal-ipc',
-        },
-        {
-          id: 'dk-twin',
-          name: 'web-scada-twin',
-          category: 'docker',
-          sub: 'scada/twin:v2.1 • Three.js 3D isometric viewer',
-          status: 'active',
-          statusLabel: 'Running (Healthy)',
-          pid: 'c4e918ab2f',
-          cpu: 5.2,
-          ram: '312.0 MB',
-          uptime: 'Up 14 days',
-          restarts: 0,
-          port: '0.0.0.0:3000->3000/tcp',
-        },
-        {
-          id: 'dk-redis-cache',
-          name: 'redis-cache-stack',
-          category: 'docker',
-          sub: 'redis:7.2-alpine • L2 session caching',
-          status: 'active',
-          statusLabel: 'Running (Healthy)',
-          pid: '51ad4019be',
-          cpu: 1.2,
-          ram: '88.5 MB',
-          uptime: 'Up 42 days',
-          restarts: 0,
-          port: '127.0.0.1:6379->6379/tcp',
-        },
-        {
-          id: 'dk-caddy',
-          name: 'caddy-proxy',
-          category: 'docker',
-          sub: 'caddy:2.7-alpine • Internal reverse proxy',
-          status: 'active',
-          statusLabel: 'Running (Healthy)',
-          pid: '82eb1109aa',
-          cpu: 0.8,
-          ram: '44.0 MB',
-          uptime: 'Up 42 days',
-          restarts: 0,
-          port: '0.0.0.0:80->80, :443->443',
-        },
-        {
-          id: 'db-pg16',
-          name: 'PostgreSQL 16 Engine',
-          category: 'database',
-          sub: 'Production Relational DB • NVMe Mount',
-          status: 'active',
-          statusLabel: 'Active (48/200 Conns)',
-          pid: 1420,
-          cpu: 7.2,
-          ram: '1.8 GB',
-          uptime: '42d 14h',
-          restarts: 0,
-          port: '127.0.0.1:5432',
-        },
-        {
-          id: 'db-redis-core',
-          name: 'Redis 7.2 Cache',
-          category: 'database',
-          sub: 'AOF Persistence • Hit Rate: 99.1%',
-          status: 'active',
-          statusLabel: 'Active (Persistent)',
-          pid: 1845,
-          cpu: 0.9,
-          ram: '412.0 MB',
-          uptime: '42d 14h',
-          restarts: 0,
-          port: '127.0.0.1:6379',
-        },
-        {
-          id: 'sys-nginx',
-          name: 'nginx.service',
-          category: 'systemd',
-          sub: 'High-Performance Static & Socket Router',
-          status: 'active',
-          statusLabel: 'active (running)',
-          pid: 1120,
-          cpu: 0.6,
-          ram: '24.2 MB',
-          uptime: '42d 14h',
-          restarts: 0,
-          port: '0.0.0.0:8080',
-        },
-        {
-          id: 'sys-sshd',
-          name: 'sshd.service',
-          category: 'systemd',
-          sub: 'OpenSSH Remote Protocol Gateway',
-          status: 'active',
-          statusLabel: 'active (running)',
-          pid: 890,
-          cpu: 0.0,
-          ram: '12.4 MB',
-          uptime: '42d 14h',
-          restarts: 0,
-          port: '0.0.0.0:2222',
-        },
-        {
-          id: 'sys-fail2ban',
-          name: 'fail2ban.service',
-          category: 'systemd',
-          sub: 'Intrusion Prevention & Brute-force Shield',
-          status: 'active',
-          statusLabel: 'active (14 banned)',
-          pid: 912,
-          cpu: 0.1,
-          ram: '18.4 MB',
-          uptime: '42d 14h',
-          restarts: 0,
-          port: 'iptables-f2b',
-        },
-        {
-          id: 'sys-docker',
-          name: 'docker.service',
-          category: 'systemd',
-          sub: 'Docker Container Runtime Engine',
-          status: 'active',
-          statusLabel: 'active (running)',
-          pid: 1042,
-          cpu: 1.1,
-          ram: '94.2 MB',
-          uptime: '42d 14h',
-          restarts: 0,
-          port: '/var/run/docker.sock',
-        },
-      ],
-    }),
-    normalizeServerTelemetryPayload({
-      hostname: 'vps-sgp-01',
-      name: 'Edge Gateway & Nginx Proxy',
-      ipAddress: '103.145.22.40',
-      os: 'Debian 12 Bookworm',
-      specs: 'Edge Gateway & Nginx • 4 vCPU Cloud • 16 GB RAM • 160 GB SSD',
-      serverType: 'VPS',
-      provider: 'DigitalOcean Singapore',
-      location: 'SGP1 Edge',
-      environment: 'Production',
-      roleBadge: 'EDGE GATEWAY / PROXY',
-      connectionMode: 'PUBLIC IP',
-      cpuModel: '4 vCPU High-Freq Cloud',
-      cpuCores: 4,
-      daemonCore: 'Systemd 252.22',
-      avgPingMs: 14.2,
-      uptimeSeconds: 16416000,
-      cpu: {
-        usagePct: sgp1CpuPct,
-        ioWaitPct: 0.2,
-        stealPct: 0.1,
-        loadAvg: [0.45, 0.52, 0.48],
-        contextSwitchesPerSec: 8920,
-        interruptsPerSec: 4120,
-        zombieProcesses: 0,
-        totalProcesses: 112,
-      },
-      memory: {
-        usedBytes: 6.8 * 1024 ** 3,
-        totalBytes: 16 * 1024 ** 3,
-        usagePct: 42.5,
-        buffersBytes: 2.1 * 1024 ** 3,
-        swapUsedPct: 0,
-      },
-      storage: {
-        usedBytes: 48 * 1024 ** 3,
-        totalBytes: 160 * 1024 ** 3,
-        usagePct: 30.0,
-        readBytesPerSec: 1.1 * 1024 ** 2,
-        writeBytesPerSec: 4.8 * 1024 ** 2,
-        iops: 84,
-        mountType: 'ext4 / root',
-        inodeUsed: 420000,
-        inodeTotal: 3400000,
-        inodeUsagePct: 12.1,
-        smartStatus: 'PASSED',
-      },
-      network: {
-        rxBytesPerSec: 4.2 * 1024 ** 2,
-        txBytesPerSec: 12.8 * 1024 ** 2,
-        dropPackets: 0,
-        retransPct: 0.01,
-        tcpEstablished: 1840,
-        tcpTimeWait: 148,
-        tcpSynRecv: 4,
-        fdAllocated: 1890,
-        fdMax: 65535,
-      },
-      secops: {
-        sslDaysRemaining: 68,
-        ufwStatus: 'Fail2ban (18 ban)',
-        fail2banBannedIps: 18,
-        failedSshCount: 2,
-      },
-      openPorts: [
-        { port: ':2222/tcp', name: 'sshd' },
-        { port: ':80, :443', name: 'nginx' },
-        { port: ':8443/tcp', name: 'caddy-tls' },
-      ],
-      services: [
-        {
-          id: 'sys-edge-nginx',
-          name: 'nginx.service',
-          category: 'systemd',
-          sub: 'Reverse Proxy • 80 / 443 (1,840 Conn)',
-          status: 'active',
-          statusLabel: 'active (running)',
-          pid: 1122,
-          cpu: 1.8,
-          ram: '48.1 MB',
-          uptime: '190d 04h',
-          restarts: 0,
-          port: '0.0.0.0:80, :443',
-        },
-        {
-          id: 'pm2-pwa',
-          name: 'gajianich-pwa',
-          category: 'pm2',
-          sub: 'cluster • Next.js Edge SSR Frontend',
-          status: 'active',
-          statusLabel: 'Running (Online)',
-          pid: 2210,
-          cpu: 3.4,
-          ram: '210.0 MB',
-          uptime: '45d 12h',
-          restarts: 0,
-          port: '127.0.0.1:3000',
-        },
-        {
-          id: 'dk-edge-caddy',
-          name: 'caddy-ssl-proxy',
-          category: 'docker',
-          sub: 'caddy:2.7.6-alpine • Auto TLS',
-          status: 'active',
-          statusLabel: 'Running (SSL 68d)',
-          pid: 'ab89012cd3',
-          cpu: 2.4,
-          ram: '64.0 MB',
-          uptime: 'Up 190 days',
-          restarts: 0,
-          port: '0.0.0.0:8443->8443',
-        },
-        {
-          id: 'sys-edge-fail2ban',
-          name: 'fail2ban.service',
-          category: 'systemd',
-          sub: 'Edge IP Brute-Force Shield (18 IPs)',
-          status: 'active',
-          statusLabel: 'active (18 banned)',
-          pid: 842,
-          cpu: 0.2,
-          ram: '22.0 MB',
-          uptime: '190d 04h',
-          restarts: 0,
-          port: 'iptables-edge',
-        },
-      ],
-    }),
-    normalizeServerTelemetryPayload({
-      hostname: 'vps-sgp-02',
-      name: 'Database & Queue Cluster',
-      ipAddress: '103.145.22.88',
-      os: 'Ubuntu 22.04 LTS',
-      specs: 'Database & Worker • 8 vCPU Cloud • 32 GB RAM • 320 GB RAID1 NVMe',
-      serverType: 'VPS',
-      provider: 'IdCloudHost / SGP',
-      location: 'SGP2 Database Tier',
-      environment: 'Production',
-      roleBadge: 'DATABASE & QUEUE CLUSTER',
-      connectionMode: 'PUBLIC IP',
-      cpuModel: '8 vCPU Dedicated Compute',
-      cpuCores: 8,
-      daemonCore: 'Systemd 249.11',
-      avgPingMs: 18.4,
-      uptimeSeconds: 5594400,
-      cpu: {
-        usagePct: sgp2CpuPct,
-        ioWaitPct: 1.1,
-        stealPct: 0.0,
-        loadAvg: [1.85, 1.62, 1.50],
-        contextSwitchesPerSec: 18320,
-        interruptsPerSec: 11200,
-        zombieProcesses: 0,
-        totalProcesses: 215,
-      },
-      memory: {
-        usedBytes: 18.8 * 1024 ** 3,
-        totalBytes: 32 * 1024 ** 3,
-        usagePct: 58.8,
-        buffersBytes: 6.4 * 1024 ** 3,
-        swapUsedPct: 1.2,
-      },
-      storage: {
-        usedBytes: 224 * 1024 ** 3,
-        totalBytes: 320 * 1024 ** 3,
-        usagePct: 70.0,
-        readBytesPerSec: 12.4 * 1024 ** 2,
-        writeBytesPerSec: 42.1 * 1024 ** 2,
-        iops: 1200,
-        mountType: 'RAID1 NVMe / ext4',
-        inodeUsed: 2400000,
-        inodeTotal: 7000000,
-        inodeUsagePct: 34.6,
-        smartStatus: 'PASSED',
-      },
-      network: {
-        rxBytesPerSec: 2.3 * 1024 ** 2,
-        txBytesPerSec: 2.8 * 1024 ** 2,
-        dropPackets: 0,
-        retransPct: 0.01,
-        tcpEstablished: 582,
-        tcpTimeWait: 32,
-        tcpSynRecv: 1,
-        fdAllocated: 4120,
-        fdMax: 65535,
-      },
-      secops: {
-        sslDaysRemaining: 92,
-        ufwStatus: 'Fail2ban (23 ban)',
-        fail2banBannedIps: 23,
-        failedSshCount: 0,
-      },
-      openPorts: [
-        { port: ':2222/tcp', name: 'sshd' },
-        { port: ':5432/tcp', name: 'postgres-primary' },
-        { port: ':6379/tcp', name: 'redis-cache' },
-        { port: ':3000/tcp', name: 'gajianich-api' },
-      ],
-      services: [
-        {
-          id: 'db-pg16-primary',
-          name: 'PostgreSQL 16',
-          category: 'database',
-          sub: 'Systemd • Port 5432 • 412 TPS (84/100 Pool)',
-          status: 'active',
-          statusLabel: 'Active (84 Conns)',
-          pid: 1520,
-          cpu: 14.2,
-          ram: '4.8 GB',
-          uptime: '64d 18h',
-          restarts: 0,
-          port: '127.0.0.1:5432',
-        },
-        {
-          id: 'db-redis-72',
-          name: 'Redis 7.2 Cache',
-          category: 'database',
-          sub: 'Docker Cache • Port 6379 • 99.1% Hit',
-          status: 'active',
-          statusLabel: 'Active (99.1% Hit)',
-          pid: 1890,
-          cpu: 2.4,
-          ram: '1.8 GB',
-          uptime: '64d 18h',
-          restarts: 0,
-          port: '127.0.0.1:6379',
-        },
-        {
-          id: 'pm2-gajianich-cluster',
-          name: 'gajianich-api (2x)',
-          category: 'pm2',
-          sub: 'PM2 Cluster • Port 3000 • 2 Workers',
-          status: 'active',
-          statusLabel: 'Running (Online)',
-          pid: 4102,
-          cpu: 3.8,
-          ram: '142.0 MB',
-          uptime: '30d 09h',
-          restarts: 0,
-          port: '0.0.0.0:3000',
-        },
-        {
-          id: 'dk-bullmq-worker',
-          name: 'bullmq-worker',
-          category: 'docker',
-          sub: 'worker:v1.9 • Payroll & Attendance Async Queue',
-          status: 'warning',
-          statusLabel: 'High Queue Load',
-          pid: '65ea90124b',
-          cpu: 11.5,
-          ram: '512.0 MB',
-          uptime: 'Up 12 days',
-          restarts: 2,
-          port: 'queue:payroll-sync',
-        },
-      ],
-    }),
-  ];
-}

@@ -4,10 +4,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import ModalShell from '@/components/ui/ModalShell';
 import TablePagination from '@/components/ui/TablePagination';
 import ServerSparkline from '@/components/servers/ServerSparkline';
 import TerminalLogModal from '@/components/servers/TerminalLogModal';
-import { DEFAULT_FLEET_NODES } from '@/components/servers/defaultFleetData';
 import { useServerMonitoringStream } from '@/hooks/useServerMonitoringStream';
 import { api } from '@/lib/api';
 import {
@@ -20,11 +20,14 @@ import {
   ArrowLeft,
   ArrowUpDown,
   Box,
+  Check,
   CheckCircle2,
+  Copy,
   Cpu,
   Database,
   FilterX,
   HardDrive,
+  KeyRound,
   Layers,
   MemoryStick,
   Network,
@@ -34,11 +37,11 @@ import {
   Server,
   ShieldCheck,
   Terminal,
-  Zap,
 } from 'lucide-react';
 
 function formatUptimeDaysHours(seconds: number): string {
   const sec = Math.max(0, Number(seconds) || 0);
+  if (sec === 0) return 'Menunggu Agent';
   const days = Math.floor(sec / 86400);
   const hours = Math.floor((sec % 86400) / 3600);
   if (days > 0) return `${days}d ${String(hours).padStart(2, '0')}h`;
@@ -60,34 +63,84 @@ const PORT_TEXT_COLORS = [
   'text-cyan-700',
 ];
 
+const PLACEHOLDER_NODE: ServerNodeItem = {
+  id: 0,
+  serverCode: 'fastpec-MINI-S',
+  hostname: 'fastpec-MINI-S',
+  name: 'Memuat Telemetri Server...',
+  ipAddress: '192.168.10.212',
+  os: 'Menunggu Telemetri Agent...',
+  specs: 'Menunggu Telemetri Agent...',
+  status: 'Online',
+  healthStatus: 'Online',
+  serverType: 'Physical',
+  provider: 'On-Premise Baremetal',
+  location: 'Local Datacenter',
+  environment: 'Production',
+  roleBadge: 'ON-PREMISE HOST',
+  connectionMode: 'WS PUSH',
+  cpuModel: 'Menunggu Telemetri Agent...',
+  cpuCores: 0,
+  daemonCore: 'Systemd',
+  avgPingMs: 0,
+  agentVersion: 'v2.5-LinuxKernel',
+  uptimeSeconds: 0,
+  cpuUsagePct: 0,
+  cpuIoWaitPct: 0,
+  cpuStealPct: 0,
+  loadAvg: [0, 0, 0],
+  contextSwitchesPerSec: 0,
+  interruptsPerSec: 0,
+  zombieProcesses: 0,
+  totalProcesses: 0,
+  ramUsedBytes: 0,
+  ramTotalBytes: 0,
+  ramUsagePct: 0,
+  ramBuffersBytes: 0,
+  swapUsedPct: 0,
+  diskUsedBytes: 0,
+  diskTotalBytes: 0,
+  diskUsagePct: 0,
+  diskReadBytesPerSec: 0,
+  diskWriteBytesPerSec: 0,
+  diskIops: 0,
+  diskMountType: 'ext4 / root',
+  inodeUsed: 0,
+  inodeTotal: 1,
+  inodeUsagePct: 0,
+  smartStatus: 'PASSED',
+  netRxBytesPerSec: 0,
+  netTxBytesPerSec: 0,
+  netDropPackets: 0,
+  netRetransPct: 0,
+  tcpEstablished: 0,
+  tcpTimeWait: 0,
+  tcpSynRecv: 0,
+  fdAllocated: 0,
+  fdMax: 65535,
+  sslDaysRemaining: 89,
+  ufwStatus: 'UFW Active',
+  fail2banBannedIps: 0,
+  failedSshCount: 0,
+  openPorts: [],
+  unifiedServices: [],
+  spark: {
+    cpu: [0],
+    ram: [0],
+    disk: [0],
+    net: [0],
+  },
+};
+
 export default function ServerDetailInspectionPage() {
   const params = useParams();
   const router = useRouter();
-  const rawId = String(params?.id || '1');
+  const rawId = String(params?.id || 'fastpec-MINI-S');
 
-  const initialNode = useMemo(() => {
-    const num = Number(rawId);
-    if (Number.isInteger(num) && num > 0) {
-      return DEFAULT_FLEET_NODES.find((n) => n.id === num) || DEFAULT_FLEET_NODES[0];
-    }
-    return (
-      DEFAULT_FLEET_NODES.find((n) => n.serverCode.toLowerCase() === rawId.toLowerCase()) ||
-      DEFAULT_FLEET_NODES[0]
-    );
-  }, [rawId]);
-
-  const [node, setNode] = useState<ServerNodeItem>(initialNode);
+  const [node, setNode] = useState<ServerNodeItem>(PLACEHOLDER_NODE);
   const [nodesList, setNodesList] = useState<
     Array<{ id: number; serverCode: string; name: string; ipAddress: string; status: string }>
-  >(
-    DEFAULT_FLEET_NODES.map((n) => ({
-      id: n.id,
-      serverCode: n.serverCode,
-      name: n.name,
-      ipAddress: n.ipAddress,
-      status: n.status,
-    })),
-  );
+  >([]);
 
   const [activeCategory, setActiveCategory] = useState<'all' | ServiceCategory>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -95,7 +148,14 @@ export default function ServerDetailInspectionPage() {
   const pageSize = 12;
 
   const [restartingServiceId, setRestartingServiceId] = useState<string | null>(null);
-  const [isStressSpiked, setIsStressSpiked] = useState(false);
+
+  // Per-Machine API Key modal state
+  const [rotatedKeyModal, setRotatedKeyModal] = useState<{
+    isOpen: boolean;
+    agentApiKey: string;
+    agentKeyPrefix: string;
+  } | null>(null);
+  const [copiedField, setCopiedField] = useState<'key' | 'cmd' | null>(null);
 
   // Terminal Log Modal state
   const [logModal, setLogModal] = useState<{
@@ -126,87 +186,72 @@ export default function ServerDetailInspectionPage() {
       }>(`/infrastructure/servers/${encodeURIComponent(rawId)}`);
 
       if (res?.data) {
-        setNode((prev) => {
-          const srv = res.data;
-          const cpuDelta = Number(((Math.random() - 0.48) * 2.4).toFixed(1));
-          const ramDelta = Number(((Math.random() - 0.48) * 0.6).toFixed(1));
-
-          const nextCpu = isStressSpiked
-            ? Number((84 + Math.random() * 10).toFixed(1))
-            : Number(Math.min(95, Math.max(8, Number(srv.cpuUsagePct || 24.2) + cpuDelta)).toFixed(1));
-          const nextRam = isStressSpiked
-            ? Number((88 + Math.random() * 5).toFixed(1))
-            : Number(Math.min(95, Math.max(25, Number(srv.ramUsagePct || 45.0) + ramDelta)).toFixed(1));
-
-          const prevCpuSpark = prev?.spark?.cpu ?? srv.spark?.cpu ?? [20, 22, 25, 23, 24, 26];
-          const prevRamSpark = prev?.spark?.ram ?? srv.spark?.ram ?? [44.8, 44.9, 45.0, 45.1, 45.0, 45.0];
-
-          return {
-            ...srv,
-            cpuUsagePct: nextCpu,
-            ramUsagePct: nextRam,
-            spark: {
-              cpu: [...prevCpuSpark.slice(-11), nextCpu],
-              ram: [...prevRamSpark.slice(-11), nextRam],
-              disk: srv.spark?.disk ?? prev.spark.disk,
-              net: srv.spark?.net ?? prev.spark.net,
-            },
-          };
-        });
-
-        if (Array.isArray(res.nodesList) && res.nodesList.length > 0) {
+        setNode(res.data);
+        if (Array.isArray(res.nodesList)) {
           setNodesList(res.nodesList);
         }
       }
     } catch {
-      // Gently pulse local state if offline
-      setNode((prev) => {
-        const cpuDelta = Number(((Math.random() - 0.48) * 2.4).toFixed(1));
-        const nextCpu = isStressSpiked
-          ? Number((84 + Math.random() * 10).toFixed(1))
-          : Number(Math.min(95, Math.max(10, prev.cpuUsagePct + cpuDelta)).toFixed(1));
-        return {
-          ...prev,
-          cpuUsagePct: nextCpu,
-          spark: {
-            ...prev.spark,
-            cpu: [...prev.spark.cpu.slice(-11), nextCpu],
-          },
-        };
-      });
+      // If numeric ID from old URL isn't found, fetch first active server from /infrastructure/servers
+      try {
+        const listRes = await api.get<{ data: ServerNodeItem[] }>('/infrastructure/servers');
+        if (Array.isArray(listRes?.data) && listRes.data.length > 0) {
+          setNode(listRes.data[0]);
+          setNodesList(
+            listRes.data.map((n) => ({
+              id: n.id,
+              serverCode: n.serverCode,
+              name: n.name,
+              ipAddress: n.ipAddress,
+              status: n.status,
+            })),
+          );
+        }
+      } catch {
+        // Keep current state
+      }
     }
-  }, [rawId, isStressSpiked]);
+  }, [rawId]);
 
   useEffect(() => {
-    setNode(initialNode);
     void fetchNodeDetail();
-  }, [initialNode, fetchNodeDetail]);
+  }, [fetchNodeDetail]);
 
   const { countdown } = useServerMonitoringStream({
     onPulseOrTelemetry: fetchNodeDetail,
     intervalSeconds: 5,
   });
 
-  const handleToggleStressSpike = () => {
-    const next = !isStressSpiked;
-    setIsStressSpiked(next);
-    if (next) {
-      setNode((prev) => ({
-        ...prev,
-        cpuUsagePct: 88.4,
-        ramUsagePct: 89.2,
-        tcpEstablished: prev.tcpEstablished + 64,
-        loadAvg: [Number((prev.loadAvg[0] + 1.4).toFixed(2)), prev.loadAvg[1], prev.loadAvg[2]],
-        spark: {
-          ...prev.spark,
-          cpu: [...prev.spark.cpu.slice(-11), 88.4],
-          ram: [...prev.spark.ram.slice(-11), 89.2],
-        },
-      }));
-      showToast('High Workload Simulated', 'CPU dan Memory utilization melonjak pada node ini.');
-    } else {
-      void fetchNodeDetail();
-      showToast('Workload Normalized', 'Metrik sistem kembali ke baseline telemetri normal.');
+  const handleRotateAgentKey = async () => {
+    try {
+      const res = await api.post<{
+        success: boolean;
+        agentApiKey: string;
+        agentKeyPrefix: string;
+        data?: ServerNodeItem;
+      }>(`/infrastructure/servers/${encodeURIComponent(String(node.id || node.serverCode))}/rotate-key`, {});
+
+      if (res?.agentApiKey) {
+        if (res.data) setNode(res.data);
+        setRotatedKeyModal({
+          isOpen: true,
+          agentApiKey: res.agentApiKey,
+          agentKeyPrefix: res.agentKeyPrefix,
+        });
+        showToast('API Key Mesin Diperbarui', `Kunci otentikasi baru untuk ${node.serverCode} telah di-generate.`);
+      }
+    } catch (err: any) {
+      showToast('Gagal Merotasi Key', err?.message || 'Tidak dapat merotasi API key.');
+    }
+  };
+
+  const handleCopyText = async (text: string, field: 'key' | 'cmd') => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch {
+      // ignore
     }
   };
 
@@ -233,31 +278,12 @@ export default function ServerDetailInspectionPage() {
             ...prev,
             unifiedServices: res.services!,
           }));
-        } else {
-          setNode((prev) => ({
-            ...prev,
-            unifiedServices: prev.unifiedServices.map((item) =>
-              item.id === svc.id
-                ? { ...item, uptime: 'Just now', restarts: item.restarts + 1, status: 'active' }
-                : item,
-            ),
-          }));
         }
-        showToast('Process Reloaded', res?.message || `${svc.name} re-spawned cleanly (Exit 0)`);
-      }, 900);
-    } catch {
-      setTimeout(() => {
-        setRestartingServiceId(null);
-        setNode((prev) => ({
-          ...prev,
-          unifiedServices: prev.unifiedServices.map((item) =>
-            item.id === svc.id
-              ? { ...item, uptime: 'Just now', restarts: item.restarts + 1, status: 'active' }
-              : item,
-          ),
-        }));
-        showToast('Process Reloaded', `${svc.name} re-spawned cleanly (Exit 0)`);
-      }, 900);
+        showToast('Perintah Terkirim ke Agent', res?.message || `${svc.name} dijadwalkan restart pada agent.`);
+      }, 700);
+    } catch (err: any) {
+      setRestartingServiceId(null);
+      showToast('Gagal Mengirim Perintah', err?.message || 'Tidak dapat mengirim perintah restart.');
     }
   };
 
@@ -305,23 +331,23 @@ export default function ServerDetailInspectionPage() {
   }, [activeCategory, searchQuery, node.serverCode]);
 
   const ramUsedGb = formatBytesToGb(node.ramUsedBytes, 1);
-  const ramTotalGb = formatBytesToGb(node.ramTotalBytes, 0);
+  const ramTotalGb = formatBytesToGb(node.ramTotalBytes, 1);
   const ramBuffersGb = formatBytesToGb(node.ramBuffersBytes, 1);
-  const diskUsedGb = formatBytesToGb(node.diskUsedBytes, 0);
+  const diskUsedGb = formatBytesToGb(node.diskUsedBytes, 1);
   const diskTotalGb = formatBytesToGb(node.diskTotalBytes, 0);
-  const diskReadMb = (node.diskReadBytesPerSec / 1024 ** 2).toFixed(1);
-  const diskWriteMb = (node.diskWriteBytesPerSec / 1024 ** 2).toFixed(1);
-  const netInMbps = ((node.netRxBytesPerSec * 8) / 1024 ** 2).toFixed(1);
-  const netOutMbps = ((node.netTxBytesPerSec * 8) / 1024 ** 2).toFixed(1);
+  const diskReadMb = (node.diskReadBytesPerSec / 1024 ** 2).toFixed(2);
+  const diskWriteMb = (node.diskWriteBytesPerSec / 1024 ** 2).toFixed(2);
+  const netInMbps = ((node.netRxBytesPerSec * 8) / 1024 ** 2).toFixed(2);
+  const netOutMbps = ((node.netTxBytesPerSec * 8) / 1024 ** 2).toFixed(2);
   const fdPct = ((node.fdAllocated / Math.max(1, node.fdMax)) * 100).toFixed(1);
-  const inodeUsedM = (node.inodeUsed / 1_000_000).toFixed(1);
-  const inodeTotalM = (node.inodeTotal / 1_000_000).toFixed(1);
+  const inodeUsedM = (node.inodeUsed / 1_000_000).toFixed(2);
+  const inodeTotalM = (node.inodeTotal / 1_000_000).toFixed(2);
 
   const renderCategoryBadge = (cat: ServiceCategory) => {
     if (cat === 'pm2') {
       return (
         <span className="px-2 py-0.5 rounded text-[10px] font-semibold font-mono bg-emerald-50 text-emerald-800 border border-emerald-200">
-          PM2
+          PM2 / Node
         </span>
       );
     }
@@ -394,50 +420,48 @@ export default function ServerDetailInspectionPage() {
             </Link>
 
             {/* Quick Node Switcher Pills */}
-            <div className="flex items-center gap-1 bg-white border border-slate-200 p-1 rounded-xl shadow-2xs">
-              {nodesList.map((n) => {
-                const isCurrent =
-                  n.id === node.id || n.serverCode.toLowerCase() === node.serverCode.toLowerCase();
-                return (
-                  <button
-                    key={n.id || n.serverCode}
-                    type="button"
-                    onClick={() => router.push(`/dashboard/servers/${encodeURIComponent(String(n.id || n.serverCode))}`)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
-                      isCurrent
-                        ? 'bg-emerald-600 text-white shadow-2xs'
-                        : 'text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        isCurrent ? 'bg-white' : 'bg-emerald-500'
+            {nodesList.length > 0 && (
+              <div className="flex items-center gap-1 bg-white border border-slate-200 p-1 rounded-xl shadow-2xs">
+                {nodesList.map((n) => {
+                  const isCurrent =
+                    n.id === node.id || n.serverCode.toLowerCase() === node.serverCode.toLowerCase();
+                  return (
+                    <button
+                      key={n.id || n.serverCode}
+                      type="button"
+                      onClick={() => router.push(`/dashboard/servers/${encodeURIComponent(String(n.id || n.serverCode))}`)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                        isCurrent
+                          ? 'bg-emerald-600 text-white shadow-2xs'
+                          : 'text-slate-600 hover:bg-slate-100'
                       }`}
-                    />
-                    <span>{n.serverCode}</span>
-                  </button>
-                );
-              })}
-            </div>
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          isCurrent ? 'bg-white' : 'bg-emerald-500'
+                        }`}
+                      />
+                      <span>{n.serverCode}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl shadow-2xs">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-xs font-mono font-medium text-slate-700">Auto Stream: {countdown}s</span>
+              <span className="text-xs font-mono font-medium text-slate-700">Live Stream: {countdown}s</span>
             </div>
 
             <button
               type="button"
-              onClick={handleToggleStressSpike}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition shadow-2xs flex items-center gap-1.5 cursor-pointer ${
-                isStressSpiked
-                  ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
-                  : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200'
-              }`}
+              onClick={() => void handleRotateAgentKey()}
+              className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
             >
-              <Zap className="w-3.5 h-3.5" />
-              <span>{isStressSpiked ? 'Stop Spike' : 'Simulate Load Spike'}</span>
+              <KeyRound className="w-3.5 h-3.5 text-emerald-600" />
+              <span>API Key Mesin</span>
             </button>
 
             <button
@@ -451,7 +475,7 @@ export default function ServerDetailInspectionPage() {
           </div>
         </div>
 
-        {/* Page Header Banner Card (matching detail.html) */}
+        {/* Page Header Banner Card */}
         <div className="bg-white border border-slate-200 shadow-xs sm:shadow-sm rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -463,7 +487,7 @@ export default function ServerDetailInspectionPage() {
               </h1>
               <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-semibold inline-flex items-center gap-1.5 font-mono">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                {node.roleBadge || 'ACTIVE PROD WORKER'}
+                {node.roleBadge || 'ON-PREMISE HOST'}
               </span>
             </div>
             <p className="text-xs text-slate-500 font-mono mt-1">
@@ -475,12 +499,12 @@ export default function ServerDetailInspectionPage() {
           {/* Quick Hardware Counters */}
           <div className="flex flex-wrap items-center gap-3 font-mono text-xs">
             <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-right">
-              <span className="text-[11px] text-slate-400 font-normal uppercase block">WS Ingress</span>
-              <span className="font-bold text-emerald-700">8089/tcp TLS</span>
+              <span className="text-[11px] text-slate-400 font-normal uppercase block">Agent Key</span>
+              <span className="font-bold text-emerald-700">{node.agentKeyPrefix || 'Per-Machine Key'}</span>
             </div>
             <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-right">
               <span className="text-[11px] text-slate-400 font-normal uppercase block">Daemon Core</span>
-              <span className="font-bold text-slate-900">{node.daemonCore || 'Systemd 249.11'}</span>
+              <span className="font-bold text-slate-900">{node.daemonCore || 'Systemd'}</span>
             </div>
             <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-right">
               <span className="text-[11px] text-slate-400 font-normal uppercase block">Avg Ping</span>
@@ -489,7 +513,7 @@ export default function ServerDetailInspectionPage() {
           </div>
         </div>
 
-        {/* KPI Summary Strip with Live Sparklines (Expanded 6 Enterprise Cards matching detail.html) */}
+        {/* KPI Summary Strip with Live Sparklines (Expanded 6 Enterprise Cards) */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           {/* Card 1: CPU Utilization */}
           <div className="bg-white border border-slate-200 shadow-xs sm:shadow-sm rounded-2xl p-4 flex flex-col justify-between relative overflow-hidden">
@@ -507,7 +531,7 @@ export default function ServerDetailInspectionPage() {
                   {node.cpuUsagePct}%
                 </span>
                 <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 font-mono">
-                  &darr; 1.4%
+                  {node.cpuCores} vCPU
                 </span>
               </div>
               <div className="text-[10px] text-slate-400 font-normal mt-0.5 font-mono">
@@ -516,7 +540,7 @@ export default function ServerDetailInspectionPage() {
             </div>
             <div className="mt-2">
               <ServerSparkline
-                data={node.spark?.cpu ?? [20, 22, 25, 23, 24, 26, node.cpuUsagePct]}
+                data={node.spark?.cpu?.length ? node.spark.cpu : [node.cpuUsagePct]}
                 tone={node.cpuUsagePct >= 80 ? 'rose' : 'emerald'}
                 height={36}
                 min={0}
@@ -545,12 +569,12 @@ export default function ServerDetailInspectionPage() {
                 </span>
               </div>
               <div className="text-[10px] text-slate-400 font-normal mt-0.5 font-mono">
-                Buffers: {ramBuffersGb}G &bull; Swap: {node.swapUsedPct}%
+                Buffers/Cache: {ramBuffersGb}G &bull; Swap: {node.swapUsedPct}%
               </div>
             </div>
             <div className="mt-2">
               <ServerSparkline
-                data={node.spark?.ram ?? [44, 45, 45, 45, 45, node.ramUsagePct]}
+                data={node.spark?.ram?.length ? node.spark.ram : [node.ramUsagePct]}
                 tone="blue"
                 height={36}
                 min={0}
@@ -559,12 +583,12 @@ export default function ServerDetailInspectionPage() {
             </div>
           </div>
 
-          {/* Card 3: NVMe Disk I/O */}
+          {/* Card 3: Disk I/O */}
           <div className="bg-white border border-slate-200 shadow-xs sm:shadow-sm rounded-2xl p-4 flex flex-col justify-between relative overflow-hidden">
             <div>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider font-mono">
-                  NVMe Disk I/O
+                  Disk Block I/O
                 </span>
                 <span className="p-1 rounded-lg bg-purple-50 text-purple-700">
                   <HardDrive className="w-3.5 h-3.5" />
@@ -581,12 +605,12 @@ export default function ServerDetailInspectionPage() {
                 </div>
               </div>
               <div className="text-[10px] text-slate-400 font-normal mt-0.5 font-mono">
-                IOPS: <span className="text-slate-700 font-bold">{node.diskIops}</span> &bull; Lat: 0.12ms
+                IOPS: <span className="text-slate-700 font-bold">{node.diskIops}</span> &bull; {node.diskMountType}
               </div>
             </div>
             <div className="mt-2">
               <ServerSparkline
-                data={node.spark?.disk ?? [12, 18, 14, 22, 19, 23, 18.9]}
+                data={node.spark?.disk?.length ? node.spark.disk : [0]}
                 tone="purple"
                 height={36}
               />
@@ -609,12 +633,12 @@ export default function ServerDetailInspectionPage() {
                 <span className="text-xs font-bold text-blue-700">&uarr; {netOutMbps} Mbps</span>
               </div>
               <div className="text-[10px] text-slate-400 font-normal mt-0.5 font-mono">
-                Drop: {node.netDropPackets} pkts &bull; Retrans: {node.netRetransPct}%
+                Drop: {node.netDropPackets.toLocaleString()} pkts &bull; Retrans: {node.netRetransPct}%
               </div>
             </div>
             <div className="mt-2">
               <ServerSparkline
-                data={node.spark?.net ?? [20, 28, 32, 29, 34, 38.4, 38.4]}
+                data={node.spark?.net?.length ? node.spark.net : [0]}
                 tone="teal"
                 height={36}
               />
@@ -657,7 +681,7 @@ export default function ServerDetailInspectionPage() {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider font-mono">
-                  SecOps & SSL
+                  SecOps & Shield
                 </span>
                 <span className="p-1 rounded-lg bg-amber-50 text-amber-700">
                   <ShieldCheck className="w-3.5 h-3.5" />
@@ -670,21 +694,21 @@ export default function ServerDetailInspectionPage() {
                 </span>
               </div>
               <div className="text-[10px] text-slate-400 font-normal mt-0.5 font-mono">
-                Fail2Ban: {node.fail2banBannedIps} IPs Banned
+                Key: {node.agentKeyPrefix || 'Isolated Key'}
               </div>
             </div>
             <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-mono text-slate-500">
               <span>
-                UFW: <b className="text-emerald-600">Active</b>
+                Firewall: <b className="text-emerald-600">{node.ufwStatus || 'Active'}</b>
               </span>
               <span>
-                SSH Attr: <b className="text-rose-600">{node.failedSshCount} failed</b>
+                SSH Fail: <b className="text-rose-600">{node.failedSshCount}</b>
               </span>
             </div>
           </div>
         </section>
 
-        {/* Enterprise System Kernel & Deep Health Telemetry Panel (3 Columns matching detail.html) */}
+        {/* Enterprise System Kernel & Deep Health Telemetry Panel (3 Columns) */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Panel 1: Load Averages & Context Switches */}
           <div className="bg-white border border-slate-200 shadow-xs sm:shadow-sm rounded-2xl p-4 flex flex-col justify-between">
@@ -694,7 +718,7 @@ export default function ServerDetailInspectionPage() {
                 Load Averages & Context Switches
               </span>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600">
-                Scheduler
+                Linux Scheduler
               </span>
             </div>
 
@@ -702,19 +726,19 @@ export default function ServerDetailInspectionPage() {
               <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80">
                 <span className="text-[10px] text-slate-400 font-mono uppercase block">1 Min</span>
                 <span className="text-base font-bold font-mono text-slate-900">
-                  {node.loadAvg?.[0] ?? 0.42}
+                  {node.loadAvg?.[0] ?? 0}
                 </span>
               </div>
               <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80">
                 <span className="text-[10px] text-slate-400 font-mono uppercase block">5 Min</span>
                 <span className="text-base font-bold font-mono text-slate-900">
-                  {node.loadAvg?.[1] ?? 0.38}
+                  {node.loadAvg?.[1] ?? 0}
                 </span>
               </div>
               <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80">
                 <span className="text-[10px] text-slate-400 font-mono uppercase block">15 Min</span>
                 <span className="text-base font-bold font-mono text-slate-900">
-                  {node.loadAvg?.[2] ?? 0.35}
+                  {node.loadAvg?.[2] ?? 0}
                 </span>
               </div>
             </div>
@@ -742,12 +766,12 @@ export default function ServerDetailInspectionPage() {
             </div>
           </div>
 
-          {/* Panel 2: NVMe Capacity & Inode Saturation */}
+          {/* Panel 2: Storage Capacity & Inode Saturation */}
           <div className="bg-white border border-slate-200 shadow-xs sm:shadow-sm rounded-2xl p-4 flex flex-col justify-between">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider font-mono flex items-center gap-1.5">
                 <Database className="w-3.5 h-3.5 text-purple-600" />
-                NVMe Capacity & Inode Saturation
+                Storage Capacity & Inode Saturation
               </span>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
                 {node.diskMountType || 'ext4 / root'}
@@ -757,7 +781,7 @@ export default function ServerDetailInspectionPage() {
             <div className="space-y-3 my-3">
               <div>
                 <div className="flex justify-between text-xs font-mono mb-1">
-                  <span className="text-slate-500 font-medium">Disk Space (/dev/nvme0n1p2)</span>
+                  <span className="text-slate-500 font-medium">Root Volume ({node.diskMountType})</span>
                   <span className="font-bold text-slate-900">
                     {diskUsedGb} GB / {diskTotalGb} GB ({node.diskUsagePct}%)
                   </span>
@@ -790,10 +814,10 @@ export default function ServerDetailInspectionPage() {
 
             <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 pt-2 border-t border-slate-100">
               <span>
-                Read Latency: <b className="text-slate-800">0.08ms</b>
+                Read: <b className="text-slate-800">{diskReadMb} MB/s</b>
               </span>
               <span>
-                Write Latency: <b className="text-slate-800">0.14ms</b>
+                Write: <b className="text-slate-800">{diskWriteMb} MB/s</b>
               </span>
               <span>
                 SMART: <b className="text-emerald-600">{node.smartStatus || 'PASSED'}</b>
@@ -813,14 +837,14 @@ export default function ServerDetailInspectionPage() {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 my-2 text-[11px] font-mono">
-              {(node.openPorts || []).slice(0, 6).map((p, idx) => (
+            <div className="grid grid-cols-2 gap-2 my-2 text-[11px] font-mono max-h-[132px] overflow-y-auto pr-1">
+              {(node.openPorts || []).map((p, idx) => (
                 <div
                   key={`${p.port}-${idx}`}
-                  className="p-2 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between"
+                  className="p-2 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between gap-1"
                 >
-                  <span className="text-slate-600">{p.port}</span>
-                  <span className={`text-[10px] font-bold ${PORT_TEXT_COLORS[idx % PORT_TEXT_COLORS.length]}`}>
+                  <span className="text-slate-600 shrink-0">{p.port}</span>
+                  <span className={`text-[10px] font-bold truncate ${PORT_TEXT_COLORS[idx % PORT_TEXT_COLORS.length]}`}>
                     {p.name}
                   </span>
                 </div>
@@ -832,13 +856,13 @@ export default function ServerDetailInspectionPage() {
                 Binding: <b className="text-slate-800">0.0.0.0 / ::</b>
               </span>
               <span>
-                SYN Flooding Protect: <b className="text-emerald-600">On</b>
+                Source: <b className="text-emerald-600">ss -tlnp</b>
               </span>
             </div>
           </div>
         </section>
 
-        {/* Service Management Control Deck (Tabs & Search Bar matching detail.html) */}
+        {/* Service Management Control Deck (Tabs & Search Bar) */}
         <div className="bg-white border border-slate-200 shadow-xs sm:shadow-sm rounded-2xl p-4 space-y-4">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             {/* Category Filter Tabs */}
@@ -866,7 +890,7 @@ export default function ServerDetailInspectionPage() {
                 }`}
               >
                 <Terminal className={`w-3.5 h-3.5 ${activeCategory === 'pm2' ? 'text-white' : 'text-emerald-600'}`} />
-                <span>PM2 Node.js ({categoryCounts.pm2})</span>
+                <span>PM2 / Node.js ({categoryCounts.pm2})</span>
               </button>
 
               <button
@@ -939,7 +963,7 @@ export default function ServerDetailInspectionPage() {
           </div>
         </div>
 
-        {/* Master Process & Service Inspection Table (9 Columns matching detail.html) */}
+        {/* Master Process & Service Inspection Table (9 Columns) */}
         <div className="bg-white border border-slate-200 shadow-xs sm:shadow-sm rounded-2xl overflow-hidden">
           {paginatedServices.length === 0 ? (
             <div className="py-12 text-center">
@@ -1105,6 +1129,49 @@ export default function ServerDetailInspectionPage() {
             </>
           )}
         </div>
+
+        {/* Per-Machine API Key Modal */}
+        <ModalShell
+          isOpen={Boolean(rotatedKeyModal?.isOpen)}
+          onClose={() => setRotatedKeyModal(null)}
+          title="API Key Agent Khusus Mesin"
+          subtitle={`Kredensial otentikasi telemetri untuk mesin ${node.serverCode}.`}
+        >
+          {rotatedKeyModal && (
+            <div className="space-y-4">
+              <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl text-xs text-emerald-800">
+                API Key baru telah dibuat khusus untuk mesin <strong>{node.serverCode}</strong>. Kunci lama untuk mesin ini otomatis dinonaktifkan.
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider font-mono text-slate-600 mb-1">
+                  Per-Server Agent API Key
+                </label>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 px-3 py-2 bg-slate-900 text-emerald-400 rounded-xl text-xs font-mono break-all">
+                    {rotatedKeyModal.agentApiKey}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => void handleCopyText(rotatedKeyModal.agentApiKey, 'key')}
+                    className="px-3 py-2 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 flex items-center gap-1.5 cursor-pointer shrink-0"
+                  >
+                    {copiedField === 'key' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedField === 'key' ? 'Tersalin' : 'Salin Key'}</span>
+                  </button>
+                </div>
+              </div>
+              <div className="flex justify-end pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setRotatedKeyModal(null)}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold cursor-pointer"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          )}
+        </ModalShell>
 
         {/* Realtime Terminal Log Modal */}
         <TerminalLogModal

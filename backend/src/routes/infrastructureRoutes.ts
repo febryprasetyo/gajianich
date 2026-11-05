@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { loadEnv } from '../config/env';
 import {
   createOrUpdateServerNode,
+  createServerTelemetryAuthenticator,
   executeServerRemoteAction,
   getAccurateDatabase,
   getAccurateLicenses,
@@ -11,6 +12,7 @@ import {
   getServerServiceLogs,
   receiveAccurateAgentSignal,
   receiveServerTelemetry,
+  rotateServerAgentKey,
   streamServerTelemetry,
   syncAccurateLicenses,
 } from '../controllers/infrastructureController';
@@ -18,10 +20,12 @@ import { createAgentAuthenticator } from '../middleware/agentAuth';
 import { authenticateToken, requirePermission } from '../middleware/auth';
 
 const router = Router();
-const agentAuth = createAgentAuthenticator(loadEnv().agentApiKey);
+const envKey = loadEnv().agentApiKey;
+const agentAuth = createAgentAuthenticator(envKey);
+const serverTelemetryAuth = createServerTelemetryAuthenticator(envKey);
 
 router.post('/agent/signal', agentAuth, receiveAccurateAgentSignal);
-router.post('/agent/telemetry', agentAuth, receiveServerTelemetry);
+router.post('/agent/telemetry', serverTelemetryAuth, receiveServerTelemetry);
 
 router.use(authenticateToken);
 
@@ -38,6 +42,7 @@ router.get('/servers/stream', viewInfra, streamServerTelemetry);
 router.get('/servers/:id', viewInfra, getServerById);
 router.get('/servers/:id/logs', viewInfra, getServerServiceLogs);
 router.post('/servers/:id/actions', manageInfra, executeServerRemoteAction);
+router.post('/servers/:id/rotate-key', manageInfra, rotateServerAgentKey);
 
 router.get('/backups', viewInfra, getDbBackups);
 

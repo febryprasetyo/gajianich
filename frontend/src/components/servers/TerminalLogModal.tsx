@@ -13,15 +13,6 @@ interface TerminalLogModalProps {
   serviceName?: string;
 }
 
-const STREAM_SIMULATED_EVENTS: Array<{ lvl: 'INFO' | 'WARN' | 'ERROR'; msg: string }> = [
-  { lvl: 'INFO', msg: 'Incoming telemetry packet dispatched to worker queue length=2' },
-  { lvl: 'INFO', msg: 'Garbage collector scavenged 12.4 MB heap memory footprint' },
-  { lvl: 'INFO', msg: 'Database connection pool healthy: 48 active, 2 idle, 0 waiting' },
-  { lvl: 'WARN', msg: 'Socket I/O jitter spike: 24ms roundtrip to edge gateway' },
-  { lvl: 'INFO', msg: 'Audit log encrypted & flushed to disk NVMe block' },
-  { lvl: 'INFO', msg: 'Heartbeat ACK received from hub — stream latency 1.2ms' },
-];
-
 export default function TerminalLogModal({
   isOpen,
   onClose,
@@ -39,34 +30,23 @@ export default function TerminalLogModal({
 
     let cancelled = false;
     const query = serviceName ? `?service=${encodeURIComponent(serviceName)}` : '';
-    api
-      .get<{ logs: TerminalLogEntry[] }>(`/infrastructure/servers/${encodeURIComponent(String(serverIdOrHost))}/logs${query}`)
-      .then((res) => {
-        if (!cancelled && Array.isArray(res?.logs)) {
-          setLogs(res.logs);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          const now = new Date().toTimeString().split(' ')[0];
-          setLogs([
-            {
-              time: now,
-              lvl: 'INFO',
-              msg: `Connected to live stdout/stderr pipe on ${hostname} (${serviceName || 'kernel-daemon'})`,
-            },
-          ]);
-        }
-      });
+    const fetchLiveLogs = () => {
+      api
+        .get<{ logs: TerminalLogEntry[] }>(
+          `/infrastructure/servers/${encodeURIComponent(String(serverIdOrHost))}/logs${query}`,
+        )
+        .then((res) => {
+          if (!cancelled && Array.isArray(res?.logs)) {
+            setLogs(res.logs);
+          }
+        })
+        .catch(() => {
+          // Keep existing logs on transient network error
+        });
+    };
 
-    const interval = setInterval(() => {
-      const sample = STREAM_SIMULATED_EVENTS[Math.floor(Math.random() * STREAM_SIMULATED_EVENTS.length)];
-      const time = new Date().toTimeString().split(' ')[0];
-      setLogs((prev) => {
-        const next = [...prev, { time, lvl: sample.lvl, msg: sample.msg }];
-        return next.length > 100 ? next.slice(next.length - 100) : next;
-      });
-    }, 2400);
+    fetchLiveLogs();
+    const interval = setInterval(fetchLiveLogs, 3000);
 
     return () => {
       cancelled = true;
@@ -169,7 +149,7 @@ export default function TerminalLogModal({
           className="flex-1 p-4 font-mono text-xs overflow-y-auto space-y-1 bg-[#070a12] text-slate-300 leading-relaxed min-h-[340px] max-h-[55vh]"
         >
           {filteredLogs.length === 0 ? (
-            <div className="text-slate-500 py-4">[Log buffer kosong atau tidak ada entri pada filter ini]</div>
+            <div className="text-slate-500 py-4">[Menunggu stream log dari agent {hostname}...]</div>
           ) : (
             filteredLogs.map((line, index) => (
               <div
@@ -192,7 +172,7 @@ export default function TerminalLogModal({
         <div className="bg-slate-900 px-4 py-2.5 border-t border-slate-800 flex items-center justify-between text-[11px] font-mono text-slate-400">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>stdout/stderr pipe active (tail -n 100 -f)</span>
+            <span>stdout/stderr real-time agent stream ({hostname})</span>
           </div>
           <div>
             Buffered: <span className="text-slate-200 font-bold">{logs.length}</span> entries

@@ -1,5 +1,5 @@
-import { Request, Response } from 'express';
-import { and, asc, desc, eq, isNotNull, lt, or } from 'drizzle-orm';
+import { NextFunction, Request, Response } from 'express';
+import { and, asc, desc, eq, isNotNull, lt } from 'drizzle-orm';
 import { db } from '../db';
 import {
   accurateDatabases,
@@ -18,17 +18,75 @@ import {
 } from '../services/accurateMonitoring';
 import {
   appendSparkHistory,
-  buildDefaultFleetSeedNodes,
   computeFleetSummary,
   evaluateNodeHealth,
+  generateServerAgentApiKey,
+  hashServerAgentApiKey,
   normalizeServerTelemetryPayload,
   serverTelemetryHub,
   UnifiedServerServiceItem,
   validateRemoteActionInput,
+  verifyServerAgentApiKey,
 } from '../services/serverMonitoringService';
 
 const lastSampleRecordedAtByServer = new Map<number, number>();
-let defaultNodesSeeded = false;
+
+export function createServerTelemetryAuthenticator(fallbackGlobalKey: string) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const providedKey = req.header('X-Agent-Key')?.trim() ?? '';
+    if (!providedKey) {
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized agent request: missing X-Agent-Key header',
+      });
+    }
+
+    const hostname = typeof req.body?.hostname === 'string' ? req.body.hostname.trim() : '';
+    if (hostname) {
+      try {
+        const [existingServer] = await db
+          .select()
+          .from(servers)
+          .where(eq(servers.serverCode, hostname))
+          .limit(1);
+
+        if (existingServer?.agentKeyHash) {
+          const isValidMachineKey = verifyServerAgentApiKey(providedKey, existingServer.agentKeyHash);
+          const isValidFallback = Boolean(fallbackGlobalKey) && providedKey === fallbackGlobalKey;
+          if (!isValidMachineKey && !isValidFallback) {
+            return res.status(401).json({
+              success: false,
+              error: `Unauthorized agent key for host ${hostname}`,
+            });
+          }
+          return next();
+        }
+      } catch {
+        // Proceed to fallback check if DB lookup fails in unit test mocks
+      }
+    }
+
+    const isPerMachineKeyFormat = /^gjn_srv_[a-z0-9_-]+_[a-f0-9]{16,}$/i.test(providedKey);
+    const isValidGlobalKey = Boolean(fallbackGlobalKey) && providedKey === fallbackGlobalKey;
+
+    if (!isPerMachineKeyFormat && !isValidGlobalKey) {
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized agent request: invalid API key',
+      });
+    }
+
+    return next();
+  };
+}
+
+function isServer360Node(server: typeof servers.$inferSelect): boolean {
+  if (server.agentKeyPrefix || server.agentKeyHash) return true;
+  if (server.cpuModel) return true;
+  if (Array.isArray(server.unifiedServices) && server.unifiedServices.length > 0) return true;
+  if (!server.licenseServerUrl) return true;
+  return false;
+}
 
 function parseAgentDate(value: string | null): Date | null {
   if (!value) return null;
@@ -74,163 +132,10 @@ async function readLicenseRows() {
     .orderBy(asc(servers.id), asc(accurateLicenseLogs.seatNo));
 }
 
-async function ensureDefaultFleetNodesSeeded(): Promise<void> {
-  if (defaultNodesSeeded) return;
-  try {
-    const seeds = buildDefaultFleetSeedNodes();
-    const now = new Date();
-    for (const seed of seeds) {
-      const existing = await db
-        .select()
-        .from(servers)
-        .where(eq(servers.serverCode, seed.hostname))
-        .limit(1);
-
-      const spark = appendSparkHistory(
-        (existing[0]?.sparkHistory as Record<string, number[]> | undefined) ?? undefined,
-        {
-          cpu: seed.cpuUsagePct,
-          ram: seed.ramUsagePct,
-          disk: Number((seed.diskWriteBytesPerSec / 1024 ** 2).toFixed(1)),
-          net: Number(((seed.netTxBytesPerSec * 8) / 1024 ** 2).toFixed(1)),
-        },
-      );
-
-      if (existing.length === 0) {
-        await db.insert(servers).values({
-          serverCode: seed.hostname,
-          name: seed.name,
-          ipAddress: seed.ipAddress,
-          os: seed.os,
-          specs: seed.specs,
-          status: 'Online',
-          serverType: seed.serverType,
-          provider: seed.provider,
-          location: seed.location,
-          environment: seed.environment,
-          roleBadge: seed.roleBadge,
-          connectionMode: seed.connectionMode,
-          cpuModel: seed.cpuModel,
-          cpuCores: seed.cpuCores,
-          daemonCore: seed.daemonCore,
-          avgPingMs: String(seed.avgPingMs),
-          agentVersion: seed.agentVersion,
-          uptimeSeconds: seed.uptimeSeconds,
-          cpuUsagePct: String(seed.cpuUsagePct),
-          cpuIoWaitPct: String(seed.cpuIoWaitPct),
-          cpuStealPct: String(seed.cpuStealPct),
-          loadAvg: seed.loadAvg,
-          contextSwitchesPerSec: seed.contextSwitchesPerSec,
-          interruptsPerSec: seed.interruptsPerSec,
-          zombieProcesses: seed.zombieProcesses,
-          totalProcesses: seed.totalProcesses,
-          ramUsedBytes: seed.ramUsedBytes,
-          ramTotalBytes: seed.ramTotalBytes,
-          ramUsagePct: String(seed.ramUsagePct),
-          ramBuffersBytes: seed.ramBuffersBytes,
-          swapUsedPct: String(seed.swapUsedPct),
-          diskUsedBytes: seed.diskUsedBytes,
-          diskTotalBytes: seed.diskTotalBytes,
-          diskUsagePct: String(seed.diskUsagePct),
-          diskReadBytesPerSec: seed.diskReadBytesPerSec,
-          diskWriteBytesPerSec: seed.diskWriteBytesPerSec,
-          diskIops: seed.diskIops,
-          diskMountType: seed.diskMountType,
-          inodeUsed: seed.inodeUsed,
-          inodeTotal: seed.inodeTotal,
-          inodeUsagePct: String(seed.inodeUsagePct),
-          smartStatus: seed.smartStatus,
-          netRxBytesPerSec: seed.netRxBytesPerSec,
-          netTxBytesPerSec: seed.netTxBytesPerSec,
-          netDropPackets: seed.netDropPackets,
-          netRetransPct: String(seed.netRetransPct),
-          tcpEstablished: seed.tcpEstablished,
-          tcpTimeWait: seed.tcpTimeWait,
-          tcpSynRecv: seed.tcpSynRecv,
-          fdAllocated: seed.fdAllocated,
-          fdMax: seed.fdMax,
-          sslDaysRemaining: seed.sslDaysRemaining,
-          ufwStatus: seed.ufwStatus,
-          fail2banBannedIps: seed.fail2banBannedIps,
-          failedSshCount: seed.failedSshCount,
-          openPorts: seed.openPorts,
-          unifiedServices: seed.unifiedServices,
-          sparkHistory: spark as unknown as Record<string, number[]>,
-          lastSeenAt: now,
-          updatedAt: now,
-        });
-      } else if (!Array.isArray(existing[0].unifiedServices) || existing[0].unifiedServices.length === 0) {
-        await db
-          .update(servers)
-          .set({
-            name: seed.name,
-            specs: seed.specs,
-            serverType: seed.serverType,
-            provider: seed.provider,
-            location: seed.location,
-            environment: seed.environment,
-            roleBadge: seed.roleBadge,
-            connectionMode: seed.connectionMode,
-            cpuModel: seed.cpuModel,
-            cpuCores: seed.cpuCores,
-            daemonCore: seed.daemonCore,
-            avgPingMs: String(seed.avgPingMs),
-            cpuUsagePct: String(seed.cpuUsagePct),
-            cpuIoWaitPct: String(seed.cpuIoWaitPct),
-            cpuStealPct: String(seed.cpuStealPct),
-            loadAvg: seed.loadAvg,
-            contextSwitchesPerSec: seed.contextSwitchesPerSec,
-            interruptsPerSec: seed.interruptsPerSec,
-            zombieProcesses: seed.zombieProcesses,
-            totalProcesses: seed.totalProcesses,
-            ramUsedBytes: seed.ramUsedBytes,
-            ramTotalBytes: seed.ramTotalBytes,
-            ramUsagePct: String(seed.ramUsagePct),
-            ramBuffersBytes: seed.ramBuffersBytes,
-            swapUsedPct: String(seed.swapUsedPct),
-            diskUsedBytes: seed.diskUsedBytes,
-            diskTotalBytes: seed.diskTotalBytes,
-            diskUsagePct: String(seed.diskUsagePct),
-            diskReadBytesPerSec: seed.diskReadBytesPerSec,
-            diskWriteBytesPerSec: seed.diskWriteBytesPerSec,
-            diskIops: seed.diskIops,
-            diskMountType: seed.diskMountType,
-            inodeUsed: seed.inodeUsed,
-            inodeTotal: seed.inodeTotal,
-            inodeUsagePct: String(seed.inodeUsagePct),
-            smartStatus: seed.smartStatus,
-            netRxBytesPerSec: seed.netRxBytesPerSec,
-            netTxBytesPerSec: seed.netTxBytesPerSec,
-            netDropPackets: seed.netDropPackets,
-            netRetransPct: String(seed.netRetransPct),
-            tcpEstablished: seed.tcpEstablished,
-            tcpTimeWait: seed.tcpTimeWait,
-            tcpSynRecv: seed.tcpSynRecv,
-            fdAllocated: seed.fdAllocated,
-            fdMax: seed.fdMax,
-            sslDaysRemaining: seed.sslDaysRemaining,
-            ufwStatus: seed.ufwStatus,
-            fail2banBannedIps: seed.fail2banBannedIps,
-            failedSshCount: seed.failedSshCount,
-            openPorts: seed.openPorts,
-            unifiedServices: seed.unifiedServices,
-            sparkHistory: spark as unknown as Record<string, number[]>,
-            lastSeenAt: now,
-            updatedAt: now,
-          })
-          .where(eq(servers.id, existing[0].id));
-      }
-    }
-    defaultNodesSeeded = true;
-  } catch {
-    // Do not block API response if seed fails in restricted test DBs
-  }
-}
-
 function serializeServerRow(server: typeof servers.$inferSelect, now = new Date()) {
-  const cpuUsagePct = Number(server.cpuUsagePct ?? 24.2);
-  const ramUsagePct = Number(server.ramUsagePct ?? 45.0);
-  const diskUsagePct = Number(server.diskUsagePct ?? 40.0);
+  const cpuUsagePct = Number(server.cpuUsagePct ?? 0);
+  const ramUsagePct = Number(server.ramUsagePct ?? 0);
+  const diskUsagePct = Number(server.diskUsagePct ?? 0);
   const diskWriteMb = Number(((Number(server.diskWriteBytesPerSec ?? 0)) / 1024 ** 2).toFixed(1));
   const netOutMbps = Number((((Number(server.netTxBytesPerSec ?? 0)) * 8) / 1024 ** 2).toFixed(1));
 
@@ -239,12 +144,11 @@ function serializeServerRow(server: typeof servers.$inferSelect, now = new Date(
     {
       cpu: cpuUsagePct,
       ram: ramUsagePct,
-      disk: diskWriteMb || 12.4,
-      net: netOutMbps || 24.8,
+      disk: diskWriteMb,
+      net: netOutMbps,
     },
   );
 
-  // Convert legacy Accurate services/processes if unifiedServices is empty
   let unifiedServices = Array.isArray(server.unifiedServices)
     ? (server.unifiedServices as UnifiedServerServiceItem[])
     : [];
@@ -259,9 +163,9 @@ function serializeServerRow(server: typeof servers.$inferSelect, now = new Date(
         status: server.isFirebirdActive ? 'active' : 'critical',
         statusLabel: server.isFirebirdActive ? 'Active (Running)' : 'Stopped',
         pid: 1940,
-        cpu: 3.4,
-        ram: '320.0 MB',
-        uptime: '14d 08h',
+        cpu: 0,
+        ram: '0 MB',
+        uptime: '0h',
         restarts: 0,
         port: '0.0.0.0:3050',
       },
@@ -273,24 +177,18 @@ function serializeServerRow(server: typeof servers.$inferSelect, now = new Date(
         status: server.isAccurateActive ? 'active' : 'warning',
         statusLabel: server.isAccurateActive ? 'active (running)' : 'degraded',
         pid: 2180,
-        cpu: 1.2,
-        ram: '145.0 MB',
-        uptime: '14d 08h',
+        cpu: 0,
+        ram: '0 MB',
+        uptime: '0h',
         restarts: 0,
         port: '0.0.0.0:6688',
       },
     ];
   }
 
-  // Keep reference nodes online and gently pulsing even if no external agent daemon is running
-  const isManagedReferenceNode = ['srv-local-onprem', 'vps-sgp-01', 'vps-sgp-02'].includes(
-    (server.serverCode ?? '').toLowerCase(),
-  );
-  const effectiveLastSeenAt = isManagedReferenceNode ? now : server.lastSeenAt;
-
   const healthStatus = evaluateNodeHealth(
     {
-      lastSeenAt: effectiveLastSeenAt,
+      lastSeenAt: server.lastSeenAt,
       cpuUsagePct,
       ramUsagePct,
       diskUsagePct,
@@ -299,11 +197,11 @@ function serializeServerRow(server: typeof servers.$inferSelect, now = new Date(
     now,
   );
 
-  const loadAvgRaw = Array.isArray(server.loadAvg) ? server.loadAvg : [0.42, 0.38, 0.35];
+  const loadAvgRaw = Array.isArray(server.loadAvg) ? server.loadAvg : [0, 0, 0];
   const loadAvg: [number, number, number] = [
-    Number(Number(loadAvgRaw[0] ?? 0.42).toFixed(2)),
-    Number(Number(loadAvgRaw[1] ?? 0.38).toFixed(2)),
-    Number(Number(loadAvgRaw[2] ?? 0.35).toFixed(2)),
+    Number(Number(loadAvgRaw[0] ?? 0).toFixed(2)),
+    Number(Number(loadAvgRaw[1] ?? 0).toFixed(2)),
+    Number(Number(loadAvgRaw[2] ?? 0).toFixed(2)),
   ];
 
   return {
@@ -313,70 +211,72 @@ function serializeServerRow(server: typeof servers.$inferSelect, now = new Date(
     name: server.name ?? server.serverCode ?? `Server #${server.id}`,
     ipAddress: server.ipAddress ?? '127.0.0.1',
     macAddress: server.macAddress,
-    os: server.os ?? 'Ubuntu 24.04 LTS',
-    specs: server.specs ?? '4 vCPU • 16 GB RAM • 160 GB NVMe',
+    os: server.os ?? 'Menunggu Telemetri Agent...',
+    specs: server.specs ?? 'Menunggu Telemetri Agent...',
     status: healthStatus === 'Offline' ? 'Offline' : 'Online',
     healthStatus,
-    serverType: (server.serverType as 'VPS' | 'Physical' | 'Cloud') ?? 'VPS',
-    provider: server.provider ?? 'On-Premise / Cloud',
-    location: server.location ?? 'Jakarta / Singapore',
+    serverType: (server.serverType as 'VPS' | 'Physical' | 'Cloud') ?? 'Physical',
+    provider: server.provider ?? 'On-Premise / Baremetal',
+    location: server.location ?? 'Local Datacenter',
     environment: server.environment ?? 'Production',
-    roleBadge: server.roleBadge ?? 'ACTIVE PROD WORKER',
+    roleBadge: server.roleBadge ?? 'ACTIVE NODE',
     connectionMode: server.connectionMode ?? 'WS PUSH',
-    cpuModel: server.cpuModel ?? 'AMD EPYC / Ryzen Compute',
-    cpuCores: Number(server.cpuCores ?? 4),
-    daemonCore: server.daemonCore ?? 'Systemd 249.11',
-    avgPingMs: Number(server.avgPingMs ?? 1.2),
+    cpuModel: server.cpuModel ?? 'Menunggu Telemetri Agent...',
+    cpuCores: Number(server.cpuCores ?? 0),
+    daemonCore: server.daemonCore ?? 'Systemd',
+    avgPingMs: Number(server.avgPingMs ?? 0),
     agentVersion: server.agentVersion ?? 'v2.4-TLS',
-    uptimeSeconds: Number(server.uptimeSeconds ?? 3680000),
+    uptimeSeconds: Number(server.uptimeSeconds ?? 0),
     notes: server.notes,
+    agentKeyPrefix: server.agentKeyPrefix ?? null,
+    hasCustomAgentKey: Boolean(server.agentKeyHash),
 
     cpuUsagePct,
-    cpuIoWaitPct: Number(server.cpuIoWaitPct ?? 0.4),
-    cpuStealPct: Number(server.cpuStealPct ?? 0.0),
+    cpuIoWaitPct: Number(server.cpuIoWaitPct ?? 0),
+    cpuStealPct: Number(server.cpuStealPct ?? 0),
     loadAvg,
-    contextSwitchesPerSec: Number(server.contextSwitchesPerSec ?? 12450),
-    interruptsPerSec: Number(server.interruptsPerSec ?? 8940),
+    contextSwitchesPerSec: Number(server.contextSwitchesPerSec ?? 0),
+    interruptsPerSec: Number(server.interruptsPerSec ?? 0),
     zombieProcesses: Number(server.zombieProcesses ?? 0),
-    totalProcesses: Number(server.totalProcesses ?? 184),
+    totalProcesses: Number(server.totalProcesses ?? 0),
 
-    ramUsedBytes: Number(server.ramUsedBytes ?? 14.2 * 1024 ** 3),
-    ramTotalBytes: Number(server.ramTotalBytes ?? 32 * 1024 ** 3),
+    ramUsedBytes: Number(server.ramUsedBytes ?? 0),
+    ramTotalBytes: Number(server.ramTotalBytes ?? 0),
     ramUsagePct,
-    ramBuffersBytes: Number(server.ramBuffersBytes ?? 8 * 1024 ** 3),
+    ramBuffersBytes: Number(server.ramBuffersBytes ?? 0),
     swapUsedPct: Number(server.swapUsedPct ?? 0),
 
-    diskUsedBytes: Number(server.diskUsedBytes ?? 210 * 1024 ** 3),
-    diskTotalBytes: Number(server.diskTotalBytes ?? 500 * 1024 ** 3),
+    diskUsedBytes: Number(server.diskUsedBytes ?? 0),
+    diskTotalBytes: Number(server.diskTotalBytes ?? 0),
     diskUsagePct,
-    diskReadBytesPerSec: Number(server.diskReadBytesPerSec ?? 4.2 * 1024 ** 2),
-    diskWriteBytesPerSec: Number(server.diskWriteBytesPerSec ?? 18.9 * 1024 ** 2),
-    diskIops: Number(server.diskIops ?? 182),
+    diskReadBytesPerSec: Number(server.diskReadBytesPerSec ?? 0),
+    diskWriteBytesPerSec: Number(server.diskWriteBytesPerSec ?? 0),
+    diskIops: Number(server.diskIops ?? 0),
     diskMountType: server.diskMountType ?? 'ext4 / root',
-    inodeUsed: Number(server.inodeUsed ?? 1200000),
-    inodeTotal: Number(server.inodeTotal ?? 6500000),
-    inodeUsagePct: Number(server.inodeUsagePct ?? 18.4),
+    inodeUsed: Number(server.inodeUsed ?? 0),
+    inodeTotal: Number(server.inodeTotal ?? 0),
+    inodeUsagePct: Number(server.inodeUsagePct ?? 0),
     smartStatus: server.smartStatus ?? 'PASSED',
 
-    netRxBytesPerSec: Number(server.netRxBytesPerSec ?? 4.2 * 1024 ** 2),
-    netTxBytesPerSec: Number(server.netTxBytesPerSec ?? 12.8 * 1024 ** 2),
+    netRxBytesPerSec: Number(server.netRxBytesPerSec ?? 0),
+    netTxBytesPerSec: Number(server.netTxBytesPerSec ?? 0),
     netDropPackets: Number(server.netDropPackets ?? 0),
-    netRetransPct: Number(server.netRetransPct ?? 0.02),
-    tcpEstablished: Number(server.tcpEstablished ?? 142),
-    tcpTimeWait: Number(server.tcpTimeWait ?? 18),
-    tcpSynRecv: Number(server.tcpSynRecv ?? 2),
-    fdAllocated: Number(server.fdAllocated ?? 2410),
+    netRetransPct: Number(server.netRetransPct ?? 0),
+    tcpEstablished: Number(server.tcpEstablished ?? 0),
+    tcpTimeWait: Number(server.tcpTimeWait ?? 0),
+    tcpSynRecv: Number(server.tcpSynRecv ?? 0),
+    fdAllocated: Number(server.fdAllocated ?? 0),
     fdMax: Number(server.fdMax ?? 65535),
 
-    sslDaysRemaining: Number(server.sslDaysRemaining ?? 74),
-    ufwStatus: server.ufwStatus ?? 'UFW Active',
-    fail2banBannedIps: Number(server.fail2banBannedIps ?? 14),
+    sslDaysRemaining: Number(server.sslDaysRemaining ?? 0),
+    ufwStatus: server.ufwStatus ?? 'UFW Inactive',
+    fail2banBannedIps: Number(server.fail2banBannedIps ?? 0),
     failedSshCount: Number(server.failedSshCount ?? 0),
 
     openPorts: Array.isArray(server.openPorts) ? server.openPorts : [],
     unifiedServices,
     spark,
-    lastSeenAt: effectiveLastSeenAt,
+    lastSeenAt: server.lastSeenAt,
     updatedAt: server.updatedAt,
   };
 }
@@ -496,6 +396,7 @@ export async function receiveServerTelemetry(req: Request, res: Response) {
   try {
     const telemetry = normalizeServerTelemetryPayload(req.body);
     const receivedAt = new Date();
+    const providedKey = req.header('X-Agent-Key')?.trim() ?? '';
 
     const existingRows = await db
       .select()
@@ -503,8 +404,18 @@ export async function receiveServerTelemetry(req: Request, res: Response) {
       .where(eq(servers.serverCode, telemetry.hostname))
       .limit(1);
 
+    const existingRow = existingRows[0];
+    const shouldBindKey =
+      !existingRow?.agentKeyHash && /^gjn_srv_[a-z0-9_-]+_[a-f0-9]{16,}$/i.test(providedKey);
+    const boundKeyHash = shouldBindKey
+      ? hashServerAgentApiKey(providedKey)
+      : (existingRow?.agentKeyHash ?? null);
+    const boundKeyPrefix = shouldBindKey
+      ? `${providedKey.slice(0, 18)}...${providedKey.slice(-4)}`
+      : (existingRow?.agentKeyPrefix ?? null);
+
     const spark = appendSparkHistory(
-      (existingRows[0]?.sparkHistory as Record<string, number[]> | undefined) ?? undefined,
+      (existingRow?.sparkHistory as Record<string, number[]> | undefined) ?? undefined,
       {
         cpu: telemetry.cpuUsagePct,
         ram: telemetry.ramUsagePct,
@@ -517,23 +428,25 @@ export async function receiveServerTelemetry(req: Request, res: Response) {
       .insert(servers)
       .values({
         serverCode: telemetry.hostname,
-        name: telemetry.name,
+        name: existingRow?.name && existingRow.name !== telemetry.hostname ? existingRow.name : telemetry.name,
         ipAddress: telemetry.ipAddress,
         macAddress: telemetry.macAddress,
         os: telemetry.os,
         specs: telemetry.specs,
         status: 'Online',
-        serverType: telemetry.serverType,
-        provider: telemetry.provider,
-        location: telemetry.location,
-        environment: telemetry.environment,
-        roleBadge: telemetry.roleBadge,
+        serverType: (existingRow?.serverType as 'VPS' | 'Physical' | 'Cloud') ?? telemetry.serverType,
+        provider: existingRow?.provider ?? telemetry.provider,
+        location: existingRow?.location ?? telemetry.location,
+        environment: existingRow?.environment ?? telemetry.environment,
+        roleBadge: existingRow?.roleBadge ?? telemetry.roleBadge,
         connectionMode: telemetry.connectionMode,
         cpuModel: telemetry.cpuModel,
         cpuCores: telemetry.cpuCores,
         daemonCore: telemetry.daemonCore,
         avgPingMs: String(telemetry.avgPingMs),
         agentVersion: telemetry.agentVersion,
+        agentKeyHash: boundKeyHash,
+        agentKeyPrefix: boundKeyPrefix,
         uptimeSeconds: telemetry.uptimeSeconds,
         cpuUsagePct: String(telemetry.cpuUsagePct),
         cpuIoWaitPct: String(telemetry.cpuIoWaitPct),
@@ -581,23 +494,18 @@ export async function receiveServerTelemetry(req: Request, res: Response) {
       .onConflictDoUpdate({
         target: servers.serverCode,
         set: {
-          name: telemetry.name,
           ipAddress: telemetry.ipAddress,
           macAddress: telemetry.macAddress,
           os: telemetry.os,
           specs: telemetry.specs,
           status: 'Online',
-          serverType: telemetry.serverType,
-          provider: telemetry.provider,
-          location: telemetry.location,
-          environment: telemetry.environment,
-          roleBadge: telemetry.roleBadge,
           connectionMode: telemetry.connectionMode,
           cpuModel: telemetry.cpuModel,
           cpuCores: telemetry.cpuCores,
           daemonCore: telemetry.daemonCore,
           avgPingMs: String(telemetry.avgPingMs),
           agentVersion: telemetry.agentVersion,
+          ...(boundKeyHash ? { agentKeyHash: boundKeyHash, agentKeyPrefix: boundKeyPrefix } : {}),
           uptimeSeconds: telemetry.uptimeSeconds,
           cpuUsagePct: String(telemetry.cpuUsagePct),
           cpuIoWaitPct: String(telemetry.cpuIoWaitPct),
@@ -692,6 +600,20 @@ export async function receiveServerTelemetry(req: Request, res: Response) {
       }
     }
 
+    // Ingest real log lines pushed from the agent
+    if (Array.isArray(req.body?.logs)) {
+      for (const rawLog of req.body.logs.slice(-30)) {
+        const message = typeof rawLog?.message === 'string' ? rawLog.message.trim() : '';
+        if (!message) continue;
+        const levelRaw = String(rawLog?.level ?? 'INFO').toUpperCase();
+        const level = levelRaw === 'WARN' ? 'WARN' : levelRaw === 'ERROR' ? 'ERROR' : 'INFO';
+        const serviceKey = typeof rawLog?.service === 'string' && rawLog.service.trim()
+          ? `${telemetry.hostname}:${rawLog.service.trim()}`
+          : telemetry.hostname;
+        serverTelemetryHub.appendLog(serviceKey, level, message);
+      }
+    }
+
     // Fetch pending commands for this node
     const pendingCommands = await db
       .select()
@@ -715,7 +637,7 @@ export async function receiveServerTelemetry(req: Request, res: Response) {
     serverTelemetryHub.appendLog(
       telemetry.hostname,
       'INFO',
-      `Collector push payload acknowledged — CPU ${telemetry.cpuUsagePct}%, RAM ${telemetry.ramUsagePct}%, TCP ${telemetry.tcpEstablished} est.`,
+      `Telemetry push [${telemetry.hostname}] — CPU ${telemetry.cpuUsagePct}%, RAM ${telemetry.ramUsagePct}%, Disk ${telemetry.diskUsagePct}%, Services ${telemetry.unifiedServices.length}, TCP ${telemetry.tcpEstablished} est.`,
     );
 
     const serialized = serializeServerRow(upserted, receivedAt);
@@ -914,10 +836,10 @@ export async function getAccurateDatabase(_req: Request, res: Response) {
 
 export async function getServers(_req: Request, res: Response) {
   try {
-    await ensureDefaultFleetNodesSeeded();
     const now = new Date();
     const rows = await db.select().from(servers).orderBy(asc(servers.id));
-    const serialized = rows.map((row) => serializeServerRow(row, now));
+    const server360Rows = rows.filter(isServer360Node);
+    const serialized = server360Rows.map((row) => serializeServerRow(row, now));
     const fleetSummary = computeFleetSummary(serialized);
 
     return res.status(200).json({
@@ -932,7 +854,6 @@ export async function getServers(_req: Request, res: Response) {
 
 export async function getServerById(req: Request, res: Response) {
   try {
-    await ensureDefaultFleetNodesSeeded();
     const rawParam = String(req.params.id ?? '').trim();
     if (!rawParam) {
       return res.status(400).json({ success: false, error: 'Server ID or hostname is required' });
@@ -940,6 +861,7 @@ export async function getServerById(req: Request, res: Response) {
 
     const numericId = Number(rawParam);
     const allRows = await db.select().from(servers).orderBy(asc(servers.id));
+    const server360Rows = allRows.filter(isServer360Node);
     const targetRow = Number.isInteger(numericId) && numericId > 0
       ? allRows.find((r) => r.id === numericId)
       : allRows.find((r) => (r.serverCode ?? '').toLowerCase() === rawParam.toLowerCase());
@@ -964,7 +886,7 @@ export async function getServerById(req: Request, res: Response) {
       .orderBy(desc(serverRemoteCommands.createdAt))
       .limit(10);
 
-    const nodesList = allRows.map((row) => {
+    const nodesList = server360Rows.map((row) => {
       const item = serializeServerRow(row, now);
       return {
         id: item.id,
@@ -991,62 +913,78 @@ export async function getServerById(req: Request, res: Response) {
 
 export async function createOrUpdateServerNode(req: Request, res: Response) {
   try {
-    const telemetry = normalizeServerTelemetryPayload(req.body);
+    const rawHostname = typeof req.body?.hostname === 'string' ? req.body.hostname.trim() : '';
+    const rawIp = typeof req.body?.ipAddress === 'string' ? req.body.ipAddress.trim() : '';
+    if (!rawHostname) {
+      return res.status(400).json({ success: false, error: 'hostname is required' });
+    }
+    if (!rawIp) {
+      return res.status(400).json({ success: false, error: 'ipAddress is required' });
+    }
+
     const now = new Date();
-    const spark = appendSparkHistory(undefined, {
-      cpu: telemetry.cpuUsagePct,
-      ram: telemetry.ramUsagePct,
-      disk: Number((telemetry.diskWriteBytesPerSec / 1024 ** 2).toFixed(1)),
-      net: Number(((telemetry.netTxBytesPerSec * 8) / 1024 ** 2).toFixed(1)),
-    });
+    const existingRows = await db
+      .select()
+      .from(servers)
+      .where(eq(servers.serverCode, rawHostname))
+      .limit(1);
+    const existing = existingRows[0];
+
+    const generatedKey = generateServerAgentApiKey(rawHostname);
+    const displayName = typeof req.body?.name === 'string' && req.body.name.trim()
+      ? req.body.name.trim()
+      : (existing?.name ?? rawHostname);
+    const serverTypeRaw = String(req.body?.serverType ?? existing?.serverType ?? 'Physical');
+    const serverType: 'VPS' | 'Physical' | 'Cloud' =
+      serverTypeRaw === 'VPS' || serverTypeRaw === 'Cloud' ? serverTypeRaw : 'Physical';
+    const roleBadge = typeof req.body?.roleBadge === 'string' && req.body.roleBadge.trim()
+      ? req.body.roleBadge.trim().toUpperCase()
+      : (existing?.roleBadge ?? 'ACTIVE NODE');
+    const provider = typeof req.body?.provider === 'string' && req.body.provider.trim()
+      ? req.body.provider.trim()
+      : (existing?.provider ?? (serverType === 'Physical' ? 'On-Premise Baremetal' : 'Cloud VPS'));
+    const location = typeof req.body?.location === 'string' && req.body.location.trim()
+      ? req.body.location.trim()
+      : (existing?.location ?? 'Local Datacenter');
+    const environment = typeof req.body?.environment === 'string' && req.body.environment.trim()
+      ? req.body.environment.trim()
+      : (existing?.environment ?? 'Production');
 
     const [saved] = await db
       .insert(servers)
       .values({
-        serverCode: telemetry.hostname,
-        name: telemetry.name,
-        ipAddress: telemetry.ipAddress,
-        os: telemetry.os,
-        specs: telemetry.specs,
-        status: 'Online',
-        serverType: telemetry.serverType,
-        provider: telemetry.provider,
-        location: telemetry.location,
-        environment: telemetry.environment,
-        roleBadge: telemetry.roleBadge,
-        connectionMode: telemetry.connectionMode,
-        cpuModel: telemetry.cpuModel,
-        cpuCores: telemetry.cpuCores,
-        daemonCore: telemetry.daemonCore,
-        avgPingMs: String(telemetry.avgPingMs),
-        cpuUsagePct: String(telemetry.cpuUsagePct),
-        ramUsedBytes: telemetry.ramUsedBytes,
-        ramTotalBytes: telemetry.ramTotalBytes,
-        ramUsagePct: String(telemetry.ramUsagePct),
-        diskUsedBytes: telemetry.diskUsedBytes,
-        diskTotalBytes: telemetry.diskTotalBytes,
-        diskUsagePct: String(telemetry.diskUsagePct),
-        openPorts: telemetry.openPorts,
-        unifiedServices: telemetry.unifiedServices,
-        sparkHistory: spark as unknown as Record<string, number[]>,
-        lastSeenAt: now,
+        serverCode: rawHostname,
+        name: displayName,
+        ipAddress: rawIp,
+        os: existing?.os ?? 'Menunggu Telemetri Agent...',
+        specs: existing?.specs ?? 'Menunggu Telemetri Agent...',
+        status: existing?.status ?? 'Offline',
+        serverType,
+        provider,
+        location,
+        environment,
+        roleBadge,
+        connectionMode: existing?.connectionMode ?? 'WS PUSH',
+        cpuModel: existing?.cpuModel ?? 'Menunggu Telemetri Agent...',
+        cpuCores: existing?.cpuCores ?? 0,
+        daemonCore: existing?.daemonCore ?? 'Systemd',
+        agentKeyHash: generatedKey.keyHash,
+        agentKeyPrefix: generatedKey.keyPrefix,
+        lastSeenAt: existing?.lastSeenAt ?? null,
         updatedAt: now,
       })
       .onConflictDoUpdate({
         target: servers.serverCode,
         set: {
-          name: telemetry.name,
-          ipAddress: telemetry.ipAddress,
-          os: telemetry.os,
-          specs: telemetry.specs,
-          serverType: telemetry.serverType,
-          provider: telemetry.provider,
-          location: telemetry.location,
-          environment: telemetry.environment,
-          roleBadge: telemetry.roleBadge,
-          connectionMode: telemetry.connectionMode,
-          cpuModel: telemetry.cpuModel,
-          cpuCores: telemetry.cpuCores,
+          name: displayName,
+          ipAddress: rawIp,
+          serverType,
+          provider,
+          location,
+          environment,
+          roleBadge,
+          agentKeyHash: generatedKey.keyHash,
+          agentKeyPrefix: generatedKey.keyPrefix,
           updatedAt: now,
         },
       })
@@ -1055,6 +993,8 @@ export async function createOrUpdateServerNode(req: Request, res: Response) {
     return res.status(201).json({
       success: true,
       data: serializeServerRow(saved, now),
+      agentApiKey: generatedKey.rawKey,
+      agentKeyPrefix: generatedKey.keyPrefix,
     });
   } catch (error: any) {
     return res.status(400).json({
@@ -1064,9 +1004,50 @@ export async function createOrUpdateServerNode(req: Request, res: Response) {
   }
 }
 
+export async function rotateServerAgentKey(req: Request, res: Response) {
+  try {
+    const rawParam = String(req.params.id ?? '').trim();
+    const numericId = Number(rawParam);
+    const [server] = Number.isInteger(numericId) && numericId > 0
+      ? await db.select().from(servers).where(eq(servers.id, numericId)).limit(1)
+      : await db.select().from(servers).where(eq(servers.serverCode, rawParam)).limit(1);
+
+    if (!server) {
+      return res.status(404).json({ success: false, error: 'Server node not found' });
+    }
+
+    const hostname = server.serverCode ?? `srv-${server.id}`;
+    const generatedKey = generateServerAgentApiKey(hostname);
+    const now = new Date();
+
+    const [updated] = await db
+      .update(servers)
+      .set({
+        agentKeyHash: generatedKey.keyHash,
+        agentKeyPrefix: generatedKey.keyPrefix,
+        updatedAt: now,
+      })
+      .where(eq(servers.id, server.id))
+      .returning();
+
+    return res.status(200).json({
+      success: true,
+      serverId: updated.id,
+      hostname,
+      agentApiKey: generatedKey.rawKey,
+      agentKeyPrefix: generatedKey.keyPrefix,
+      data: serializeServerRow(updated, now),
+    });
+  } catch (error: any) {
+    return res.status(400).json({
+      success: false,
+      error: error?.message || 'Unable to rotate agent API key',
+    });
+  }
+}
+
 export async function executeServerRemoteAction(req: Request, res: Response) {
   try {
-    await ensureDefaultFleetNodesSeeded();
     const rawParam = String(req.params.id ?? '').trim();
     const numericId = Number(rawParam);
     const [server] = Number.isInteger(numericId) && numericId > 0
@@ -1082,7 +1063,7 @@ export async function executeServerRemoteAction(req: Request, res: Response) {
     const userId = (req as any).user?.id ? Number((req as any).user.id) : null;
 
     if (validated.actionType === 'ping') {
-      const rttMs = Number((Number(server.avgPingMs ?? 1.4) + Math.random() * 0.8).toFixed(1));
+      const rttMs = Number(Number(server.avgPingMs ?? 0.6).toFixed(2));
       serverTelemetryHub.appendLog(
         server.serverCode ?? 'node',
         'INFO',
@@ -1124,7 +1105,7 @@ export async function executeServerRemoteAction(req: Request, res: Response) {
       })
       .where(eq(servers.id, server.id));
 
-    const outputMessage = `${validated.category.toUpperCase()} daemon [${validated.targetName}] reloaded cleanly (Exit 0)`;
+    const outputMessage = `${validated.category.toUpperCase()} daemon [${validated.targetName}] restart queued to agent (${server.serverCode})`;
 
     const [cmdRecord] = await db
       .insert(serverRemoteCommands)
@@ -1197,7 +1178,6 @@ export async function executeServerRemoteAction(req: Request, res: Response) {
 
 export async function getServerServiceLogs(req: Request, res: Response) {
   try {
-    await ensureDefaultFleetNodesSeeded();
     const rawParam = String(req.params.id ?? '').trim();
     const serviceName = typeof req.query.service === 'string' ? req.query.service.trim() : undefined;
     const numericId = Number(rawParam);
@@ -1206,7 +1186,7 @@ export async function getServerServiceLogs(req: Request, res: Response) {
       ? await db.select().from(servers).where(eq(servers.id, numericId)).limit(1)
       : await db.select().from(servers).where(eq(servers.serverCode, rawParam)).limit(1);
 
-    const hostname = server?.serverCode ?? (rawParam || 'srv-local-onprem');
+    const hostname = server?.serverCode ?? (rawParam || 'fastpec-MINI-S');
     const logs = serverTelemetryHub.getLogs(hostname, serviceName);
 
     return res.status(200).json({

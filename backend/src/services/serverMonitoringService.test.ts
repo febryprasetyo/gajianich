@@ -6,6 +6,8 @@ import {
   evaluateNodeHealth,
   computeFleetSummary,
   validateRemoteActionInput,
+  generateServerAgentApiKey,
+  verifyServerAgentApiKey,
   serverTelemetryHub,
 } from './serverMonitoringService';
 
@@ -234,3 +236,21 @@ test('serverTelemetryHub broadcasts events to subscribed listeners and cleans up
   serverTelemetryHub.broadcast({ type: 'telemetry', serverId: 2, hostname: 'vps-sgp-01' });
   assert.equal(received.length, 1);
 });
+
+test('generateServerAgentApiKey creates unique per-machine keys and verifyServerAgentApiKey validates SHA-256 hash safely', () => {
+  const key1 = generateServerAgentApiKey('vps-sgp-01');
+  const key2 = generateServerAgentApiKey('vps-sgp-01');
+
+  assert.notEqual(key1.rawKey, key2.rawKey);
+  assert.notEqual(key1.keyHash, key2.keyHash);
+  assert.ok(key1.rawKey.startsWith('gjn_srv_'));
+  assert.ok(key1.keyPrefix.startsWith('gjn_srv_'));
+  assert.equal(key1.keyHash.length, 64);
+
+  assert.equal(verifyServerAgentApiKey(key1.rawKey, key1.keyHash), true);
+  assert.equal(verifyServerAgentApiKey(key2.rawKey, key1.keyHash), false);
+  assert.equal(verifyServerAgentApiKey('', key1.keyHash), false);
+  assert.equal(verifyServerAgentApiKey(key1.rawKey, null), false);
+});
+
+
