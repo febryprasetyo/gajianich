@@ -544,27 +544,12 @@ function readLinuxNetworkMetrics(): {
   };
 }
 
-async function collectOpenListeningPorts(): Promise<string[]> {
+async function collectOpenListeningPorts(
+  dockerPortNameMap: Map<number, string>,
+): Promise<string[]> {
   const out = await safeExec('ss', ['-tlnp']);
   if (!out) return [];
   const portLabels = new Map<number, string>();
-
-  const wellKnownNames: Record<number, string> = {
-    22: 'sshd',
-    53: 'systemd-resolved',
-    80: 'http-proxy',
-    443: 'https-tls',
-    1883: 'mosquitto-mqtt',
-    3000: 'gajianich-frontend',
-    3003: 'psa-frontend',
-    4003: 'psa-backend',
-    5000: 'gajianich-backend',
-    5432: 'psa-postgres',
-    5433: 'ams-postgres',
-    6379: 'ams-redis',
-    8081: 'gajianich-adms',
-    8123: 'homeassistant',
-  };
 
   for (const line of out.split('\n').slice(1)) {
     const cols = line.trim().split(/\s+/);
@@ -575,7 +560,7 @@ async function collectOpenListeningPorts(): Promise<string[]> {
     const portNum = Number(portMatch[1]);
     if (!Number.isInteger(portNum) || portNum <= 0) continue;
 
-    let procName = wellKnownNames[portNum] || '';
+    let procName = dockerPortNameMap.get(portNum) || '';
     const procMatch = line.match(/users:\(\("([^"]+)"/);
     if (procMatch?.[1] && procMatch[1] !== 'docker-proxy') {
       procName = procMatch[1];
@@ -590,105 +575,44 @@ async function collectOpenListeningPorts(): Promise<string[]> {
 
   return Array.from(portLabels.entries())
     .sort((a, b) => a[0] - b[0])
-    .slice(0, 14)
+    .slice(0, 16)
     .map(([, label]) => label);
 }
 
-async function collectPm2AndNodeProcesses(): Promise<UnifiedService[]> {
+async function collectPm2Processes(): Promise<UnifiedService[]> {
   const results: UnifiedService[] = [];
   const rawPm2 = await safeExec('pm2', ['jlist']);
-  if (rawPm2) {
-    try {
-      const list = JSON.parse(rawPm2);
-      if (Array.isArray(list)) {
-        for (const proc of list) {
-          const env = proc?.pm2_env || {};
-          const monit = proc?.monit || {};
-          const isOnline = env.status === 'online';
-          const uptimeSec = env.pm_uptime
-            ? Math.max(0, Math.floor((Date.now() - Number(env.pm_uptime)) / 1000))
-            : 0;
-          const mode = env.exec_mode === 'cluster_mode' ? 'cluster' : 'fork';
-          results.push({
-            id: `pm2-${proc.pm_id ?? proc.name}`,
-            name: String(proc.name || 'pm2-app'),
-            category: 'pm2',
-            sub: `${mode} • Node.js ${env.node_version || process.version}`,
-            status: isOnline ? 'active' : env.status === 'stopping' ? 'warning' : 'critical',
-            statusLabel: isOnline ? 'Running (Online)' : String(env.status || 'stopped'),
-            pid: proc.pid || '-',
-            cpu: Number(monit.cpu || 0),
-            ram: formatBytesToMbOrGb(Number(monit.memory || 0)),
-            uptime: formatDurationSeconds(uptimeSec),
-            restarts: Number(env.restart_time || 0),
-            port: env.PORT ? `0.0.0.0:${env.PORT}` : 'internal-ipc',
-          });
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }
+  if (!rawPm2) return results;
 
-  // Also inspect active Node.js / TypeScript application runtimes on the host
-  const rawPs = await safeExec('ps', ['-eo', 'pid,pcpu,rss,etimes,comm,args', '--no-headers']);
-  if (rawPs) {
-    const seenNames = new Set(results.map((r) => r.name));
-    for (const line of rawPs.split('\n')) {
-      const match = line.trim().match(/^(\d+)\s+([\d.]+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(.+)$/);
-      if (!match) continue;
-      const pid = Number(match[1]);
-      const cpu = Number(parseFloat(match[2]).toFixed(1));
-      const rssBytes = Number(match[3]) * 1024;
-      const elapsedSec = Number(match[4]);
-      const comm = match[5];
-      const args = match[6];
-
-      if (!/^(node|next-server|tsx)$/.test(comm)) continue;
-      if (args.includes('eslint') || args.includes('typescript/lib/tsserver')) continue;
-
-      let appName = '';
-      let subDesc = '';
-      let port = 'internal-ipc';
-
-      if (comm === 'next-server' || args.includes('next dev')) {
-        if (rssBytes > 200 * 1024 * 1024) {
-          appName = 'gajianich-frontend (next-server)';
-          subDesc = 'Next.js 16 SSR App Router • GAJIANICH UI';
-          port = '0.0.0.0:3000';
-        } else {
-          appName = 'psa-frontend (next-server)';
-          subDesc = 'Next.js SSR Runtime • PSA Portal';
-          port = '0.0.0.0:3003';
-        }
-      } else if (args.includes('src/index.ts') && !args.includes('server-agent')) {
-        appName = `node-api-worker-${pid}`;
-        subDesc = `Node.js TypeScript Backend Worker (${ process.version })`;
-        port = '0.0.0.0:5000';
-      } else if (args.includes('server-agent') || pid === process.pid) {
-        appName = 'server360-telemetry-agent';
-        subDesc = `GAJIANICH Server360 Host Collector (${process.version})`;
-        port = 'push->:5000';
-      }
-
-      if (appName && !seenNames.has(appName)) {
-        seenNames.add(appName);
+  try {
+    const list = JSON.parse(rawPm2);
+    if (Array.isArray(list)) {
+      for (const proc of list) {
+        const env = proc?.pm2_env || {};
+        const monit = proc?.monit || {};
+        const isOnline = env.status === 'online';
+        const uptimeSec = env.pm_uptime
+          ? Math.max(0, Math.floor((Date.now() - Number(env.pm_uptime)) / 1000))
+          : 0;
+        const mode = env.exec_mode === 'cluster_mode' ? 'cluster' : 'fork';
         results.push({
-          id: `node-${pid}`,
-          name: appName,
+          id: `pm2-${proc.pm_id ?? proc.name}`,
+          name: String(proc.name || 'pm2-app'),
           category: 'pm2',
-          sub: subDesc,
-          status: 'active',
-          statusLabel: 'Running (Online)',
-          pid,
-          cpu,
-          ram: formatBytesToMbOrGb(rssBytes),
-          uptime: formatDurationSeconds(elapsedSec),
-          restarts: 0,
-          port,
+          sub: `${mode} • Node.js ${env.node_version || process.version}`,
+          status: isOnline ? 'active' : env.status === 'stopping' ? 'warning' : 'critical',
+          statusLabel: isOnline ? 'Running (Online)' : String(env.status || 'stopped'),
+          pid: proc.pid || '-',
+          cpu: Number(monit.cpu || 0),
+          ram: formatBytesToMbOrGb(Number(monit.memory || 0)),
+          uptime: formatDurationSeconds(uptimeSec),
+          restarts: Number(env.restart_time || 0),
+          port: env.PORT ? `0.0.0.0:${env.PORT}` : 'internal-ipc',
         });
       }
     }
+  } catch {
+    // PM2 not installed or no daemon running
   }
 
   return results;
@@ -957,13 +881,20 @@ async function collectAndPush(): Promise<void> {
   const memMetrics = readLinuxMemory();
   const diskMetrics = await readLinuxDiskMetrics();
   const netMetrics = readLinuxNetworkMetrics();
-  const openPorts = await collectOpenListeningPorts();
-
   const [pm2Services, { dockerServices, dbServices }, sysServices] = await Promise.all([
-    collectPm2AndNodeProcesses(),
+    collectPm2Processes(),
     collectDockerAndContainerDatabases(),
     collectSystemdServices(),
   ]);
+
+  const dockerPortNameMap = new Map<number, string>();
+  for (const dk of dockerServices) {
+    const portMatch = dk.port.match(/:(\d+)->/);
+    if (portMatch?.[1]) {
+      dockerPortNameMap.set(Number(portMatch[1]), dk.name);
+    }
+  }
+  const openPorts = await collectOpenListeningPorts(dockerPortNameMap);
 
   const services = [...pm2Services, ...dockerServices, ...dbServices, ...sysServices];
   const recentLogs = await collectRecentRealLogs(dockerServices.map((d) => d.name));
