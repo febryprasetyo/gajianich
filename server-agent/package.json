@@ -1,0 +1,19 @@
+{
+  "name": "gajianich-server-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Server360 & ServerPulse Realtime Telemetry Agent for GAJIANICH Infrastructure Monitoring",
+  "scripts": {
+    "start": "node dist/index.js",
+    "dev": "npx tsx src/index.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "systeminformation": "^5.23.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "tsx": "^4.7.2",
+    "typescript": "^5.4.5"
+  }
+}

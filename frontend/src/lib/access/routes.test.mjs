@@ -144,11 +144,13 @@ test('infrastructure, servers, and subscriptions routes are accessible to IT rol
 
   const itUser = { roleName: 'ITStaff', permissions: ['infrastructure.view'] };
   assert.equal(canAccessRoute('/dashboard/servers', itUser), true);
+  assert.equal(canAccessRoute('/dashboard/servers/srv-local-onprem', itUser), true);
   assert.equal(canAccessRoute('/dashboard/subscriptions', itUser), true);
   assert.equal(canAccessRoute('/dashboard/infrastructure', itUser), true);
 
   const regularEmployee = { roleName: 'Employee', permissions: [] };
   assert.equal(canAccessRoute('/dashboard/servers', regularEmployee), false);
+  assert.equal(canAccessRoute('/dashboard/servers/srv-local-onprem', regularEmployee), false);
   assert.equal(canAccessRoute('/dashboard/subscriptions', regularEmployee), false);
 });
 

@@ -9,9 +9,11 @@ import {
   integer,
   jsonb,
   uniqueIndex,
+  index,
 } from 'drizzle-orm/pg-core';
 import { employees } from './employees';
 import { accurateLicenses } from './licenses';
+import { users } from './users';
 
 export const servers = pgTable('servers', {
   id: bigint('id', { mode: 'number' }).generatedAlwaysAsIdentity().primaryKey(),
@@ -31,11 +33,109 @@ export const servers = pgTable('servers', {
   isFirebirdActive: boolean('is_firebird_active').default(false).notNull(),
   services: jsonb('services').$type<unknown[]>().default([]).notNull(),
   processes: jsonb('processes').$type<unknown[]>().default([]).notNull(),
+
+  // Server360 & ServerPulse extended telemetry columns
+  serverType: varchar('server_type', { length: 30 }).default('VPS'),
+  provider: varchar('provider', { length: 100 }),
+  location: varchar('location', { length: 150 }),
+  environment: varchar('environment', { length: 30 }).default('Production'),
+  roleBadge: varchar('role_badge', { length: 60 }).default('ACTIVE PROD WORKER'),
+  connectionMode: varchar('connection_mode', { length: 30 }).default('WS PUSH'),
+  cpuModel: varchar('cpu_model', { length: 150 }),
+  cpuCores: integer('cpu_cores').default(4),
+  daemonCore: varchar('daemon_core', { length: 60 }).default('Systemd 249.11'),
+  avgPingMs: numeric('avg_ping_ms').default('1.2'),
+
+  // CPU & Kernel Scheduler
+  cpuUsagePct: numeric('cpu_usage_pct').default('0'),
+  cpuIoWaitPct: numeric('cpu_iowait_pct').default('0'),
+  cpuStealPct: numeric('cpu_steal_pct').default('0'),
+  loadAvg: jsonb('load_avg').$type<number[]>().default([0, 0, 0]).notNull(),
+  contextSwitchesPerSec: integer('context_switches_per_sec').default(0),
+  interruptsPerSec: integer('interrupts_per_sec').default(0),
+  zombieProcesses: integer('zombie_processes').default(0),
+  totalProcesses: integer('total_processes').default(0),
+
+  // Memory & Swap
+  ramUsedBytes: bigint('ram_used_bytes', { mode: 'number' }).default(0),
+  ramTotalBytes: bigint('ram_total_bytes', { mode: 'number' }).default(0),
+  ramUsagePct: numeric('ram_usage_pct').default('0'),
+  ramBuffersBytes: bigint('ram_buffers_bytes', { mode: 'number' }).default(0),
+  swapUsedPct: numeric('swap_used_pct').default('0'),
+
+  // Storage, NVMe I/O & Inodes
+  diskUsedBytes: bigint('disk_used_bytes', { mode: 'number' }).default(0),
+  diskTotalBytes: bigint('disk_total_bytes', { mode: 'number' }).default(0),
+  diskUsagePct: numeric('disk_usage_pct').default('0'),
+  diskReadBytesPerSec: bigint('disk_read_bps', { mode: 'number' }).default(0),
+  diskWriteBytesPerSec: bigint('disk_write_bps', { mode: 'number' }).default(0),
+  diskIops: integer('disk_iops').default(0),
+  diskMountType: varchar('disk_mount_type', { length: 50 }).default('ext4 / root'),
+  inodeUsed: bigint('inode_used', { mode: 'number' }).default(0),
+  inodeTotal: bigint('inode_total', { mode: 'number' }).default(0),
+  inodeUsagePct: numeric('inode_usage_pct').default('0'),
+  smartStatus: varchar('smart_status', { length: 30 }).default('PASSED'),
+
+  // Network & TCP Descriptors
+  netRxBytesPerSec: bigint('net_rx_bps', { mode: 'number' }).default(0),
+  netTxBytesPerSec: bigint('net_tx_bps', { mode: 'number' }).default(0),
+  netDropPackets: integer('net_drop_packets').default(0),
+  netRetransPct: numeric('net_retrans_pct').default('0'),
+  tcpEstablished: integer('tcp_established').default(0),
+  tcpTimeWait: integer('tcp_time_wait').default(0),
+  tcpSynRecv: integer('tcp_syn_recv').default(0),
+  fdAllocated: integer('fd_allocated').default(0),
+  fdMax: integer('fd_max').default(65535),
+
+  // SecOps & Shield
+  sslDaysRemaining: integer('ssl_days_remaining').default(90),
+  ufwStatus: varchar('ufw_status', { length: 40 }).default('Active'),
+  fail2banBannedIps: integer('fail2ban_banned_ips').default(0),
+  failedSshCount: integer('failed_ssh_count').default(0),
+
+  // Open Ports, Unified Workloads (PM2, Docker, DB, Systemd, Native) & Sparklines
+  openPorts: jsonb('open_ports').$type<unknown[]>().default([]).notNull(),
+  unifiedServices: jsonb('unified_services').$type<unknown[]>().default([]).notNull(),
+  sparkHistory: jsonb('spark_history').$type<Record<string, number[]>>().default({}).notNull(),
+
   lastSeenAt: timestamp('last_seen_at'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => [
   uniqueIndex('servers_hostname_unique').on(table.serverCode),
+]);
+
+export const serverMetricSamples = pgTable('server_metric_samples', {
+  id: bigint('id', { mode: 'number' }).generatedAlwaysAsIdentity().primaryKey(),
+  serverId: bigint('server_id', { mode: 'number' }).references(() => servers.id, { onDelete: 'cascade' }).notNull(),
+  recordedAt: timestamp('recorded_at').defaultNow().notNull(),
+  cpuUsagePct: numeric('cpu_usage_pct').default('0').notNull(),
+  ramUsagePct: numeric('ram_usage_pct').default('0').notNull(),
+  diskUsagePct: numeric('disk_usage_pct').default('0').notNull(),
+  diskReadBytesPerSec: bigint('disk_read_bps', { mode: 'number' }).default(0).notNull(),
+  diskWriteBytesPerSec: bigint('disk_write_bps', { mode: 'number' }).default(0).notNull(),
+  netRxBytesPerSec: bigint('net_rx_bps', { mode: 'number' }).default(0).notNull(),
+  netTxBytesPerSec: bigint('net_tx_bps', { mode: 'number' }).default(0).notNull(),
+  loadAvg1m: numeric('load_avg_1m').default('0').notNull(),
+  tcpEstablished: integer('tcp_established').default(0).notNull(),
+}, (table) => [
+  index('idx_server_metric_samples_server_recorded').on(table.serverId, table.recordedAt),
+]);
+
+export const serverRemoteCommands = pgTable('server_remote_commands', {
+  id: bigint('id', { mode: 'number' }).generatedAlwaysAsIdentity().primaryKey(),
+  serverId: bigint('server_id', { mode: 'number' }).references(() => servers.id, { onDelete: 'cascade' }).notNull(),
+  actionType: varchar('action_type', { length: 40 }).notNull(),
+  targetId: varchar('target_id', { length: 150 }).notNull(),
+  targetName: varchar('target_name', { length: 150 }).notNull(),
+  category: varchar('category', { length: 40 }).default('systemd').notNull(),
+  status: varchar('status', { length: 30 }).default('PENDING').notNull(),
+  outputText: text('output_text'),
+  requestedByUserId: bigint('requested_by_user_id', { mode: 'number' }).references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  completedAt: timestamp('completed_at'),
+}, (table) => [
+  index('idx_server_remote_commands_server_status').on(table.serverId, table.status),
 ]);
 
 export const accurateLicenseLogs = pgTable('accurate_license_logs', {
