@@ -268,3 +268,29 @@ test('resolveHierarchicalRosterOrder groups employees under their coordinator re
   assert.strictEqual(ordered[4].sortOrder, 5);
 });
 
+test('resolveHierarchicalRosterOrder places unassigned staff at the bottom, never between coordinators', () => {
+  const listWithUnassigned = [
+    { employeeId: 104, employeeName: 'ANISA PERMATASARI', sortOrder: 1, isCoordinator: true, coordinatorId: null },
+    { employeeId: 98, employeeName: 'LOLITA AYU PERMATA DEWI', sortOrder: 2, isCoordinator: false, coordinatorId: 104 },
+    { employeeId: 91, employeeName: 'ARIS RAHMAN', sortOrder: 3, isCoordinator: false, coordinatorId: null }, // Unassigned
+    { employeeId: 94, employeeName: 'FRANS IVAN ATMADJA', sortOrder: 4, isCoordinator: false, coordinatorId: null }, // Unassigned
+    { employeeId: 87, employeeName: 'GEMASIH', sortOrder: 5, isCoordinator: true, coordinatorId: null },
+    { employeeId: 86, employeeName: 'ALDIO RIZKY MULYAWAN', sortOrder: 6, isCoordinator: false, coordinatorId: 87 },
+  ];
+
+  const ordered = resolveHierarchicalRosterOrder(listWithUnassigned);
+
+  // Group 1: Anisa & Lolita
+  assert.strictEqual(ordered[0].employeeName, 'ANISA PERMATASARI');
+  assert.strictEqual(ordered[1].employeeName, 'LOLITA AYU PERMATA DEWI');
+
+  // Group 2: Gemasih & Aldio (MUST come before unassigned Aris & Frans!)
+  assert.strictEqual(ordered[2].employeeName, 'GEMASIH');
+  assert.strictEqual(ordered[3].employeeName, 'ALDIO RIZKY MULYAWAN');
+
+  // Unassigned at the end
+  assert.strictEqual(ordered[4].employeeName, 'ARIS RAHMAN');
+  assert.strictEqual(ordered[5].employeeName, 'FRANS IVAN ATMADJA');
+});
+
+

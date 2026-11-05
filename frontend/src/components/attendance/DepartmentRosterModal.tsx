@@ -25,6 +25,74 @@ export interface DepartmentRosterModalProps {
   onSaved?: () => void;
 }
 
+/**
+ * Resolves hierarchical order placing subordinates immediately under their coordinator,
+ * and unassigned employees at the bottom.
+ */
+function resolveHierarchicalRosterOrder(items: DepartmentRosterItem[]): DepartmentRosterItem[] {
+  if (!items || items.length === 0) return [];
+
+  const coordinatorIds = new Set<number>();
+  for (const it of items) {
+    if (it.isCoordinator) {
+      coordinatorIds.add(it.employeeId);
+    }
+  }
+
+  const coordinators: DepartmentRosterItem[] = [];
+  const subordinatesByCoord = new Map<number, DepartmentRosterItem[]>();
+  const unassigned: DepartmentRosterItem[] = [];
+
+  for (const it of items) {
+    if (it.isCoordinator) {
+      coordinators.push(it);
+    } else if (it.coordinatorId && coordinatorIds.has(it.coordinatorId)) {
+      const list = subordinatesByCoord.get(it.coordinatorId) || [];
+      list.push(it);
+      subordinatesByCoord.set(it.coordinatorId, list);
+    } else {
+      unassigned.push(it);
+    }
+  }
+
+  // Sort coordinators by sortOrder ASC, then name
+  coordinators.sort((a, b) => {
+    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+    return a.employeeName.localeCompare(b.employeeName);
+  });
+
+  // Sort subordinates by sortOrder ASC, then name
+  for (const list of subordinatesByCoord.values()) {
+    list.sort((a, b) => {
+      if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+      return a.employeeName.localeCompare(b.employeeName);
+    });
+  }
+
+  // Sort unassigned by sortOrder ASC, then name
+  unassigned.sort((a, b) => {
+    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+    return a.employeeName.localeCompare(b.employeeName);
+  });
+
+  const result: DepartmentRosterItem[] = [];
+  for (const coord of coordinators) {
+    result.push(coord);
+    const subs = subordinatesByCoord.get(coord.employeeId) || [];
+    for (const sub of subs) {
+      result.push(sub);
+    }
+  }
+  for (const un of unassigned) {
+    result.push(un);
+  }
+
+  return result.map((item, idx) => ({
+    ...item,
+    sortOrder: idx + 1,
+  }));
+}
+
 export default function DepartmentRosterModal({
   isOpen,
   onClose,
@@ -48,7 +116,7 @@ export default function DepartmentRosterModal({
       const res = await api.get<{ success: boolean; data: DepartmentRosterItem[] }>(
         `/attendance/daily-report/roster?departmentId=${departmentId}`
       );
-      setItems(Array.isArray(res.data) ? res.data : []);
+      setItems(Array.isArray(res.data) ? resolveHierarchicalRosterOrder(res.data) : []);
     } catch (err: any) {
       setError(err.message || 'Gagal memuat susunan roster departemen');
     } finally {
@@ -71,11 +139,48 @@ export default function DepartmentRosterModal({
   const handleMoveUp = (index: number) => {
     if (index <= 0) return;
     setItems((prev) => {
-      const copy = [...prev];
-      const temp = copy[index];
-      copy[index] = copy[index - 1];
-      copy[index - 1] = temp;
-      return copy.map((item, idx) => ({ ...item, sortOrder: idx + 1 }));
+      const current = prev[index];
+
+      // Coordinator moving Up: move entire coordinator group before the previous coordinator group
+      if (current.isCoordinator) {
+        let prevCoordIdx = -1;
+        for (let i = index - 1; i >= 0; i--) {
+          if (prev[i].isCoordinator) {
+            prevCoordIdx = i;
+            break;
+          }
+        }
+        if (prevCoordIdx === -1) return prev;
+
+        const currentCoordId = current.employeeId;
+        const currentGroup = prev.filter(
+          (it) => it.employeeId === currentCoordId || it.coordinatorId === currentCoordId
+        );
+        const withoutCurrent = prev.filter(
+          (it) => it.employeeId !== currentCoordId && it.coordinatorId !== currentCoordId
+        );
+
+        const targetCoordId = prev[prevCoordIdx].employeeId;
+        const insertIdx = withoutCurrent.findIndex((it) => it.employeeId === targetCoordId);
+        withoutCurrent.splice(insertIdx, 0, ...currentGroup);
+
+        return withoutCurrent.map((item, idx) => ({ ...item, sortOrder: idx + 1 }));
+      }
+
+      // Member or unassigned: swap within same group
+      const prevItem = prev[index - 1];
+      const isSameGroup =
+        (current.coordinatorId && current.coordinatorId === prevItem.coordinatorId) ||
+        (!current.coordinatorId && !current.isCoordinator && !prevItem.coordinatorId && !prevItem.isCoordinator);
+
+      if (isSameGroup) {
+        const copy = [...prev];
+        copy[index] = prevItem;
+        copy[index - 1] = current;
+        return copy.map((item, idx) => ({ ...item, sortOrder: idx + 1 }));
+      }
+
+      return prev;
     });
   };
 
@@ -83,70 +188,104 @@ export default function DepartmentRosterModal({
   const handleMoveDown = (index: number) => {
     if (index >= items.length - 1) return;
     setItems((prev) => {
-      const copy = [...prev];
-      const temp = copy[index];
-      copy[index] = copy[index + 1];
-      copy[index + 1] = temp;
-      return copy.map((item, idx) => ({ ...item, sortOrder: idx + 1 }));
+      const current = prev[index];
+
+      // Coordinator moving Down: move entire coordinator group after the next coordinator group
+      if (current.isCoordinator) {
+        let nextCoordIdx = -1;
+        for (let i = index + 1; i < prev.length; i++) {
+          if (prev[i].isCoordinator) {
+            nextCoordIdx = i;
+            break;
+          }
+        }
+        if (nextCoordIdx === -1) return prev;
+
+        const currentCoordId = current.employeeId;
+        const nextCoordId = prev[nextCoordIdx].employeeId;
+
+        const currentGroup = prev.filter(
+          (it) => it.employeeId === currentCoordId || it.coordinatorId === currentCoordId
+        );
+        const withoutCurrent = prev.filter(
+          (it) => it.employeeId !== currentCoordId && it.coordinatorId !== currentCoordId
+        );
+
+        const targetCoordIdx = withoutCurrent.findIndex((it) => it.employeeId === nextCoordId);
+        let insertIdx = targetCoordIdx + 1;
+        while (
+          insertIdx < withoutCurrent.length &&
+          !withoutCurrent[insertIdx].isCoordinator &&
+          withoutCurrent[insertIdx].coordinatorId === nextCoordId
+        ) {
+          insertIdx++;
+        }
+
+        withoutCurrent.splice(insertIdx, 0, ...currentGroup);
+        return withoutCurrent.map((item, idx) => ({ ...item, sortOrder: idx + 1 }));
+      }
+
+      // Member or unassigned: swap within same group
+      const nextItem = prev[index + 1];
+      const isSameGroup =
+        (current.coordinatorId && current.coordinatorId === nextItem.coordinatorId) ||
+        (!current.coordinatorId && !current.isCoordinator && !nextItem.coordinatorId && !nextItem.isCoordinator);
+
+      if (isSameGroup) {
+        const copy = [...prev];
+        copy[index] = nextItem;
+        copy[index + 1] = current;
+        return copy.map((item, idx) => ({ ...item, sortOrder: idx + 1 }));
+      }
+
+      return prev;
     });
   };
 
   // 4. Toggle Coordinator status
   const handleToggleCoordinator = (index: number) => {
     setItems((prev) => {
-      const copy = [...prev];
-      const current = copy[index];
-      const willBeCoord = !current.isCoordinator;
-      copy[index] = {
-        ...current,
-        isCoordinator: willBeCoord,
-        coordinatorId: willBeCoord ? null : current.coordinatorId,
-      };
-      return copy;
+      const willBeCoord = !prev[index].isCoordinator;
+      const updated = prev.map((item, idx) => {
+        if (idx === index) {
+          return {
+            ...item,
+            isCoordinator: willBeCoord,
+            coordinatorId: willBeCoord ? null : item.coordinatorId,
+          };
+        }
+        return item;
+      });
+      return resolveHierarchicalRosterOrder(updated);
     });
   };
 
   // 5. Move employee directly into target coordinator's team
   const handleMoveToCoordinator = (itemIndex: number, targetCoordinatorId: number) => {
     setItems((prev) => {
-      const copy = [...prev];
-      const movingItem = {
-        ...copy[itemIndex],
-        coordinatorId: targetCoordinatorId ? targetCoordinatorId : null,
-      };
-      copy.splice(itemIndex, 1);
-
-      if (!targetCoordinatorId) {
-        copy.push(movingItem);
-        return copy.map((item, idx) => ({ ...item, sortOrder: idx + 1 }));
-      }
-
-      // Find index of target coordinator
-      const coordIndex = copy.findIndex((it) => it.employeeId === targetCoordinatorId);
-      if (coordIndex === -1) {
-        copy.push(movingItem);
-      } else {
-        // Find end of this coordinator's team members (before the next coordinator or other team starts)
-        let insertIndex = coordIndex + 1;
-        while (insertIndex < copy.length && !copy[insertIndex].isCoordinator) {
-          if (copy[insertIndex].coordinatorId && copy[insertIndex].coordinatorId !== targetCoordinatorId) {
-            break;
-          }
-          insertIndex++;
+      const updated = prev.map((item, idx) => {
+        if (idx === itemIndex) {
+          return {
+            ...item,
+            isCoordinator: false,
+            coordinatorId: targetCoordinatorId ? targetCoordinatorId : null,
+          };
         }
-        copy.splice(insertIndex, 0, movingItem);
-      }
-
-      return copy.map((item, idx) => ({ ...item, sortOrder: idx + 1 }));
+        return item;
+      });
+      return resolveHierarchicalRosterOrder(updated);
     });
   };
 
   // 6. Reset to alphabetical order
   const handleResetAlphabetical = () => {
     setItems((prev) => {
-      const copy = [...prev];
+      const copy = [...prev].map((it) => ({
+        ...it,
+        coordinatorId: null,
+      }));
       copy.sort((a, b) => a.employeeName.localeCompare(b.employeeName));
-      return copy.map((item, idx) => ({ ...item, sortOrder: idx + 1 }));
+      return resolveHierarchicalRosterOrder(copy);
     });
   };
 
@@ -280,8 +419,21 @@ export default function DepartmentRosterModal({
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
                 {items.map((row, idx) => {
-                  const isFirst = idx === 0;
-                  const isLast = idx === items.length - 1;
+                  let canMoveUp = false;
+                  let canMoveDown = false;
+
+                  if (row.isCoordinator) {
+                    const coordIdx = coordinators.findIndex((c) => c.employeeId === row.employeeId);
+                    canMoveUp = coordIdx > 0;
+                    canMoveDown = coordIdx !== -1 && coordIdx < coordinators.length - 1;
+                  } else if (row.coordinatorId) {
+                    canMoveUp = idx > 0 && items[idx - 1]?.coordinatorId === row.coordinatorId;
+                    canMoveDown = idx < items.length - 1 && items[idx + 1]?.coordinatorId === row.coordinatorId;
+                  } else {
+                    // Unassigned
+                    canMoveUp = idx > 0 && !items[idx - 1]?.isCoordinator && !items[idx - 1]?.coordinatorId;
+                    canMoveDown = idx < items.length - 1 && !items[idx + 1]?.isCoordinator && !items[idx + 1]?.coordinatorId;
+                  }
 
                   return (
                     <tr
@@ -301,7 +453,7 @@ export default function DepartmentRosterModal({
                           <button
                             type="button"
                             onClick={() => handleMoveUp(idx)}
-                            disabled={isFirst}
+                            disabled={!canMoveUp}
                             title="Pindah ke Atas (▲)"
                             className="p-1 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none cursor-pointer text-slate-700"
                           >
@@ -310,7 +462,7 @@ export default function DepartmentRosterModal({
                           <button
                             type="button"
                             onClick={() => handleMoveDown(idx)}
-                            disabled={isLast}
+                            disabled={!canMoveDown}
                             title="Pindah ke Bawah (▼)"
                             className="p-1 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none cursor-pointer text-slate-700"
                           >
@@ -372,9 +524,7 @@ export default function DepartmentRosterModal({
                               value={row.coordinatorId || ''}
                               onChange={(e) => {
                                 const val = e.target.value ? Number(e.target.value) : 0;
-                                if (val > 0) {
-                                  handleMoveToCoordinator(idx, val);
-                                }
+                                handleMoveToCoordinator(idx, val);
                               }}
                               className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
                             >

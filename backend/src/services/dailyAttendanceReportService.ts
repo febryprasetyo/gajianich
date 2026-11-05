@@ -101,21 +101,32 @@ export function resolveHierarchicalRosterOrder<
     }
   }
 
-  // Group subordinates by valid coordinatorId
+  // 1. Separate coordinators, assigned subordinates, and unassigned staff
+  const coordinators: T[] = [];
   const subordinatesByCoord = new Map<number, T[]>();
-  const topLevelItems: T[] = [];
+  const unassigned: T[] = [];
 
   for (const it of items) {
-    if (!it.isCoordinator && it.coordinatorId && coordinatorIds.has(it.coordinatorId)) {
+    if (it.isCoordinator) {
+      coordinators.push(it);
+    } else if (it.coordinatorId && coordinatorIds.has(it.coordinatorId)) {
       const list = subordinatesByCoord.get(it.coordinatorId) || [];
       list.push(it);
       subordinatesByCoord.set(it.coordinatorId, list);
     } else {
-      topLevelItems.push(it);
+      unassigned.push(it);
     }
   }
 
-  // Sort subordinates of each coordinator by sortOrder, then name
+  // 2. Sort coordinators by sortOrder ASC, then employeeName
+  coordinators.sort((a, b) => {
+    const ordA = a.sortOrder ?? 999999;
+    const ordB = b.sortOrder ?? 999999;
+    if (ordA !== ordB) return ordA - ordB;
+    return a.employeeName.localeCompare(b.employeeName);
+  });
+
+  // 3. Sort subordinates for each coordinator by sortOrder ASC, then employeeName
   for (const list of subordinatesByCoord.values()) {
     list.sort((a, b) => {
       const ordA = a.sortOrder ?? 999999;
@@ -125,24 +136,27 @@ export function resolveHierarchicalRosterOrder<
     });
   }
 
-  // Sort top-level items by sortOrder, then name
-  topLevelItems.sort((a, b) => {
+  // 4. Sort unassigned staff by sortOrder ASC, then employeeName
+  unassigned.sort((a, b) => {
     const ordA = a.sortOrder ?? 999999;
     const ordB = b.sortOrder ?? 999999;
     if (ordA !== ordB) return ordA - ordB;
     return a.employeeName.localeCompare(b.employeeName);
   });
 
-  // Interleave: coordinator followed immediately by its subordinates
+  // 5. Interleave: each coordinator followed immediately by their subordinates,
+  // followed by unassigned staff at the very end
   const result: T[] = [];
-  for (const top of topLevelItems) {
-    result.push(top);
-    if (top.isCoordinator) {
-      const subs = subordinatesByCoord.get(top.employeeId) || [];
-      for (const sub of subs) {
-        result.push(sub);
-      }
+  for (const coord of coordinators) {
+    result.push(coord);
+    const subs = subordinatesByCoord.get(coord.employeeId) || [];
+    for (const sub of subs) {
+      result.push(sub);
     }
+  }
+
+  for (const un of unassigned) {
+    result.push(un);
   }
 
   return result.map((item, idx) => ({
@@ -401,12 +415,22 @@ export async function getDailyAttendanceReport(
     const leave = leavesByEmpId.get(emp.id);
     const dailyNote = notesByEmpId.get(emp.id);
     const roster = rosterByDeptEmpId.get(`${emp.departmentId}:${emp.id}`);
-    const isCoordinator = roster ? roster.isCoordinator : false;
+    const hasDeptRosters = Array.from(rosterByDeptEmpId.keys()).some((k) =>
+      k.startsWith(`${emp.departmentId}:`)
+    );
+    const isCoordinator = roster ? Boolean(roster.isCoordinator) : false;
 
-    // Auto or Manual Highlight
-    let isHighlighted = isCoordinator || shouldAutoHighlightEmployee(emp.position, emp.jobLevel);
-    if (dailyNote && typeof dailyNote.isHighlighted === 'boolean') {
-      isHighlighted = dailyNote.isHighlighted;
+    // Highlight stabilo kuning:
+    // Jika departemen telah memiliki susunan roster tim, HANYA koordinator yang diberi stabilo kuning.
+    // Jika belum ada konfigurasi roster, gunakan fallback level jabatan / catatan harian manual.
+    let isHighlighted = false;
+    if (hasDeptRosters) {
+      isHighlighted = isCoordinator;
+    } else {
+      isHighlighted = isCoordinator || shouldAutoHighlightEmployee(emp.position, emp.jobLevel);
+      if (dailyNote && typeof dailyNote.isHighlighted === 'boolean') {
+        isHighlighted = dailyNote.isHighlighted;
+      }
     }
 
     if (highlightOnly && !isHighlighted) {

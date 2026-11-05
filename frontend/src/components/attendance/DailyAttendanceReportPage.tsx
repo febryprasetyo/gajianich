@@ -441,11 +441,15 @@ export default function DailyAttendanceReportPage() {
                             <span className={row.isHighlighted ? 'text-amber-950 font-bold' : 'text-slate-900'}>
                               {row.employeeName}
                             </span>
-                            {row.isHighlighted && (
+                            {row.isCoordinator ? (
+                              <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-200 text-amber-900">
+                                Koordinator
+                              </span>
+                            ) : row.isHighlighted ? (
                               <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-200 text-amber-900">
                                 Highlight
                               </span>
-                            )}
+                            ) : null}
                           </div>
                           {selectedDeptId === 'ALL' && (
                             <span className="text-[10px] text-slate-500 font-normal">
