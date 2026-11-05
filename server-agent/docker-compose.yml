@@ -1,0 +1,26 @@
+services:
+  server-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gajianich_server_agent
+    restart: unless-stopped
+    network_mode: host
+    pid: host
+    privileged: true
+    env_file:
+      - .env
+    environment:
+      - GAJIANICH_HUB_URL=${GAJIANICH_HUB_URL:-http://127.0.0.1:5000/api/v1/infrastructure/agent/telemetry}
+      - AGENT_API_KEY=${AGENT_API_KEY}
+      - AGENT_HOSTNAME=${AGENT_HOSTNAME:-fastpec-MINI-S}
+      - AGENT_DISPLAY_NAME=${AGENT_DISPLAY_NAME:-fastpec-MINI-S (Local Host Server)}
+      - AGENT_SERVER_TYPE=${AGENT_SERVER_TYPE:-Physical}
+      - AGENT_ROLE_BADGE=${AGENT_ROLE_BADGE:-ON-PREMISE HOST}
+      - AGENT_PROVIDER=${AGENT_PROVIDER:-On-Premise Baremetal / Mini-PC}
+      - AGENT_LOCATION=${AGENT_LOCATION:-Local LAN (192.168.10.x)}
+      - AGENT_ENVIRONMENT=${AGENT_ENVIRONMENT:-Production / Dev Host}
+      - AGENT_INTERVAL_MS=${AGENT_INTERVAL_MS:-5000}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/os-release:/host/etc/os-release:ro

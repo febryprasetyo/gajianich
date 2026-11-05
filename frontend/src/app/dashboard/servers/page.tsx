@@ -1013,13 +1013,13 @@ export default function ServerOverviewPage() {
                 <div className="flex items-center justify-between">
                   <div className="font-bold text-slate-800 flex items-center gap-1.5">
                     <Radio className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Perintah Menjalankan Agent di Server Target:</span>
+                    <span>Perintah Menjalankan Agent (Docker) di Server Target:</span>
                   </div>
                   <button
                     type="button"
                     onClick={() =>
                       void handleCopyText(
-                        `cd server-agent && AGENT_HOSTNAME="${generatedKeyInfo.hostname}" AGENT_API_KEY="${generatedKeyInfo.agentApiKey}" npx tsx src/index.ts`,
+                        `git clone https://github.com/febryprasetyo/gajianich-server-agent.git && cd gajianich-server-agent && AGENT_HOSTNAME="${generatedKeyInfo.hostname}" AGENT_API_KEY="${generatedKeyInfo.agentApiKey}" docker compose up -d --build`,
                         'cmd',
                       )
                     }
@@ -1030,7 +1030,7 @@ export default function ServerOverviewPage() {
                   </button>
                 </div>
                 <code className="block bg-slate-900 text-emerald-400 p-2.5 rounded-lg text-[10px] overflow-x-auto">
-                  {`cd server-agent && AGENT_HOSTNAME="${generatedKeyInfo.hostname}" AGENT_API_KEY="${generatedKeyInfo.agentApiKey}" npx tsx src/index.ts`}
+                  {`git clone https://github.com/febryprasetyo/gajianich-server-agent.git && cd gajianich-server-agent && AGENT_HOSTNAME="${generatedKeyInfo.hostname}" AGENT_API_KEY="${generatedKeyInfo.agentApiKey}" docker compose up -d --build`}
                 </code>
               </div>
 

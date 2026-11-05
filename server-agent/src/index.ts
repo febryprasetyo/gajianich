@@ -126,6 +126,8 @@ function getPrimaryNetworkInfo(): { ip: string; mac: string | null } {
   return { ip: '127.0.0.1', mac: null };
 }
 
+const IS_DOCKER_CONTAINER = fs.existsSync('/.dockerenv');
+
 async function safeExec(cmd: string, args: string[], timeoutMs = 4500): Promise<string> {
   try {
     const { stdout } = await execFileAsync(cmd, args, {
@@ -138,10 +140,25 @@ async function safeExec(cmd: string, args: string[], timeoutMs = 4500): Promise<
   }
 }
 
+async function safeHostExec(cmd: string, args: string[], timeoutMs = 4500): Promise<string> {
+  if (IS_DOCKER_CONTAINER) {
+    const viaNsenter = await safeExec(
+      'nsenter',
+      ['-t', '1', '-m', '-u', '-i', '-n', '--', cmd, ...args],
+      timeoutMs,
+    );
+    if (viaNsenter) return viaNsenter;
+  }
+  return safeExec(cmd, args, timeoutMs);
+}
+
 function readLinuxOsPrettyName(): string {
   try {
-    if (fs.existsSync('/etc/os-release')) {
-      const content = fs.readFileSync('/etc/os-release', 'utf8');
+    const osReleasePath = fs.existsSync('/host/etc/os-release')
+      ? '/host/etc/os-release'
+      : '/etc/os-release';
+    if (fs.existsSync(osReleasePath)) {
+      const content = fs.readFileSync(osReleasePath, 'utf8');
       const match = content.match(/^PRETTY_NAME="?([^"\n]+)"?/m);
       if (match?.[1]) {
         return `${match[1]} • Linux ${os.release()}`;
@@ -154,7 +171,7 @@ function readLinuxOsPrettyName(): string {
 }
 
 async function readDaemonCoreVersion(): Promise<string> {
-  const out = await safeExec('systemctl', ['--version']);
+  const out = await safeHostExec('systemctl', ['--version']);
   if (out) {
     const firstLine = out.split('\n')[0]?.trim();
     if (firstLine) return firstLine.replace(/^systemd\s+/i, 'Systemd ');
@@ -318,7 +335,8 @@ async function readLinuxDiskMetrics(): Promise<{
   let inodeTotal = 0;
   let inodeUsagePct = 0;
 
-  const dfBytesOut = await safeExec('df', ['-B1', '--output=source,fstype,size,used,pcent', '/']);
+  const targetMount = !IS_DOCKER_CONTAINER && fs.existsSync('/host') ? '/host' : '/';
+  const dfBytesOut = await safeHostExec('df', ['-B1', '--output=source,fstype,size,used,pcent', targetMount]);
   if (dfBytesOut) {
     const lines = dfBytesOut.split('\n').filter(Boolean);
     const dataLine = lines[lines.length - 1];
@@ -338,7 +356,7 @@ async function readLinuxDiskMetrics(): Promise<{
     }
   }
 
-  const dfInodeOut = await safeExec('df', ['-i', '/']);
+  const dfInodeOut = await safeHostExec('df', ['-i', targetMount]);
   if (dfInodeOut) {
     const lines = dfInodeOut.split('\n').filter(Boolean);
     const dataLine = lines[lines.length - 1];
@@ -547,7 +565,7 @@ function readLinuxNetworkMetrics(): {
 async function collectOpenListeningPorts(
   dockerPortNameMap: Map<number, string>,
 ): Promise<string[]> {
-  const out = await safeExec('ss', ['-tlnp']);
+  const out = await safeHostExec('ss', ['-tlnp']);
   if (!out) return [];
   const portLabels = new Map<number, string>();
 
@@ -581,7 +599,7 @@ async function collectOpenListeningPorts(
 
 async function collectPm2Processes(): Promise<UnifiedService[]> {
   const results: UnifiedService[] = [];
-  const rawPm2 = await safeExec('pm2', ['jlist']);
+  const rawPm2 = await safeHostExec('pm2', ['jlist']);
   if (!rawPm2) return results;
 
   try {
@@ -742,7 +760,7 @@ async function collectSystemdServices(): Promise<UnifiedService[]> {
   const results: UnifiedService[] = [];
 
   for (const unit of SYSTEMD_UNITS) {
-    const raw = await safeExec('systemctl', [
+    const raw = await safeHostExec('systemctl', [
       'show',
       unit,
       '--property=Id,LoadState,ActiveState,SubState,MainPID,MemoryCurrent,NRestarts,Description',
@@ -839,7 +857,7 @@ async function executeSafeCommand(cmd: PendingCommand): Promise<CommandResult> {
         };
       }
       if (cmd.category === 'pm2') {
-        const out = await safeExec('pm2', [cmd.actionType, cmd.targetName], 15000);
+        const out = await safeHostExec('pm2', [cmd.actionType, cmd.targetName], 15000);
         return {
           commandId: cmd.commandId,
           status: 'SUCCESS',
@@ -847,7 +865,7 @@ async function executeSafeCommand(cmd: PendingCommand): Promise<CommandResult> {
         };
       }
       if (cmd.category === 'systemd' || cmd.category === 'database') {
-        const out = await safeExec('systemctl', ['restart', cmd.targetName], 15000);
+        const out = await safeHostExec('systemctl', ['restart', cmd.targetName], 15000);
         return {
           commandId: cmd.commandId,
           status: 'SUCCESS',
