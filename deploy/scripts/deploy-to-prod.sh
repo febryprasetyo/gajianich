@@ -88,6 +88,10 @@ do_deploy() {
   # 2. Sinkronkan code
   do_sync
 
+  # Sinkronkan git tracking di Production agar git status tetap bersih dan up-to-date
+  log_info "Menyelaraskan git tracking di server Production..."
+  ssh "$PROD_HOST" "cd '$PROD_DIR' && (git fetch origin && git reset --hard origin/master || true)" >/dev/null 2>&1 || true
+
   # 3. Jalankan release production di server Prod
   log_info "Mengeksekusi proses build container & release di server Production..."
   ssh -t "$PROD_HOST" "cd '$PROD_DIR' && bash deploy/scripts/lan-production.sh release '$version'"
