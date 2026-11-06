@@ -1265,7 +1265,7 @@ export async function getServerServiceLogs(req: Request, res: Response) {
       ? await db.select().from(servers).where(eq(servers.id, numericId)).limit(1)
       : await db.select().from(servers).where(eq(servers.serverCode, rawParam)).limit(1);
 
-    const hostname = server?.serverCode ?? (rawParam || 'fastpec-MINI-S');
+    const hostname = server?.serverCode ?? rawParam;
     const logs = serverTelemetryHub.getLogs(hostname, serviceName);
 
     return res.status(200).json({

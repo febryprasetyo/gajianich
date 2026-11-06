@@ -77,8 +77,8 @@ export default function ServerOverviewPage() {
     serviceName?: string;
   }>({
     isOpen: false,
-    serverIdOrHost: 'fastpec-MINI-S',
-    hostname: 'fastpec-MINI-S',
+    serverIdOrHost: '',
+    hostname: '',
   });
 
   // Add / Register Node Modal state
@@ -593,7 +593,7 @@ export default function ServerOverviewPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari hostname (misal: fastpec-MINI-S), IP address, OS, atau nama service..."
+                placeholder="Cari hostname, IP address, OS, atau nama service..."
                 className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
               />
             </div>
@@ -815,7 +815,7 @@ export default function ServerOverviewPage() {
                         </strong>
                       </span>
 
-                      <div className="flex items-center gap-1 sm:gap-2">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
                         <button
                           type="button"
                           onClick={() => handleOpenEditModal(node)}
@@ -824,7 +824,7 @@ export default function ServerOverviewPage() {
                           className="text-slate-500 hover:text-emerald-700 font-semibold font-mono flex items-center gap-1 cursor-pointer p-1 rounded-md hover:bg-slate-100 transition-colors"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Edit</span>
+                          <span>Edit</span>
                         </button>
 
                         <button
@@ -835,18 +835,7 @@ export default function ServerOverviewPage() {
                           className="text-slate-400 hover:text-rose-600 font-semibold font-mono flex items-center gap-1 cursor-pointer p-1 rounded-md hover:bg-rose-50 transition-colors"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Hapus</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => void handleRotateServerKey(node)}
-                          title={`Generate / Rotate API Key Mesin ${node.serverCode}`}
-                          aria-label={`API Key Mesin ${node.serverCode}`}
-                          className="text-slate-500 hover:text-emerald-700 font-semibold font-mono flex items-center gap-1 cursor-pointer p-1 rounded-md hover:bg-slate-100 transition-colors"
-                        >
-                          <KeyRound className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">API Key</span>
+                          <span>Hapus</span>
                         </button>
 
                         <button
@@ -861,18 +850,8 @@ export default function ServerOverviewPage() {
                           className="text-emerald-700 hover:text-emerald-800 font-semibold font-mono flex items-center gap-1 cursor-pointer p-1 rounded-md hover:bg-emerald-50 transition-colors"
                         >
                           <Terminal className="w-3.5 h-3.5" />
-                          <span>Log</span>
+                          <span>Stream Log</span>
                         </button>
-
-                        <Link
-                          href={`/dashboard/servers/${encodeURIComponent(String(node.id || node.serverCode))}`}
-                          className="text-slate-600 hover:text-emerald-700 font-semibold font-mono flex items-center gap-1 p-1 rounded-md hover:bg-slate-100 transition-colors"
-                          title="Buka Detail Monitoring Server"
-                          aria-label={`Buka Detail ${node.serverCode}`}
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                          <span>Detail</span>
-                        </Link>
                       </div>
                     </div>
                   </div>
@@ -1147,7 +1126,7 @@ export default function ServerOverviewPage() {
                   <input
                     type="text"
                     required
-                    placeholder="misal: fastpec-MINI-S"
+                    placeholder="misal: srv-prod-node-01"
                     value={newNodeForm.hostname}
                     onChange={(e) => setNewNodeForm({ ...newNodeForm, hostname: e.target.value })}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"

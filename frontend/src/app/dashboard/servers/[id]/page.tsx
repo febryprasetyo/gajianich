@@ -65,25 +65,25 @@ const PORT_TEXT_COLORS = [
 
 const PLACEHOLDER_NODE: ServerNodeItem = {
   id: 0,
-  serverCode: 'fastpec-MINI-S',
-  hostname: 'fastpec-MINI-S',
-  name: 'Memuat Telemetri Server...',
-  ipAddress: '192.168.10.212',
-  os: 'Menunggu Telemetri Agent...',
-  specs: 'Menunggu Telemetri Agent...',
+  serverCode: '',
+  hostname: '',
+  name: 'Memuat data server...',
+  ipAddress: '-',
+  os: 'Menunggu telemetri...',
+  specs: 'Menunggu telemetri...',
   status: 'Online',
   healthStatus: 'Online',
   serverType: 'Physical',
-  provider: 'On-Premise Baremetal',
-  location: 'Local Datacenter',
+  provider: '-',
+  location: '-',
   environment: 'Production',
-  roleBadge: 'ON-PREMISE HOST',
+  roleBadge: 'ACTIVE NODE',
   connectionMode: 'WS PUSH',
-  cpuModel: 'Menunggu Telemetri Agent...',
+  cpuModel: 'Memuat...',
   cpuCores: 0,
   daemonCore: 'Systemd',
   avgPingMs: 0,
-  agentVersion: 'v2.5-LinuxKernel',
+  agentVersion: '-',
   uptimeSeconds: 0,
   cpuUsagePct: 0,
   cpuIoWaitPct: 0,
@@ -118,8 +118,8 @@ const PLACEHOLDER_NODE: ServerNodeItem = {
   tcpSynRecv: 0,
   fdAllocated: 0,
   fdMax: 65535,
-  sslDaysRemaining: 89,
-  ufwStatus: 'UFW Active',
+  sslDaysRemaining: 90,
+  ufwStatus: 'Active',
   fail2banBannedIps: 0,
   failedSshCount: 0,
   openPorts: [],
@@ -135,7 +135,7 @@ const PLACEHOLDER_NODE: ServerNodeItem = {
 export default function ServerDetailInspectionPage() {
   const params = useParams();
   const router = useRouter();
-  const rawId = String(params?.id || 'fastpec-MINI-S');
+  const rawId = String(params?.id || '');
 
   const [node, setNode] = useState<ServerNodeItem>(PLACEHOLDER_NODE);
   const [nodesList, setNodesList] = useState<
