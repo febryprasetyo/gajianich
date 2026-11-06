@@ -913,7 +913,10 @@ export async function createOrUpdateServerNode(req: Request, res: Response) {
       .limit(1);
     const existing = existingRows[0];
 
-    const generatedKey = generateServerAgentApiKey(rawHostname);
+    const generatedKey = !existing?.agentKeyHash ? generateServerAgentApiKey(rawHostname) : null;
+    const finalKeyHash = existing?.agentKeyHash ?? generatedKey!.keyHash;
+    const finalKeyPrefix = existing?.agentKeyPrefix ?? generatedKey!.keyPrefix;
+
     const displayName = typeof req.body?.name === 'string' && req.body.name.trim()
       ? req.body.name.trim()
       : (existing?.name ?? rawHostname);
@@ -951,8 +954,8 @@ export async function createOrUpdateServerNode(req: Request, res: Response) {
         cpuModel: existing?.cpuModel ?? 'Menunggu Telemetri Agent...',
         cpuCores: existing?.cpuCores ?? 0,
         daemonCore: existing?.daemonCore ?? 'Systemd',
-        agentKeyHash: generatedKey.keyHash,
-        agentKeyPrefix: generatedKey.keyPrefix,
+        agentKeyHash: finalKeyHash,
+        agentKeyPrefix: finalKeyPrefix,
         lastSeenAt: existing?.lastSeenAt ?? null,
         updatedAt: now,
       })
@@ -966,8 +969,6 @@ export async function createOrUpdateServerNode(req: Request, res: Response) {
           location,
           environment,
           roleBadge,
-          agentKeyHash: generatedKey.keyHash,
-          agentKeyPrefix: generatedKey.keyPrefix,
           updatedAt: now,
         },
       })
@@ -976,8 +977,8 @@ export async function createOrUpdateServerNode(req: Request, res: Response) {
     return res.status(201).json({
       success: true,
       data: serializeServerRow(saved, now),
-      agentApiKey: generatedKey.rawKey,
-      agentKeyPrefix: generatedKey.keyPrefix,
+      agentApiKey: generatedKey?.rawKey,
+      agentKeyPrefix: finalKeyPrefix,
     });
   } catch (error: any) {
     return res.status(400).json({
