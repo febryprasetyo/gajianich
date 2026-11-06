@@ -3,6 +3,7 @@ import {
   bigint,
   varchar,
   timestamp,
+  date,
   text,
   numeric,
   boolean,
@@ -202,3 +203,21 @@ export const dbBackups = pgTable('db_backups', {
   backupPath: varchar('backup_path', { length: 255 }),
   completedAt: timestamp('completed_at').defaultNow(),
 });
+
+export const subscriptions = pgTable('subscriptions', {
+  id: bigint('id', { mode: 'number' }).generatedAlwaysAsIdentity().primaryKey(),
+  name: varchar('name', { length: 150 }).notNull(),
+  category: varchar('category', { length: 50 }).notNull(), // 'DOMAIN' | 'HOSTING' | 'EMAIL' | 'SSL' | 'SAAS'
+  provider: varchar('provider', { length: 150 }).notNull(),
+  registeredDomain: varchar('registered_domain', { length: 255 }),
+  startDate: date('start_date'),
+  expiryDate: date('expiry_date').notNull(),
+  renewalCost: numeric('renewal_cost').default('0').notNull(),
+  billingCycle: varchar('billing_cycle', { length: 50 }).default('Tahunan').notNull(),
+  autoRenew: boolean('auto_renew').default(false).notNull(),
+  loginUrl: varchar('login_url', { length: 255 }),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+

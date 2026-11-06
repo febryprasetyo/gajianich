@@ -350,6 +350,13 @@
       "when": 1793861000000,
       "tag": "0049_per_server_agent_api_key",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1793950000000,
+      "tag": "0050_subscriptions",
+      "breakpoints": true
     }
   ],
   "version": "7"

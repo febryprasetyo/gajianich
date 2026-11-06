@@ -18,6 +18,12 @@ import {
   syncAccurateLicenses,
   updateServerNode,
 } from '../controllers/infrastructureController';
+import {
+  getSubscriptions,
+  createSubscription,
+  updateSubscription,
+  deleteSubscription,
+} from '../controllers/subscriptionController';
 import { createAgentAuthenticator } from '../middleware/agentAuth';
 import { authenticateToken, requirePermission } from '../middleware/auth';
 
@@ -49,5 +55,12 @@ router.post('/servers/:id/actions', manageInfra, executeServerRemoteAction);
 router.post('/servers/:id/rotate-key', manageInfra, rotateServerAgentKey);
 
 router.get('/backups', viewInfra, getDbBackups);
+
+// Subscriptions & Recurring IT Services (Domain, Hosting, Email, SSL, SaaS)
+const manageSubs = requirePermission(['infrastructure.manage', 'infrastructure.view']);
+router.get('/subscriptions', viewInfra, getSubscriptions);
+router.post('/subscriptions', manageSubs, createSubscription);
+router.put('/subscriptions/:id', manageSubs, updateSubscription);
+router.delete('/subscriptions/:id', manageSubs, deleteSubscription);
 
 export default router;
