@@ -91,14 +91,13 @@ PY
     PREVIOUS=""
     if test -f "$RUNTIME_DIR/current-version"; then
       PREVIOUS="$(cat "$RUNTIME_DIR/current-version")"
-      export APP_VERSION="$PREVIOUS"
-      RELEASE_DIR="$RUNTIME_DIR/releases/$PREVIOUS"
-      backup
-      RELEASE_DIR="$RUNTIME_DIR/releases/$VERSION"
     fi
     export APP_VERSION="$VERSION"
     compose config -q
     compose up -d --wait postgres
+    if test -n "$PREVIOUS"; then
+      backup
+    fi
     docker compose --env-file "$ENV_FILE" -p "$PROJECT_NAME" -f "$RELEASE_DIR/compose.yml" -f "$RELEASE_DIR/compose.migrate.yml" run --rm --no-deps -T backend node dist/db/migrate.js
     if test -z "$PREVIOUS"; then
       INITIAL_ADMIN_PASSWORD="$(cat "$RUNTIME_DIR/initial-admin-password")"
