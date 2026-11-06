@@ -4,8 +4,6 @@ umask 077
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 if [ -n "${GAJIANICH_PROD_DIR:-}" ]; then
   RUNTIME_DIR="$GAJIANICH_PROD_DIR"
-elif [ -d "$(dirname "$REPO_DIR")/ams-production" ]; then
-  RUNTIME_DIR="$(dirname "$REPO_DIR")/ams-production"
 else
   RUNTIME_DIR="$(dirname "$REPO_DIR")/gajianich-production"
 fi
@@ -14,7 +12,7 @@ mkdir -p "$RUNTIME_DIR"
 exec 9>"$RUNTIME_DIR/deploy.lock"
 flock -n 9 || { echo 'Another production operation is running' >&2; exit 1; }
 ENV_FILE="$RUNTIME_DIR/.env"
-PROJECT_NAME="${DOCKER_PROJECT_NAME:-ams-live}"
+PROJECT_NAME="${DOCKER_PROJECT_NAME:-gajianich-live}"
 
 compose() {
   docker compose --env-file "$ENV_FILE" -p "$PROJECT_NAME" -f "$RELEASE_DIR/compose.yml" "$@"
@@ -29,8 +27,8 @@ backup() {
   mkdir -p "$RUNTIME_DIR/backups"
   local target
   target="$RUNTIME_DIR/backups/$(date -u +%Y%m%dT%H%M%S)-$VERSION.dump"
-  local db_user="${POSTGRES_USER:-ams_app}"
-  local db_name="${POSTGRES_DB:-ams_prod_db}"
+  local db_user="${POSTGRES_USER:-gajianich_app}"
+  local db_name="${POSTGRES_DB:-gajianich_prod_db}"
   compose exec -T postgres pg_dump -U "$db_user" -d "$db_name" -Fc > "$target.tmp"
   compose exec -T postgres pg_restore --list < "$target.tmp" >/dev/null
   mv "$target.tmp" "$target"
@@ -61,16 +59,16 @@ PY
     RELEASE_DIR="$RUNTIME_DIR/releases/$VERSION"
     test ! -e "$RELEASE_DIR" || { echo 'Version already exists; use a new version' >&2; exit 1; }
     for image in backend frontend; do
-      if docker image inspect "ams-lan-$image:$VERSION" >/dev/null 2>&1 || docker image inspect "gajianich-lan-$image:$VERSION" >/dev/null 2>&1; then
-        echo "Image tag already exists: ams-lan-$image:$VERSION; use a new version" >&2; exit 1
+      if docker image inspect "gajianich-lan-$image:$VERSION" >/dev/null 2>&1; then
+        echo "Image tag already exists: gajianich-lan-$image:$VERSION; use a new version" >&2; exit 1
       fi
     done
     # Build from a source snapshot, so edits during a build cannot mix revisions.
     BUILD_DIR="$(mktemp -d "$RUNTIME_DIR/build.XXXXXX")"
     trap 'rm -rf "$BUILD_DIR"' EXIT
     tar -C "$REPO_DIR" --exclude=node_modules --exclude=.next --exclude=dist --exclude=.git --exclude='.env*' --exclude=.superpowers --exclude=.worktrees -cf - backend frontend | tar -C "$BUILD_DIR" -xf -
-    docker build --target production --memory 2g --cpu-quota 200000 -t "ams-lan-backend:$VERSION" -t "gajianich-lan-backend:$VERSION" "$BUILD_DIR/backend"
-    docker build --target production --memory 2g --cpu-quota 200000 -t "ams-lan-frontend:$VERSION" -t "gajianich-lan-frontend:$VERSION" "$BUILD_DIR/frontend"
+    docker build --target production --memory 2g --cpu-quota 200000 -t "gajianich-lan-backend:$VERSION" "$BUILD_DIR/backend"
+    docker build --target production --memory 2g --cpu-quota 200000 -t "gajianich-lan-frontend:$VERSION" "$BUILD_DIR/frontend"
     mkdir -p "$RELEASE_DIR"
     python3 - "$BUILD_DIR" "$RELEASE_DIR/source-sha256" <<'PY'
 from pathlib import Path

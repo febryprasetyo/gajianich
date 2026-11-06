@@ -103,7 +103,7 @@ export default function SubscriptionsMonitoringPage() {
       setError(null);
       // Clean up any stale legacy localStorage dummy data
       try {
-        localStorage.removeItem('ams_subscriptions_data');
+        localStorage.removeItem('gajianich_subscriptions_data');
       } catch {
         // ignore
       }

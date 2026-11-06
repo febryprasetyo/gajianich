@@ -65,5 +65,5 @@ test('organization selector remains usable on a phone without horizontal overflo
  await expect(page.getByText('SCOPE_CMC_VISIBLE',{exact:true})).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
  await selector.focus();await expect(selector).toBeFocused();
- await page.screenshot({path:'/tmp/ams-scope-mobile-validation.png',fullPage:true});
+ await page.screenshot({path:'/tmp/gajianich-scope-mobile-validation.png',fullPage:true});
 });

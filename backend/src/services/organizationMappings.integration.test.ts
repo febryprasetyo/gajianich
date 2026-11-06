@@ -73,7 +73,7 @@ test('organization migration and manifest preserve legacy records, enforce owner
 
 test('journal upgrade applied twice preserves final employee and attendance records including IDs and foreign keys', async () => {
   const fixture = await createHrAuditTestDatabase();
-  const legacy = await mkdtemp(path.join(os.tmpdir(), 'ams-scope-legacy-'));
+  const legacy = await mkdtemp(path.join(os.tmpdir(), 'gajianich-scope-legacy-'));
   try {
     const journal = JSON.parse(readFileSync('drizzle/meta/_journal.json', 'utf8'));
     const scope = journal.entries.find((entry: {tag: string}) => entry.tag.endsWith('_organization_scope'));

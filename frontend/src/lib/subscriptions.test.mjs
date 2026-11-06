@@ -44,8 +44,8 @@ test('calculateSubscriptionStats categorizes expired, expiring soon, and safe it
 
 test('filterSubscriptions filters by search query without PIC field', () => {
   const items = [
-    { id: 1, name: 'Perusahaan Web Domain', category: 'DOMAIN', provider: 'Niagahoster', registeredDomain: 'pt-ams.id', expiryDate: '2027-01-01', renewalCost: 200000, billingCycle: 'Tahunan', autoRenew: true },
-    { id: 2, name: 'Corporate Email', category: 'EMAIL', provider: 'Google Cloud', registeredDomain: 'pt-ams.id', expiryDate: '2026-11-10', renewalCost: 5000000, billingCycle: 'Tahunan', autoRenew: false },
+    { id: 1, name: 'Perusahaan Web Domain', category: 'DOMAIN', provider: 'Niagahoster', registeredDomain: 'gajianich.id', expiryDate: '2027-01-01', renewalCost: 200000, billingCycle: 'Tahunan', autoRenew: true },
+    { id: 2, name: 'Corporate Email', category: 'EMAIL', provider: 'Google Cloud', registeredDomain: 'gajianich.id', expiryDate: '2026-11-10', renewalCost: 5000000, billingCycle: 'Tahunan', autoRenew: false },
     { id: 3, name: 'Cloud Hosting VPS', category: 'HOSTING', provider: 'IdCloudHost', registeredDomain: null, expiryDate: '2027-06-01', renewalCost: 1200000, billingCycle: 'Tahunan', autoRenew: false },
   ];
 
@@ -55,7 +55,7 @@ test('filterSubscriptions filters by search query without PIC field', () => {
   assert.equal(byProvider[0].id, 2);
 
   // Search by domain
-  const byDomain = filterSubscriptions(items, 'pt-ams.id', 'ALL', 'ALL');
+  const byDomain = filterSubscriptions(items, 'gajianich.id', 'ALL', 'ALL');
   assert.equal(byDomain.length, 2);
 
   // Filter by category

@@ -8,7 +8,7 @@ set -euo pipefail
 # ==============================================================================
 
 PROD_HOST="${PROD_HOST:-cmc@192.168.10.23}"
-PROD_DIR="${PROD_DIR:-/home/cmc/app/svc/ams-app}"
+PROD_DIR="${PROD_DIR:-/home/cmc/app/svc/gajianich}"
 PROD_URL="${PROD_URL:-http://192.168.10.23:8080}"
 ACTION="${1:-deploy}"
 

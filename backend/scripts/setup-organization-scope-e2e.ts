@@ -5,8 +5,8 @@ import bcrypt from 'bcrypt';
 
 async function main() {
   const url = new URL(process.env.DATABASE_URL || '');
-  if (!['localhost','127.0.0.1'].includes(url.hostname) || url.pathname !== '/ams_scope_e2e_test') {
-    throw new Error('Use a disposable loopback ams_scope_e2e_test database');
+  if (!['localhost','127.0.0.1'].includes(url.hostname) || url.pathname !== '/gajianich_scope_e2e_test') {
+    throw new Error('Use a disposable loopback gajianich_scope_e2e_test database');
   }
   const pool = new Pool({connectionString:url.toString()});
   const client = await pool.connect();
@@ -33,7 +33,7 @@ async function main() {
     const employees = Object.fromEntries((await client.query(`SELECT g.code,e.id::int FROM employees e
       JOIN department_organization_mappings m ON m.department_id=e.department_id
       JOIN organization_groups g ON g.id=m.group_id`)).rows.map(row=>[row.code,row.id]));
-    const output = process.env.SCOPE_E2E_FIXTURE || '/tmp/ams-scope-e2e-fixture.json';
+    const output = process.env.SCOPE_E2E_FIXTURE || '/tmp/gajianich-scope-e2e-fixture.json';
     writeFileSync(output,JSON.stringify({groups,employees,username,password}),{mode:0o600});
     await client.query('COMMIT');
     console.log(`Organization E2E fixture: ${output}`);
