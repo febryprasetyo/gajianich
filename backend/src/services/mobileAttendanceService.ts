@@ -15,6 +15,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import { db } from '../db';
 import { approvedMobileRecord } from '../domain/approvedMobileAttendance';
+import { attendancePayrollPeriod } from '../domain/attendancePayrollPeriod';
 import { users } from '../db/schema/users';
 import { employees } from '../db/schema/employees';
 import { departments, locations } from '../db/schema/master';
@@ -356,12 +357,11 @@ export async function getMobileAttendanceHistory(userId: number, period: 'CURREN
   const logs = await employeeLogs(employee.id, targetDb,employee.groupId);
   const zone = logs[0]?.timeZone || 'Asia/Jakarta';
   const local = localAttendanceTime(new Date(), zone);
-  const month = new Date(`${local.workDate.slice(0,7)}-01T12:00:00Z`);
-  if (period === 'PREVIOUS') month.setUTCMonth(month.getUTCMonth() - 1);
-  const prefix = month.toISOString().slice(0,7);
-  const core = await targetDb.select().from(attendanceRecords).where(and(eq(attendanceRecords.employeeId, employee.id), eq(attendanceRecords.groupId,employee.groupId), gte(attendanceRecords.workDate, `${prefix}-01`), lte(attendanceRecords.workDate, `${prefix}-31`)));
-  const dates = [...new Set([...logs.filter(l => l.workDate.startsWith(prefix)).map(l => l.workDate), ...core.map(r => r.workDate)])].sort().reverse();
-  return { period, monthName: new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(month), records: dates.map(date => {
+  const range = attendancePayrollPeriod(local.workDate, period);
+  const periodOptions = (['CURRENT', 'PREVIOUS'] as const).map(value => ({ value, ...attendancePayrollPeriod(local.workDate, value) }));
+  const core = await targetDb.select().from(attendanceRecords).where(and(eq(attendanceRecords.employeeId, employee.id), eq(attendanceRecords.groupId,employee.groupId), gte(attendanceRecords.workDate, range.startDate), lte(attendanceRecords.workDate, range.endDate)));
+  const dates = [...new Set([...logs.filter(l => l.workDate >= range.startDate && l.workDate <= range.endDate).map(l => l.workDate), ...core.map(r => r.workDate)])].sort().reverse();
+  return { period, monthName: range.label, startDate: range.startDate, endDate: range.endDate, periodOptions, records: dates.map(date => {
     const events = logs.filter(l => l.workDate === date);
     const inLog = events.find(l => l.eventType === 'IN'); const outLog = events.find(l => l.eventType === 'OUT');
     const record = core.find(r => r.workDate === date); const ref = inLog || outLog;
@@ -369,7 +369,7 @@ export async function getMobileAttendanceHistory(userId: number, period: 'CURREN
     const status = approval.status;
     const isAbsent = !events.length && record?.attendanceStatus === 'ALPHA';
     const attendanceLabels: Record<string,string> = { ALPHA: 'Tidak hadir', DINAS_LUAR: 'Dinas luar', CUTI: 'Cuti', IZIN: 'Izin', SAKIT: 'Sakit' };
-    const statusText = status === 'PENDING' ? 'Menunggu review' : status === 'REJECTED' ? 'Ditolak' : attendanceLabels[record?.attendanceStatus || ''] || (record?.lateMinutes ? `Terlambat (${record.lateMinutes}m)` : 'Disetujui');
+    const statusText = status === 'PENDING' ? 'Menunggu review' : status === 'REJECTED' ? 'Ditolak' : attendanceLabels[record?.attendanceStatus || ''] || (record?.lateMinutes ? `Terlambat (${record.lateMinutes}m)` : events.length ? 'Disetujui' : 'Tercatat');
     const d = new Date(`${date}T12:00:00Z`);
     return { id: ref?.id || record!.id, workDate: date, dayShort: ['Min','Sen','Sel','Rab','Kam','Jum','Sab'][d.getUTCDay()], dateStr: new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(d), clockIn: inLog?.scanTime || record?.scanIn || '--', clockOut: outLog?.scanTime || record?.scanOut || '--',
       workHours: events.length

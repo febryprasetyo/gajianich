@@ -6,17 +6,20 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: 'GAJIANICH',
     description: 'Presensi Karyawan, Riwayat Kehadiran, dan Profil Mandiri',
     start_url: '/m/beranda',
-    display: 'standalone',
+    id: '/m/beranda',
+    scope: '/',
+    display: 'fullscreen',
+    display_override: ['fullscreen', 'standalone'],
     background_color: '#F8FAFC',
     theme_color: '#059669',
     icons: [
       {
-        src: '/branding/gajianich-cat-favicon.png',
+        src: '/branding/gajianich-pwa-192.png',
         sizes: '192x192',
         type: 'image/png',
       },
       {
-        src: '/branding/gajianich-cat.png',
+        src: '/branding/gajianich-pwa-512.png',
         sizes: '512x512',
         type: 'image/png',
       },

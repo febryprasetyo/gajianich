@@ -130,3 +130,4 @@ CREATE TABLE IF NOT EXISTS "server_remote_commands" (
 );
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_server_remote_commands_server_status" ON "server_remote_commands" ("server_id","status");
+

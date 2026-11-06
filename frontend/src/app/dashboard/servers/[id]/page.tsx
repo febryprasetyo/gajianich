@@ -430,16 +430,14 @@ export default function ServerDetailInspectionPage() {
                       key={n.id || n.serverCode}
                       type="button"
                       onClick={() => router.push(`/dashboard/servers/${encodeURIComponent(String(n.id || n.serverCode))}`)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
-                        isCurrent
-                          ? 'bg-emerald-600 text-white shadow-2xs'
-                          : 'text-slate-600 hover:bg-slate-100'
-                      }`}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${isCurrent
+                        ? 'bg-emerald-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100'
+                        }`}
                     >
                       <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          isCurrent ? 'bg-white' : 'bg-emerald-500'
-                        }`}
+                        className={`w-1.5 h-1.5 rounded-full ${isCurrent ? 'bg-white' : 'bg-emerald-500'
+                          }`}
                       />
                       <span>{n.serverCode}</span>
                     </button>
@@ -476,10 +474,11 @@ export default function ServerDetailInspectionPage() {
         </div>
 
         {/* Page Header Banner Card */}
-        <div className="bg-white border border-slate-200 shadow-xs sm:shadow-sm rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
+        <div className="bg-white border border-slate-200 shadow-xs sm:shadow-sm rounded-2xl p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          {/* Bagian Kiri: Tambahkan min-w-0 dan flex-1 agar tidak mendorong bagian kanan */}
+          <div className="space-y-1 min-w-0 flex-1">
             <div className="flex items-center gap-2.5 flex-wrap">
-              <div className="p-2 bg-emerald-600 rounded-xl text-white shadow-xs">
+              <div className="p-2 bg-emerald-600 rounded-xl text-white shadow-xs shrink-0">
                 <Server className="w-5 h-5" />
               </div>
               <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight font-mono">
@@ -490,23 +489,23 @@ export default function ServerDetailInspectionPage() {
                 {node.roleBadge || 'ON-PREMISE HOST'}
               </span>
             </div>
-            <p className="text-xs text-slate-500 font-mono mt-1">
+            <p className="text-xs text-slate-500 font-mono mt-4">
               {node.ipAddress} &bull; {node.os} &bull; {node.cpuModel} ({node.cpuCores} vCPU) &bull; Uptime:{' '}
               {formatUptimeDaysHours(node.uptimeSeconds)}
             </p>
           </div>
 
-          {/* Quick Hardware Counters */}
-          <div className="flex flex-wrap items-center gap-3 font-mono text-xs">
-            <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-right">
+          {/* Quick Hardware Counters: Ganti flex-wrap jadi flex-nowrap & tambahkan shrink-0 */}
+          <div className="flex flex-nowrap items-center gap-2.5 font-mono text-xs shrink-0 overflow-x-auto sm:overflow-visible">
+            <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-right whitespace-nowrap">
               <span className="text-[11px] text-slate-400 font-normal uppercase block">Agent Key</span>
               <span className="font-bold text-emerald-700">{node.agentKeyPrefix || 'Per-Machine Key'}</span>
             </div>
-            <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-right">
+            <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-right whitespace-nowrap">
               <span className="text-[11px] text-slate-400 font-normal uppercase block">Daemon Core</span>
               <span className="font-bold text-slate-900">{node.daemonCore || 'Systemd'}</span>
             </div>
-            <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-right">
+            <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-right whitespace-nowrap">
               <span className="text-[11px] text-slate-400 font-normal uppercase block">Avg Ping</span>
               <span className="font-bold text-emerald-600">{node.avgPingMs} ms</span>
             </div>
@@ -870,11 +869,10 @@ export default function ServerDetailInspectionPage() {
               <button
                 type="button"
                 onClick={() => setActiveCategory('all')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
-                  activeCategory === 'all'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer ${activeCategory === 'all'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+                  }`}
               >
                 <Layers className="w-3.5 h-3.5" />
                 <span>All Services ({categoryCounts.all})</span>
@@ -883,11 +881,10 @@ export default function ServerDetailInspectionPage() {
               <button
                 type="button"
                 onClick={() => setActiveCategory('pm2')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
-                  activeCategory === 'pm2'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer ${activeCategory === 'pm2'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+                  }`}
               >
                 <Terminal className={`w-3.5 h-3.5 ${activeCategory === 'pm2' ? 'text-white' : 'text-emerald-600'}`} />
                 <span>PM2 / Node.js ({categoryCounts.pm2})</span>
@@ -896,11 +893,10 @@ export default function ServerDetailInspectionPage() {
               <button
                 type="button"
                 onClick={() => setActiveCategory('docker')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
-                  activeCategory === 'docker'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer ${activeCategory === 'docker'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+                  }`}
               >
                 <Box className={`w-3.5 h-3.5 ${activeCategory === 'docker' ? 'text-white' : 'text-blue-600'}`} />
                 <span>Docker ({categoryCounts.docker})</span>
@@ -909,11 +905,10 @@ export default function ServerDetailInspectionPage() {
               <button
                 type="button"
                 onClick={() => setActiveCategory('database')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
-                  activeCategory === 'database'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer ${activeCategory === 'database'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+                  }`}
               >
                 <Database
                   className={`w-3.5 h-3.5 ${activeCategory === 'database' ? 'text-white' : 'text-purple-600'}`}
@@ -924,11 +919,10 @@ export default function ServerDetailInspectionPage() {
               <button
                 type="button"
                 onClick={() => setActiveCategory('systemd')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
-                  activeCategory === 'systemd'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer ${activeCategory === 'systemd'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+                  }`}
               >
                 <Cpu className={`w-3.5 h-3.5 ${activeCategory === 'systemd' ? 'text-white' : 'text-amber-600'}`} />
                 <span>Systemd Native ({categoryCounts.systemd})</span>
@@ -1004,15 +998,14 @@ export default function ServerDetailInspectionPage() {
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2.5">
                               <span
-                                className={`w-2 h-2 rounded-full ${
-                                  svc.status === 'active'
-                                    ? 'bg-emerald-500'
-                                    : svc.status === 'warning'
-                                      ? 'bg-amber-500'
-                                      : svc.status === 'critical'
-                                        ? 'bg-rose-500'
-                                        : 'bg-slate-400'
-                                }`}
+                                className={`w-2 h-2 rounded-full ${svc.status === 'active'
+                                  ? 'bg-emerald-500'
+                                  : svc.status === 'warning'
+                                    ? 'bg-amber-500'
+                                    : svc.status === 'critical'
+                                      ? 'bg-rose-500'
+                                      : 'bg-slate-400'
+                                  }`}
                               />
                               <div>
                                 <span className="text-xs font-bold text-slate-900 block font-mono">
@@ -1048,9 +1041,8 @@ export default function ServerDetailInspectionPage() {
                                 />
                               </div>
                               <span
-                                className={`text-xs font-bold ${
-                                  svc.cpu > 10 ? 'text-amber-700' : 'text-slate-900'
-                                }`}
+                                className={`text-xs font-bold ${svc.cpu > 10 ? 'text-amber-700' : 'text-slate-900'
+                                  }`}
                               >
                                 {svc.cpu}%
                               </span>
@@ -1091,9 +1083,8 @@ export default function ServerDetailInspectionPage() {
                                 className="p-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-slate-900 transition cursor-pointer"
                               >
                                 <RotateCcw
-                                  className={`w-3.5 h-3.5 ${
-                                    isRestarting ? 'animate-spin text-amber-600' : ''
-                                  }`}
+                                  className={`w-3.5 h-3.5 ${isRestarting ? 'animate-spin text-amber-600' : ''
+                                    }`}
                                 />
                               </button>
                               <button

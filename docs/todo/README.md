@@ -29,6 +29,18 @@ Dokumen ini adalah **indeks utama roadmap**. Setiap item prioritas dipecah ke be
 
 ---
 
+Catatan desain 05 November 2026: konsep Figma presensi mobile empat layar telah diperiksa secara visual dan melalui audit overflow. [Checkpoint desain](../plan/2026-11-05-mobile-attendance-figma-checkpoint.md).
+
+Catatan desain 06 November 2026: revisi Figma menggabungkan alur GAJIANICH, status HRD dan kamera fullscreen; delapan layar utama sudah diperiksa. Validasi akhir tambahan state tertunda karena limit Figma Starter. [Checkpoint revisi](../plan/2026-11-06-mobile-attendance-figma-revision-checkpoint.md).
+
+Catatan implementasi mobile 06 November 2026: desain baru terintegrasi pada beranda, riwayat, profil dan kamera fullscreen; sapaan personal tanpa judul berulang. Verifikasi lokal: typecheck, lint terarah, 254 unit test dan 8 browser test lulus. Belum deploy produksi. [Checkpoint integrasi](../plan/2026-11-06-mobile-attendance-design-integration.md).
+
+Perbaikan mobile 06 November 2026: periode riwayat mengikuti siklus rekap 21–20 dan nama bulan awal; indikator Next.js yang menutupi tap Beranda dinonaktifkan. Verifikasi: 26 tes backend, 255 unit test frontend, 3 browser test, typecheck dan lint terkait lulus. [Checkpoint periode & Beranda](../plan/2026-11-06-mobile-payroll-period-home-checkpoint.md).
+
+Koreksi konteks mobile 06 November 2026: presensi mesin kantor tampil Tercatat; review HRD hanya untuk pengajuan luar kantor. Tidak ada lagi badge Belum diajukan untuk kehadiran kantor. Verifikasi 256 unit test frontend, 17 tes backend, 8 tes browser, typecheck dan lint terkait lulus. [Checkpoint makna presensi](../plan/2026-11-06-mobile-office-attendance-meaning-checkpoint.md).
+
+PWA 06 November 2026: konfigurasi fullscreen/standalone, scope autentikasi, safe-area dan ikon instalasi diperbaiki. Verifikasi 258 unit test, 4 simulasi browser, typecheck dan lint lulus. Masih perlu deploy HTTPS dan validasi instalasi fisik. [Checkpoint PWA fullscreen](../plan/2026-11-06-installed-pwa-fullscreen-checkpoint.md).
+
 ## Aturan Sesi & Tracking Fitur (WAJIB)
 
 1. **Awal setiap sesi**: agen WAJIB membaca README ini (tabel status) sebelum melakukan pekerjaan apa pun, lalu membuka file detail inisiatif yang relevan.

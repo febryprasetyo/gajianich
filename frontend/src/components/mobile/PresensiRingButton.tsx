@@ -1,140 +1,40 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { ScanFace, MapPin, RotateCw, CheckCircle2 } from 'lucide-react';
-import { useRealtimeLocation } from '@/hooks/useRealtimeLocation';
+import { Clock, MapPin, ScanFace } from 'lucide-react';
+import StatusBadge from '@/components/ui/StatusBadge';
+import { useMobileEnvironment } from '@/hooks/useMobileEnvironment';
 
 export type AttendanceRingState = 'NOT_CHECKED_IN' | 'CHECKED_IN' | 'COMPLETED';
-
-interface PresensiRingButtonProps {
+interface Props {
   status: AttendanceRingState;
   onOpenFlow: () => void;
   officeName?: string;
-  onResetDemo?: () => void;
-  showResetDemo?: boolean;
   disabled?: boolean;
   isCheckoutCooldown?: boolean;
   cooldownText?: string | null;
   isCheckOutUpdate?: boolean;
+  shiftName?: string;
+  schedule?: string;
+  timeZone?: string;
+  workDate?: string;
 }
-
-export default function PresensiRingButton({
-  status = 'NOT_CHECKED_IN',
-  onOpenFlow,
-  onResetDemo,
-  showResetDemo = false,
-  disabled = false,
-  isCheckoutCooldown = false,
-  cooldownText = null,
-  isCheckOutUpdate = false,
-}: PresensiRingButtonProps) {
-  const [currentTime, setCurrentTime] = useState('08.25');
-  const location = useRealtimeLocation();
-
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      const hh = String(now.getHours()).padStart(2, '0');
-      const mm = String(now.getMinutes()).padStart(2, '0');
-      setCurrentTime(`${hh}.${mm}`);
-    };
-    updateTime();
-    const timer = setInterval(updateTime, 30000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const isCheckedIn = status === 'CHECKED_IN';
-  const isCompleted = status === 'COMPLETED';
-  const isButtonDisabled = disabled || (isCompleted && !isCheckOutUpdate) || isCheckoutCooldown;
-
-  let buttonLabel = 'Absen Masuk';
-  let subLabel = 'Verifikasi Wajah';
-  if (isCheckoutCooldown) {
-    buttonLabel = 'Sudah Masuk';
-    subLabel = cooldownText || 'Jeda Pulang 30m';
-  } else if (isCheckOutUpdate) {
-    buttonLabel = 'Perbarui Pulang';
-    subLabel = 'Ketuk untuk Last Out';
-  } else if (isCheckedIn) {
-    buttonLabel = 'Absen Pulang';
-    subLabel = 'Verifikasi Wajah';
-  } else if (isCompleted) {
-    buttonLabel = 'Selesai';
-    subLabel = 'Presensi Lengkap';
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center pt-3 pb-2 px-5 select-none">
-      {/* 1. Hero Circular Face Scan Button with Ambient Halo */}
-      <div className="relative flex items-center justify-center">
-        {/* Subtle Outer Glow Halo */}
-        <div className={`absolute w-[184px] h-[184px] rounded-full ${isCompleted ? 'bg-slate-300/10' : 'bg-emerald-500/15 animate-pulse'}`} />
-
-        {/* Main Circular Button */}
-        <button
-          type="button"
-          onClick={onOpenFlow}
-          disabled={isButtonDisabled}
-          aria-label={isCompleted ? 'Presensi hari ini telah lengkap' : buttonLabel + ' dengan verifikasi wajah'}
-          className={`relative w-[156px] h-[156px] rounded-full border-4 border-white flex flex-col items-center justify-center gap-1.5 transition select-none ${
-            isCompleted
-              ? 'bg-slate-700 text-slate-100 shadow-xl shadow-slate-700/20 opacity-90 cursor-default pointer-events-none'
-              : isButtonDisabled
-              ? 'bg-[#059669] text-white shadow-xl shadow-emerald-700/20 opacity-50 cursor-not-allowed pointer-events-none'
-              : 'bg-[#059669] text-white shadow-xl shadow-emerald-700/20 hover:bg-[#047857] active:scale-95 cursor-pointer'
-          }`}
-        >
-          {/* Face Scan Biometric Icon / Completed Check Icon */}
-          <div className="w-11 h-11 rounded-full bg-white/15 flex items-center justify-center">
-            {isCompleted ? (
-              <CheckCircle2 className="w-6 h-6 text-emerald-400" />
-            ) : (
-              <ScanFace className="w-6 h-6 text-white" />
-            )}
-          </div>
-          <span className="text-base font-extrabold tracking-wide">
-            {buttonLabel}
-          </span>
-          <span className={`text-[10px] font-semibold opacity-90 ${isCompleted ? 'text-emerald-300' : 'text-emerald-100'}`}>
-            {subLabel}
-          </span>
-        </button>
-      </div>
-
-      {/* 2. Big Digital Clock Display */}
-      <div className="text-center mt-3">
-        <p className="text-3xl font-extrabold font-mono tracking-tight text-slate-900">
-          {currentTime}
-        </p>
-
-        {/* 3. Realtime Accurate GPS Location */}
-        <div className="mt-1.5 flex flex-col items-center gap-1">
-          <div className="flex w-full items-start justify-center gap-2 text-[11px] font-semibold text-slate-700 px-3 py-2">
-            <MapPin className={`w-3.5 h-3.5 ${location.loading ? 'animate-bounce text-amber-500' : 'text-[#059669]'}`} />
-            <span className="min-w-0 flex-1 text-center leading-relaxed break-words">{location.displayText}</span>
-            <button
-              type="button"
-              onClick={location.refetch}
-              title="Perbarui sinyal lokasi"
-              aria-label="Perbarui sinyal lokasi sekarang"
-              className="p-0.5 text-slate-400 hover:text-slate-700 transition"
-            >
-              <RotateCw className={`w-3 h-3 ${location.loading ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Simulation Reset Action */}
-      {showResetDemo && onResetDemo && (
-        <button
-          type="button"
-          onClick={onResetDemo}
-          className="text-xs text-[#059669] font-bold underline mt-2 hover:text-[#047857]"
-        >
-          Ulangi simulasi hari ini
-        </button>
-      )}
+export default function PresensiRingButton({ status, onOpenFlow, disabled = false, isCheckoutCooldown = false, cooldownText, isCheckOutUpdate = false, shiftName, schedule, timeZone = 'Asia/Jakarta', workDate }: Props) {
+  const { now, online } = useMobileEnvironment();
+  const completed = status === 'COMPLETED';
+  const label = isCheckoutCooldown ? cooldownText || 'Jeda pulang' : isCheckOutUpdate ? 'Perbarui Pulang' : status === 'CHECKED_IN' ? 'Absen Pulang' : completed ? 'Presensi selesai' : 'Absen Masuk';
+  const unavailable = disabled || !online || isCheckoutCooldown || (completed && !isCheckOutUpdate);
+  const date = workDate ? new Date(`${workDate}T12:00:00Z`) : now;
+  return <section aria-label="Presensi hari ini" className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{date ? date.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', timeZone }) : 'Hari ini'}</p>
+      <StatusBadge variant={status === 'NOT_CHECKED_IN' ? 'slate' : 'success'} icon={<span className="h-1.5 w-1.5 rounded-full bg-current" />}>{status === 'NOT_CHECKED_IN' ? 'Belum masuk' : completed || isCheckOutUpdate ? 'Sudah pulang' : 'Sudah masuk'}</StatusBadge>
     </div>
-  );
+    <p className="text-5xl font-extrabold tabular-nums tracking-tight text-slate-900">{now ? now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone }) : '--.--'}</p>
+    <p className="flex items-start gap-2 text-xs leading-relaxed text-slate-600"><Clock className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" /><span>{shiftName || 'Jadwal kerja'}{schedule ? ` · ${schedule}` : ''}</span></p>
+    <div className="space-y-1"><p className="text-sm font-bold text-slate-800">Presensi luar kantor</p><p className="text-xs leading-relaxed text-slate-500">Gunakan hanya ketika bertugas di luar kantor.</p></div>
+    <button type="button" onClick={onOpenFlow} disabled={unavailable} aria-label={`${label} dengan verifikasi wajah`} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"><ScanFace size={20} />{label}</button>
+    {isCheckoutCooldown && <p className="text-xs leading-relaxed text-amber-800">Absen pulang tersedia minimal 30 menit setelah jam masuk tercatat.</p>}
+    {!online && <p role="status" className="text-xs text-rose-700">Hubungkan ke internet untuk mengirim presensi.</p>}
+    <p className="flex items-start gap-2 text-xs leading-relaxed text-slate-500"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" /><span>Absensi mesin kantor dan presensi luar kantor tampil dalam riwayat yang sama.</span></p>
+  </section>;
 }

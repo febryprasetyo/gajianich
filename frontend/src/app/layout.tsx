@@ -8,6 +8,13 @@ export const metadata: Metadata = {
   title: `${BRAND_NAME} | ${BRAND_DESCRIPTION}`,
   description: BRAND_DESCRIPTION,
   applicationName: BRAND_NAME,
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    title: BRAND_NAME,
+    statusBarStyle: 'default',
+  },
+  other: { 'apple-mobile-web-app-capable': 'yes' },
   icons: {
     icon: "/favicon.ico?v=gajianich-1",
     apple: "/branding/gajianich-cat-favicon.png",
@@ -18,6 +25,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: '#059669',
   colorScheme: 'light',
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({

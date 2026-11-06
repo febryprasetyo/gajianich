@@ -1,0 +1,57 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { createHrAuditTestDatabase } from '../testing/hrAuditDatabase';
+import { createHrScopeFixture, ownedFixtureDatabase } from '../testing/hrScopeFixture';
+import { runMigrations } from '../db/migrate';
+import { employees } from '../db/schema/employees';
+import { users } from '../db/schema/users';
+import { attendanceSelfLogs } from '../db/schema/attendanceSelfLogs';
+import { attendanceRecords } from '../db/schema/attendance';
+import { attendancePayrollPeriod } from '../domain/attendancePayrollPeriod';
+import { localAttendanceTime } from '../domain/attendanceTime';
+import { getMobileAttendanceHistory, getMobileTodaySummary } from './mobileAttendanceService';
+
+test('mobile history queries payroll boundaries for both scan logs and recap records', async t => {
+  const fixture = await createHrAuditTestDatabase();
+  t.after(() => fixture.cleanup());
+  await runMigrations(fixture.ownerUrl, undefined, fixture.runtimeRole);
+  const owner = drizzle(fixture.owner);
+  const hr = await createHrScopeFixture(owner);
+  const database = ownedFixtureDatabase(owner, hr.scope, hr.department.id);
+  const [employee] = await database.insert(employees).values({ employeeCode: 'PERIOD-01', fullName: 'Period Tester' }).returning();
+  const [user] = await database.insert(users).values({ username: 'period-test', passwordHash: 'test-only', employeeId: employee.id }).returning();
+  const date = localAttendanceTime(new Date(), 'Asia/Jakarta').workDate;
+  const current = attendancePayrollPeriod(date);
+  const previous = attendancePayrollPeriod(date, 'PREVIOUS');
+  const tomorrow = new Date(`${current.endDate}T12:00:00Z`); tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+  const dates = [previous.endDate, current.startDate, current.endDate, tomorrow.toISOString().slice(0, 10)];
+  await database.insert(attendanceSelfLogs).values(dates.map(workDate => ({ employeeId: employee.id, userId: user.id, eventType: 'IN', workDate, scanDate: workDate, scanTime: '08:00', shiftCode: 'OFFICE', shiftCategory: 'OFFICE', timeZone: 'Asia/Jakarta', scheduleIn: '08:00', scheduleOut: '17:00', txHash: `period-${workDate}`, occurredAt: new Date(`${workDate}T01:00:00Z`), approvalStatus: 'PENDING' })));
+  // A core-only row exercises the recap query independently from mobile logs.
+  const coreDate = new Date(`${current.startDate}T12:00:00Z`); coreDate.setUTCDate(coreDate.getUTCDate() + 1);
+  await database.insert(attendanceRecords).values({ employeeId: employee.id, workDate: coreDate.toISOString().slice(0, 10), attendanceStatus: 'ALPHA' });
+  const result = await getMobileAttendanceHistory(user.id, 'CURRENT', database as any);
+  assert.equal(result.monthName, current.label);
+  assert.equal(result.startDate, current.startDate);
+  assert.equal(result.endDate, current.endDate);
+  assert.deepEqual(result.records.map(row => row.workDate).sort(), [current.startDate, coreDate.toISOString().slice(0, 10), current.endDate].sort());
+  const older = await getMobileAttendanceHistory(user.id, 'PREVIOUS', database as any);
+  assert.equal(older.monthName, previous.label);
+  assert.deepEqual(older.records.map(row => row.workDate), [previous.endDate]);
+  assert.equal(result.periodOptions[1].startDate, previous.startDate);
+  await t.test('office scans count as attendance without a mobile approval request', async () => {
+    const [officeEmployee] = await database.insert(employees).values({ employeeCode: 'OFFICE-01', fullName: 'Office Tester' }).returning();
+    const [officeUser] = await database.insert(users).values({ username: 'office-test', passwordHash: 'test-only', employeeId: officeEmployee.id }).returning();
+    await database.insert(attendanceRecords).values({ employeeId: officeEmployee.id, workDate: date, scanIn: '07:45', scanOut: '17:02', attendanceStatus: 'PRESENT' });
+    const summary = await getMobileTodaySummary(officeUser.id, database as any);
+    assert.equal(summary.attendance.checkedIn, true);
+    assert.equal(summary.attendance.checkedOut, true);
+    assert.equal(summary.attendance.checkInTime, '07:45');
+    assert.equal(summary.attendance.checkOutTime, '17:02');
+    assert.equal(summary.attendance.approvalStatus, null);
+    assert.equal(summary.attendance.events.length, 0);
+    const officeHistory = await getMobileAttendanceHistory(officeUser.id, 'CURRENT', database as any);
+    assert.equal(officeHistory.records[0].statusText, 'Tercatat');
+    assert.equal(officeHistory.records[0].approvalStatus, undefined);
+  });
+});

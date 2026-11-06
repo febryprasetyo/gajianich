@@ -123,6 +123,9 @@ export interface MobileHistoryItem {
 export interface MobileHistoryData {
   period: "CURRENT" | "PREVIOUS";
   monthName: string;
+  startDate?: string;
+  endDate?: string;
+  periodOptions?: { value: 'CURRENT' | 'PREVIOUS'; label: string; startDate: string; endDate: string }[];
   records: MobileHistoryItem[];
 }
 

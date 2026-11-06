@@ -13,8 +13,17 @@ export default function MobileAppLayout({
 }) {
   const [timeStr, setTimeStr] = useState('08:34');
   const [isOnline, setIsOnline] = useState(true);
+  const [installed, setInstalled] = useState(false);
   const { user, isLoading } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    const mode = window.matchMedia('(display-mode: standalone), (display-mode: fullscreen)');
+    const update = () => setInstalled(mode.matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
+    update();
+    mode.addEventListener('change', update);
+    return () => mode.removeEventListener('change', update);
+  }, []);
 
   useEffect(() => {
     if (!isLoading && user?.mustChangePassword) {
@@ -54,14 +63,14 @@ export default function MobileAppLayout({
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-start sm:justify-center min-h-dvh bg-[#F0F3F2] sm:py-6 text-[#0F172A]">
+    <div data-installed={installed ? 'true' : undefined} className="mobile-app-surface flex flex-col items-center justify-start sm:justify-center min-h-dvh bg-[#F0F3F2] sm:py-6 text-[#0F172A]">
       {/* Mobile Shell Device Container */}
       <div
         id="interactivePhoneWrapper"
-        className="w-full sm:w-[412px] h-dvh sm:h-[860px] max-h-dvh sm:max-h-[860px] bg-[#F8FAFC] sm:rounded-[46px] sm:border-[8px] sm:border-white shadow-2xl relative flex flex-col overflow-hidden"
+        className="mobile-app-shell w-full sm:w-[412px] h-dvh sm:h-[860px] max-h-dvh sm:max-h-[860px] bg-[#F8FAFC] sm:rounded-[46px] sm:border-[8px] sm:border-white shadow-2xl relative flex flex-col overflow-hidden"
       >
         {/* Device Status Bar (Desktop Mockup Header) */}
-        <div className="hidden sm:flex items-center justify-between px-7 pt-2.5 pb-1 bg-[#059669] text-white text-xs font-bold select-none z-20">
+        <div className="mobile-device-status hidden sm:flex items-center justify-between px-7 pt-2.5 pb-1 bg-slate-50 text-slate-700 text-xs font-bold select-none z-20">
           <span className="font-mono">{timeStr}</span>
           <div className="w-24 h-4 bg-black/25 rounded-full"></div>
           <div className="flex items-center gap-1.5">
@@ -78,20 +87,13 @@ export default function MobileAppLayout({
               <WifiOff className="w-4 h-4 shrink-0" />
               <span>Mode Offline: Presensi wajib terhubung ke jaringan internet.</span>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsOnline(true)}
-              className="px-2.5 py-1 rounded-lg bg-white text-rose-700 font-extrabold shrink-0 hover:bg-slate-100 transition"
-            >
-              Refresh
-            </button>
           </div>
         )}
 
         {/* Scroll Container */}
         <div
           id="phoneScrollContainer"
-          className="flex-1 overflow-y-auto no-scrollbar pb-28 flex flex-col relative"
+          className="flex-1 min-h-0 overflow-y-auto no-scrollbar flex flex-col relative"
         >
           {children}
         </div>

@@ -1,82 +1,20 @@
 'use client';
 
-import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, CalendarCheck, User } from 'lucide-react';
-
-interface BottomNavigationProps {
+import { Home, CalendarCheck, UserRound } from 'lucide-react';
+interface Props {
   onTabChange?: (tab: 'beranda' | 'presensi' | 'profil') => void;
   activeTabOverride?: 'beranda' | 'presensi' | 'profil';
 }
-
-export default function BottomNavigation({ onTabChange, activeTabOverride }: BottomNavigationProps) {
+export default function BottomNavigation({ onTabChange, activeTabOverride }: Props) {
   const pathname = usePathname();
-
-  const getActiveTab = (): 'beranda' | 'presensi' | 'profil' => {
-    if (activeTabOverride) return activeTabOverride;
-    if (pathname.includes('/m/presensi')) return 'presensi';
-    if (pathname.includes('/m/profile') || pathname.includes('/m/profil')) return 'profil';
-    return 'beranda';
-  };
-
-  const activeTab = getActiveTab();
-
-  const handleNav = (tab: 'beranda' | 'presensi' | 'profil') => {
-    if (onTabChange) {
-      onTabChange(tab);
-    }
-  };
-
-  return (
-    <nav
-      aria-label="Navigasi Bawah 3 Menu"
-      className="fixed sm:absolute bottom-0 inset-x-0 w-full sm:max-w-[412px] sm:mx-auto px-4 pt-2 pb-4 bg-gradient-to-t from-[#F8FAFC] via-[#F8FAFC]/95 to-transparent z-40 pointer-events-none"
-    >
-      <div className="bg-[#059669] rounded-2xl p-1.5 shadow-lg border border-emerald-700 grid grid-cols-3 gap-1.5 pointer-events-auto">
-        <Link
-          href="/m/beranda"
-          onClick={() => handleNav('beranda')}
-          aria-current={activeTab === 'beranda' ? 'page' : undefined}
-          className={`min-h-[48px] px-3 py-2 rounded-xl flex items-center justify-center gap-2 font-extrabold text-sm transition ${
-            activeTab === 'beranda'
-              ? 'bg-white text-[#059669] shadow-sm'
-              : 'text-white hover:bg-white/10 font-bold'
-          }`}
-        >
-          <Home className="w-5 h-5 shrink-0" />
-          <span>Beranda</span>
-        </Link>
-
-        <Link
-          href="/m/presensi"
-          onClick={() => handleNav('presensi')}
-          aria-current={activeTab === 'presensi' ? 'page' : undefined}
-          className={`min-h-[48px] px-3 py-2 rounded-xl flex items-center justify-center gap-2 font-bold text-sm transition relative ${
-            activeTab === 'presensi'
-              ? 'bg-white text-[#059669] shadow-sm font-extrabold'
-              : 'text-white hover:bg-white/10'
-          }`}
-        >
-          <CalendarCheck className="w-5 h-5 shrink-0" />
-          <span>Presensi</span>
-          <span className="w-2 h-2 rounded-full bg-rose-400 border border-[#059669]" title="Data live"></span>
-        </Link>
-
-        <Link
-          href="/m/profile"
-          onClick={() => handleNav('profil')}
-          aria-current={activeTab === 'profil' ? 'page' : undefined}
-          className={`min-h-[48px] px-3 py-2 rounded-xl flex items-center justify-center gap-2 font-bold text-sm transition ${
-            activeTab === 'profil'
-              ? 'bg-white text-[#059669] shadow-sm font-extrabold'
-              : 'text-white hover:bg-white/10'
-          }`}
-        >
-          <User className="w-5 h-5 shrink-0" />
-          <span>Profil</span>
-        </Link>
-      </div>
-    </nav>
-  );
+  const active = activeTabOverride || (pathname.includes('/m/presensi') ? 'presensi' : pathname.includes('/m/profil') ? 'profil' : 'beranda');
+  return <nav aria-label="Navigasi utama" className="shrink-0 border-t border-slate-200 bg-white px-4 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+    <div className="grid grid-cols-3 gap-2">{([
+      { tab: 'beranda', label: 'Beranda', href: '/m/beranda', Icon: Home },
+      { tab: 'presensi', label: 'Presensi', href: '/m/presensi', Icon: CalendarCheck },
+      { tab: 'profil', label: 'Profil', href: '/m/profile', Icon: UserRound },
+    ] as const).map(({ tab, label, href, Icon }) => <Link key={tab} href={href} onClick={() => onTabChange?.(tab)} aria-current={active === tab ? 'page' : undefined} className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-xs transition focus-visible:outline-2 focus-visible:outline-emerald-600 ${active === tab ? 'bg-emerald-50 font-bold text-emerald-700' : 'font-medium text-slate-500 hover:bg-slate-50'}`}><Icon size={21} /><span>{label}</span></Link>)}</div>
+  </nav>;
 }

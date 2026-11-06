@@ -27,7 +27,7 @@ for (const width of [360, 768, 1280]) {
     await expect(page.getByRole('button',{name:'Daftarkan wajah'})).toBeVisible();
     await expect(page.getByText('Akses PWA Mandiri')).toHaveCount(0);
     await page.goto('/m/presensi');
-    await expect(page.getByText(/Jalan Pengujian, Denpasar/)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Riwayat presensi' })).toBeVisible();
     await page.getByRole('button').filter({ hasText: '23 Okt' }).click();
     await expect(page.getByRole('dialog').locator('iframe')).toHaveCount(1);
     await page.getByLabel('Keterangan koreksi').fill('Saya bekerja di lokasi cabang Bali.');

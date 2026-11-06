@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useCallback, useRef, useId } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 export interface ModalShellProps {
@@ -15,6 +16,7 @@ export interface ModalShellProps {
   isLoading?: boolean;
   showCloseButton?: boolean;
   ariaLabelledBy?: string;
+  fullScreen?: boolean;
 }
 
 export default function ModalShell({
@@ -29,6 +31,7 @@ export default function ModalShell({
   isLoading = false,
   showCloseButton = true,
   ariaLabelledBy,
+  fullScreen = false,
 }: ModalShellProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const generatedId = useId();
@@ -88,12 +91,12 @@ export default function ModalShell({
 
   if (!isOpen) return null;
 
-  return (
+  const dialog = (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby={title ? titleId : undefined}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm overflow-hidden"
+      className={fullScreen ? 'fixed inset-0 z-[100] flex overflow-hidden bg-slate-950' : 'fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm overflow-hidden'}
       onClick={(e) => {
         if (e.target === e.currentTarget && !isLoading) {
           onClose();
@@ -103,10 +106,11 @@ export default function ModalShell({
       <div
         ref={dialogRef}
         tabIndex={-1}
-        className={`bg-white rounded-2xl shadow-2xl border border-slate-200 w-full ${maxWidthClass} max-h-[92dvh] sm:max-h-[88vh] flex flex-col overflow-hidden relative outline-none`}
+        className={fullScreen ? 'relative flex h-dvh w-full flex-col overflow-hidden outline-none' : `bg-white rounded-2xl shadow-2xl border border-slate-200 w-full ${maxWidthClass} max-h-[92dvh] sm:max-h-[88vh] flex flex-col overflow-hidden relative outline-none`}
       >
         {/* Header */}
-        {(title || showCloseButton) && (
+        {fullScreen && title && <h3 id={titleId} className="sr-only">{title}</h3>}
+        {!fullScreen && (title || showCloseButton) && (
           <div className="shrink-0 flex items-start justify-between gap-4 p-5 sm:p-6 border-b border-slate-100 bg-slate-50/50">
             <div className="flex items-center gap-3">
               {icon && (
@@ -142,7 +146,7 @@ export default function ModalShell({
         )}
 
         {/* Scrollable Body Content */}
-        <div className="p-5 sm:p-6 flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-4">
+        <div className={fullScreen ? 'relative min-h-0 flex-1' : 'p-5 sm:p-6 flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-4'}>
           {children}
         </div>
 
@@ -155,4 +159,5 @@ export default function ModalShell({
       </div>
     </div>
   );
+  return fullScreen ? createPortal(dialog, document.body) : dialog;
 }
