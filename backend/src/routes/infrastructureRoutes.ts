@@ -3,6 +3,7 @@ import { loadEnv } from '../config/env';
 import {
   createOrUpdateServerNode,
   createServerTelemetryAuthenticator,
+  deleteServerNode,
   executeServerRemoteAction,
   getAccurateDatabase,
   getAccurateLicenses,
@@ -15,6 +16,7 @@ import {
   rotateServerAgentKey,
   streamServerTelemetry,
   syncAccurateLicenses,
+  updateServerNode,
 } from '../controllers/infrastructureController';
 import { createAgentAuthenticator } from '../middleware/agentAuth';
 import { authenticateToken, requirePermission } from '../middleware/auth';
@@ -40,6 +42,8 @@ router.get('/servers', viewInfra, getServers);
 router.post('/servers', manageInfra, createOrUpdateServerNode);
 router.get('/servers/stream', viewInfra, streamServerTelemetry);
 router.get('/servers/:id', viewInfra, getServerById);
+router.put('/servers/:id', manageInfra, updateServerNode);
+router.delete('/servers/:id', manageInfra, deleteServerNode);
 router.get('/servers/:id/logs', viewInfra, getServerServiceLogs);
 router.post('/servers/:id/actions', manageInfra, executeServerRemoteAction);
 router.post('/servers/:id/rotate-key', manageInfra, rotateServerAgentKey);

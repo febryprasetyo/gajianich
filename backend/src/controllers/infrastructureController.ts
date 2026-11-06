@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import { and, asc, desc, eq, isNotNull, lt } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, lt, or } from 'drizzle-orm';
 import { db } from '../db';
 import {
   accurateDatabases,
@@ -81,11 +81,11 @@ export function createServerTelemetryAuthenticator(fallbackGlobalKey: string) {
 }
 
 function isServer360Node(server: typeof servers.$inferSelect): boolean {
-  if (server.agentKeyPrefix || server.agentKeyHash) return true;
-  if (server.cpuModel) return true;
-  if (Array.isArray(server.unifiedServices) && server.unifiedServices.length > 0) return true;
-  if (!server.licenseServerUrl) return true;
-  return false;
+  // Accurate servers belong to Accurate infrastructure monitoring, not Server360 premise nodes
+  if (server.serverType === 'ACCURATE' || server.licenseServerUrl) {
+    return false;
+  }
+  return true;
 }
 
 function parseAgentDate(value: string | null): Date | null {
@@ -149,42 +149,9 @@ function serializeServerRow(server: typeof servers.$inferSelect, now = new Date(
     },
   );
 
-  let unifiedServices = Array.isArray(server.unifiedServices)
+  const unifiedServices = Array.isArray(server.unifiedServices)
     ? (server.unifiedServices as UnifiedServerServiceItem[])
     : [];
-
-  if (unifiedServices.length === 0 && (server.isFirebirdActive || server.isAccurateActive)) {
-    unifiedServices = [
-      {
-        id: 'sys-firebird',
-        name: 'FirebirdServerDefaultInstance',
-        category: 'database',
-        sub: 'Firebird SQL Relational Engine • Port 3050',
-        status: server.isFirebirdActive ? 'active' : 'critical',
-        statusLabel: server.isFirebirdActive ? 'Active (Running)' : 'Stopped',
-        pid: 1940,
-        cpu: 0,
-        ram: '0 MB',
-        uptime: '0h',
-        restarts: 0,
-        port: '0.0.0.0:3050',
-      },
-      {
-        id: 'sys-accurate-lic',
-        name: 'AccurateLicenseService',
-        category: 'systemd',
-        sub: 'CPSSoft Accurate 5 License Manager',
-        status: server.isAccurateActive ? 'active' : 'warning',
-        statusLabel: server.isAccurateActive ? 'active (running)' : 'degraded',
-        pid: 2180,
-        cpu: 0,
-        ram: '0 MB',
-        uptime: '0h',
-        restarts: 0,
-        port: '0.0.0.0:6688',
-      },
-    ];
-  }
 
   const healthStatus = evaluateNodeHealth(
     {
@@ -296,6 +263,7 @@ export async function receiveAccurateAgentSignal(req: Request, res: Response) {
           macAddress: signal.macAddress,
           os: signal.os,
           status: 'Online',
+          serverType: 'ACCURATE',
           licenseServerUrl: signal.licenseServerUrl,
           agentVersion: signal.agentVersion,
           uptimeSeconds: signal.uptimeSeconds,
@@ -314,6 +282,7 @@ export async function receiveAccurateAgentSignal(req: Request, res: Response) {
             macAddress: signal.macAddress,
             os: signal.os,
             status: 'Online',
+            serverType: 'ACCURATE',
             licenseServerUrl: signal.licenseServerUrl,
             agentVersion: signal.agentVersion,
             uptimeSeconds: signal.uptimeSeconds,
@@ -774,7 +743,21 @@ export async function getAccurateLicenses(_req: Request, res: Response) {
 
 export async function getAccurateDatabase(_req: Request, res: Response) {
   try {
-    const serverRows = await db.select().from(servers).where(isNotNull(servers.lastSeenAt)).orderBy(asc(servers.id));
+    const serverRows = await db
+      .select()
+      .from(servers)
+      .where(
+        and(
+          isNotNull(servers.lastSeenAt),
+          or(
+            eq(servers.serverType, 'ACCURATE'),
+            isNotNull(servers.licenseServerUrl),
+            eq(servers.isAccurateActive, true),
+            eq(servers.isFirebirdActive, true),
+          ),
+        ),
+      )
+      .orderBy(asc(servers.id));
     const databaseRows = await db.select().from(accurateDatabases).where(eq(accurateDatabases.isActive, true)).orderBy(
       asc(accurateDatabases.serverId),
       asc(accurateDatabases.databaseName),
@@ -1000,6 +983,102 @@ export async function createOrUpdateServerNode(req: Request, res: Response) {
     return res.status(400).json({
       success: false,
       error: error?.message || 'Unable to save server node',
+    });
+  }
+}
+
+export async function updateServerNode(req: Request, res: Response) {
+  try {
+    const rawParam = String(req.params.id ?? '').trim();
+    if (!rawParam) {
+      return res.status(400).json({ success: false, error: 'Server ID is required' });
+    }
+    const numericId = Number(rawParam);
+
+    const [existing] = Number.isInteger(numericId) && numericId > 0
+      ? await db.select().from(servers).where(eq(servers.id, numericId)).limit(1)
+      : await db.select().from(servers).where(eq(servers.serverCode, rawParam)).limit(1);
+
+    if (!existing) {
+      return res.status(404).json({ success: false, error: 'Server node not found' });
+    }
+
+    const {
+      name,
+      ipAddress,
+      serverType,
+      roleBadge,
+      provider,
+      location,
+      environment,
+      notes,
+    } = req.body ?? {};
+
+    const updatedValues: Partial<typeof servers.$inferInsert> = {
+      updatedAt: new Date(),
+    };
+
+    if (typeof name === 'string' && name.trim()) updatedValues.name = name.trim();
+    if (typeof ipAddress === 'string' && ipAddress.trim()) updatedValues.ipAddress = ipAddress.trim();
+    if (typeof serverType === 'string' && serverType.trim()) updatedValues.serverType = serverType.trim();
+    if (typeof roleBadge === 'string' && roleBadge.trim()) updatedValues.roleBadge = roleBadge.trim().toUpperCase();
+    if (typeof provider === 'string') updatedValues.provider = provider.trim();
+    if (typeof location === 'string') updatedValues.location = location.trim();
+    if (typeof environment === 'string') updatedValues.environment = environment.trim();
+    if (typeof notes === 'string') updatedValues.notes = notes.trim();
+
+    const [updated] = await db
+      .update(servers)
+      .set(updatedValues)
+      .where(eq(servers.id, existing.id))
+      .returning();
+
+    return res.status(200).json({
+      success: true,
+      message: `Server ${existing.serverCode} berhasil diperbarui`,
+      data: serializeServerRow(updated, new Date()),
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      error: error?.message || 'Unable to update server node',
+    });
+  }
+}
+
+export async function deleteServerNode(req: Request, res: Response) {
+  try {
+    const rawParam = String(req.params.id ?? '').trim();
+    if (!rawParam) {
+      return res.status(400).json({ success: false, error: 'Server ID is required' });
+    }
+    const numericId = Number(rawParam);
+
+    const [existing] = Number.isInteger(numericId) && numericId > 0
+      ? await db.select().from(servers).where(eq(servers.id, numericId)).limit(1)
+      : await db.select().from(servers).where(eq(servers.serverCode, rawParam)).limit(1);
+
+    if (!existing) {
+      return res.status(404).json({ success: false, error: 'Server node not found' });
+    }
+
+    // Cascade delete any child records cleanly
+    await db.delete(serverMetricSamples).where(eq(serverMetricSamples.serverId, existing.id));
+    await db.delete(serverRemoteCommands).where(eq(serverRemoteCommands.serverId, existing.id));
+    await db.delete(accurateDatabases).where(eq(accurateDatabases.serverId, existing.id));
+    await db.delete(accurateLicenseLogs).where(eq(accurateLicenseLogs.serverId, existing.id));
+    await db.delete(dbBackups).where(eq(dbBackups.serverId, existing.id));
+
+    await db.delete(servers).where(eq(servers.id, existing.id));
+
+    return res.status(200).json({
+      success: true,
+      message: `Server ${existing.serverCode} berhasil dihapus`,
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      error: error?.message || 'Unable to delete server node',
     });
   }
 }

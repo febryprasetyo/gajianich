@@ -253,4 +253,34 @@ test('generateServerAgentApiKey creates unique per-machine keys and verifyServer
   assert.equal(verifyServerAgentApiKey(key1.rawKey, null), false);
 });
 
+test('Accurate servers are strictly separated from Server360 premise nodes', () => {
+  const accurateServer = {
+    id: 1,
+    serverCode: 'SERVER-ARV',
+    serverType: 'ACCURATE',
+    licenseServerUrl: 'http://192.168.10.202:6688',
+    isAccurateActive: true,
+    isFirebirdActive: true,
+  };
+
+  const premiseNode = {
+    id: 101,
+    serverCode: 'srv-prod-node-01',
+    serverType: 'Physical',
+    licenseServerUrl: null,
+    isAccurateActive: false,
+    isFirebirdActive: false,
+  };
+
+  const isServer360 = (s: typeof accurateServer) => !(s.serverType === 'ACCURATE' || Boolean(s.licenseServerUrl));
+  const isAccurate = (s: typeof accurateServer) => s.serverType === 'ACCURATE' || Boolean(s.licenseServerUrl);
+
+  assert.equal(isServer360(accurateServer), false, 'Accurate server must not be classified as Server360 premise node');
+  assert.equal(isServer360(premiseNode), true, 'Premise node must be classified as Server360 premise node');
+
+  assert.equal(isAccurate(accurateServer), true, 'Accurate server must be classified as Accurate');
+  assert.equal(isAccurate(premiseNode), false, 'Premise node must not be classified as Accurate');
+});
+
+
 

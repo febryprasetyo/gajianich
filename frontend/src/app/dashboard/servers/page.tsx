@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   Copy,
   Cpu,
+  Edit3,
   ExternalLink,
   KeyRound,
   Layers,
@@ -32,6 +33,7 @@ import {
   ShieldCheck,
   Sparkles,
   Terminal,
+  Trash2,
 } from 'lucide-react';
 
 function formatUptimeDaysHours(seconds: number): string {
@@ -89,6 +91,24 @@ export default function ServerOverviewPage() {
     roleBadge: 'ON-PREMISE HOST',
   });
   const [isSubmittingNode, setIsSubmittingNode] = useState(false);
+
+  // Edit Server Modal state
+  const [editingNode, setEditingNode] = useState<ServerNodeItem | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    ipAddress: '',
+    serverType: 'Physical',
+    roleBadge: '',
+    provider: '',
+    location: '',
+    environment: 'Production',
+    notes: '',
+  });
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+
+  // Delete Server Modal state
+  const [deletingNode, setDeletingNode] = useState<ServerNodeItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Generated Per-Machine API Key Modal / View state
   const [generatedKeyInfo, setGeneratedKeyInfo] = useState<{
@@ -262,6 +282,60 @@ export default function ServerOverviewPage() {
     setGeneratedKeyInfo(null);
   };
 
+  const handleOpenEditModal = (node: ServerNodeItem) => {
+    setEditingNode(node);
+    setEditForm({
+      name: node.name || node.serverCode,
+      ipAddress: node.ipAddress || '',
+      serverType: node.serverType || 'Physical',
+      roleBadge: node.roleBadge || 'ACTIVE NODE',
+      provider: node.provider || '',
+      location: node.location || '',
+      environment: node.environment || 'Production',
+      notes: '',
+    });
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingNode) return;
+    setIsSubmittingEdit(true);
+    try {
+      await api.put(`/infrastructure/servers/${encodeURIComponent(String(editingNode.id || editingNode.serverCode))}`, {
+        name: editForm.name.trim(),
+        ipAddress: editForm.ipAddress.trim(),
+        serverType: editForm.serverType,
+        roleBadge: editForm.roleBadge.trim(),
+        provider: editForm.provider.trim(),
+        location: editForm.location.trim(),
+        environment: editForm.environment,
+        notes: editForm.notes.trim(),
+      });
+      showToast('Server Diperbarui', `Informasi server ${editingNode.serverCode} berhasil disimpan.`);
+      setEditingNode(null);
+      await fetchServers();
+    } catch (err: any) {
+      showToast('Gagal Memperbarui', err?.message || 'Tidak dapat memperbarui data server.');
+    } finally {
+      setIsSubmittingEdit(false);
+    }
+  };
+
+  const handleDeleteServer = async () => {
+    if (!deletingNode) return;
+    setIsDeleting(true);
+    try {
+      await api.delete(`/infrastructure/servers/${encodeURIComponent(String(deletingNode.id || deletingNode.serverCode))}`);
+      showToast('Server Dihapus', `Server ${deletingNode.serverCode} telah dihapus.`);
+      setDeletingNode(null);
+      await fetchServers();
+    } catch (err: any) {
+      showToast('Gagal Menghapus Server', err?.message || 'Tidak dapat menghapus server.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const filteredNodes = useMemo(() => {
     return nodes.filter((node) => {
       if (activeKpiFilter === 'healthy' && node.healthStatus !== 'Online') return false;
@@ -329,14 +403,11 @@ export default function ServerOverviewPage() {
                 <Layers className="w-5 h-5" />
               </div>
               <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                Server<span className="text-emerald-600">360</span> — Monitoring Server & Layanan
+                Monitoring Server
               </h1>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase tracking-wide font-mono">
-                Realtime Telemetry
-              </span>
             </div>
             <p className="text-xs text-slate-500 mt-1">
-              Pemantauan performa hardware, aplikasi PM2/Node.js, container Docker, database, dan layanan systemd secara realtime.
+              Pemantauan status kesehatan, utilisasi hardware, dan layanan server secara komprehensif.
             </p>
           </div>
 
@@ -605,11 +676,11 @@ export default function ServerOverviewPage() {
                   >
                     <div>
                       {/* Header Node */}
-                      <div className="flex items-start justify-between pb-3 border-b border-slate-100">
-                        <div className="space-y-0.5">
+                      <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
+                        <div className="min-w-0 flex-1 space-y-0.5">
                           <div className="flex items-center gap-2">
                             <span
-                              className={`w-2.5 h-2.5 rounded-full ${
+                              className={`w-2.5 h-2.5 rounded-full shrink-0 ${
                                 node.status === 'Offline'
                                   ? 'bg-rose-500'
                                   : isHighCpu
@@ -617,17 +688,17 @@ export default function ServerOverviewPage() {
                                     : 'bg-emerald-500'
                               }`}
                             />
-                            <h3 className="text-sm font-extrabold text-slate-900 font-mono group-hover:text-emerald-700 transition-colors">
+                            <h3 className="text-sm font-extrabold text-slate-900 font-mono truncate group-hover:text-emerald-700 transition-colors">
                               {node.serverCode}
                             </h3>
                           </div>
-                          <p className="text-[11px] text-slate-500">
+                          <p className="text-[11px] text-slate-500 break-words line-clamp-2 leading-relaxed">
                             {node.cpuModel && node.cpuModel !== 'Menunggu Telemetri Agent...'
                               ? `${node.cpuModel} (${node.cpuCores} vCPU) • ${node.os}`
                               : node.os}
                           </p>
                         </div>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono">
+                        <span className="shrink-0 whitespace-nowrap self-start px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono">
                           {node.connectionMode || 'WS PUSH'}
                         </span>
                       </div>
@@ -744,16 +815,38 @@ export default function ServerOverviewPage() {
                         </strong>
                       </span>
 
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditModal(node)}
+                          title={`Edit Data ${node.serverCode}`}
+                          aria-label={`Edit ${node.serverCode}`}
+                          className="text-slate-500 hover:text-emerald-700 font-semibold font-mono flex items-center gap-1 cursor-pointer p-1 rounded-md hover:bg-slate-100 transition-colors"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Edit</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setDeletingNode(node)}
+                          title={`Hapus Server ${node.serverCode}`}
+                          aria-label={`Hapus ${node.serverCode}`}
+                          className="text-slate-400 hover:text-rose-600 font-semibold font-mono flex items-center gap-1 cursor-pointer p-1 rounded-md hover:bg-rose-50 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Hapus</span>
+                        </button>
+
                         <button
                           type="button"
                           onClick={() => void handleRotateServerKey(node)}
                           title={`Generate / Rotate API Key Mesin ${node.serverCode}`}
                           aria-label={`API Key Mesin ${node.serverCode}`}
-                          className="text-slate-500 hover:text-emerald-700 font-semibold font-mono flex items-center gap-1 cursor-pointer"
+                          className="text-slate-500 hover:text-emerald-700 font-semibold font-mono flex items-center gap-1 cursor-pointer p-1 rounded-md hover:bg-slate-100 transition-colors"
                         >
                           <KeyRound className="w-3.5 h-3.5" />
-                          <span>API Key</span>
+                          <span className="hidden sm:inline">API Key</span>
                         </button>
 
                         <button
@@ -765,15 +858,15 @@ export default function ServerOverviewPage() {
                               hostname: node.serverCode,
                             })
                           }
-                          className="text-emerald-700 hover:text-emerald-800 font-semibold font-mono flex items-center gap-1 cursor-pointer"
+                          className="text-emerald-700 hover:text-emerald-800 font-semibold font-mono flex items-center gap-1 cursor-pointer p-1 rounded-md hover:bg-emerald-50 transition-colors"
                         >
                           <Terminal className="w-3.5 h-3.5" />
-                          <span>Stream Log</span>
+                          <span>Log</span>
                         </button>
 
                         <Link
                           href={`/dashboard/servers/${encodeURIComponent(String(node.id || node.serverCode))}`}
-                          className="text-slate-600 hover:text-emerald-700 font-semibold font-mono flex items-center gap-1"
+                          className="text-slate-600 hover:text-emerald-700 font-semibold font-mono flex items-center gap-1 p-1 rounded-md hover:bg-slate-100 transition-colors"
                           title="Buka Detail Monitoring Server"
                           aria-label={`Buka Detail ${node.serverCode}`}
                         >
@@ -1132,6 +1225,161 @@ export default function ServerOverviewPage() {
               </div>
             </form>
           )}
+        </ModalShell>
+
+        {/* Edit Server Modal */}
+        <ModalShell
+          isOpen={Boolean(editingNode)}
+          onClose={() => setEditingNode(null)}
+          title={`Edit Server — ${editingNode?.serverCode ?? ''}`}
+        >
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Hostname / Server Code</label>
+              <input
+                type="text"
+                value={editingNode?.serverCode ?? ''}
+                disabled
+                className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-500 font-mono cursor-not-allowed"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Nama Server *</label>
+                <input
+                  type="text"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  required
+                  placeholder="Nama deskriptif server..."
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">IP Address *</label>
+                <input
+                  type="text"
+                  value={editForm.ipAddress}
+                  onChange={(e) => setEditForm({ ...editForm, ipAddress: e.target.value })}
+                  required
+                  placeholder="192.168.1.10..."
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Tipe Server</label>
+                <select
+                  value={editForm.serverType}
+                  onChange={(e) => setEditForm({ ...editForm, serverType: e.target.value })}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                >
+                  <option value="Physical">On-Premise Physical</option>
+                  <option value="VPS">Public Cloud VPS</option>
+                  <option value="Cloud">Dedicated Cloud Baremetal</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Role Badge</label>
+                <input
+                  type="text"
+                  value={editForm.roleBadge}
+                  onChange={(e) => setEditForm({ ...editForm, roleBadge: e.target.value })}
+                  placeholder="ON-PREMISE HOST, DATABASE NODE, etc."
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Provider / Hardware</label>
+                <input
+                  type="text"
+                  value={editForm.provider}
+                  onChange={(e) => setEditForm({ ...editForm, provider: e.target.value })}
+                  placeholder="On-Premise Baremetal, IdCloudHost, etc."
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Lokasi Server</label>
+                <input
+                  type="text"
+                  value={editForm.location}
+                  onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+                  placeholder="Data Center Cyber 1, Ruang Server Lt. 2, etc."
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Catatan Tambahan</label>
+              <textarea
+                rows={2}
+                value={editForm.notes}
+                onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                placeholder="Catatan maintenance, konfigurasi IP, atau port khusus..."
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setEditingNode(null)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmittingEdit}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition disabled:opacity-50 cursor-pointer shadow-xs"
+              >
+                {isSubmittingEdit ? 'Menyimpan...' : 'Simpan Perubahan'}
+              </button>
+            </div>
+          </form>
+        </ModalShell>
+
+        {/* Delete Server Confirmation Modal */}
+        <ModalShell
+          isOpen={Boolean(deletingNode)}
+          onClose={() => setDeletingNode(null)}
+          title="Konfirmasi Hapus Server"
+        >
+          <div className="space-y-4">
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800">
+              Apakah Anda yakin ingin menghapus server <strong>{deletingNode?.serverCode}</strong> (
+              {deletingNode?.name})?
+              <p className="mt-1 text-[11px] text-rose-600">
+                Riwayat sampel metrik dan perintah remote untuk host ini akan ikut dibersihkan. Tindakan ini tidak dapat dibatalkan.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setDeletingNode(null)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteServer}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold transition disabled:opacity-50 cursor-pointer shadow-xs"
+              >
+                {isDeleting ? 'Menghapus...' : 'Ya, Hapus Server'}
+              </button>
+            </div>
+          </div>
         </ModalShell>
 
         {/* Live Terminal Log Modal */}
