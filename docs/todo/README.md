@@ -94,6 +94,8 @@ Lingkup: <file/modul yang boleh diubah>  |  Di luar lingkup: <...>
 
 ### Aturan Penyelesaian (Definition of Done)
 
+Catatan 6 November 2026: perbaikan peluncuran PWA admin terverifikasi lokal (262 tes frontend, typecheck, lint, redirect HTTP SuperAdmin/Admin/HRD). Start URL sumber sekarang `/`; proxy menangani instalasi lama yang membuka `/m/beranda`. Manifest proses dev masih cache lama; pembaruan manifest menunggu restart/build berikutnya. Belum commit/deploy. Detail: [checkpoint peluncuran PWA](../plan/2026-11-06-pwa-admin-launch-checkpoint.md).
+
 Inisiatif atau checkpoint dinyatakan selesai hanya bila SEMUA terpenuhi:
 
 1. Perubahan kode sudah diterapkan sesuai lingkup checkpoint.

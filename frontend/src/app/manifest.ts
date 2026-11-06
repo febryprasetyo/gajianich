@@ -2,10 +2,10 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'GAJIANICH — Presensi Mobile',
+    name: 'GAJIANICH',
     short_name: 'GAJIANICH',
-    description: 'Presensi Karyawan, Riwayat Kehadiran, dan Profil Mandiri',
-    start_url: '/m/beranda',
+    description: 'Administrasi Perusahaan dan Presensi Karyawan',
+    start_url: '/',
     id: '/m/beranda',
     scope: '/',
     display: 'fullscreen',
