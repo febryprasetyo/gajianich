@@ -198,6 +198,24 @@ export function findMatchingRouteRule(pathname: string): RouteRule | undefined {
   });
 }
 
+export function canAccessMobileApp(
+  user: { roleName?: string; role?: string; permissions?: string[] } | null | undefined
+): boolean {
+  if (!user) return false;
+  const normRole = (user.roleName || user.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+  const perms = Array.isArray(user.permissions) ? user.permissions : [];
+  return (
+    normRole === 'employee' ||
+    normRole === 'karyawan' ||
+    normRole.includes('hr') ||
+    normRole.includes('attendance') ||
+    normRole === 'superadmin' ||
+    normRole === 'super_admin' ||
+    perms.includes('attendance.mobile.verify') ||
+    perms.includes('*')
+  );
+}
+
 export function canAccessRoute(
   pathname: string,
   user: { roleName?: string; role?: string; permissions?: string[] } | null | undefined

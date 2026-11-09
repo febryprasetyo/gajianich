@@ -187,7 +187,18 @@ export async function projectApprovedLog(tx: any, log: SelfLog) {
 }
 export interface MobileClockInput {
   eventType: 'IN' | 'OUT';
-  isDirectOut?: boolean; workDate?: string; scanTime?: string; latitude?: number | null; longitude?: number | null; accuracy?: number | null; address?: string | null; photoBase64?: string | null; deviceInfo?: string | null; notes?: string | null; txHash?: string | null;
+  isDirectOut?: boolean;
+  isFieldDuty?: boolean;
+  workDate?: string;
+  scanTime?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  accuracy?: number | null;
+  address?: string | null;
+  photoBase64?: string | null;
+  deviceInfo?: string | null;
+  notes?: string | null;
+  txHash?: string | null;
 }
 export async function recordMobileClock(userId: number, payload: MobileClockInput, targetDb = db, recognize: typeof extractPhotoFace = extractPhotoFace) {
   const { user, employee } = await resolveEmployeeUser(userId, targetDb);
@@ -240,12 +251,18 @@ export async function recordMobileClock(userId: number, payload: MobileClockInpu
       const baseApproval = evaluateAttendanceApproval(approvalShift, payload.eventType);
       const approval = payload.isDirectOut
         ? { requiresVerification: true, approvalStatus: 'PENDING' as const, approvalNote: 'Menunggu pemeriksaan HRD (Langsung Absen Pulang).' }
+        : payload.isFieldDuty
+        ? { requiresVerification: true, approvalStatus: 'PENDING' as const, approvalNote: 'Menunggu pemeriksaan HRD (Dinas Luar Kota).' }
         : isReclock
         ? baseApproval.approvalStatus === 'APPROVED'
           ? { requiresVerification: false, approvalStatus: 'APPROVED' as const, approvalNote: 'Disetujui otomatis sesuai pengaturan shift (Last Out diperbarui).' }
           : { requiresVerification: true, approvalStatus: 'PENDING' as const, approvalNote: 'Menunggu pemeriksaan HRD (Absensi Ulang).' }
         : baseApproval;
-      const finalNotes = payload.isDirectOut ? `[DIRECT_OUT] ${payload.notes!.trim()}` : payload.notes;
+      const finalNotes = payload.isDirectOut
+        ? `[DIRECT_OUT] ${payload.notes!.trim()}`
+        : payload.isFieldDuty
+        ? `[DINAS_LUAR] ${(payload.notes || '').trim()}`
+        : payload.notes;
       const geo = isWithinGeofence(payload.latitude, payload.longitude, DEFAULT_OFFICE_COORDINATES.latitude, DEFAULT_OFFICE_COORDINATES.longitude, DEFAULT_OFFICE_COORDINATES.radiusMeters);
       const links = buildMapLinks(payload.latitude!, payload.longitude!);
       const [log] = await tx.insert(attendanceSelfLogs).values({ groupId:employee.groupId,employeeId: employee.id, userId: user.id, eventType: payload.eventType, workDate, scanDate: local.workDate, scanTime: local.scanTime, timeZone: zone, occurredAt: now,
@@ -416,6 +433,7 @@ export async function verifyAttendanceRecord(verifierUserId: number, payload: { 
   return targetDb.transaction(async tx => {
     const [initial] = await tx.select().from(attendanceSelfLogs).where(and(eq(attendanceSelfLogs.id, payload.logId),historicalScopePredicate({...scope!,includeUnmapped:false},attendanceSelfLogs.groupId)));
     if (!initial) throw new Error('Log presensi tidak ditemukan.');
+    if (initial.userId === verifierUserId) throw new Error('Anda tidak dapat memverifikasi absensi Anda sendiri.');
     await employeeLock(tx, initial.employeeId);
     const [log] = await tx.select().from(attendanceSelfLogs).where(and(eq(attendanceSelfLogs.id, payload.logId),historicalScopePredicate({...scope!,includeUnmapped:false},attendanceSelfLogs.groupId))).for('update');
     if (log.approvalStatus !== 'PENDING') throw new Error('Pengajuan sudah diproses. Muat ulang halaman.');

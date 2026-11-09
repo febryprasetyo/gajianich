@@ -13,6 +13,7 @@ interface Props {
   onClose: () => void;
   isCheckOut?: boolean;
   isDirectOut?: boolean;
+  isFieldDuty?: boolean;
   notes?: string;
   isOnline?: boolean;
   isFaceEnrolled?: boolean;
@@ -20,7 +21,7 @@ interface Props {
   employeeNik?: string;
   onSuccess: (data: AttendanceReceipt) => void | Promise<void>;
 }
-export default function FaceAttendanceSheet({ isOpen, onClose, isCheckOut = false, isDirectOut = false, notes, isOnline = true, isFaceEnrolled = false, employeeName, employeeNik, onSuccess }: Props) {
+export default function FaceAttendanceSheet({ isOpen, onClose, isCheckOut = false, isDirectOut = false, isFieldDuty = false, notes, isOnline = true, isFaceEnrolled = false, employeeName, employeeNik, onSuccess }: Props) {
   const location = useRealtimeLocation(isOpen);
   const { online } = useMobileEnvironment();
   const video = useRef<HTMLVideoElement>(null);
@@ -30,6 +31,8 @@ export default function FaceAttendanceSheet({ isOpen, onClose, isCheckOut = fals
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
+  const [fieldDutyChecked, setFieldDutyChecked] = useState(false);
+  const [fieldDutyNote, setFieldDutyNote] = useState('');
   useEffect(() => {
     if (!isOpen || !isFaceEnrolled) return;
     let cancelled = false;
@@ -53,7 +56,13 @@ export default function FaceAttendanceSheet({ isOpen, onClose, isCheckOut = fals
     if (!isOnline || !online || !navigator.onLine) { setError('Koneksi internet diperlukan.'); return; }
     if (!isFaceEnrolled) { setError('Daftarkan wajah terlebih dahulu pada profil.'); return; }
     if (location.latitude === null || location.longitude === null || location.error) { setError(location.error || 'Tunggu lokasi GPS tersedia.'); return; }
-    if (!ready || !video.current?.videoWidth) { setError('Kamera belum siap. Coba nyalakan ulang kamera.'); return; }
+    if (ready || !video.current?.videoWidth) {
+      if (!ready || !video.current?.videoWidth) { setError('Kamera belum siap. Coba nyalakan ulang kamera.'); return; }
+    }
+    if (fieldDutyChecked && !fieldDutyNote.trim()) {
+      setError('Keterangan tugas/dinas luar kota wajib diisi.');
+      return;
+    }
     const canvas = document.createElement('canvas');
     const scale = Math.min(1, 800 / video.current.videoWidth);
     canvas.width = Math.round(video.current.videoWidth * scale);
@@ -62,8 +71,22 @@ export default function FaceAttendanceSheet({ isOpen, onClose, isCheckOut = fals
     if (!ctx) { setError('Foto tidak dapat diambil. Ulangi presensi.'); return; }
     ctx.drawImage(video.current, 0, 0, canvas.width, canvas.height);
     submitting.current = true; setBusy(true);
+    const combinedNotes = fieldDutyChecked
+      ? (fieldDutyNote.trim() + (notes ? ` | ${notes}` : ''))
+      : notes;
     try {
-      const result = await postMobileClock({ eventType: isCheckOut || isDirectOut ? 'OUT' : 'IN', isDirectOut, notes, photoBase64: canvas.toDataURL('image/jpeg', 0.85), latitude: location.latitude, longitude: location.longitude, accuracy: location.accuracy, address: location.address, deviceInfo: navigator.userAgent });
+      const result = await postMobileClock({
+        eventType: isCheckOut || isDirectOut ? 'OUT' : 'IN',
+        isDirectOut,
+        isFieldDuty: isFieldDuty || fieldDutyChecked,
+        notes: combinedNotes,
+        photoBase64: canvas.toDataURL('image/jpeg', 0.85),
+        latitude: location.latitude,
+        longitude: location.longitude,
+        accuracy: location.accuracy,
+        address: location.address,
+        deviceInfo: navigator.userAgent
+      });
       await onSuccess(result.data);
     } catch (err) { setError(err instanceof Error ? err.message : 'Presensi gagal. Silakan ulangi.'); }
     finally { submitting.current = false; setBusy(false); }
@@ -90,6 +113,34 @@ export default function FaceAttendanceSheet({ isOpen, onClose, isCheckOut = fals
         <div className="flex items-center gap-2 text-xs text-slate-200"><span className={`h-2 w-2 rounded-full ${ready ? 'bg-emerald-300' : 'bg-amber-300'}`} />{ready ? 'Kamera siap' : 'Menyiapkan kamera'}<span className="ml-auto">{online && isOnline ? 'Terhubung' : 'Tidak ada koneksi'}</span></div>
         {(!online || !isOnline) && <p role="status" className="text-sm text-amber-200">Hubungkan ke internet sebelum mengirim presensi.</p>}
         {(error || location.error) && <p role="alert" className="rounded-xl border border-rose-300/30 bg-rose-950/80 p-3 text-sm text-rose-100">{error || location.error}</p>}
+        
+        {/* Toggle Dinas Luar Kota */}
+        <div className="rounded-xl border border-slate-700 bg-slate-900/90 p-3 space-y-2">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={fieldDutyChecked}
+              onChange={(e) => setFieldDutyChecked(e.target.checked)}
+              className="h-4 w-4 rounded-sm border-slate-600 bg-slate-800 text-emerald-600 focus:ring-emerald-500"
+            />
+            <span className="text-xs font-bold text-slate-200">Presensi Dinas / Tugas Luar Kota</span>
+          </label>
+          {fieldDutyChecked && (
+            <div className="space-y-1 pt-1 animate-in fade-in duration-200">
+              <input
+                type="text"
+                value={fieldDutyNote}
+                onChange={(e) => setFieldDutyNote(e.target.value)}
+                placeholder="Tuliskan kota/tujuan tugas dinas..."
+                className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-1.5 text-xs text-white placeholder-slate-400 focus:border-emerald-500 focus:outline-hidden"
+              />
+              <p className="text-[10px] text-slate-400">
+                Presensi akan diteruskan untuk verifikasi atasan/HRD.
+              </p>
+            </div>
+          )}
+        </div>
+
         <button type="button" onClick={capture} disabled={!canCapture} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-700 disabled:bg-slate-700 disabled:text-slate-300">{busy ? <Loader2 size={20} className="animate-spin" /> : <Camera size={20} />}{busy ? 'Memeriksa & menyimpan…' : 'Ambil foto dan presensi'}</button>
         <p className="text-center text-xs text-slate-300">Foto digunakan untuk verifikasi kehadiran.</p>
         <div className="flex flex-wrap justify-center gap-2">

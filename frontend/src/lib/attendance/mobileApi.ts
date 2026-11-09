@@ -66,6 +66,7 @@ export interface MobileSummaryData {
 export interface MobileClockRequest {
   eventType: "IN" | "OUT";
   isDirectOut?: boolean;
+  isFieldDuty?: boolean;
   workDate?: string;
   scanTime?: string;
   latitude?: number | null;

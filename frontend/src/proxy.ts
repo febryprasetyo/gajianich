@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { canAccessRoute, getDefaultRedirectForUser } from "@/lib/access/routes";
+import { canAccessRoute, getDefaultRedirectForUser, canAccessMobileApp } from "@/lib/access/routes";
 import { AUTH_COOKIE_NAME } from "@/lib/authCookie";
 
 interface JwtPayload {
@@ -74,9 +74,10 @@ export function proxy(request: NextRequest) {
 
   const roleName = (payload.roleName || "").toLowerCase().trim();
   const isEmployee = roleName === "employee" || roleName === "karyawan";
+  const canAccessMobile = canAccessMobileApp(payload);
 
-  // Older PWA installs still launch the mobile home URL.
-  if (!isEmployee && /^\/m(?:\/beranda)?\/?$/.test(pathname)) {
+  // If user cannot access mobile and tries to access /m/*, redirect to desktop dashboard
+  if (!canAccessMobile && pathname.startsWith("/m")) {
     return NextResponse.redirect(new URL(getDefaultRedirectForUser(payload), request.url));
   }
 

@@ -18,6 +18,7 @@ import { z } from "zod";
 const clockPayloadSchema = z.object({
   eventType: z.enum(["IN", "OUT"]),
   isDirectOut: z.boolean().optional(),
+  isFieldDuty: z.boolean().optional(),
   workDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   scanTime: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/).optional(),
   latitude: z.number().min(-90).max(90),

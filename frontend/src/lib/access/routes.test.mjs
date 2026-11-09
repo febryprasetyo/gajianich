@@ -1,6 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canAccessRoute, findMatchingRouteRule, getDefaultRedirectForUser, getDashboardHrefForUser, isRouteMatchingHref } from './routes.ts';
+import { canAccessRoute, findMatchingRouteRule, getDefaultRedirectForUser, getDashboardHrefForUser, isRouteMatchingHref, canAccessMobileApp } from './routes.ts';
+
+test('canAccessMobileApp allows employee, HR roles, superadmin, or mobile verifier', () => {
+  assert.equal(canAccessMobileApp({ roleName: 'Employee' }), true);
+  assert.equal(canAccessMobileApp({ roleName: 'karyawan' }), true);
+  assert.equal(canAccessMobileApp({ roleName: 'HRD' }), true);
+  assert.equal(canAccessMobileApp({ roleName: 'hr_attendance' }), true);
+  assert.equal(canAccessMobileApp({ roleName: 'superadmin' }), true);
+  assert.equal(canAccessMobileApp({ roleName: 'CustomManager', permissions: ['attendance.mobile.verify'] }), true);
+  assert.equal(canAccessMobileApp({ roleName: 'Guest', permissions: [] }), false);
+  assert.equal(canAccessMobileApp(null), false);
+});
 
 test('findMatchingRouteRule matches the most specific prefix first', () => {
   const equipRule = findMatchingRouteRule('/dashboard/master/equipment-types');
