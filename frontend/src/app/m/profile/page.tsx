@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Camera, ChevronLeft, History, LogOut, ScanFace, ChevronRight } from 'lucide-react';
+import { Camera, ChevronLeft, History, LogOut, ScanFace, ChevronRight, Monitor } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { useMobileRevalidation } from '@/hooks/useMobileEnvironment';
@@ -10,7 +10,7 @@ import LogoutSheet from '@/components/mobile/LogoutSheet';
 import { fetchMobileSummary, postEnrollFace, type MobileSummaryData } from '@/lib/attendance/mobileApi';
 export default function MobileProfilePage() {
   const router = useRouter();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const [summary, setSummary] = useState<MobileSummaryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -80,6 +80,19 @@ export default function MobileProfilePage() {
       </section>
     </>}
     <Link href="/m/presensi" className="flex min-h-11 items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-700"><History size={18} />Riwayat presensi<ChevronRight size={18} className="ml-auto text-slate-400" /></Link>
+    
+    {/* Switch to Desktop Dashboard */}
+    {user?.roleName && user.roleName.toLowerCase() !== 'employee' && user.roleName.toLowerCase() !== 'karyawan' && (
+      <Link
+        href="/dashboard"
+        className="flex min-h-11 items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 text-sm font-bold text-emerald-800 transition hover:bg-emerald-100"
+      >
+        <Monitor size={18} className="text-emerald-700" />
+        Buka Dashboard Desktop
+        <ChevronRight size={18} className="ml-auto text-emerald-600" />
+      </Link>
+    )}
+
     <button type="button" onClick={() => setLogoutOpen(true)} className="flex min-h-11 w-full items-center gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm font-bold text-rose-800"><LogOut size={18} />Keluar akun</button>
     <LogoutSheet isOpen={logoutOpen} onClose={() => setLogoutOpen(false)} onConfirm={() => { setLogoutOpen(false); logout(); }} />
   </main>;

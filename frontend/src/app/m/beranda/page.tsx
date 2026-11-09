@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { ChevronRight, ArrowUpRight, AlertCircle, Loader2 } from 'lucide-react';
+import { ChevronRight, ArrowUpRight, AlertCircle, Loader2, Monitor } from 'lucide-react';
 import EmployeeGreeting from '@/components/mobile/EmployeeGreeting';
 import AttendanceReview, { ApprovalBadge } from '@/components/mobile/AttendanceReview';
 import AttendanceReceiptModal from '@/components/mobile/AttendanceReceiptModal';
@@ -209,7 +209,26 @@ export default function MobileBerandaPage() {
   return (
     <main className="flex-1 space-y-5 bg-slate-50 px-5 pb-6 pt-5">
       {toastMessage && <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{toastMessage}</p>}
-      {user?.roleName && user.roleName.toLowerCase() !== 'employee' && <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-600"><span>Login sebagai {user.fullName || user.username}</span><Link href="/dashboard" className="shrink-0 font-bold text-emerald-700">Buka Dashboard</Link></div>}
+      {user?.roleName && user.roleName.toLowerCase() !== 'employee' && user.roleName.toLowerCase() !== 'karyawan' && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-3.5 shadow-2xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-white shrink-0">
+              <Monitor size={16} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-slate-900 truncate">Mode Akses: Mobile HR</p>
+              <p className="text-[11px] text-slate-500 truncate">Login sebagai {user.fullName || user.username}</p>
+            </div>
+          </div>
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-1 shrink-0 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition"
+          >
+            Dashboard
+            <ArrowUpRight size={14} />
+          </Link>
+        </div>
+      )}
       <EmployeeGreeting employee={summaryData?.employee} timeZone={summaryData?.attendance.timeZone} completed={attendanceState.checkedOut} />
       {errorBanner && <div role="alert" className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><AlertCircle size={18} className="mt-0.5 shrink-0" /><span>{errorBanner}</span></div>}
       <PresensiRingButton
