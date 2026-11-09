@@ -1,7 +1,8 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, bigint, varchar, boolean, timestamp, check, unique, foreignKey, primaryKey, index } from 'drizzle-orm/pg-core';
+import { pgTable, bigint, varchar, boolean, timestamp, check, unique, foreignKey, primaryKey, index, text, date } from 'drizzle-orm/pg-core';
 import { departments, locations } from './master';
 import { users } from './users';
+import { employees } from './employees';
 
 export const organizationGroups = pgTable('organization_groups', {
   id: bigint('id', {mode: 'number'}).primaryKey().generatedAlwaysAsIdentity(),
@@ -49,3 +50,21 @@ export const userOrganizationGroupAccess = pgTable('user_organization_group_acce
   groupId: bigint('group_id', {mode: 'number'}).notNull().references(() => organizationGroups.id, {onDelete: 'restrict'}),
   createdAt: timestamp('created_at', {withTimezone: true}).defaultNow().notNull(),
 }, t => [primaryKey({columns: [t.userId,t.groupId]}), index('user_organization_group_access_group_idx').on(t.groupId)]);
+
+export const employeeOrganizationTransfers = pgTable('employee_organization_transfers', {
+  id: bigint('id', {mode: 'number'}).primaryKey().generatedAlwaysAsIdentity(),
+  employeeId: bigint('employee_id', {mode: 'number'}).notNull().references(() => employees.id, {onDelete: 'cascade'}),
+  fromGroupId: bigint('from_group_id', {mode: 'number'}).notNull().references(() => organizationGroups.id, {onDelete: 'restrict'}),
+  toGroupId: bigint('to_group_id', {mode: 'number'}).notNull().references(() => organizationGroups.id, {onDelete: 'restrict'}),
+  fromDepartmentId: bigint('from_department_id', {mode: 'number'}).notNull().references(() => departments.id, {onDelete: 'restrict'}),
+  toDepartmentId: bigint('to_department_id', {mode: 'number'}).notNull().references(() => departments.id, {onDelete: 'restrict'}),
+  fromLocationId: bigint('from_location_id', {mode: 'number'}).references(() => locations.id, {onDelete: 'set null'}),
+  toLocationId: bigint('to_location_id', {mode: 'number'}).references(() => locations.id, {onDelete: 'set null'}),
+  effectiveDate: date('effective_date').notNull(),
+  reason: text('reason').notNull(),
+  transferredBy: bigint('transferred_by', {mode: 'number'}).notNull().references(() => users.id, {onDelete: 'restrict'}),
+  createdAt: timestamp('created_at', {withTimezone: true}).defaultNow().notNull(),
+}, t => [
+  index('employee_transfers_employee_idx').on(t.employeeId),
+  index('employee_transfers_created_idx').on(t.createdAt.desc()),
+]);

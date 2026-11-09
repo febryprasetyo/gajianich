@@ -44,6 +44,7 @@ export const DEFAULT_PERMISSIONS: PermissionSeed[] = [
   // Master Data
   { code: 'master.view', name: 'View Master Data', module: 'master', description: 'Melihat master data organisasi' },
   { code: 'master.manage', name: 'Manage Master Data', module: 'master', description: 'Menambah dan mengubah master data' },
+  { code: 'employees.transfer', name: 'Transfer Employee Organization', module: 'master', description: 'Mentransfer karyawan antar organisasi/kelompok kerja (CMC / MGM)' },
 
   // Access Control
   { code: 'access.users.view', name: 'View Users', module: 'access', description: 'Melihat daftar pengguna sistem' },
@@ -61,6 +62,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'infrastructure.view', 'infrastructure.manage',
     'hardware_audits.view', 'hardware_audits.manage',
     'master.view', 'master.manage',
+    'employees.transfer',
     'access.users.view',
     'attendance.adms.view',
   ],

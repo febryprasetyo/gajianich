@@ -47,3 +47,38 @@ export interface EmployeeItem {
   createdAt?: string | null;
   updatedAt?: string | null;
 }
+
+export interface EmployeeTransferCandidateGroup {
+  id: number;
+  code: string;
+  name: string;
+  departments: Array<{
+    id: number;
+    code: string;
+    name: string;
+  }>;
+}
+
+export interface EmployeeTransferHistoryItem {
+  id: number;
+  employeeId: number;
+  fromGroupId: number;
+  toGroupId: number;
+  fromDepartmentId: number;
+  toDepartmentId: number;
+  fromLocationId?: number | null;
+  toLocationId?: number | null;
+  effectiveDate: string;
+  reason: string;
+  transferredBy: number;
+  transferredByName?: string | null;
+  createdAt: string;
+}
+
+export interface EmployeeTransferInput {
+  targetGroupId: number;
+  targetDepartmentId: number;
+  targetLocationId?: number | null;
+  effectiveDate: string;
+  reason: string;
+}

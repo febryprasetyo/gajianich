@@ -15,6 +15,11 @@ import {
   commitEmployeeImport,
 } from '../controllers/employeeImportController';
 import { exportEmployeesToExcel } from '../controllers/employeeExportController';
+import {
+  transferEmployee,
+  getEmployeeTransfers,
+  getOrganizationTransferCandidates,
+} from '../controllers/employeeTransferController';
 import { authenticateToken, requirePermission } from '../middleware/auth';
 
 const router = Router();
@@ -25,17 +30,23 @@ router.use(authenticateToken);
 
 const viewEmployee = requirePermission(['attendance.view', 'attendance.manage']);
 const manageEmployee = requirePermission(['attendance.manage', 'attendance.import']);
+const transferEmployeePermission = requirePermission('employees.transfer');
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 });
 
-// --- Employee Import & Export Routes (Must be registered before /:id) ---
+// --- Employee Organization Transfer Candidates & Template Routes ---
+router.get('/transfer-candidates', transferEmployeePermission, getOrganizationTransferCandidates);
 router.get('/import/template', viewEmployee, requireOrganizationScope('hr', 'read'), downloadEmployeeTemplate);
 router.post('/import/preview', manageEmployee, requireOrganizationScope('hr', 'write'), upload.single('file'), previewEmployeeImport);
 router.post('/import/commit', manageEmployee, requireOrganizationScope('hr', 'write'), upload.single('file'), commitEmployeeImport);
 router.get('/export', viewEmployee, requireOrganizationScope('hr', 'read'), exportEmployeesToExcel);
+
+// --- Employee Transfer Routes (Admin only) ---
+router.get('/:id/transfers', viewEmployee, getEmployeeTransfers);
+router.post('/:id/transfer', transferEmployeePermission, transferEmployee);
 
 // --- Employee CRUD Routes ---
 router.get('/', viewEmployee, requireOrganizationScope('hr', 'read'), getEmployees);

@@ -4,13 +4,16 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import EmployeeImportModal from '@/components/master/EmployeeImportModal';
+import EmployeeTransferModal from '@/components/master/EmployeeTransferModal';
 import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
 import { api } from '@/lib/api';
 import type { EmployeeItem, DepartmentOption, LocationOption } from '@/lib/employeeTypes';
 import { filterEmployees } from '@/lib/employeeDirectory';
+import { useAuth } from '@/context/AuthContext';
+import { checkUserPermission } from '@/lib/access/permissions';
 import {
   Users, Plus, Search, Building2, MapPin, UserCheck,
-  Download, Upload, Loader2, Eye, Pencil, Trash2, Filter,
+  Download, Upload, Loader2, Eye, Pencil, Trash2, Filter, ArrowRightLeft,
 } from 'lucide-react';
 
 interface Props {
@@ -18,6 +21,8 @@ interface Props {
 }
 
 export default function EmployeeDirectoryPage({ basePath = '/dashboard/attendance/master/employees' }: Props) {
+  const { user } = useAuth();
+  const canTransfer = checkUserPermission(user, 'employees.transfer');
   const [employees, setEmployees] = useState<EmployeeItem[]>([]);
   const [departments, setDepartments] = useState<DepartmentOption[]>([]);
   const [locations, setLocations] = useState<LocationOption[]>([]);
@@ -28,6 +33,7 @@ export default function EmployeeDirectoryPage({ basePath = '/dashboard/attendanc
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [transferringEmp, setTransferringEmp] = useState<EmployeeItem | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [deletingEmp, setDeletingEmp] = useState<EmployeeItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -222,6 +228,16 @@ export default function EmployeeDirectoryPage({ basePath = '/dashboard/attendanc
                         </td>
                         <td className="py-3.5 px-4 text-right">
                           <div className="flex items-center justify-end gap-1">
+                            {canTransfer && (
+                              <button
+                                onClick={() => setTransferringEmp(emp)}
+                                className="p-2 rounded-lg text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 border border-transparent hover:border-emerald-200 transition-all cursor-pointer"
+                                title="Transfer Kelompok Organisasi (Admin)"
+                                aria-label="Transfer Kelompok Organisasi"
+                              >
+                                <ArrowRightLeft className="w-4 h-4 text-emerald-600" />
+                              </button>
+                            )}
                             <Link href={`${basePath}/${emp.id}`}
                               className="p-2 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 border border-transparent hover:border-emerald-200 transition-all" title="Lihat Detail">
                               <Eye className="w-4 h-4" />
@@ -247,6 +263,12 @@ export default function EmployeeDirectoryPage({ basePath = '/dashboard/attendanc
       </div>
 
       <EmployeeImportModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onSuccess={fetchData} />
+      <EmployeeTransferModal
+        isOpen={Boolean(transferringEmp)}
+        onClose={() => setTransferringEmp(null)}
+        employee={transferringEmp}
+        onSuccess={fetchData}
+      />
       <ConfirmDeleteModal
         isOpen={!!deletingEmp} onClose={() => { setDeletingEmp(null); setDeleteError(null); }}
         onConfirm={handleDelete} title="Hapus Karyawan"
