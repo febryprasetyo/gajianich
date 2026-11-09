@@ -274,6 +274,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         href: dashboardHref,
         icon: LayoutDashboard,
       },
+      ...(canAccessMobileApp(user)
+        ? [
+            {
+              name: 'Aplikasi Mobile Presensi',
+              href: '/m/beranda',
+              icon: Smartphone,
+              badge: 'PWA',
+            },
+          ]
+        : []),
     ],
   };
 
@@ -675,16 +685,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             <div className="flex items-center gap-3">
               <OrganizationScopeSelector />
-              {canAccessMobileApp(user) && (
-                <Link
-                  href="/m/beranda"
-                  title="Buka Aplikasi Mobile Presensi"
-                  className="flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-bold text-emerald-800 transition hover:bg-emerald-100"
-                >
-                  <Smartphone className="h-4 w-4 text-emerald-600" />
-                  <span className="hidden md:inline">Mode Mobile</span>
-                </Link>
-              )}
               <NotificationBell />
               {/* User Profile Badge */}
               <div className="hidden sm:flex items-center gap-3 pl-1">

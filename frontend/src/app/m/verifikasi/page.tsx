@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch } from '@/lib/api';
-import BottomNavigation from '@/components/mobile/BottomNavigation';
+import AttendancePhoto from '@/components/attendance/AttendancePhoto';
 import StatusBadge from '@/components/ui/StatusBadge';
 import ModalShell from '@/components/ui/ModalShell';
 import {
@@ -254,14 +254,15 @@ export default function MobileVerifikasiPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2.5">
                     {log.photoUrl ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
-                        src={log.photoUrl}
-                        alt={log.employeeName}
-                        className="h-11 w-11 rounded-xl object-cover border border-slate-200 shrink-0"
-                      />
+                      <div className="h-12 w-12 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shrink-0 flex items-center justify-center">
+                        <AttendancePhoto
+                          url={log.photoUrl}
+                          alt={log.employeeName}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
                     ) : (
-                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-500 shrink-0">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-500 shrink-0">
                         <User className="h-5 w-5" />
                       </div>
                     )}
@@ -378,12 +379,11 @@ export default function MobileVerifikasiPage() {
         >
           <div className="space-y-4 text-xs">
             {selectedLog.photoUrl && (
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 text-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={selectedLog.photoUrl}
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 text-center flex items-center justify-center p-2">
+                <AttendancePhoto
+                  url={selectedLog.photoUrl}
                   alt={selectedLog.employeeName}
-                  className="mx-auto max-h-56 w-auto object-contain"
+                  className="mx-auto max-h-56 w-auto object-contain rounded-xl"
                 />
               </div>
             )}
@@ -502,9 +502,6 @@ export default function MobileVerifikasiPage() {
           </div>
         </ModalShell>
       )}
-
-      {/* Bottom Navigation */}
-      <BottomNavigation />
     </div>
   );
 }
