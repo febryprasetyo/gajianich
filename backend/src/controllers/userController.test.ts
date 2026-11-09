@@ -10,6 +10,7 @@ import {
 } from './userController';
 import { db } from '../db';
 import { users, roles } from '../db/schema/users';
+import { employees } from '../db/schema/employees';
 import { eq } from 'drizzle-orm';
 import {bindScopedCaller} from '../testing/scopedCaller';
 const getUsers=bindScopedCaller(rawGetUsers,'read'),createUser=bindScopedCaller(rawCreateUser),updateUser=bindScopedCaller(rawUpdateUser),toggleUserStatus=bindScopedCaller(rawToggleUserStatus),resetPassword=bindScopedCaller(rawResetPassword),deleteUser=bindScopedCaller(rawDeleteUser);
@@ -206,4 +207,47 @@ test('HRD scoped RBAC: HRD cannot edit, toggle, reset password, or delete non-em
   const deleteRes = mockRes();
   await deleteUser(hrdReq, deleteRes);
   assert.equal(deleteRes.statusCode, 404);
+});
+
+test('Strict 1 Employee = 1 User: createUser rejects assigning an employeeId already bound to another user', async () => {
+  const empRole = (await db.select().from(roles).where(eq(roles.code, 'employee')).limit(1))[0];
+  const [emp] = await db.insert(employees).values({
+    employeeCode: 'EMP-DUP-' + Date.now(),
+    fullName: 'Employee Single Account Test',
+    status: 'Active',
+  }).returning();
+
+  // First account succeeds
+  const user1Req: any = {
+    user: { roleName: 'SuperAdmin' },
+    body: {
+      username: 'user_emp_1_' + Date.now(),
+      roleId: empRole.id,
+      employeeId: emp.id,
+      status: 'active',
+    },
+  };
+  const user1Res = mockRes();
+  await createUser(user1Req, user1Res);
+  assert.equal(user1Res.statusCode, 201);
+  const createdId1 = user1Res.body.user.id;
+
+  // Second account with SAME employeeId MUST be rejected with 400
+  const user2Req: any = {
+    user: { roleName: 'SuperAdmin' },
+    body: {
+      username: 'user_emp_2_' + Date.now(),
+      roleId: empRole.id,
+      employeeId: emp.id,
+      status: 'active',
+    },
+  };
+  const user2Res = mockRes();
+  await createUser(user2Req, user2Res);
+  assert.equal(user2Res.statusCode, 400);
+  assert.match(user2Res.body.error, /sudah memiliki akun/i);
+
+  // Cleanup
+  await deleteUser({ user: { userId: 999999, roleName: 'SuperAdmin' }, params: { id: String(createdId1) } } as any, mockRes());
+  await db.delete(employees).where(eq(employees.id, emp.id));
 });

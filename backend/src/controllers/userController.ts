@@ -145,11 +145,29 @@ export async function createUser(req: AuthenticatedRequest, res: Response) {
       return res.status(403).json({ error: 'Forbidden: HRD is only permitted to create Employee user accounts' });
     }
 
-    // Check employee if provided
+    // Check employee if provided in create
     if (parsed.employeeId) {
       const emp = (await db.select().from(employees).where(eq(employees.id, parsed.employeeId)).limit(1))[0];
       if (!emp) {
         return res.status(400).json({ error: 'Selected employee does not exist' });
+      }
+
+      // Strict 1 Employee = 1 Account: Check if employee already has an account
+      const existingAccount = (await db.select({ id: users.id, username: users.username }).from(users).where(eq(users.employeeId, parsed.employeeId)).limit(1))[0];
+      if (existingAccount) {
+        return res.status(400).json({
+          error: `Karyawan "${emp.fullName}" sudah memiliki akun pengguna (${existingAccount.username}). 1 karyawan hanya boleh memiliki 1 akun.`,
+        });
+      }
+
+      // HRD caller cannot bind user to their own employee record
+      if (isCallerHrd(req) && req.user?.userId) {
+        const [caller] = await db.select({ employeeId: users.employeeId }).from(users).where(eq(users.id, req.user.userId)).limit(1);
+        if (caller?.employeeId === parsed.employeeId) {
+          return res.status(403).json({
+            error: 'Forbidden: HRD tidak diizinkan membuat akun tambahan untuk diri sendiri.',
+          });
+        }
       }
     }
 
@@ -294,14 +312,31 @@ export async function updateUser(req: AuthenticatedRequest, res: Response) {
       }
     }
 
-    // Check employee if provided
+    // Check employee if provided in update
     if (parsed.employeeId) {
       const emp = (await db.select().from(employees).where(eq(employees.id, parsed.employeeId)).limit(1))[0];
       if (!emp) {
         return res.status(400).json({ error: 'Selected employee does not exist' });
       }
-    }
 
+      // Strict 1 Employee = 1 Account: Check if employee already has another account
+      const existingAccount = (await db.select({ id: users.id, username: users.username }).from(users).where(and(eq(users.employeeId, parsed.employeeId), ne(users.id, userId))).limit(1))[0];
+      if (existingAccount) {
+        return res.status(400).json({
+          error: `Karyawan "${emp.fullName}" sudah memiliki akun pengguna (${existingAccount.username}). 1 karyawan hanya boleh memiliki 1 akun.`,
+        });
+      }
+
+      // HRD caller cannot bind user to their own employee record
+      if (isCallerHrd(req) && req.user?.userId && existingUser.id !== req.user.userId) {
+        const [caller] = await db.select({ employeeId: users.employeeId }).from(users).where(eq(users.id, req.user.userId)).limit(1);
+        if (caller?.employeeId === parsed.employeeId) {
+          return res.status(403).json({
+            error: 'Forbidden: HRD tidak diizinkan mengubah akun menjadi milik diri sendiri.',
+          });
+        }
+      }
+    }
     const updated = await withAccountMutation(req,userId,async tx=>{
     const groupIds=await validateAccountAssignment(req,parsed,ownership.groupIds,tx);
     const [changed] = await tx

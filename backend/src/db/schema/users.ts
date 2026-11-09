@@ -1,4 +1,5 @@
-import { pgTable, bigint, varchar, timestamp, boolean, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, bigint, varchar, timestamp, boolean, primaryKey, uniqueIndex } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { employees } from './employees';
 
 export const permissions = pgTable('permissions', {
@@ -39,4 +40,6 @@ export const users = pgTable('users', {
   status: varchar('status', { length: 30 }).default('active').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+}, (table) => ({
+  employeeUniqueIdx: uniqueIndex('users_employee_id_unique').on(table.employeeId).where(sql`${table.employeeId} IS NOT NULL`),
+}));
