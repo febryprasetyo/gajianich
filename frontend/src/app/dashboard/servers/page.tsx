@@ -1091,7 +1091,7 @@ export default function ServerOverviewPage() {
                     type="button"
                     onClick={() =>
                       void handleCopyText(
-                        `git clone https://github.com/febryprasetyo/gajianich-server-agent.git && cd gajianich-server-agent && AGENT_HOSTNAME="${generatedKeyInfo.hostname}" AGENT_API_KEY="${generatedKeyInfo.agentApiKey}" docker compose up -d --build`,
+                        `git clone https://github.com/febryprasetyo/gajianich-server-agent.git && cd gajianich-server-agent && cp .env.example .env && GAJIANICH_HUB_URL="https://gajianich.cahayamascemerlang.co.id/api/v1/infrastructure/agent/telemetry" AGENT_HOSTNAME="${generatedKeyInfo.hostname}" AGENT_API_KEY="${generatedKeyInfo.agentApiKey}" docker compose up -d --build`,
                         'cmd',
                       )
                     }
@@ -1102,7 +1102,7 @@ export default function ServerOverviewPage() {
                   </button>
                 </div>
                 <code className="block bg-slate-900 text-emerald-400 p-2.5 rounded-lg text-[10px] overflow-x-auto">
-                  {`git clone https://github.com/febryprasetyo/gajianich-server-agent.git && cd gajianich-server-agent && AGENT_HOSTNAME="${generatedKeyInfo.hostname}" AGENT_API_KEY="${generatedKeyInfo.agentApiKey}" docker compose up -d --build`}
+                  {`git clone https://github.com/febryprasetyo/gajianich-server-agent.git && cd gajianich-server-agent && cp .env.example .env && GAJIANICH_HUB_URL="https://gajianich.cahayamascemerlang.co.id/api/v1/infrastructure/agent/telemetry" AGENT_HOSTNAME="${generatedKeyInfo.hostname}" AGENT_API_KEY="${generatedKeyInfo.agentApiKey}" docker compose up -d --build`}
                 </code>
               </div>
 
