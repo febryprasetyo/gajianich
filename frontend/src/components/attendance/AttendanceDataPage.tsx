@@ -55,16 +55,56 @@ export default function AttendanceDataPage() {
   const lookup = new Map(records.map(r => [r.employeeId, r]));
 
   const metrics: { key: string; label: string; test: (r: AttendanceRecord) => boolean }[] = [
-    { key: 'ontime', label: 'Tepat waktu', test: r => !r.isDayOff && ['PRESENT', 'DINAS_LUAR'].includes(r.attendanceStatus) && (r.lateMinutes || 0) === 0 },
-    { key: 'late', label: 'Terlambat', test: r => !r.isDayOff && ((r.lateMinutes || 0) > 0 || r.attendanceStatus === 'LATE') },
-    { key: 'early', label: 'Pulang awal', test: r => !r.isDayOff && ((r.earlyMinutes || 0) > 0 || r.attendanceStatus === 'EARLY_LEAVE') },
-    { key: 'noout', label: 'Scan pulang kosong', test: r => !r.isDayOff && ['PRESENT', 'LATE', 'EARLY_LEAVE'].includes(r.attendanceStatus) && (!r.scanOut || !r.rawScanOut) },
-    { key: 'noin', label: 'Scan masuk kosong', test: r => !r.isDayOff && ['PRESENT', 'LATE', 'EARLY_LEAVE'].includes(r.attendanceStatus) && (!r.scanIn || !r.rawScanIn) },
-    { key: 'normalized', label: 'Dinormalisasi', test: r => r.normalized },
-    { key: 'absent', label: 'Tidak hadir', test: r => !r.isDayOff && r.attendanceStatus === 'ALPHA' },
-    { key: 'off', label: 'Libur', test: r => r.isDayOff },
-    { key: 'field-duty', label: 'Dinas Luar', test: r => r.attendanceStatus === 'DINAS_LUAR' },
-    { key: 'leave', label: 'Izin / sakit / cuti', test: r => ['IZIN', 'SAKIT', 'CUTI'].includes(r.attendanceStatus) },
+    {
+      key: 'ontime',
+      label: 'Tepat waktu',
+      test: r => !r.isDayOff && ['PRESENT', 'DINAS_LUAR'].includes(r.attendanceStatus) && Boolean(r.scanIn && r.scanIn.trim() !== '') && (r.lateMinutes || 0) === 0,
+    },
+    {
+      key: 'late',
+      label: 'Terlambat',
+      test: r => !r.isDayOff && ((r.lateMinutes || 0) > 0 || r.attendanceStatus === 'LATE'),
+    },
+    {
+      key: 'early',
+      label: 'Pulang awal',
+      test: r => !r.isDayOff && ((r.earlyMinutes || 0) > 0 || r.attendanceStatus === 'EARLY_LEAVE'),
+    },
+    {
+      key: 'noout',
+      label: 'Scan pulang kosong',
+      test: r => !r.isDayOff && !['IZIN', 'SAKIT', 'CUTI', 'ALPHA'].includes(r.attendanceStatus) && Boolean(r.scanIn && r.scanIn.trim() !== '') && (!r.scanOut || r.scanOut.trim() === ''),
+    },
+    {
+      key: 'noin',
+      label: 'Scan masuk kosong',
+      test: r => !r.isDayOff && !['IZIN', 'SAKIT', 'CUTI', 'ALPHA'].includes(r.attendanceStatus) && (!r.scanIn || r.scanIn.trim() === '') && Boolean(r.scanOut && r.scanOut.trim() !== ''),
+    },
+    {
+      key: 'normalized',
+      label: 'Dinormalisasi',
+      test: r => Boolean(r.normalized),
+    },
+    {
+      key: 'absent',
+      label: 'Tidak hadir',
+      test: r => !r.isDayOff && r.attendanceStatus === 'ALPHA',
+    },
+    {
+      key: 'off',
+      label: 'Libur',
+      test: r => Boolean(r.isDayOff),
+    },
+    {
+      key: 'field-duty',
+      label: 'Dinas Luar',
+      test: r => r.attendanceStatus === 'DINAS_LUAR',
+    },
+    {
+      key: 'leave',
+      label: 'Izin / sakit / cuti',
+      test: r => ['IZIN', 'SAKIT', 'CUTI'].includes(r.attendanceStatus),
+    },
   ];
 
   const activeMetric = metrics.find(m => m.key === condition);
@@ -195,9 +235,9 @@ export default function AttendanceDataPage() {
         </div>
       </div>
 
-      {/* 9 Status Filter Strip */}
+      {/* Status Filter Strip */}
       <div className="hr-panel overflow-x-auto">
-        <div className="grid min-w-[1050px] grid-cols-9 divide-x divide-slate-200">
+        <div className="grid min-w-[1100px] grid-cols-10 divide-x divide-slate-200">
           {metrics.map(m => {
             const count = records.filter(m.test).length;
             const isSelected = condition === m.key;
