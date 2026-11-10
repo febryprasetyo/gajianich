@@ -87,7 +87,7 @@ export default function AttendanceDataPage() {
     },
     {
       key: 'absent',
-      label: 'Tidak hadir (Belum absen)',
+      label: 'Tidak hadir',
       test: () => false, // Di-handle khusus di filter karyawan: karyawan yang belum memiliki catatan absensi sama sekali pada tanggal terpilih
     },
     {
