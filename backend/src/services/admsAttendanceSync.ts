@@ -289,11 +289,14 @@ export async function cleanseAndIngestAdmsLogs(
         );
         const previous = prevRes.rows[0];
 
+        const effectiveScheduleIn = rec.scheduleIn || previous?.scheduleIn || '08:00';
+        const effectiveScheduleOut = rec.scheduleOut || previous?.scheduleOut || '17:00';
+
         const merged = mergeAttendanceScans(previous, {
           scanIn: rec.scanIn,
           scanOut: rec.scanOut,
-          scheduleIn: previous?.scheduleIn || rec.scheduleIn || '08:00',
-          scheduleOut: previous?.scheduleOut || rec.scheduleOut || '17:00',
+          scheduleIn: effectiveScheduleIn,
+          scheduleOut: effectiveScheduleOut,
           attendanceStatus: rec.attendanceStatus,
         }, { lateToleranceMinutes: 5 });
 
@@ -320,8 +323,8 @@ export async function cleanseAndIngestAdmsLogs(
             rec.employeeId,
             rec.workDate,
             rec.shiftName || previous?.shift || 'Shift Reguler',
-            rec.scheduleIn || '08:00',
-            rec.scheduleOut || '17:00',
+            effectiveScheduleIn,
+            effectiveScheduleOut,
             merged.scanIn,
             merged.scanOut,
             merged.scanIn,

@@ -57,31 +57,38 @@ export function getPayrollCyclePeriod(year: number, month: number): {
 }
 
 export function resolveEmployeeShift(
-  employee: { id?: number; departmentId?: number | null; fullName?: string },
+  employee: { id?: number | string | null; departmentId?: number | string | null; fullName?: string },
   shifts?: WorkShift[] | null,
   assignments?: ShiftAssignment[] | null
 ): WorkShift {
   const shiftList = shifts && shifts.length > 0 ? shifts : [DEFAULT_OFFICE_SHIFT];
   const assignmentList = assignments || [];
 
-  if (employee?.id) {
-    const directAssign = assignmentList.find(a => a.employeeId === employee.id);
+  const empId = employee?.id !== null && employee?.id !== undefined && String(employee.id).trim() !== ''
+    ? Number(employee.id)
+    : null;
+  const empDeptId = employee?.departmentId !== null && employee?.departmentId !== undefined && String(employee.departmentId).trim() !== ''
+    ? Number(employee.departmentId)
+    : null;
+
+  if (empId !== null && !isNaN(empId)) {
+    const directAssign = assignmentList.find(a => a.employeeId !== null && a.employeeId !== undefined && Number(a.employeeId) === empId);
     if (directAssign) {
-      const found = shiftList.find(s => s.id === directAssign.shiftId && s.isActive);
+      const found = shiftList.find(s => Number(s.id) === Number(directAssign.shiftId) && s.isActive);
       if (found) return found;
     }
   }
 
-  if (employee?.departmentId) {
-    const deptAssigns = assignmentList.filter(a => a.departmentId === employee.departmentId && !a.employeeId);
+  if (empDeptId !== null && !isNaN(empDeptId)) {
+    const deptAssigns = assignmentList.filter(a => a.departmentId !== null && a.departmentId !== undefined && Number(a.departmentId) === empDeptId && (!a.employeeId || Number(a.employeeId) === 0));
     if (deptAssigns.length > 0) {
-      const defaultOne = deptAssigns.find(a => a.isDefault) || deptAssigns[0];
-      const found = shiftList.find(s => s.id === defaultOne.shiftId && s.isActive);
+      const defaultOne = deptAssigns.find(a => Boolean(a.isDefault)) || deptAssigns[0];
+      const found = shiftList.find(s => Number(s.id) === Number(defaultOne.shiftId) && s.isActive);
       if (found) return found;
     }
   }
 
-  const defaultShift = shiftList.find(s => s.isDefault && s.isActive);
+  const defaultShift = shiftList.find(s => Boolean(s.isDefault) && s.isActive);
   return defaultShift || shiftList[0] || DEFAULT_OFFICE_SHIFT;
 }
 

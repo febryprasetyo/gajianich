@@ -713,8 +713,8 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
           );
         if (previous && previous.groupId !== owner.groupId) continue;
 
-        const effectiveScheduleIn = previous?.scheduleIn || rec.scheduleIn || '08:00';
-        const effectiveScheduleOut = previous?.scheduleOut || rec.scheduleOut || '17:00';
+        const effectiveScheduleIn = rec.scheduleIn || previous?.scheduleIn || '08:00';
+        const effectiveScheduleOut = rec.scheduleOut || previous?.scheduleOut || '17:00';
         const merged = mergeAttendanceScans(previous, {
           scanIn: rec.scanIn,
           scanOut: rec.scanOut,

@@ -178,38 +178,45 @@ export function getWorkingScheduleForDate(
  * 6. DEFAULT_OFFICE_SHIFT (fallback keras)
  */
 export function resolveActiveEmployeeShift(
-  employee: { id?: number; departmentId?: number | null; fullName?: string },
+  employee: { id?: number | string | null; departmentId?: number | string | null; fullName?: string },
   shifts?: WorkShift[] | null,
   assignments?: ShiftAssignment[] | null
 ): { shift: WorkShift; hasActiveAssignment: boolean } {
   const activeShifts = (shifts || []).filter((s) => s.isActive);
   const activeAssignments = assignments || [];
 
+  const empId = employee.id !== null && employee.id !== undefined && String(employee.id).trim() !== ''
+    ? Number(employee.id)
+    : null;
+  const empDeptId = employee.departmentId !== null && employee.departmentId !== undefined && String(employee.departmentId).trim() !== ''
+    ? Number(employee.departmentId)
+    : null;
+
   // Prioritas 1: penugasan langsung per karyawan
-  if (employee.id) {
-    const direct = activeAssignments.find((a) => a.employeeId === employee.id);
+  if (empId !== null && !isNaN(empId)) {
+    const direct = activeAssignments.find((a) => a.employeeId !== null && a.employeeId !== undefined && Number(a.employeeId) === empId);
     if (direct) {
-      const match = activeShifts.find((s) => s.id === direct.shiftId);
+      const match = activeShifts.find((s) => Number(s.id) === Number(direct.shiftId));
       if (match) return { shift: match, hasActiveAssignment: true };
     }
   }
 
   // Prioritas 2 & 3: penugasan departemen
-  if (employee.departmentId) {
+  if (empDeptId !== null && !isNaN(empDeptId)) {
     const deptAssignments = activeAssignments.filter(
-      (a) => a.departmentId === employee.departmentId && !a.employeeId
+      (a) => a.departmentId !== null && a.departmentId !== undefined && Number(a.departmentId) === empDeptId && (!a.employeeId || Number(a.employeeId) === 0)
     );
     if (deptAssignments.length > 0) {
       // Cari yang isDefault: true dulu
-      const defaultAssign = deptAssignments.find((a) => a.isDefault);
+      const defaultAssign = deptAssignments.find((a) => Boolean(a.isDefault));
       const chosen = defaultAssign || deptAssignments[0];
-      const match = activeShifts.find((s) => s.id === chosen.shiftId);
+      const match = activeShifts.find((s) => Number(s.id) === Number(chosen.shiftId));
       if (match) return { shift: match, hasActiveAssignment: true };
     }
   }
 
   // Prioritas 4: shift default sistem
-  const explicitDefault = activeShifts.find((s) => s.isDefault);
+  const explicitDefault = activeShifts.find((s) => Boolean(s.isDefault));
   if (explicitDefault) return { shift: explicitDefault, hasActiveAssignment: false };
 
   // Prioritas 5: fallback shift OFFICE
@@ -220,7 +227,7 @@ export function resolveActiveEmployeeShift(
 }
 
 export function resolveEmployeeShift(
-  employee: { id?: number; departmentId?: number | null; fullName?: string },
+  employee: { id?: number | string | null; departmentId?: number | string | null; fullName?: string },
   shifts?: WorkShift[] | null,
   assignments?: ShiftAssignment[] | null
 ): WorkShift {
