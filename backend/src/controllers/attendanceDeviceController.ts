@@ -510,7 +510,14 @@ export async function getRawAttendanceLogsHandler(req: Request, res: Response) {
         timestamp: sql<string>`to_char(${attendanceDeviceRawLogs.timestamp}, \'YYYY-MM-DD HH24:MI:SS\')`.as("timestamp"),
         workDate: attendanceDeviceRawLogs.workDate,
         verifyMode: attendanceDeviceRawLogs.verifyMode,
-        inOutState: attendanceDeviceRawLogs.inOutState,
+        inOutState: sql<string>`
+          CASE 
+            WHEN ${attendanceDeviceRawLogs.inOutState} IN ('Masuk', 'Pulang', 'Scan Antara') THEN ${attendanceDeviceRawLogs.inOutState}
+            WHEN (${attendanceDeviceRawLogs.rawPayload}->>'rawStatus')::int = 255 OR ${attendanceDeviceRawLogs.inOutState} = 'Scan' THEN
+              CASE WHEN extract(hour from ${attendanceDeviceRawLogs.timestamp}) < 12 THEN 'Masuk' ELSE 'Pulang' END
+            ELSE ${attendanceDeviceRawLogs.inOutState}
+          END
+        `.as("inOutState"),
         deviceId: attendanceDeviceRawLogs.deviceId,
         deviceName: attendanceDevices.name,
         deviceLocation: attendanceDevices.location,

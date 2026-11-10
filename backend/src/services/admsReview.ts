@@ -23,7 +23,13 @@ export async function getReviewLogs(runner:SqlRunner,scope:RequestScope,q:Return
   SELECT r.id::text AS id,a.device_id AS "deviceId",d.name AS "deviceName",r.serial,r.pin,r.raw_status AS "rawStatus",r.raw_verify AS "rawVerify",
    to_char(r.punched_at,'YYYY-MM-DD HH24:MI:SS') AS timestamp,
    CASE r.raw_verify WHEN 0 THEN 'Password' WHEN 1 THEN 'Fingerprint' WHEN 2 THEN 'Card' WHEN 15 THEN 'Face' WHEN 20 THEN 'Face' ELSE 'ZK:'||r.raw_verify END AS "verifyMode",
-   CASE WHEN r.raw_status IN (0,4) THEN 'Masuk' WHEN r.raw_status IN (1,5) THEN 'Pulang' ELSE 'Scan Antara' END AS "inOutState",
+   CASE 
+    WHEN r.raw_status IN (0,4) THEN 'Masuk' 
+    WHEN r.raw_status IN (1,5) THEN 'Pulang' 
+    WHEN r.raw_status = 255 AND extract(hour from r.punched_at) < 12 THEN 'Masuk'
+    WHEN r.raw_status = 255 AND extract(hour from r.punched_at) >= 12 THEN 'Pulang'
+    ELSE 'Scan Antara' 
+   END AS "inOutState",
    p.source,CASE WHEN EXISTS(SELECT 1 FROM public.department_organization_mappings m WHERE m.department_id=e.department_id AND m.group_id=r.group_id) THEN e.full_name ELSE NULL END AS "employeeName",
    CASE WHEN r.employee_id IS NOT NULL AND r.ingested_at IS NULL THEN true ELSE false END AS "isSyncing"
   FROM adms.review_logs r JOIN adms.devices a ON a.serial=r.serial AND a.group_id=r.group_id

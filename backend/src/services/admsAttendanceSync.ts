@@ -89,6 +89,25 @@ export function mapAdmsVerifyMode(rawVerify: number): string {
   }
 }
 
+export function mapAdmsInOutState(rawStatus: number, timestampStr?: string): 'Masuk' | 'Pulang' | 'Scan Antara' {
+  if (rawStatus === 0 || rawStatus === 4) return 'Masuk';
+  if (rawStatus === 1 || rawStatus === 5) return 'Pulang';
+
+  // Jika mesin mengirim rawStatus = 255 (auto/undefined checkin dari firmware seperti Solution X900 di GUDANG 2 atau Absensi MGM):
+  // Inferensi cerdas berdasarkan waktu tap:
+  // - Sebelum pukul 12:00 -> Masuk
+  // - Pukul 12:00 ke atas -> Pulang
+  if (timestampStr) {
+    const parts = timestampStr.trim().split(' ');
+    const timePart = parts[1] || parts[0];
+    const [h, m] = timePart.split(':').map((n) => parseInt(n, 10) || 0);
+    const mins = h * 60 + m;
+    return mins < 720 ? 'Masuk' : 'Pulang';
+  }
+
+  return 'Scan Antara';
+}
+
 export async function cleanseAndIngestAdmsLogs(
   pool: { connect(): Promise<PoolClient> },
   options: IngestOptions
@@ -161,7 +180,7 @@ export async function cleanseAndIngestAdmsLogs(
       // 4. Ingest into attendance_device_raw_logs
       for (const p of cleanedPunches) {
         const verifyMode = mapAdmsVerifyMode(p.rawVerify);
-        const inOutState = p.rawStatus === 0 ? 'Masuk' : p.rawStatus === 1 ? 'Pulang' : 'Scan';
+        const inOutState = mapAdmsInOutState(p.rawStatus, p.timestamp);
         const rawPayload = JSON.stringify({
           source: 'ADMS',
           serial: p.serial,
@@ -245,7 +264,7 @@ export async function cleanseAndIngestAdmsLogs(
         employeeId: p.employeeId,
         timestamp: p.timestamp,
         workDate: p.workDate || extractWorkDate(p.timestamp),
-        inOutState: p.rawStatus === 0 ? 'Masuk' : p.rawStatus === 1 ? 'Pulang' : undefined,
+        inOutState: mapAdmsInOutState(p.rawStatus, p.timestamp),
       }));
 
       const calcResult = calculateAttendanceFromPunches(
