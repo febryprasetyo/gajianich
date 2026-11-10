@@ -301,13 +301,15 @@ export async function cleanseAndIngestAdmsLogs(
           `INSERT INTO public.attendance_records
              (group_id, organization_id, employee_id, work_date, shift, schedule_in, schedule_out,
               scan_in, scan_out, raw_scan_in, raw_scan_out, late_minutes, early_minutes, attendance_status)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $8, $9, $10, $11, $12)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
            ON CONFLICT (employee_id, work_date) DO UPDATE SET
              shift = EXCLUDED.shift,
              schedule_in = EXCLUDED.schedule_in,
              schedule_out = EXCLUDED.schedule_out,
              scan_in = EXCLUDED.scan_in,
              scan_out = EXCLUDED.scan_out,
+             raw_scan_in = EXCLUDED.raw_scan_in,
+             raw_scan_out = EXCLUDED.raw_scan_out,
              late_minutes = EXCLUDED.late_minutes,
              early_minutes = EXCLUDED.early_minutes,
              attendance_status = EXCLUDED.attendance_status,
@@ -320,6 +322,8 @@ export async function cleanseAndIngestAdmsLogs(
             rec.shiftName || previous?.shift || 'Shift Reguler',
             rec.scheduleIn || '08:00',
             rec.scheduleOut || '17:00',
+            merged.scanIn,
+            merged.scanOut,
             merged.scanIn,
             merged.scanOut,
             merged.lateMinutes,
