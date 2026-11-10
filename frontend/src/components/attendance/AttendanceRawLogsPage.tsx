@@ -31,7 +31,7 @@ export default function AttendanceRawLogsPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [selectedDevice, setSelectedDevice] = useState("all");
-  const [selectedState, setSelectedState] = useState<"all" | "Masuk" | "Pulang" | "Scan Antara">("all");
+  const [selectedState, setSelectedState] = useState<"all" | "Masuk" | "Pulang" | "Scan Antara" | "Scan">("all");
   const [selectedSource, setSelectedSource] = useState<"all" | "ADMS" | "TCP_SYNC">("all");
   const [isCalculating, setIsCalculating] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -322,6 +322,7 @@ export default function AttendanceRawLogsPage() {
                 <option value="Masuk">Tap Masuk</option>
                 <option value="Pulang">Tap Pulang</option>
                 <option value="Scan Antara">Scan Antara (Siang)</option>
+                <option value="Scan">Scan Umum (Auto)</option>
               </select>
             </div>
 
@@ -424,6 +425,11 @@ export default function AttendanceRawLogsPage() {
                       {log.inOutState === "Scan Antara" && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
                           Scan Antara
+                        </span>
+                      )}
+                      {(log.inOutState === "Scan" || (log.inOutState !== "Masuk" && log.inOutState !== "Pulang" && log.inOutState !== "Scan Antara")) && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-300">
+                          {log.inOutState || "Scan"}
                         </span>
                       )}
                     </td>

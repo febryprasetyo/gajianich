@@ -34,7 +34,7 @@ export interface RawAttendanceLog {
   department: string;
   timestamp: string; // YYYY-MM-DD HH:mm:ss
   verifyMode: "Fingerprint" | "Face" | "Password" | "Card";
-  inOutState: "Masuk" | "Pulang" | "Scan Antara";
+  inOutState: "Masuk" | "Pulang" | "Scan Antara" | "Scan" | string;
   workDate: string; // YYYY-MM-DD
   source?: string;
 }
