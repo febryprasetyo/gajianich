@@ -87,8 +87,8 @@ export default function AttendanceDataPage() {
     },
     {
       key: 'absent',
-      label: 'Tidak hadir',
-      test: r => !r.isDayOff && r.attendanceStatus === 'ALPHA',
+      label: 'Tidak hadir (Belum absen)',
+      test: () => false, // Di-handle khusus di filter karyawan: karyawan yang belum memiliki catatan absensi sama sekali pada tanggal terpilih
     },
     {
       key: 'off',
@@ -102,13 +102,21 @@ export default function AttendanceDataPage() {
     },
     {
       key: 'leave',
-      label: 'Izin / sakit / cuti',
-      test: r => ['IZIN', 'SAKIT', 'CUTI'].includes(r.attendanceStatus),
+      label: 'Izin / sakit / cuti / alpha',
+      test: r => ['IZIN', 'SAKIT', 'CUTI', 'ALPHA'].includes(r.attendanceStatus),
     },
   ];
 
   const activeMetric = metrics.find(m => m.key === condition);
-  const employees = filterEmployees(data, filter).filter(e => !activeMetric || (lookup.has(e.id) && activeMetric.test(lookup.get(e.id)!)));
+  const baseEmployees = filterEmployees(data, filter);
+  const employees = baseEmployees.filter(e => {
+    if (!activeMetric) return true;
+    const r = lookup.get(e.id);
+    if (activeMetric.key === 'absent') {
+      return !r; // Belum ada data absensi sama sekali untuk karyawan ini di tanggal tersebut
+    }
+    return r ? activeMetric.test(r) : false;
+  });
   const actualPage = Math.min(page, Math.max(1, Math.ceil(employees.length / 10)));
   const visible = employees.slice((actualPage - 1) * 10, actualPage * 10);
 
@@ -239,7 +247,9 @@ export default function AttendanceDataPage() {
       <div className="hr-panel overflow-x-auto">
         <div className="grid min-w-[1100px] grid-cols-10 divide-x divide-slate-200">
           {metrics.map(m => {
-            const count = records.filter(m.test).length;
+            const count = m.key === 'absent'
+              ? baseEmployees.filter(e => !lookup.has(e.id)).length
+              : records.filter(m.test).length;
             const isSelected = condition === m.key;
             return (
               <button
