@@ -14,6 +14,7 @@ import {
   attendanceShifts,
   attendanceShiftAssignments,
   attendanceIdentities,
+  attendanceWorkHours,
 } from "../db/schema/attendanceWorkspace";
 import { attendanceRecords } from "../db/schema/attendance";
 import { departments } from "../db/schema/master";
@@ -672,13 +673,15 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
 
     const shifts = await db.select().from(attendanceShifts);
     const assignments = await db.select().from(attendanceShiftAssignments);
+    const workHoursRows = await db.select().from(attendanceWorkHours);
+    const workHoursMap = new Map<number, any>(workHoursRows.map((wh) => [wh.id, wh]));
 
     const result = calculateAttendanceFromPunches(
       rawPunches,
       employeesMap,
       shifts as any,
       assignments as any,
-      { assignDefaultShiftIfUnassigned }
+      { assignDefaultShiftIfUnassigned, workHoursMap }
     );
 
     // If saveToDatabase requested, upsert into attendance_records

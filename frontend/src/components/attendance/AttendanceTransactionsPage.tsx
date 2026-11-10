@@ -116,7 +116,7 @@ export default function AttendanceTransactionsPage() {
           scanOut: r.scanOut,
           lateMinutes: r.lateMinutes || 0,
           earlyMinutes: r.earlyMinutes || 0,
-          status: r.statusLabel || (r.lateMinutes > 0 ? 'Terlambat' : r.earlyMinutes > 0 ? 'Pulang Cepat' : !r.scanOut ? 'Belum Scan Pulang' : 'Hadir Tepat Waktu'),
+          status: r.statusLabel || (!r.scanIn && r.scanOut ? 'Tidak Scan Masuk' : r.lateMinutes > 0 ? 'Terlambat' : r.earlyMinutes > 0 ? 'Pulang Cepat' : !r.scanOut ? 'Belum Scan Pulang' : 'Hadir Tepat Waktu'),
           rawPunchesCount: r.rawPunchesCount || 1,
         }));
 
@@ -596,6 +596,7 @@ export default function AttendanceTransactionsPage() {
                     <option value="Terlambat">Terlambat</option>
                     <option value="Pulang Cepat">Pulang Cepat</option>
                     <option value="Belum Scan Pulang">Belum Scan Pulang</option>
+                    <option value="Tidak Scan Masuk">Tidak Scan Masuk</option>
                   </select>
                 </div>
 
@@ -701,7 +702,9 @@ export default function AttendanceTransactionsPage() {
                               {rec.scanIn}
                             </span>
                           ) : (
-                            <span className="text-slate-400 font-normal">-</span>
+                            <span className="text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md text-[10px] font-semibold border border-amber-200">
+                              Belum Scan
+                            </span>
                           )}
                         </td>
                         <td className="py-3 px-3 text-center font-mono font-bold text-slate-800 whitespace-nowrap">
@@ -756,6 +759,12 @@ export default function AttendanceTransactionsPage() {
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                               <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
                               Belum Scan Pulang
+                            </span>
+                          )}
+                          {rec.status === 'Tidak Scan Masuk' && (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-violet-100 text-violet-800 border border-violet-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-violet-600" />
+                              Tidak Scan Masuk
                             </span>
                           )}
                         </td>

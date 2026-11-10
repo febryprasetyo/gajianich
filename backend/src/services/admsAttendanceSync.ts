@@ -215,18 +215,37 @@ export async function cleanseAndIngestAdmsLogs(
         empOrgMap.set(emp.id, emp.organizationId ? Number(emp.organizationId) : null);
       }
 
-      const shiftRes = await client.query(`SELECT code, name, schedule_in AS "scheduleIn", schedule_out AS "scheduleOut" FROM public.attendance_shifts`);
+      const shiftRes = await client.query(`
+        SELECT id, code, name, schedule_in AS "scheduleIn", schedule_out AS "scheduleOut",
+               monday_work_hours_id AS "mondayWorkHoursId", tuesday_work_hours_id AS "tuesdayWorkHoursId",
+               wednesday_work_hours_id AS "wednesdayWorkHoursId", thursday_work_hours_id AS "thursdayWorkHoursId",
+               friday_work_hours_id AS "fridayWorkHoursId", saturday_work_hours_id AS "saturdayWorkHoursId",
+               sunday_work_hours_id AS "sundayWorkHoursId", is_default AS "isDefault", is_active AS "isActive"
+        FROM public.attendance_shifts
+      `);
       const assignRes = await client.query(
-        `SELECT a.employee_id AS "employeeId", a.department_id AS "departmentId", s.code AS "shiftCode"
+        `SELECT a.employee_id AS "employeeId", a.department_id AS "departmentId", s.code AS "shiftCode", a.shift_id AS "shiftId"
          FROM public.attendance_shift_assignments a
          JOIN public.attendance_shifts s ON s.id = a.shift_id`
       );
+      const whRes = await client.query(`
+        SELECT id, name, schedule_in AS "scheduleIn", schedule_out AS "scheduleOut",
+               scan_in_start AS "scanInStart", scan_in_end AS "scanInEnd",
+               scan_out_start AS "scanOutStart", scan_out_end AS "scanOutEnd",
+               late_tolerance_minutes AS "lateToleranceMinutes",
+               early_leave_tolerance_minutes AS "earlyLeaveToleranceMinutes",
+               require_check_in AS "requireCheckIn", require_check_out AS "requireCheckOut",
+               is_active AS "isActive"
+        FROM public.attendance_work_hours
+      `);
+      const workHoursMap = new Map<number, any>(whRes.rows.map((wh: any) => [Number(wh.id), wh]));
 
       const rawPunchesForCalc: RawPunchInput[] = cleanedPunches.map(p => ({
         pin: p.pin,
         employeeId: p.employeeId,
         timestamp: p.timestamp,
         workDate: p.workDate || extractWorkDate(p.timestamp),
+        inOutState: p.rawStatus === 0 ? 'Masuk' : p.rawStatus === 1 ? 'Pulang' : undefined,
       }));
 
       const calcResult = calculateAttendanceFromPunches(
@@ -234,7 +253,7 @@ export async function cleanseAndIngestAdmsLogs(
         employeesMap,
         shiftRes.rows as unknown as WorkShift[],
         assignRes.rows as unknown as ShiftAssignment[],
-        { assignDefaultShiftIfUnassigned: true }
+        { assignDefaultShiftIfUnassigned: true, workHoursMap }
       );
 
       // 6. Upsert calculated records into attendance_records

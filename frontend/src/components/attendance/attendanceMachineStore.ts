@@ -56,7 +56,7 @@ export interface ProcessedAttendanceRecord {
   scanOut: string | null;
   lateMinutes: number;
   earlyMinutes: number;
-  status: "Hadir Tepat Waktu" | "Terlambat" | "Pulang Cepat" | "Tidak Hadir" | "Belum Scan Pulang";
+  status: "Hadir Tepat Waktu" | "Terlambat" | "Pulang Cepat" | "Tidak Hadir" | "Belum Scan Pulang" | "Tidak Scan Masuk";
   rawPunchesCount: number;
 }
 

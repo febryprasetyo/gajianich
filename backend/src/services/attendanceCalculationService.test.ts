@@ -6,7 +6,7 @@ import {
   parseMinutesFromTime,
   mergeAttendanceScans,
 } from "./attendanceCalculationService";
-import type { WorkShift, ShiftAssignment } from "../domain/attendanceTypes";
+import type { WorkShift, ShiftAssignment, WorkHoursTemplate } from "../domain/attendanceTypes";
 
 const MOCK_SHIFTS: WorkShift[] = [
   {
@@ -254,4 +254,133 @@ test("mergeAttendanceScans preserves machine scans when no previous mobile recor
   assert.strictEqual(merged.scanOut, "17:10");
   assert.strictEqual(merged.lateMinutes, 0);
   assert.strictEqual(merged.earlyMinutes, 0);
+});
+
+test("calculateAttendanceFromPunches correctly allocates single evening punch to scanOut (no false tardiness)", () => {
+  const officeWorkHours: WorkHoursTemplate = {
+    id: 10,
+    name: "Office Reguler",
+    scheduleIn: "08:00",
+    scheduleOut: "17:00",
+    scanInStart: "06:00",
+    scanInEnd: "10:00",
+    scanOutStart: "15:00",
+    scanOutEnd: "23:59",
+    lateToleranceMinutes: 5,
+    earlyLeaveToleranceMinutes: 5,
+    requireCheckIn: true,
+    requireCheckOut: true,
+    isActive: true,
+  };
+
+  const shiftWithWorkHours: WorkShift = {
+    id: 1,
+    code: "OFFICE",
+    name: "Office Reguler (Default)",
+    mondayWorkHoursId: 10,
+    tuesdayWorkHoursId: 10,
+    wednesdayWorkHoursId: 10,
+    thursdayWorkHoursId: 10,
+    fridayWorkHoursId: 10,
+    isDefault: true,
+    isActive: true,
+  };
+
+  const workHoursMap = new Map<number, WorkHoursTemplate>([[10, officeWorkHours]]);
+
+  // 2026-03-05 is a Thursday
+  const punches = [
+    { pin: "3085", employeeId: 177, timestamp: "2026-03-05 17:02:15", workDate: "2026-03-05" },
+  ];
+
+  const employeesMap = new Map();
+  employeesMap.set(177, { id: 177, nik: "3085", fullName: "Ilham Ekayana", departmentName: "Umum", departmentId: 1 });
+
+  const result = calculateAttendanceFromPunches(
+    punches,
+    employeesMap,
+    [shiftWithWorkHours],
+    [],
+    { assignDefaultShiftIfUnassigned: true, workHoursMap }
+  );
+
+  assert.strictEqual(result.totalProcessed, 1);
+  const rec = result.processedRecords[0];
+  assert.strictEqual(rec.scanIn, null, "scanIn should be null because punch was made during checkout window");
+  assert.strictEqual(rec.scanOut, "17:02", "scanOut should be 17:02");
+  assert.strictEqual(rec.lateMinutes, 0, "lateMinutes must be 0, not 537m!");
+  assert.strictEqual(rec.earlyMinutes, 0, "earlyMinutes is 0 since 17:02 >= 17:00");
+  assert.strictEqual(rec.statusLabel, "Tidak Scan Masuk");
+});
+
+test("calculateAttendanceFromPunches allocates punch with inOutState='Pulang' to scanOut even without template", () => {
+  const punches = [
+    { pin: "3086", employeeId: 222, timestamp: "2026-03-05 17:04:00", workDate: "2026-03-05", inOutState: "Pulang" },
+  ];
+
+  const employeesMap = new Map();
+  employeesMap.set(222, { id: 222, nik: "3086", fullName: "Vincent Galih Danindra", departmentName: "Umum", departmentId: 1 });
+
+  const result = calculateAttendanceFromPunches(
+    punches,
+    employeesMap,
+    MOCK_SHIFTS,
+    MOCK_ASSIGNMENTS,
+    { assignDefaultShiftIfUnassigned: true }
+  );
+
+  assert.strictEqual(result.totalProcessed, 1);
+  const rec = result.processedRecords[0];
+  assert.strictEqual(rec.scanIn, null);
+  assert.strictEqual(rec.scanOut, "17:04");
+  assert.strictEqual(rec.lateMinutes, 0);
+  assert.strictEqual(rec.statusLabel, "Tidak Scan Masuk");
+});
+
+test("calculateAttendanceFromPunches allocates afternoon punches to scanOut via schedule midpoint fallback", () => {
+  // Legacy shift without workHoursMap (08:00 - 17:00, midpoint is 12:30)
+  const punches = [
+    { pin: "3050", employeeId: 181, timestamp: "2026-03-05 17:05:00", workDate: "2026-03-05" },
+  ];
+
+  const employeesMap = new Map();
+  employeesMap.set(181, { id: 181, nik: "3050", fullName: "Julianto Syahputra", departmentName: "Umum", departmentId: 1 });
+
+  const result = calculateAttendanceFromPunches(
+    punches,
+    employeesMap,
+    MOCK_SHIFTS,
+    MOCK_ASSIGNMENTS,
+    { assignDefaultShiftIfUnassigned: true }
+  );
+
+  const rec = result.processedRecords[0];
+  assert.strictEqual(rec.scanIn, null);
+  assert.strictEqual(rec.scanOut, "17:05");
+  assert.strictEqual(rec.lateMinutes, 0);
+  assert.strictEqual(rec.statusLabel, "Tidak Scan Masuk");
+});
+
+test("calculateAttendanceFromPunches handles multiple evening punches cleanly (taking last for scanOut)", () => {
+  const punches = [
+    { pin: "3102", employeeId: 208, timestamp: "2026-03-05 17:01:00", workDate: "2026-03-05" },
+    { pin: "3102", employeeId: 208, timestamp: "2026-03-05 17:09:00", workDate: "2026-03-05" },
+  ];
+
+  const employeesMap = new Map();
+  employeesMap.set(208, { id: 208, nik: "3102", fullName: "Amir Al Katiri", departmentName: "Umum", departmentId: 1 });
+
+  const result = calculateAttendanceFromPunches(
+    punches,
+    employeesMap,
+    MOCK_SHIFTS,
+    MOCK_ASSIGNMENTS,
+    { assignDefaultShiftIfUnassigned: true }
+  );
+
+  const rec = result.processedRecords[0];
+  assert.strictEqual(rec.scanIn, null);
+  assert.strictEqual(rec.scanOut, "17:09");
+  assert.strictEqual(rec.lateMinutes, 0);
+  assert.strictEqual(rec.statusLabel, "Tidak Scan Masuk");
 });
