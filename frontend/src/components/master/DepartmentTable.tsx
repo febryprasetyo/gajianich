@@ -7,6 +7,8 @@ export interface DepartmentItem {
   id: number;
   code: string;
   name: string;
+  groupId?: number | null;
+  groupCode?: 'CMC' | 'MGM' | null;
   createdAt?: string;
 }
 
@@ -49,6 +51,7 @@ export default function DepartmentTable({
       <table className="w-full text-left text-xs border-collapse">
         <thead>
           <tr className="bg-slate-50/80 text-slate-500 border-b border-slate-200 font-mono uppercase tracking-wider">
+            <th className="py-3.5 px-5 font-semibold">Kelompok</th>
             <th className="py-3.5 px-5 font-semibold">Dept Code</th>
             <th className="py-3.5 px-5 font-semibold">Department Name</th>
             <th className="py-3.5 px-5 font-semibold">Created Date</th>
@@ -58,6 +61,21 @@ export default function DepartmentTable({
         <tbody className="divide-y divide-slate-100">
           {departments.map((dept) => (
             <tr key={dept.id} className="hover:bg-emerald-50/30 transition-colors group">
+              <td className="py-4 px-5">
+                {dept.groupCode ? (
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold tracking-wide font-mono ${
+                      dept.groupCode === 'CMC'
+                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                        : 'bg-amber-50 text-amber-700 border border-amber-200'
+                    }`}
+                  >
+                    {dept.groupCode}
+                  </span>
+                ) : (
+                  <span className="text-slate-400 font-mono text-[11px]">—</span>
+                )}
+              </td>
               <td className="py-4 px-5 font-mono">
                 <span className="px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">
                   {dept.code}

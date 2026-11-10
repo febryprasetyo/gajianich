@@ -4,8 +4,9 @@ import { db } from '../db';
 import { departments, locations } from '../db/schema/master';
 import { vendors } from '../db/schema/vendors';
 import { eq,getTableColumns } from 'drizzle-orm';
-import {departmentOrganizationMappings,locationOrganizationMappings} from '../db/schema/organizations';
+import {departmentOrganizationMappings,locationOrganizationMappings,organizationGroups} from '../db/schema/organizations';
 import {requireHrScope,historicalScopePredicate} from '../services/hrOrganizationScope';
+import { parseGroupSelection } from '../domain/organizationAccess';
 import { z } from 'zod';
 import { resolveAuditContext } from '../services/hrAudit';
 import { runHrMutation } from '../services/hrMutation';
@@ -16,12 +17,14 @@ import { mutateDepartment, mutateLocation } from '../services/hrMasterMutations'
 const createDepartmentSchema = z.object({
   name: z.string().min(1, 'Department name is required').max(100),
   code: z.string().min(1, 'Department code is required').max(20),
+  groupId: z.number().int().positive().optional().nullable(),
   isActive: z.boolean().optional().default(true),
 });
 
 const updateDepartmentSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   code: z.string().min(1).max(20).optional(),
+  groupId: z.number().int().positive().optional().nullable(),
   isActive: z.boolean().optional(),
 });
 
@@ -53,7 +56,18 @@ const updateVendorSchema = createVendorSchema.partial();
 export async function getDepartments(req: Request, res: Response) {
   try {
     const scope=requireHrScope(req as any);
-    const list = await getCachedMasterData('departments', scope, () => db.select(getTableColumns(departments)).from(departments).leftJoin(departmentOrganizationMappings,eq(departmentOrganizationMappings.departmentId,departments.id)).where(historicalScopePredicate(scope,departmentOrganizationMappings.groupId)));
+    const list = await getCachedMasterData('departments', scope, () =>
+      db
+        .select({
+          ...getTableColumns(departments),
+          groupId: departmentOrganizationMappings.groupId,
+          groupCode: organizationGroups.code,
+        })
+        .from(departments)
+        .leftJoin(departmentOrganizationMappings, eq(departmentOrganizationMappings.departmentId, departments.id))
+        .leftJoin(organizationGroups, eq(departmentOrganizationMappings.groupId, organizationGroups.id))
+        .where(historicalScopePredicate(scope, departmentOrganizationMappings.groupId))
+    );
     return res.status(200).json(list);
   } catch (err: any) {
     return res.status(500).json({ error: err.message || 'Internal server error' });
@@ -63,16 +77,27 @@ export async function getDepartments(req: Request, res: Response) {
 export async function createDepartment(req: Request, res: Response) {
   try {
     const parsed = createDepartmentSchema.parse(req.body);
+    const headerGroupId = parseGroupSelection(req.headers['x-organization-group-id']);
+    const effectiveGroupId = parsed.groupId ?? headerGroupId;
+    const mutationData = { ...parsed, groupId: effectiveGroupId };
+
     if ((req as any).user) {
       const context = await resolveAuditContext(req as any);
-      const requestHash = hashRequestPayload({ command: 'department_create', body: parsed });
+      const requestHash = hashRequestPayload({ command: 'department_create', body: mutationData });
       const result = await runHrMutation(context, requestHash, async (tx) => {
-        return await mutateDepartment(tx, context, { type: 'CREATE', data: parsed });
+        return await mutateDepartment(tx, context, { type: 'CREATE', data: mutationData });
       });
       return res.status(201).json(result.department);
     }
-    const [inserted] = await db.insert(departments).values(parsed).returning();
-    return res.status(201).json(inserted);
+    const [inserted] = await db.insert(departments).values({ name: parsed.name, code: parsed.code, isActive: parsed.isActive }).returning();
+    if (effectiveGroupId) {
+      await db.insert(departmentOrganizationMappings).values({
+        departmentId: inserted.id,
+        groupId: effectiveGroupId,
+        approvalReference: 'manual-master-creation',
+      });
+    }
+    return res.status(201).json({ ...inserted, groupId: effectiveGroupId ?? null });
   } catch (err: any) {
     if (err instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation failed', details: err.issues });
@@ -98,26 +123,47 @@ export async function updateDepartment(req: Request, res: Response) {
     }
 
     const parsed = updateDepartmentSchema.parse(req.body);
+    const headerGroupId = parseGroupSelection(req.headers['x-organization-group-id']);
+    const effectiveGroupId = parsed.groupId !== undefined ? parsed.groupId : headerGroupId;
+    const mutationData = { ...parsed, groupId: effectiveGroupId };
+
     if ((req as any).user) {
       const context = await resolveAuditContext(req as any);
-      const requestHash = hashRequestPayload({ command: 'department_update', id, body: parsed });
+      const requestHash = hashRequestPayload({ command: 'department_update', id, body: mutationData });
       const result = await runHrMutation(context, requestHash, async (tx) => {
-        return await mutateDepartment(tx, context, { type: 'UPDATE', id, data: parsed });
+        return await mutateDepartment(tx, context, { type: 'UPDATE', id, data: mutationData });
       });
       return res.status(200).json(result.department);
     }
 
-    const updatedList = await db
-      .update(departments)
-      .set(parsed)
-      .where(eq(departments.id, id))
-      .returning();
+    const { groupId, ...deptData } = mutationData;
+    let updatedList = [];
+    if (Object.keys(deptData).length > 0) {
+      updatedList = await db
+        .update(departments)
+        .set(deptData)
+        .where(eq(departments.id, id))
+        .returning();
+    } else {
+      updatedList = await db.select().from(departments).where(eq(departments.id, id));
+    }
 
     if (updatedList.length === 0) {
       return res.status(404).json({ error: 'Department not found' });
     }
 
-    return res.status(200).json(updatedList[0]);
+    if (effectiveGroupId !== undefined && effectiveGroupId !== null) {
+      const [existing] = await db.select().from(departmentOrganizationMappings).where(eq(departmentOrganizationMappings.departmentId, id));
+      if (existing) {
+        if (existing.groupId !== effectiveGroupId) {
+          await db.update(departmentOrganizationMappings).set({ groupId: effectiveGroupId, approvalReference: 'manual-master-update' }).where(eq(departmentOrganizationMappings.departmentId, id));
+        }
+      } else {
+        await db.insert(departmentOrganizationMappings).values({ departmentId: id, groupId: effectiveGroupId, approvalReference: 'manual-master-update' });
+      }
+    }
+
+    return res.status(200).json({ ...updatedList[0], groupId: effectiveGroupId ?? null });
   } catch (err: any) {
     if (err instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation failed', details: err.issues });

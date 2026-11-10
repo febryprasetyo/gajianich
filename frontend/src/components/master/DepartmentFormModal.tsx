@@ -5,6 +5,7 @@ import ModalShell from '@/components/ui/ModalShell';
 import { api } from '@/lib/api';
 import type { DepartmentItem } from './DepartmentTable';
 import { Loader2, Plus, Pencil, AlertCircle } from 'lucide-react';
+import { useOrganizationScope } from '@/context/OrganizationScopeContext';
 
 interface DepartmentFormModalProps {
   isOpen: boolean;
@@ -20,9 +21,11 @@ export default function DepartmentFormModal({
   onSuccess,
 }: DepartmentFormModalProps) {
   const isEdit = Boolean(department);
+  const { availableGroups, selectedGroupId } = useOrganizationScope();
 
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
+  const [groupId, setGroupId] = useState<number | ''>('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,22 +35,28 @@ export default function DepartmentFormModal({
       if (department) {
         setCode(department.code);
         setName(department.name);
+        setGroupId(department.groupId ?? '');
       } else {
         setCode('');
         setName('');
+        setGroupId(selectedGroupId ?? (availableGroups[0]?.id ?? ''));
       }
     }
-  }, [isOpen, department]);
+  }, [isOpen, department, selectedGroupId, availableGroups]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
 
-    const payload = {
+    const payload: { code: string; name: string; groupId?: number } = {
       code: code.trim().toUpperCase(),
       name: name.trim(),
     };
+
+    if (groupId !== '') {
+      payload.groupId = Number(groupId);
+    }
 
     try {
       if (isEdit && department) {
@@ -86,6 +95,27 @@ export default function DepartmentFormModal({
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4 font-mono text-xs">
+        {availableGroups.length > 0 && (
+          <div>
+            <label className="block text-slate-700 font-bold mb-1.5 uppercase text-[10px] tracking-wider">
+              Kelompok Organisasi *
+            </label>
+            <select
+              value={groupId}
+              onChange={(e) => setGroupId(e.target.value === '' ? '' : Number(e.target.value))}
+              required
+              className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 font-bold"
+            >
+              <option value="">Pilih Kelompok Organisasi</option>
+              {availableGroups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.code} - {g.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div>
           <label className="block text-slate-700 font-bold mb-1.5 uppercase text-[10px] tracking-wider">
             Department Code *

@@ -1,7 +1,8 @@
 import type {RequestScope} from '../domain/organizationAccess';
 import {requireHrScope,requireScopedEmployee,requireScopedDepartment} from './hrOrganizationScope';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, ilike, ne, sql } from 'drizzle-orm';
 import { departments, locations } from '../db/schema/master';
+import { organizationGroups, departmentOrganizationMappings } from '../db/schema/organizations';
 import { employees } from '../db/schema/employees';
 import { systemSettings } from '../db/schema/system';
 import { attendanceShifts, attendanceShiftAssignments } from '../db/schema/attendanceWorkspace';
@@ -10,8 +11,8 @@ import { appendHrAudit, type AuditTx } from './hrAudit';
 import { assessEmployeeDeletion, getAttendanceDeletionCheck } from '../domain/employeeDeletion';
 
 export type DepartmentCommand =
-  | { type: 'CREATE'; data: { name: string; code: string; isActive?: boolean } }
-  | { type: 'UPDATE'; id: number; data: Partial<{ name: string; code: string; isActive?: boolean }> }
+  | { type: 'CREATE'; data: { name: string; code: string; groupId?: number | null; isActive?: boolean } }
+  | { type: 'UPDATE'; id: number; data: Partial<{ name: string; code: string; groupId?: number | null; isActive?: boolean }> }
   | { type: 'DELETE'; id: number };
 
 export type LocationCommand =
@@ -30,7 +31,39 @@ export async function mutateDepartment(
   command: DepartmentCommand
 ): Promise<{ department: any; eventId: string | null }> {
   if (command.type === 'CREATE') {
-    const [inserted] = await (tx as any).insert(departments).values(command.data).returning();
+    const { groupId, ...deptData } = command.data;
+
+    // Enforce scoped uniqueness by group if groupId is provided
+    if (groupId) {
+      const existingInGroup = await (tx as any)
+        .select({ id: departments.id, name: departments.name, code: departments.code })
+        .from(departments)
+        .innerJoin(departmentOrganizationMappings, eq(departmentOrganizationMappings.departmentId, departments.id))
+        .where(
+          and(
+            eq(departmentOrganizationMappings.groupId, groupId),
+            sql`(lower(trim(${departments.name})) = lower(trim(${deptData.name})) or upper(trim(${departments.code})) = upper(trim(${deptData.code})))`
+          )
+        )
+        .limit(1);
+
+      if (existingInGroup.length > 0) {
+        const err = new Error('Departemen dengan nama atau kode tersebut sudah terdaftar di kelompok ini.');
+        (err as any).statusCode = 409;
+        throw err;
+      }
+    }
+
+    const [inserted] = await (tx as any).insert(departments).values(deptData).returning();
+
+    // Map department to organization group if groupId is specified
+    if (groupId) {
+      await (tx as any).insert(departmentOrganizationMappings).values({
+        departmentId: inserted.id,
+        groupId,
+        approvalReference: 'manual-master-creation',
+      });
+    }
 
     // Auto-assign default office shift ke departemen baru
     try {
@@ -73,10 +106,11 @@ export async function mutateDepartment(
       summary: `Departemen ${inserted.name} (${inserted.code}) dibuat`,
       targets: [target],
     });
-    return { department: inserted, eventId };
+    return { department: { ...inserted, groupId: groupId ?? null }, eventId };
   }
 
   if (command.type === 'UPDATE') {
+    const { groupId, ...deptData } = command.data;
     const [before] = await (tx as any).select().from(departments).where(eq(departments.id, command.id)).limit(1);
     if (!before) {
       const err = new Error('Department not found');
@@ -84,18 +118,71 @@ export async function mutateDepartment(
       throw err;
     }
 
-    const [updated] = await (tx as any)
-      .update(departments)
-      .set(command.data)
-      .where(eq(departments.id, command.id))
-      .returning();
+    // Fetch existing mapping
+    const [existingMapping] = await (tx as any)
+      .select()
+      .from(departmentOrganizationMappings)
+      .where(eq(departmentOrganizationMappings.departmentId, command.id))
+      .limit(1);
+
+    const effectiveGroupId = groupId !== undefined ? groupId : existingMapping?.groupId;
+
+    if (effectiveGroupId && (deptData.name || deptData.code)) {
+      const nameCheck = deptData.name ?? before.name;
+      const codeCheck = deptData.code ?? before.code;
+      const existingInGroup = await (tx as any)
+        .select({ id: departments.id })
+        .from(departments)
+        .innerJoin(departmentOrganizationMappings, eq(departmentOrganizationMappings.departmentId, departments.id))
+        .where(
+          and(
+            eq(departmentOrganizationMappings.groupId, effectiveGroupId),
+            ne(departments.id, command.id),
+            sql`(lower(trim(${departments.name})) = lower(trim(${nameCheck})) or upper(trim(${departments.code})) = upper(trim(${codeCheck})))`
+          )
+        )
+        .limit(1);
+
+      if (existingInGroup.length > 0) {
+        const err = new Error('Departemen dengan nama atau kode tersebut sudah terdaftar di kelompok ini.');
+        (err as any).statusCode = 409;
+        throw err;
+      }
+    }
+
+    let updated = before;
+    if (Object.keys(deptData).length > 0) {
+      const [res] = await (tx as any)
+        .update(departments)
+        .set(deptData)
+        .where(eq(departments.id, command.id))
+        .returning();
+      updated = res;
+    }
+
+    if (groupId !== undefined && groupId !== null) {
+      if (existingMapping) {
+        if (existingMapping.groupId !== groupId) {
+          await (tx as any)
+            .update(departmentOrganizationMappings)
+            .set({ groupId, approvalReference: 'manual-master-update' })
+            .where(eq(departmentOrganizationMappings.departmentId, command.id));
+        }
+      } else {
+        await (tx as any).insert(departmentOrganizationMappings).values({
+          departmentId: command.id,
+          groupId,
+          approvalReference: 'manual-master-update',
+        });
+      }
+    }
 
     const target = sanitizeAuditTarget('department', before, updated, {
       entityId: String(command.id),
       entityLabel: `${updated.code} - ${updated.name}`,
     });
 
-    if (target.changedFields.length === 0) {
+    if (target.changedFields.length === 0 && (!groupId || groupId === existingMapping?.groupId)) {
       return { department: before, eventId: null };
     }
 
@@ -110,7 +197,7 @@ export async function mutateDepartment(
       summary: `Departemen ${updated.name} diperbarui: ${target.changedFields.join(', ')}`,
       targets: [target],
     });
-    return { department: updated, eventId };
+    return { department: { ...updated, groupId: effectiveGroupId ?? null }, eventId };
   }
 
   if (command.type === 'DELETE') {
@@ -120,6 +207,11 @@ export async function mutateDepartment(
       (err as any).statusCode = 404;
       throw err;
     }
+
+    // Delete mapping first if exists
+    await (tx as any)
+      .delete(departmentOrganizationMappings)
+      .where(eq(departmentOrganizationMappings.departmentId, command.id));
 
     const [deleted] = await (tx as any)
       .delete(departments)
