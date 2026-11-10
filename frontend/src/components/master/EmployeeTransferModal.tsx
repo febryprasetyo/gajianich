@@ -297,7 +297,7 @@ export default function EmployeeTransferModal({ isOpen, onClose, employee, onSuc
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Memproses Transfer...</span>
+                  <span>Memindahkan Organisasi & Menyinkronkan Akses...</span>
                 </>
               ) : (
                 <>

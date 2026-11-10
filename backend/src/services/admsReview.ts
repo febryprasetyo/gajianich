@@ -24,7 +24,8 @@ export async function getReviewLogs(runner:SqlRunner,scope:RequestScope,q:Return
    to_char(r.punched_at,'YYYY-MM-DD HH24:MI:SS') AS timestamp,
    CASE r.raw_verify WHEN 0 THEN 'Password' WHEN 1 THEN 'Fingerprint' WHEN 2 THEN 'Card' WHEN 15 THEN 'Face' WHEN 20 THEN 'Face' ELSE 'ZK:'||r.raw_verify END AS "verifyMode",
    CASE WHEN r.raw_status IN (0,4) THEN 'Masuk' WHEN r.raw_status IN (1,5) THEN 'Pulang' ELSE 'Scan Antara' END AS "inOutState",
-   p.source,CASE WHEN EXISTS(SELECT 1 FROM public.department_organization_mappings m WHERE m.department_id=e.department_id AND m.group_id=r.group_id) THEN e.full_name ELSE NULL END AS "employeeName"
+   p.source,CASE WHEN EXISTS(SELECT 1 FROM public.department_organization_mappings m WHERE m.department_id=e.department_id AND m.group_id=r.group_id) THEN e.full_name ELSE NULL END AS "employeeName",
+   CASE WHEN r.employee_id IS NOT NULL AND r.ingested_at IS NULL THEN true ELSE false END AS "isSyncing"
   FROM adms.review_logs r JOIN adms.devices a ON a.serial=r.serial AND a.group_id=r.group_id
    JOIN public.attendance_devices d ON d.id=a.device_id AND d.group_id=a.group_id
    JOIN adms.receipts p ON p.id=r.receipt_id AND p.serial=r.serial

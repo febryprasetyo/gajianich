@@ -70,6 +70,7 @@ export interface AdmsReviewLogsData {
     id: string; deviceId: number; deviceName: string; serial: string; pin: string;
     timestamp: string; verifyMode: string; inOutState: string; source: string;
     employeeName: string | null;
+    isSyncing?: boolean;
   }>;
   pagination: { page: number; limit: number; total: number };
 }

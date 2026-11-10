@@ -342,6 +342,9 @@ export async function resolveUnmappedAdmsPin(
   input: { groupId: number; pin: string; employeeId: number; processLogs?: boolean }
 ) {
   const client = await pool.connect();
+  let emp: { id: number; group_id: number; employee_number: string; full_name: string };
+  let updatedReviewLogs = 0;
+
   try {
     await client.query('BEGIN');
 
@@ -357,7 +360,7 @@ export async function resolveUnmappedAdmsPin(
     if (!empRes.rows.length) {
       throw Object.assign(new Error('Karyawan tidak ditemukan dalam kelompok organisasi aktif.'), { statusCode: 404 });
     }
-    const emp = empRes.rows[0];
+    emp = empRes.rows[0];
 
     // 2. Update employee_id in adms.review_logs for this PIN and group
     const updateRes = await client.query(
@@ -367,31 +370,31 @@ export async function resolveUnmappedAdmsPin(
       [input.employeeId, input.pin, input.groupId]
     );
 
-    const updatedReviewLogs = updateRes.rowCount || 0;
-
-    // 3. If processLogs requested, run ingestion for this PIN immediately
-    let ingestResult = null;
-    if (input.processLogs) {
-      ingestResult = await cleanseAndIngestAdmsLogs({ connect: async () => client }, {
-        groupId: input.groupId,
-        pin: input.pin,
-      });
-    }
+    updatedReviewLogs = updateRes.rowCount || 0;
 
     await client.query('COMMIT');
-
-    return {
-      pin: input.pin,
-      employeeId: input.employeeId,
-      employeeName: emp.full_name,
-      updatedReviewLogs,
-      ingestResult,
-      message: `PIN ${input.pin} berhasil dipetakan ke ${emp.full_name} (${updatedReviewLogs} log review diperbarui).`,
-    };
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
   } finally {
     client.release();
   }
+
+  // 3. If processLogs requested, run ingestion using the pool (separate connection)
+  let ingestResult = null;
+  if (input.processLogs) {
+    ingestResult = await cleanseAndIngestAdmsLogs(pool, {
+      groupId: input.groupId,
+      pin: input.pin,
+    });
+  }
+
+  return {
+    pin: input.pin,
+    employeeId: input.employeeId,
+    employeeName: emp.full_name,
+    updatedReviewLogs,
+    ingestResult,
+    message: `PIN ${input.pin} berhasil dipetakan ke ${emp.full_name} (${updatedReviewLogs} log review diperbarui).`,
+  };
 }

@@ -105,9 +105,16 @@ export default function AdmsResolvePinModal({
             type="submit"
             form="adms-resolve-pin-form"
             disabled={submitting || !employeeId || loadingEmployees}
-            className="min-h-10 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+            className="min-h-10 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
           >
-            {submitting ? 'Memproses…' : 'Simpan & Proses ke Presensi'}
+            {submitting ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span>Memetakan PIN & Mengkalkulasi...</span>
+              </>
+            ) : (
+              'Simpan & Proses ke Presensi'
+            )}
           </button>
         </>
       }

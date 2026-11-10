@@ -1,6 +1,6 @@
 'use client';
 
-import { RefreshCw, Download, UserCheck } from 'lucide-react';
+import { RefreshCw, Download, UserCheck, Loader2 } from 'lucide-react';
 import FilterToolbar from '@/components/ui/FilterToolbar';
 import TableShell from '@/components/ui/TableShell';
 import TablePagination from '@/components/ui/TablePagination';
@@ -237,7 +237,17 @@ export default function AdmsLogsReviewSection({
                 </td>
                 <td>
                   <p className="font-mono font-semibold text-slate-900">{log.pin}</p>
-                  {log.employeeName ? (
+                  {log.isSyncing ? (
+                    <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800" title="Data sedang dihitung dan disinkronkan ke rekap presensi">
+                        <Loader2 className="h-3 w-3 animate-spin text-sky-600" />
+                        Sedang sinkronisasi...
+                      </span>
+                      {log.employeeName && (
+                        <span className="text-[11px] text-slate-600">({log.employeeName})</span>
+                      )}
+                    </div>
+                  ) : log.employeeName ? (
                     <p className="mt-1 text-slate-600">{log.employeeName}</p>
                   ) : (
                     <div className="mt-1 flex items-center gap-1.5 flex-wrap">
