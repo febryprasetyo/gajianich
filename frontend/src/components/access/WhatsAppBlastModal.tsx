@@ -195,12 +195,12 @@ export default function WhatsAppBlastModal({
   const handleDownloadCsv = () => {
     if (results.length === 0) return;
 
-    const headers = ['Nama Karyawan', 'No WhatsApp', 'Username', 'Password Sementara', 'Pesan Siap Kirim WA', 'Link Chat WA'];
+    const headers = ['Nama Karyawan', 'No WhatsApp', 'Username', 'Link Aktivasi Akun', 'Pesan Siap Kirim WA', 'Link Chat WA'];
     const rows = results.map((r) => [
       `"${r.fullName.replace(/"/g, '""')}"`,
       `"${(r.normalizedPhone || r.phone || '').replace(/"/g, '""')}"`,
       `"${r.username.replace(/"/g, '""')}"`,
-      `"${r.temporaryPassword.replace(/"/g, '""')}"`,
+      `"${(r.activationUrl || '').replace(/"/g, '""')}"`,
       `"${(r.whatsappMessage || '').replace(/"/g, '""')}"`,
       `"${(r.whatsappLink || '').replace(/"/g, '""')}"`,
     ]);
@@ -210,7 +210,7 @@ export default function WhatsAppBlastModal({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `rekap_kredensial_akun_wa_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `rekap_aktivasi_akun_wa_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -227,13 +227,13 @@ export default function WhatsAppBlastModal({
       onClose={step === 'result' ? handleFinish : onClose}
       title={
         step === 'preview'
-          ? 'Generate Akun Karyawan Massal (Siap Kirim WA)'
-          : 'Hasil Pembuatan Akun & Kredensial Siap Copas'
+          ? 'Generate Akun Karyawan Massal (Link Aktivasi WA)'
+          : 'Hasil Pembuatan Akun & Magic Link Siap Copas'
       }
       subtitle={
         step === 'preview'
-          ? 'Sistem otomatis membuatkan akun berdasarkan nama depan dan menyiapkan pesan siap copas ke WhatsApp'
-          : `Berhasil membuat ${results.length} akun pengguna baru. Silakan salin pesan atau buka chat WhatsApp langsung.`
+          ? 'Sistem otomatis membuatkan akun berdasarkan nama depan dan menyiapkan Magic Link Aktivasi siap kirim ke WhatsApp'
+          : `Berhasil membuat ${results.length} akun pengguna baru. Karyawan dapat langsung mengaktifkan akun dan membuat password sendiri via WhatsApp.`
       }
       icon={<MessageSquare className="w-5 h-5 text-emerald-600" />}
       maxWidthClass="max-w-4xl"
@@ -471,7 +471,7 @@ export default function WhatsAppBlastModal({
                 <tr>
                   <th className="py-2.5 px-3">Karyawan</th>
                   <th className="py-2.5 px-3">Username Baru</th>
-                  <th className="py-2.5 px-3">Password Sementara</th>
+                  <th className="py-2.5 px-3">Metode Aktivasi</th>
                   <th className="py-2.5 px-3">No. WhatsApp</th>
                   <th className="py-2.5 px-3 text-right">Aksi Copas / Kirim</th>
                 </tr>
@@ -490,8 +490,9 @@ export default function WhatsAppBlastModal({
                         </span>
                       </td>
                       <td className="py-2.5 px-3">
-                        <span className="font-mono text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-[11px]">
-                          {r.temporaryPassword}
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                          <Sparkles className="w-3 h-3 text-emerald-600" />
+                          <span>Magic Link (48 Jam)</span>
                         </span>
                       </td>
                       <td className="py-2.5 px-3 font-mono text-[11px] text-slate-600">

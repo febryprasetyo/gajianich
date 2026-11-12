@@ -9,9 +9,11 @@ import bcrypt from 'bcrypt';
 import { z } from 'zod';
 import { generateSecureTemporaryPassword, validatePasswordStrength } from '../domain/passwordPolicy';
 import { generateSmartUsernames } from '../domain/usernameGenerator';
+import crypto from 'crypto';
 import {
   normalizeIndonesianPhoneNumber,
   generateAccountBlastMessage,
+  generateActivationBlastMessage,
   sendWhatsAppMessage,
 } from '../services/whatsappService';
 import { accountAccess, accountListPredicate, assertAccountTarget, validateAccountAssignment, withAccountMutation, replaceAccountGroups } from '../services/userOrganizationScope';
@@ -681,7 +683,12 @@ export async function bulkProvisionAndBlast(req: AuthenticatedRequest, res: Resp
       fullName: string;
       username: string;
       phone: string | null;
+      normalizedPhone?: string | null;
       temporaryPassword: string;
+      activationToken?: string;
+      activationUrl?: string;
+      whatsappMessage?: string;
+      whatsappLink?: string | null;
       whatsappStatus: 'sent' | 'failed' | 'skipped_no_phone' | 'disabled';
       whatsappError?: string;
     }> = [];
@@ -692,6 +699,11 @@ export async function bulkProvisionAndBlast(req: AuthenticatedRequest, res: Resp
       const tempPassword = generateSecureTemporaryPassword(10);
       const passwordHash = await bcrypt.hash(tempPassword, 10);
       const cleanEmail = emp.email?.trim() || `${username}@gajianich.internal`;
+
+      // Generate 48-hour secure activation token
+      const activationToken = crypto.randomBytes(32).toString('hex');
+      const activationTokenExpiresAt = new Date(Date.now() + 48 * 3600 * 1000);
+      const activationUrl = `${origin}/activate?token=${activationToken}`;
 
       // Insert new user
       const [createdUser] = await db
@@ -705,6 +717,8 @@ export async function bulkProvisionAndBlast(req: AuthenticatedRequest, res: Resp
           role: employeeRole.name,
           employeeId: emp.id,
           status: 'active',
+          activationToken,
+          activationTokenExpiresAt,
         })
         .returning({ id: users.id, username: users.username });
 
@@ -714,12 +728,11 @@ export async function bulkProvisionAndBlast(req: AuthenticatedRequest, res: Resp
       const rawPhone = emp.phone || emp.mobilePhone || null;
       const normalizedPhone = normalizeIndonesianPhoneNumber(rawPhone);
 
-      // Generate pre-formatted ready-to-copy WhatsApp message
-      const whatsappMessage = generateAccountBlastMessage({
+      // Generate pre-formatted ready-to-copy WhatsApp message with Magic Activation Link
+      const whatsappMessage = generateActivationBlastMessage({
         fullName: emp.fullName,
         username,
-        tempPassword,
-        loginUrl,
+        activationUrl,
       });
 
       const whatsappLink = normalizedPhone
@@ -766,6 +779,8 @@ export async function bulkProvisionAndBlast(req: AuthenticatedRequest, res: Resp
         phone: rawPhone,
         normalizedPhone,
         temporaryPassword: tempPassword,
+        activationToken,
+        activationUrl,
         whatsappMessage,
         whatsappLink,
         whatsappStatus,
@@ -829,7 +844,10 @@ export async function blastUserWhatsApp(req: AuthenticatedRequest, res: Response
       });
     }
 
-    // Generate fresh temporary password for the resend
+    // Generate fresh 48-hour activation token for the resend
+    const activationToken = crypto.randomBytes(32).toString('hex');
+    const activationTokenExpiresAt = new Date(Date.now() + 48 * 3600 * 1000);
+
     const tempPassword = generateSecureTemporaryPassword(10);
     const passwordHash = await bcrypt.hash(tempPassword, 10);
 
@@ -838,18 +856,19 @@ export async function blastUserWhatsApp(req: AuthenticatedRequest, res: Response
       .set({
         passwordHash,
         mustChangePassword: true,
+        activationToken,
+        activationTokenExpiresAt,
         updatedAt: new Date(),
       })
       .where(eq(users.id, userId));
 
     const origin = (typeof req.get === 'function' && (req.get('origin') || `${req.protocol}://${req.get('host')}`)) || 'http://localhost:3000';
-    const loginUrl = `${origin}/login`;
+    const activationUrl = `${origin}/activate?token=${activationToken}`;
 
-    const message = generateAccountBlastMessage({
+    const message = generateActivationBlastMessage({
       fullName: userRow.fullName || userRow.username,
       username: userRow.username,
-      tempPassword,
-      loginUrl,
+      activationUrl,
     });
 
     const whatsappLink = `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(message)}`;
@@ -868,10 +887,11 @@ export async function blastUserWhatsApp(req: AuthenticatedRequest, res: Response
 
     return res.status(200).json({
       message: sendResult.success
-        ? 'Kredensial berhasil dikirim via WhatsApp Gateway'
-        : 'Kredensial siap disalin & dikirim ke WhatsApp',
+        ? 'Tautan aktivasi berhasil dikirim via WhatsApp Gateway'
+        : 'Tautan aktivasi siap disalin & dikirim ke WhatsApp',
       phone: normalizedPhone,
-      temporaryPassword: tempPassword,
+      activationToken,
+      activationUrl,
       whatsappMessage: message,
       whatsappLink,
       gatewaySent: sendResult.success,

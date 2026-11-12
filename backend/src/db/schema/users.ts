@@ -39,6 +39,8 @@ export const users = pgTable('users', {
   employeeId: bigint('employee_id', { mode: 'number' }).references(() => employees.id, { onDelete: 'set null' }),
   status: varchar('status', { length: 30 }).default('active').notNull(),
   whatsappNotifiedAt: timestamp('whatsapp_notified_at'),
+  activationToken: varchar('activation_token', { length: 255 }),
+  activationTokenExpiresAt: timestamp('activation_token_expires_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({

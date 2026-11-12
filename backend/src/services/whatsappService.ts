@@ -10,6 +10,12 @@ export interface BlastMessageParams {
   loginUrl: string;
 }
 
+export interface ActivationMessageParams {
+  fullName: string;
+  username: string;
+  activationUrl: string;
+}
+
 export interface SendWhatsAppParams {
   to: string;
   message: string;
@@ -67,6 +73,25 @@ Akun portal GAJIANICH Anda telah aktif. Berikut kredensial akses Anda:
 🔑 *Password Sementara*: \`${tempPassword}\`
 
 ⚠️ *PENTING*: Demi keamanan data Anda, Anda akan diminta untuk mengganti password saat pertama kali login. Mohon jangan bagikan pesan ini kepada siapa pun.
+
+Salam hangat,
+*Tim HR & IT GAJIANICH*`;
+}
+
+/**
+ * Generates formatted WhatsApp message with Magic Activation Link (Zero-Password).
+ */
+export function generateActivationBlastMessage(params: ActivationMessageParams): string {
+  const { fullName, username, activationUrl } = params;
+
+  return `Halo *${fullName}*,
+
+Akun portal GAJIANICH Anda telah dibuat. Silakan klik link aktivasi berikut untuk membuat password dan langsung mengaktifkan akun Anda:
+
+🔗 *Link Aktivasi*: ${activationUrl}
+👤 *Username*: \`${username}\`
+
+⚠️ *Catatan*: Link ini bersifat rahasia dan berlaku selama 48 jam. Setelah membuat password baru, Anda dapat langsung login dan menggunakan aplikasi presensi.
 
 Salam hangat,
 *Tim HR & IT GAJIANICH*`;
@@ -132,3 +157,4 @@ export async function sendWhatsAppMessage(params: SendWhatsAppParams): Promise<S
     };
   }
 }
+

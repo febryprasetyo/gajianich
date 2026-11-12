@@ -88,6 +88,8 @@ export interface BulkProvisionBlastResultItem {
   phone: string | null;
   normalizedPhone?: string | null;
   temporaryPassword: string;
+  activationToken?: string;
+  activationUrl?: string;
   whatsappMessage?: string;
   whatsappLink?: string | null;
   whatsappStatus: 'sent' | 'failed' | 'skipped_no_phone' | 'disabled';

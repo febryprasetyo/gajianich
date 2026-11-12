@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { login, changePassword } from './authController';
+import { login, changePassword, getActivationInfo, activateAccount } from './authController';
 import { createUser as rawCreateUser, resetPassword as rawResetPassword, deleteUser as rawDeleteUser } from './userController';
 import {bindScopedCaller} from '../testing/scopedCaller';
 const createUser=bindScopedCaller(rawCreateUser),resetPassword=bindScopedCaller(rawResetPassword),deleteUser=bindScopedCaller(rawDeleteUser);
@@ -170,4 +170,128 @@ test('authController & userController: full temporary password lifecycle', async
   const deleteRes = mockRes();
   await deleteUser(deleteReq, deleteRes);
   assert.equal(deleteRes.statusCode, 200);
+});
+
+test('authController: Magic Link Activation full lifecycle', async () => {
+  const ts = Date.now();
+  const username = `user_magic_${ts}`;
+  const validToken = `test_token_magic_${ts}`;
+  const expiredToken = `test_token_expired_${ts}`;
+
+  // 1. Create a user with active activationToken (48 hours expiry)
+  const [activeUser] = await db
+    .insert(users)
+    .values({
+      username,
+      email: `${username}@gajianich.internal`,
+      passwordHash: 'dummy_hash',
+      mustChangePassword: true,
+      status: 'active',
+      activationToken: validToken,
+      activationTokenExpiresAt: new Date(Date.now() + 48 * 3600 * 1000),
+    })
+    .returning();
+
+  // 2. Create a user with expired activationToken
+  const [expiredUser] = await db
+    .insert(users)
+    .values({
+      username: `${username}_exp`,
+      email: `${username}_exp@gajianich.internal`,
+      passwordHash: 'dummy_hash',
+      mustChangePassword: true,
+      status: 'active',
+      activationToken: expiredToken,
+      activationTokenExpiresAt: new Date(Date.now() - 3600 * 1000), // 1 hour ago
+    })
+    .returning();
+
+  try {
+    // 3. Test getActivationInfo with invalid token -> 404
+    const invRes = mockRes();
+    await getActivationInfo({ query: { token: 'invalid_token_xyz' } } as any, invRes);
+    assert.equal(invRes.statusCode, 404);
+    assert.equal(invRes.body.valid, false);
+
+    // 4. Test getActivationInfo with expired token -> 400
+    const expRes = mockRes();
+    await getActivationInfo({ query: { token: expiredToken } } as any, expRes);
+    assert.equal(expRes.statusCode, 400);
+    assert.match(expRes.body.error, /kedaluwarsa/i);
+
+    // 5. Test getActivationInfo with valid token -> 200
+    const validRes = mockRes();
+    await getActivationInfo({ query: { token: validToken } } as any, validRes);
+    assert.equal(validRes.statusCode, 200);
+    assert.equal(validRes.body.valid, true);
+    assert.equal(validRes.body.username, username);
+
+    // 6. Test activateAccount with password mismatch -> 400
+    const mismatchRes = mockRes();
+    await activateAccount(
+      {
+        body: {
+          token: validToken,
+          password: 'NewStrongPassword123!',
+          confirmPassword: 'DifferentPassword123!',
+        },
+      } as any,
+      mismatchRes
+    );
+    assert.equal(mismatchRes.statusCode, 400);
+
+    // 7. Test activateAccount with valid password -> 200 + auto JWT token!
+    const activateRes = mockRes();
+    await activateAccount(
+      {
+        body: {
+          token: validToken,
+          password: 'NewStrongPassword123!',
+          confirmPassword: 'NewStrongPassword123!',
+        },
+      } as any,
+      activateRes
+    );
+    assert.equal(activateRes.statusCode, 200);
+    assert.ok(activateRes.body.token, 'Must return JWT token for immediate auto-login');
+    assert.equal(activateRes.body.user.username, username);
+    assert.equal(activateRes.body.user.mustChangePassword, false);
+
+    // 8. Verify database state: activation token is burned (null), mustChangePassword is false
+    const [updatedInDb] = await db.select().from(users).where(eq(users.id, activeUser.id));
+    assert.equal(updatedInDb.activationToken, null);
+    assert.equal(updatedInDb.activationTokenExpiresAt, null);
+    assert.equal(updatedInDb.mustChangePassword, false);
+
+    // 9. Re-activating with the same token MUST now fail with 404 (single use!)
+    const secondTryRes = mockRes();
+    await activateAccount(
+      {
+        body: {
+          token: validToken,
+          password: 'AnotherPassword123!',
+          confirmPassword: 'AnotherPassword123!',
+        },
+      } as any,
+      secondTryRes
+    );
+    assert.equal(secondTryRes.statusCode, 404);
+
+    // 10. Login with the newly set password works!
+    const loginRes = mockRes();
+    await login(
+      {
+        body: {
+          username,
+          password: 'NewStrongPassword123!',
+        },
+      } as any,
+      loginRes
+    );
+    assert.equal(loginRes.statusCode, 200);
+    assert.equal(loginRes.body.mustChangePassword, false);
+  } finally {
+    await db.delete(users).where(eq(users.id, activeUser.id));
+    await db.delete(users).where(eq(users.id, expiredUser.id));
+  }
 });

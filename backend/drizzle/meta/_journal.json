@@ -392,6 +392,13 @@
       "when": 1794240000000,
       "tag": "0055_add_users_whatsapp_notified_at",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1794250000000,
+      "tag": "0056_add_users_activation_token",
+      "breakpoints": true
     }
   ],
   "version": "7"
