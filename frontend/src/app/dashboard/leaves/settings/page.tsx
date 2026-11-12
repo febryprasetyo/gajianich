@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { AnnualLeaveConfig } from '@/types/leaves';
-import AnnualLeaveConfigCard from '@/components/leaves/AnnualLeaveConfigCard';
+import AnnualLeaveConfigCard, { DepartmentOption } from '@/components/leaves/AnnualLeaveConfigCard';
 
 export default function LeaveSettingsPage() {
   const currentYear = new Date().getFullYear();
@@ -19,6 +19,19 @@ export default function LeaveSettingsPage() {
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const [config, setConfig] = useState<AnnualLeaveConfig | null>(null);
+  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
+
+  useEffect(() => {
+    async function loadDepartments() {
+      try {
+        const data = await api.get<DepartmentOption[]>('/master/departments');
+        setDepartments(data || []);
+      } catch (err) {
+        console.error('Failed to load departments:', err);
+      }
+    }
+    loadDepartments();
+  }, []);
 
   const fetchConfig = useCallback(async (year: number) => {
     setIsLoadingConfig(true);
@@ -147,6 +160,7 @@ export default function LeaveSettingsPage() {
       {/* Form Kebijakan Cuti Tahunan */}
       <AnnualLeaveConfigCard
         initialConfig={config}
+        departments={departments}
         onSave={handleSaveConfig}
         isLoading={isLoadingConfig}
       />

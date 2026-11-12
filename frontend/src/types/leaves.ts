@@ -121,6 +121,7 @@ export interface AnnualLeaveConfig {
   allowCarryForward?: boolean;
   maxCarryForwardDays?: number;
   notes?: string | null;
+  accumulatedDepartmentIds?: number[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -143,6 +144,7 @@ export interface MasterLeaveBalanceItem {
   remainingQuota: number;
   isCustomQuota: boolean;
   isCustomCarryForward?: boolean;
+  isAccumulationActive?: boolean;
 }
 
 export interface MasterLeaveBalancesResponse {

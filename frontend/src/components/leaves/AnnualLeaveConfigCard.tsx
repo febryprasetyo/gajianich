@@ -8,18 +8,27 @@ import {
   HelpCircle,
   RefreshCw,
   Sliders,
+  Layers,
 } from 'lucide-react';
 import { AnnualLeaveConfig } from '@/types/leaves';
 import { calculateCleanQuota } from '@/lib/leaves/masterLeaveUtils';
 
+export interface DepartmentOption {
+  id: number;
+  name: string;
+  code?: string;
+}
+
 interface AnnualLeaveConfigCardProps {
   initialConfig?: AnnualLeaveConfig | null;
+  departments?: DepartmentOption[];
   onSave: (config: AnnualLeaveConfig) => Promise<{ success: boolean; message?: string; syncedCount?: number }>;
   isLoading?: boolean;
 }
 
 export default function AnnualLeaveConfigCard({
   initialConfig,
+  departments = [],
   onSave,
   isLoading = false,
 }: AnnualLeaveConfigCardProps) {
@@ -30,6 +39,9 @@ export default function AnnualLeaveConfigCard({
     initialConfig?.collectiveLeaveDays ?? 0
   );
   const [notes, setNotes] = useState<string>(initialConfig?.notes || '');
+  const [selectedDeptIds, setSelectedDeptIds] = useState<number[]>(
+    initialConfig?.accumulatedDepartmentIds || []
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
@@ -39,10 +51,25 @@ export default function AnnualLeaveConfigCard({
       setBaseQuota(initialConfig.baseQuota);
       setCollectiveLeaveDays(initialConfig.collectiveLeaveDays);
       setNotes(initialConfig.notes || '');
+      setSelectedDeptIds(initialConfig.accumulatedDepartmentIds || []);
     }
   }, [initialConfig]);
 
   const cleanQuotaPreview = calculateCleanQuota(baseQuota, collectiveLeaveDays);
+
+  const toggleDept = (deptId: number) => {
+    setSelectedDeptIds((prev) =>
+      prev.includes(deptId) ? prev.filter((id) => id !== deptId) : [...prev, deptId]
+    );
+  };
+
+  const selectAllDepts = () => {
+    setSelectedDeptIds(departments.map((d) => d.id));
+  };
+
+  const clearAllDepts = () => {
+    setSelectedDeptIds([]);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,6 +87,7 @@ export default function AnnualLeaveConfigCard({
         allowCarryForward: false,
         maxCarryForwardDays: 0,
         notes: notes.trim() || null,
+        accumulatedDepartmentIds: selectedDeptIds,
       });
     } finally {
       setIsSubmitting(false);
@@ -170,6 +198,76 @@ export default function AnnualLeaveConfigCard({
           </div>
         </div>
 
+        {/* Kebijakan Cuti Akumulasi Khusus Departemen (Unlimited Roll-Over) */}
+        <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-emerald-100 text-emerald-700 rounded-lg">
+                <Layers className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider font-mono">
+                  Akumulasi Cuti Khusus Departemen (Unlimited Roll-Over)
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Cuti karyawan di departemen terpilih akan terus terakumulasi tanpa batas sejak masuk kerja. Departemen lain otomatis di-reset setiap tahun baru.
+                </p>
+              </div>
+            </div>
+            {departments.length > 0 && (
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={selectAllDepts}
+                  disabled={isLoading || isSubmitting}
+                  className="px-2.5 py-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-colors"
+                >
+                  Pilih Semua
+                </button>
+                <button
+                  type="button"
+                  onClick={clearAllDepts}
+                  disabled={isLoading || isSubmitting}
+                  className="px-2.5 py-1 text-[11px] font-semibold text-slate-600 bg-white hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors"
+                >
+                  Reset Pilihan
+                </button>
+              </div>
+            )}
+          </div>
+
+          {departments.length === 0 ? (
+            <p className="text-xs text-slate-400 italic py-2">Memuat daftar departemen...</p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 pt-1">
+              {departments.map((dept) => {
+                const isChecked = selectedDeptIds.includes(dept.id);
+                return (
+                  <label
+                    key={dept.id}
+                    className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-medium cursor-pointer transition-all ${
+                      isChecked
+                        ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950 font-semibold shadow-xs'
+                        : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => toggleDept(dept.id)}
+                      disabled={isLoading || isSubmitting}
+                      className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500/20 cursor-pointer"
+                    />
+                    <span className="truncate" title={dept.name}>
+                      {dept.name}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Catatan Kebijakan HR */}
         <div>
           <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5 font-mono">
@@ -227,11 +325,17 @@ export default function AnnualLeaveConfigCard({
             <div className="rounded-xl bg-slate-50 p-3.5 text-xs text-slate-600 mb-6 space-y-2 border border-slate-200">
               <div className="flex items-center gap-2 text-emerald-700 font-semibold">
                 <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                Karyawan dengan kuota khusus tidak akan tertimpa.
+                <span>
+                  {selectedDeptIds.length} Departemen dipilih untuk cuti akumulasi (unlimited).
+                </span>
               </div>
               <div className="flex items-center gap-2 text-slate-700 font-medium">
                 <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                Karyawan baru di tahun {year} otomatis mendapatkan kuota bersih {cleanQuotaPreview} hari.
+                Departemen lainnya otomatis di-reset menjadi 0 pada pergantian tahun.
+              </div>
+              <div className="flex items-center gap-2 text-slate-700 font-medium">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                Karyawan dengan penyesuaian kuota khusus manual tidak akan tertimpa.
               </div>
             </div>
 

@@ -241,6 +241,7 @@ describe('Leave Business Logic & Document Standards', () => {
       allowCarryForward: true,
       maxCarryForwardDays: 6,
       notes: 'SKB 3 Menteri Cuti Bersama 2026',
+      accumulatedDepartmentIds: [1, 2, 5],
     });
     assert.strictEqual(valid.success, true);
     if (valid.success) {
@@ -249,6 +250,7 @@ describe('Leave Business Logic & Document Standards', () => {
       assert.strictEqual(valid.data.collectiveLeaveDays, 4);
       assert.strictEqual(valid.data.allowCarryForward, true);
       assert.strictEqual(valid.data.maxCarryForwardDays, 6);
+      assert.deepStrictEqual(valid.data.accumulatedDepartmentIds, [1, 2, 5]);
     }
   });
 

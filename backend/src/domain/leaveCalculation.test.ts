@@ -126,6 +126,34 @@ test('calculateRolloverCarryForward returns 0 when previous balance is 0 or nega
   assert.strictEqual(carry, 0);
 });
 
+test('calculateRolloverCarryForward accumulates unlimited remaining days when isUnlimited is true', () => {
+  // Sisa tahun lalu = 12 (base) + 10 (carry over dari 2 tahun lalu) - 2 (collective) - 4 (used) = 16 hari
+  const carry = calculateRolloverCarryForward({
+    prevBaseQuota: 12,
+    prevCollectiveLeave: 2,
+    prevCarriedOver: 10,
+    prevUsedQuota: 4,
+    isCarryForwardEnabled: true,
+    isUnlimited: true,
+  });
+
+  // Karena unlimited, harus utuh 16 hari tanpa pemotongan cap
+  assert.strictEqual(carry, 16);
+});
+
+test('calculateRolloverCarryForward resets to 0 when department is not enabled for carry forward', () => {
+  const carry = calculateRolloverCarryForward({
+    prevBaseQuota: 12,
+    prevCollectiveLeave: 2,
+    prevCarriedOver: 10,
+    prevUsedQuota: 4,
+    isCarryForwardEnabled: false,
+    isUnlimited: false,
+  });
+
+  assert.strictEqual(carry, 0);
+});
+
 test('formatLeaveRequestNumber formats sequence into LV-YYYYMM-XXXX', () => {
   const code = formatLeaveRequestNumber(new Date('2024-05-10'), 1);
   assert.strictEqual(code, 'LV-202405-0001');

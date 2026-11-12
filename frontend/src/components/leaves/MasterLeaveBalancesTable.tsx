@@ -162,6 +162,16 @@ export default function MasterLeaveBalancesTable({
                       {/* Departemen */}
                       <td className="py-3.5 px-4">
                         <p className="font-medium text-slate-700">{item.department || '—'}</p>
+                        {item.isAccumulationActive ? (
+                          <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <span className="w-1 h-1 rounded-full bg-emerald-500" />
+                            Akumulasi Cuti
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-50 text-slate-500 border border-slate-200">
+                            Reset Tahunan
+                          </span>
+                        )}
                       </td>
 
                       {/* Hak Dasar */}

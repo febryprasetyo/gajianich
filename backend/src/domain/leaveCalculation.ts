@@ -32,8 +32,9 @@ export interface CalculateRolloverCarryForwardInput {
   prevCollectiveLeave: number;
   prevCarriedOver: number;
   prevUsedQuota: number;
-  maxCarryForwardDays: number;
+  maxCarryForwardDays?: number;
   isCarryForwardEnabled: boolean;
+  isUnlimited?: boolean;
 }
 
 function parseDateOnly(dateStr: string): Date {
@@ -122,6 +123,11 @@ export function calculateRolloverCarryForward(input: CalculateRolloverCarryForwa
     0,
     (input.prevBaseQuota || 0) + (input.prevCarriedOver || 0) - (input.prevCollectiveLeave || 0) - (input.prevUsedQuota || 0)
   );
+
+  if (input.isUnlimited) {
+    return prevRemaining;
+  }
+
   return Math.min(prevRemaining, Math.max(0, input.maxCarryForwardDays || 0));
 }
 

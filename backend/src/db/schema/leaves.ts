@@ -1,6 +1,7 @@
 import { pgTable, bigint, varchar, text, date, integer, timestamp, boolean, uniqueIndex, foreignKey, jsonb } from 'drizzle-orm/pg-core';
 import { employees } from './employees';
 import { users } from './users';
+import { departments } from './master';
 import {organizationGroups, organizations} from './organizations';
 import type {DocumentProfileSnapshot} from '../../services/documentProfile';
 
@@ -97,3 +98,15 @@ export const leaveApprovals = pgTable('leave_approvals', {
   notes: text('notes'),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+// 5. Konfigurasi Departemen Berhak Cuti Akumulasi (Unlimited Roll-Over)
+export const leaveAccumulatedDepartments = pgTable('leave_accumulated_departments', {
+  id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  year: integer('year').notNull(),
+  departmentId: bigint('department_id', { mode: 'number' })
+    .notNull()
+    .references(() => departments.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex('leave_accumulated_depts_year_dept_unique').on(table.year, table.departmentId),
+]);

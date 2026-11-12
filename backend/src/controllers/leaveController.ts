@@ -23,6 +23,7 @@ import {
   leaveRequests,
   leaveApprovals,
   annualLeaveConfigs,
+  leaveAccumulatedDepartments,
 } from '../db/schema/leaves';
 import {
   calculateLeaveWorkingDays,
@@ -53,6 +54,7 @@ export const annualLeaveConfigSchema = z.object({
   allowCarryForward: z.boolean().default(false),
   maxCarryForwardDays: z.coerce.number().int().min(0, 'Batas carry forward tidak boleh negatif').max(50).default(0),
   notes: z.string().max(1000).optional().nullable(),
+  accumulatedDepartmentIds: z.array(z.coerce.number().int().positive()).optional().default([]),
 });
 
 export const updateLeaveBalanceSchema = z
@@ -1256,6 +1258,13 @@ export async function getAnnualLeaveConfig(req: Request, res: Response) {
       .from(annualLeaveConfigs)
       .where(eq(annualLeaveConfigs.year, year));
 
+    const accumulatedDepts = await db
+      .select({ departmentId: leaveAccumulatedDepartments.departmentId })
+      .from(leaveAccumulatedDepartments)
+      .where(eq(leaveAccumulatedDepartments.year, year));
+
+    const accumulatedDepartmentIds = accumulatedDepts.map((d) => d.departmentId);
+
     if (!config) {
       return res.json({
         year,
@@ -1264,10 +1273,14 @@ export async function getAnnualLeaveConfig(req: Request, res: Response) {
         allowCarryForward: false,
         maxCarryForwardDays: 0,
         notes: null,
+        accumulatedDepartmentIds,
       });
     }
 
-    return res.json(config);
+    return res.json({
+      ...config,
+      accumulatedDepartmentIds,
+    });
   } catch (error) {
     console.error('Error getAnnualLeaveConfig:', error);
     return res.status(500).json({ error: 'Gagal memuat konfigurasi master cuti tahunan' });
@@ -1332,9 +1345,28 @@ export async function saveAnnualLeaveConfig(req: Request, res: Response) {
         savedConfig = inserted;
       }
 
-      // 2. Ambil seluruh karyawan aktif
+      // 1.1 Simpan departemen akumulasi
+      await tx
+        .delete(leaveAccumulatedDepartments)
+        .where(eq(leaveAccumulatedDepartments.year, data.year));
+
+      const accumulatedDepartmentIds = Array.from(new Set(data.accumulatedDepartmentIds || []));
+      if (accumulatedDepartmentIds.length > 0) {
+        await tx.insert(leaveAccumulatedDepartments).values(
+          accumulatedDepartmentIds.map((deptId) => ({
+            year: data.year,
+            departmentId: deptId,
+          }))
+        );
+      }
+      const accumulatedDeptSet = new Set(accumulatedDepartmentIds);
+
+      // 2. Ambil seluruh karyawan aktif beserta departemennya
       const activeEmployees = await tx
-        .select({ id: employees.id })
+        .select({
+          id: employees.id,
+          departmentId: employees.departmentId,
+        })
         .from(employees)
         .where(and(eq(employees.status, 'Active'),employeeScopePredicate(requireHrScope(req as any))));
 
@@ -1358,13 +1390,16 @@ export async function saveAnnualLeaveConfig(req: Request, res: Response) {
       // 4. Lakukan bulk sync per karyawan
       for (const emp of activeEmployees) {
         const prev = prevMap.get(emp.id);
+        const isEligibleForAccumulation = emp.departmentId ? accumulatedDeptSet.has(emp.departmentId) : false;
+
         const autoCarry = calculateRolloverCarryForward({
           prevBaseQuota: prev?.baseQuota ?? 12,
           prevCollectiveLeave: prev?.collectiveLeaveDeduction ?? 0,
           prevCarriedOver: prev?.carriedOverQuota ?? 0,
           prevUsedQuota: prev?.usedQuota ?? 0,
           maxCarryForwardDays: data.maxCarryForwardDays,
-          isCarryForwardEnabled: data.allowCarryForward,
+          isCarryForwardEnabled: isEligibleForAccumulation || data.allowCarryForward,
+          isUnlimited: isEligibleForAccumulation,
         });
 
         const curr = currentMap.get(emp.id);
@@ -1439,6 +1474,13 @@ export async function getMasterLeaveBalances(req: Request, res: Response) {
       .from(annualLeaveConfigs)
       .where(eq(annualLeaveConfigs.year, year));
 
+    const accumulatedDepts = await db
+      .select({ departmentId: leaveAccumulatedDepartments.departmentId })
+      .from(leaveAccumulatedDepartments)
+      .where(eq(leaveAccumulatedDepartments.year, year));
+
+    const accumulatedDeptSet = new Set(accumulatedDepts.map((d) => d.departmentId));
+
     const defaultBaseQuota = config?.baseQuota ?? 12;
     const defaultCollectiveLeave = config?.collectiveLeaveDays ?? 0;
 
@@ -1486,6 +1528,7 @@ export async function getMasterLeaveBalances(req: Request, res: Response) {
       remainingQuota: number;
       isCustomQuota: boolean;
       isCustomCarryForward: boolean;
+      isAccumulationActive: boolean;
     }> = [];
 
     for (const emp of activeEmployees) {
@@ -1496,6 +1539,7 @@ export async function getMasterLeaveBalances(req: Request, res: Response) {
       const usedQuota = b?.usedQuota ?? 0;
       const isCustomQuota = b?.isCustomQuota ?? false;
       const isCustomCarryForward = b?.isCustomCarryForward ?? false;
+      const isAccumulationActive = emp.departmentId ? accumulatedDeptSet.has(emp.departmentId) : false;
 
       const calc = calculateLeaveBalances({
         baseQuota,
@@ -1527,6 +1571,7 @@ export async function getMasterLeaveBalances(req: Request, res: Response) {
         remainingQuota: calc.availableBefore,
         isCustomQuota,
         isCustomCarryForward,
+        isAccumulationActive,
       });
     }
 
