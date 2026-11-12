@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   Loader2,
   MessageSquare,
+  Sparkles,
 } from 'lucide-react';
 import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
 
@@ -135,8 +136,8 @@ export default function UserTable({
               onClick={onOpenBlastModal}
               className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
             >
-              <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Generate Akun (WA)</span>
+              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Daftarkan Otomatis</span>
             </button>
           )}
 

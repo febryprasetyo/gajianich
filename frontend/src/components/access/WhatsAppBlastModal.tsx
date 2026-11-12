@@ -21,6 +21,7 @@ import {
   Search,
   Filter,
   Users,
+  UserCheck,
   ShieldCheck,
   Loader2,
   Sparkles,
@@ -229,15 +230,15 @@ export default function WhatsAppBlastModal({
       onClose={step === 'result' ? handleFinish : onClose}
       title={
         step === 'preview'
-          ? 'Generate Akun Karyawan Massal (Link Aktivasi WA)'
-          : 'Hasil Pembuatan Akun & Magic Link Siap Copas'
+          ? 'Pendaftaran Akun Otomatis'
+          : 'Hasil Pendaftaran Akun Otomatis'
       }
       subtitle={
         step === 'preview'
-          ? 'Sistem otomatis membuatkan akun berdasarkan nama depan dan menyiapkan Magic Link Aktivasi siap kirim ke WhatsApp'
-          : `Berhasil membuat ${results.length} akun pengguna baru. Karyawan dapat langsung mengaktifkan akun dan membuat password sendiri via WhatsApp.`
+          ? 'Sistem membuatkan akun pengguna secara otomatis untuk seluruh karyawan aktif yang belum terdaftar.'
+          : `Berhasil mendaftarkan ${results.length} akun pengguna baru. Kredensial dan tautan aktivasi akun siap didistribusikan.`
       }
-      icon={<MessageSquare className="w-5 h-5 text-emerald-600" />}
+      icon={<UserCheck className="w-5 h-5 text-emerald-600" />}
       maxWidthClass="max-w-4xl"
       footer={
         step === 'preview' ? (
@@ -265,12 +266,12 @@ export default function WhatsAppBlastModal({
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Memproses Akun...</span>
+                    <span>Mendaftarkan Akun...</span>
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>Generate {selectedIds.size} Akun</span>
+                    <span>Daftarkan {selectedIds.size} Akun</span>
                   </>
                 )}
               </button>
@@ -321,10 +322,10 @@ export default function WhatsAppBlastModal({
             <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
             <div className="text-xs text-slate-700 space-y-1">
               <p className="font-semibold text-emerald-900">
-                Aturan Pembuatan Username Cerdas:
+                Aturan Pembuatan Username Otomatis:
               </p>
               <p className="text-slate-600 leading-relaxed">
-                Username akan dibuat menggunakan <strong>nama depan</strong>. Jika terdapat nama depan yang sama di antara karyawan (contoh: <em>Muhammad Ali</em> dan <em>Muhammad Bagus</em>), sistem otomatis menggunakan kata kedua (<strong>ali</strong> dan <strong>bagus</strong>).
+                Username akan dibuat secara otomatis menggunakan <strong>nama depan</strong> karyawan.
               </p>
             </div>
           </div>
@@ -458,10 +459,10 @@ export default function WhatsAppBlastModal({
               <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
               <div>
                 <p className="text-xs font-bold text-emerald-950">
-                  {results.length} Akun Karyawan Berhasil Dibuat!
+                  {results.length} Akun Karyawan Berhasil Didaftarkan!
                 </p>
                 <p className="text-[11px] text-emerald-800">
-                  Kredensial dan pesan WhatsApp sudah diformat rapi. Anda dapat menyalin pesan per user atau langsung membuka chat WhatsApp.
+                  Akun telah aktif di sistem. Kredensial dan tautan aktivasi siap didistribusikan langsung atau melalui WhatsApp.
                 </p>
               </div>
             </div>

@@ -292,17 +292,6 @@ export default function AccessManagementPage() {
             </div>
           </div>
         </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setIsBlastModalOpen(true)}
-            className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-colors cursor-pointer"
-          >
-            <MessageSquare className="w-4 h-4 text-emerald-600" />
-            <span>Generate Akun Massal (WA)</span>
-          </button>
-        </div>
       </div>
 
       {/* Navigation Tabs */}
