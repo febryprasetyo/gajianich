@@ -15,6 +15,7 @@ import {
   Briefcase,
   AlertTriangle,
   Loader2,
+  MessageSquare,
 } from 'lucide-react';
 import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
 
@@ -27,6 +28,8 @@ interface UserTableProps {
   onResetPassword: (user: UserItem) => void;
   onToggleStatus: (user: UserItem, nextStatus: 'active' | 'inactive') => Promise<void>;
   onDeleteUser: (user: UserItem) => Promise<void>;
+  onOpenBlastModal?: () => void;
+  onBlastWhatsApp?: (user: UserItem) => void;
   isLoading?: boolean;
 }
 
@@ -39,6 +42,8 @@ export default function UserTable({
   onResetPassword,
   onToggleStatus,
   onDeleteUser,
+  onOpenBlastModal,
+  onBlastWhatsApp,
   isLoading = false,
 }: UserTableProps) {
   const [search, setSearch] = useState('');
@@ -122,14 +127,27 @@ export default function UserTable({
           </select>
         </div>
 
-        {/* Add User Button */}
-        <button
-          onClick={onAddUser}
-          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add User</span>
-        </button>
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 shrink-0">
+          {onOpenBlastModal && (
+            <button
+              type="button"
+              onClick={onOpenBlastModal}
+              className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Generate Akun (WA)</span>
+            </button>
+          )}
+
+          <button
+            onClick={onAddUser}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add User</span>
+          </button>
+        </div>
       </div>
 
       {/* Users Table */}
@@ -251,6 +269,18 @@ export default function UserTable({
                       {/* Actions */}
                       <td className="py-3 px-4 sm:px-6 text-right">
                         <div className="flex items-center justify-end gap-1">
+                          {/* WhatsApp Ready-to-copy / Open Chat */}
+                          {onBlastWhatsApp && u.employeeId && (
+                            <button
+                              type="button"
+                              onClick={() => onBlastWhatsApp(u)}
+                              title="Siapkan kredensial & buka WhatsApp"
+                              className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                            >
+                              <MessageSquare className="w-4 h-4 text-emerald-600" />
+                            </button>
+                          )}
+
                           {/* Reset Password */}
                           <button
                             type="button"

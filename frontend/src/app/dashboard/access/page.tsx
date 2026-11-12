@@ -11,6 +11,7 @@ import UserTable from '@/components/access/UserTable';
 import UserFormModal from '@/components/access/UserFormModal';
 import ResetPasswordModal from '@/components/access/ResetPasswordModal';
 import TemporaryPasswordModal from '@/components/access/TemporaryPasswordModal';
+import WhatsAppBlastModal from '@/components/access/WhatsAppBlastModal';
 import RoleListPanel from '@/components/access/RoleListPanel';
 import RoleFormModal from '@/components/access/RoleFormModal';
 import PermissionMatrixPanel from '@/components/access/PermissionMatrixPanel';
@@ -22,6 +23,7 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
+  MessageSquare,
 } from 'lucide-react';
 
 export default function AccessManagementPage() {
@@ -53,6 +55,7 @@ export default function AccessManagementPage() {
 
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<RoleItem | null>(null);
+  const [isBlastModalOpen, setIsBlastModalOpen] = useState(false);
   const [temporaryPasswordData, setTemporaryPasswordData] = useState<{
     username: string;
     email: string;
@@ -183,6 +186,22 @@ export default function AccessManagementPage() {
     }
   };
 
+  const handleBlastWhatsApp = async (targetUser: UserItem) => {
+    try {
+      const res = await api.post<any>(`/users/${targetUser.id}/blast-whatsapp`, {});
+      if (res?.whatsappLink) {
+        window.open(res.whatsappLink, '_blank');
+        showToast('success', `Kredensial baru untuk ${targetUser.username} siap dikirim via WhatsApp!`);
+      } else if (res?.whatsappMessage) {
+        await navigator.clipboard.writeText(res.whatsappMessage);
+        showToast('success', `Pesan kredensial ${targetUser.username} berhasil disalin ke clipboard!`);
+      }
+      await loadData();
+    } catch (err: any) {
+      showToast('error', err?.message || 'Gagal menyiapkan kredensial WhatsApp');
+    }
+  };
+
   // Handlers for Role & Permissions Management
   const handleSaveRole = async (formData: RoleFormData) => {
     try {
@@ -274,6 +293,16 @@ export default function AccessManagementPage() {
           </div>
         </div>
 
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsBlastModalOpen(true)}
+            className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-colors cursor-pointer"
+          >
+            <MessageSquare className="w-4 h-4 text-emerald-600" />
+            <span>Generate Akun Massal (WA)</span>
+          </button>
+        </div>
       </div>
 
       {/* Navigation Tabs */}
@@ -339,6 +368,8 @@ export default function AccessManagementPage() {
             }}
             onToggleStatus={handleToggleUserStatus}
             onDeleteUser={handleDeleteUser}
+            onOpenBlastModal={() => setIsBlastModalOpen(true)}
+            onBlastWhatsApp={handleBlastWhatsApp}
           />
         </div>
       ) : (
@@ -408,6 +439,13 @@ export default function AccessManagementPage() {
         isOpen={Boolean(temporaryPasswordData)}
         onClose={() => setTemporaryPasswordData(null)}
         data={temporaryPasswordData}
+      />
+
+      {/* WhatsApp Bulk Provision & Blast Modal */}
+      <WhatsAppBlastModal
+        isOpen={isBlastModalOpen}
+        onClose={() => setIsBlastModalOpen(false)}
+        onSuccess={loadData}
       />
       </div>
     </DashboardLayout>

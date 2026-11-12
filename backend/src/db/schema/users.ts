@@ -38,6 +38,7 @@ export const users = pgTable('users', {
   role: varchar('role', { length: 50 }).default('SuperAdmin').notNull(),
   employeeId: bigint('employee_id', { mode: 'number' }).references(() => employees.id, { onDelete: 'set null' }),
   status: varchar('status', { length: 30 }).default('active').notNull(),
+  whatsappNotifiedAt: timestamp('whatsapp_notified_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({

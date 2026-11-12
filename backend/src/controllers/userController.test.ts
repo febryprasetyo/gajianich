@@ -7,13 +7,15 @@ import {
   toggleUserStatus as rawToggleUserStatus,
   resetPassword as rawResetPassword,
   deleteUser as rawDeleteUser,
+  getUnprovisionedSummary as rawGetUnprovisionedSummary,
+  bulkProvisionAndBlast as rawBulkProvisionAndBlast,
 } from './userController';
 import { db } from '../db';
 import { users, roles } from '../db/schema/users';
 import { employees } from '../db/schema/employees';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import {bindScopedCaller} from '../testing/scopedCaller';
-const getUsers=bindScopedCaller(rawGetUsers,'read'),createUser=bindScopedCaller(rawCreateUser),updateUser=bindScopedCaller(rawUpdateUser),toggleUserStatus=bindScopedCaller(rawToggleUserStatus),resetPassword=bindScopedCaller(rawResetPassword),deleteUser=bindScopedCaller(rawDeleteUser);
+const getUsers=bindScopedCaller(rawGetUsers,'read'),createUser=bindScopedCaller(rawCreateUser),updateUser=bindScopedCaller(rawUpdateUser),toggleUserStatus=bindScopedCaller(rawToggleUserStatus),resetPassword=bindScopedCaller(rawResetPassword),deleteUser=bindScopedCaller(rawDeleteUser),getUnprovisionedSummary=bindScopedCaller(rawGetUnprovisionedSummary,'read'),bulkProvisionAndBlast=bindScopedCaller(rawBulkProvisionAndBlast);
 
 function mockRes() {
   const res: any = {
@@ -250,4 +252,81 @@ test('Strict 1 Employee = 1 User: createUser rejects assigning an employeeId alr
   // Cleanup
   await deleteUser({ user: { userId: 999999, roleName: 'SuperAdmin' }, params: { id: String(createdId1) } } as any, mockRes());
   await db.delete(employees).where(eq(employees.id, emp.id));
+});
+
+test('getUnprovisionedSummary returns active employees with provisioning and phone status', async () => {
+  const res = mockRes();
+  await getUnprovisionedSummary({ user: { roleName: 'SuperAdmin' } } as any, res);
+  assert.equal(res.statusCode, 200);
+  assert.ok(typeof res.body.unprovisionedCount === 'number');
+  assert.ok(typeof res.body.unnotifiedCount === 'number');
+  assert.ok(Array.isArray(res.body.employees));
+});
+
+test('bulkProvisionAndBlast creates accounts using smart username collision resolution', async () => {
+  const ts = Date.now();
+  // Create 2 test employees with the same first name: "Muhammad Ali" and "Muhammad Bagus"
+  const [emp1] = await db
+    .insert(employees)
+    .values({
+      employeeCode: `TEST_BLAST_1_${ts}`,
+      fullName: `Muhammad Ali ${ts}`,
+      phone: '081299990001',
+      status: 'Active',
+    })
+    .returning();
+
+  const [emp2] = await db
+    .insert(employees)
+    .values({
+      employeeCode: `TEST_BLAST_2_${ts}`,
+      fullName: `Muhammad Bagus ${ts}`,
+      phone: '081299990002',
+      status: 'Active',
+    })
+    .returning();
+
+  try {
+    const res = mockRes();
+    const req: any = {
+      user: { roleName: 'SuperAdmin' },
+      body: {
+        employeeIds: [emp1.id, emp2.id],
+        sendWhatsApp: false, // Don't trigger external API during unit test
+      },
+    };
+
+    await bulkProvisionAndBlast(req, res);
+    assert.equal(res.statusCode, 201);
+    assert.equal(res.body.total, 2);
+    assert.equal(res.body.created, 2);
+
+    const result1 = res.body.results.find((r: any) => r.employeeId === emp1.id);
+    const result2 = res.body.results.find((r: any) => r.employeeId === emp2.id);
+
+    assert.ok(result1);
+    assert.ok(result2);
+
+    // Because first name 'muhammad' is shared, it must advance to second name 'ali' and 'bagus'
+    assert.ok(result1.username.startsWith('ali'), `Expected username for Muhammad Ali to start with 'ali', got: ${result1.username}`);
+    assert.ok(result2.username.startsWith('bagus'), `Expected username for Muhammad Bagus to start with 'bagus', got: ${result2.username}`);
+
+    // Verify created user records in DB
+    const createdUsers = await db
+      .select()
+      .from(users)
+      .where(inArray(users.employeeId, [emp1.id, emp2.id]));
+
+    assert.equal(createdUsers.length, 2);
+    for (const u of createdUsers) {
+      assert.equal(u.mustChangePassword, true);
+      assert.equal(u.status, 'active');
+      assert.equal(u.role, 'Employee');
+    }
+
+    // Clean up created user records
+    await db.delete(users).where(inArray(users.employeeId, [emp1.id, emp2.id]));
+  } finally {
+    await db.delete(employees).where(inArray(employees.id, [emp1.id, emp2.id]));
+  }
 });

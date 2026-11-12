@@ -385,6 +385,13 @@
       "when": 1794230000000,
       "tag": "0054_leave_accumulated_departments",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1794240000000,
+      "tag": "0055_add_users_whatsapp_notified_at",
+      "breakpoints": true
     }
   ],
   "version": "7"

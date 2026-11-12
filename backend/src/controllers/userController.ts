@@ -3,10 +3,17 @@ import { AuthenticatedRequest } from '../middleware/auth';
 import { db } from '../db';
 import { users, roles } from '../db/schema/users';
 import { employees } from '../db/schema/employees';
-import { eq, and, ne, sql,or,isNull } from 'drizzle-orm';
+import { departments } from '../db/schema/master';
+import { eq, and, ne, sql, or, isNull, inArray } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
 import { z } from 'zod';
 import { generateSecureTemporaryPassword, validatePasswordStrength } from '../domain/passwordPolicy';
+import { generateSmartUsernames } from '../domain/usernameGenerator';
+import {
+  normalizeIndonesianPhoneNumber,
+  generateAccountBlastMessage,
+  sendWhatsAppMessage,
+} from '../services/whatsappService';
 import { accountAccess, accountListPredicate, assertAccountTarget, validateAccountAssignment, withAccountMutation, replaceAccountGroups } from '../services/userOrganizationScope';
 import type { OrganizationScopedRequest } from '../middleware/organizationScope';
 import { userOrganizationGroupAccess } from '../db/schema/organizations';
@@ -75,6 +82,7 @@ export async function getUsers(req: AuthenticatedRequest, res: Response) {
         role: users.role,
         employeeId: users.employeeId,
         status: users.status,
+        whatsappNotifiedAt: users.whatsappNotifiedAt,
         createdAt: users.createdAt,
         updatedAt: users.updatedAt,
         roleCode: roles.code,
@@ -542,6 +550,335 @@ export async function deleteUser(req: AuthenticatedRequest, res: Response) {
         error: 'Tidak dapat menghapus pengguna karena masih memiliki riwayat data terkait (seperti permohonan pengadaan barang, log transaksi, atau audit). Silakan nonaktifkan akun terlebih dahulu.',
       });
     }
+    return res.status(err.statusCode || 500).json({ error: err.message || 'Internal server error' });
+  }
+}
+
+export async function getUnprovisionedSummary(req: AuthenticatedRequest, res: Response) {
+  try {
+    const activeEmployees = await db
+      .select({
+        id: employees.id,
+        employeeCode: employees.employeeCode,
+        fullName: employees.fullName,
+        phone: employees.phone,
+        mobilePhone: employees.mobilePhone,
+        email: employees.email,
+        departmentId: employees.departmentId,
+        departmentName: departments.name,
+        userId: users.id,
+        username: users.username,
+        whatsappNotifiedAt: users.whatsappNotifiedAt,
+      })
+      .from(employees)
+      .leftJoin(users, eq(users.employeeId, employees.id))
+      .leftJoin(departments, eq(employees.departmentId, departments.id))
+      .where(eq(employees.status, 'Active'))
+      .orderBy(employees.fullName);
+
+    const items = activeEmployees.map(emp => {
+      const rawPhone = emp.phone || emp.mobilePhone || null;
+      const normalizedPhone = normalizeIndonesianPhoneNumber(rawPhone);
+      return {
+        id: emp.id,
+        employeeCode: emp.employeeCode,
+        fullName: emp.fullName,
+        department: emp.departmentName || null,
+        phone: rawPhone,
+        normalizedPhone,
+        hasValidPhone: Boolean(normalizedPhone),
+        email: emp.email || null,
+        hasAccount: Boolean(emp.userId),
+        userId: emp.userId || null,
+        username: emp.username || null,
+        whatsappNotifiedAt: emp.whatsappNotifiedAt ? emp.whatsappNotifiedAt.toISOString() : null,
+      };
+    });
+
+    const unprovisioned = items.filter(i => !i.hasAccount);
+    const unnotified = items.filter(i => i.hasAccount && !i.whatsappNotifiedAt);
+
+    return res.status(200).json({
+      totalActiveEmployees: items.length,
+      unprovisionedCount: unprovisioned.length,
+      unnotifiedCount: unnotified.length,
+      employees: items,
+    });
+  } catch (err: any) {
+    return res.status(err.statusCode || 500).json({ error: err.message || 'Internal server error' });
+  }
+}
+
+const bulkProvisionSchema = z.object({
+  employeeIds: z.array(z.number().int().positive()).optional(),
+  sendWhatsApp: z.boolean().default(false),
+  loginUrl: z.string().optional(),
+});
+
+export async function bulkProvisionAndBlast(req: AuthenticatedRequest, res: Response) {
+  try {
+    const parsed = bulkProvisionSchema.parse(req.body);
+
+    // Fetch active employees who do not yet have an account
+    let query = db
+      .select({
+        id: employees.id,
+        employeeCode: employees.employeeCode,
+        fullName: employees.fullName,
+        phone: employees.phone,
+        mobilePhone: employees.mobilePhone,
+        email: employees.email,
+      })
+      .from(employees)
+      .leftJoin(users, eq(users.employeeId, employees.id))
+      .where(and(eq(employees.status, 'Active'), isNull(users.id)))
+      .orderBy(employees.id);
+
+    const unprovisionedList = await query;
+    let targetEmployees = unprovisionedList;
+
+    if (parsed.employeeIds && parsed.employeeIds.length > 0) {
+      const allowedIds = new Set(parsed.employeeIds);
+      targetEmployees = unprovisionedList.filter(emp => allowedIds.has(emp.id));
+    }
+
+    if (targetEmployees.length === 0) {
+      return res.status(200).json({
+        total: 0,
+        created: 0,
+        whatsappSent: 0,
+        whatsappFailed: 0,
+        whatsappSkipped: 0,
+        results: [],
+      });
+    }
+
+    // Role check: must assign standard Employee role
+    const employeeRole = (
+      await db.select().from(roles).where(eq(roles.code, 'employee')).limit(1)
+    )[0];
+    if (!employeeRole) {
+      return res.status(500).json({ error: 'Default employee role not found in system' });
+    }
+
+    // Load existing usernames to ensure zero collisions
+    const existingUsers = await db.select({ username: users.username }).from(users);
+    const existingUsernames = new Set(existingUsers.map(u => u.username.toLowerCase()));
+
+    // Generate smart usernames based on employee names and collision rules
+    const usernameMap = generateSmartUsernames(targetEmployees, existingUsernames);
+
+    const origin = (typeof req.get === 'function' && (req.get('origin') || `${req.protocol}://${req.get('host')}`)) || 'http://localhost:3000';
+    const loginUrl = parsed.loginUrl || `${origin}/login`;
+
+    let createdCount = 0;
+    let sentCount = 0;
+    let failedCount = 0;
+    let skippedCount = 0;
+
+    const results: Array<{
+      employeeId: number;
+      fullName: string;
+      username: string;
+      phone: string | null;
+      temporaryPassword: string;
+      whatsappStatus: 'sent' | 'failed' | 'skipped_no_phone' | 'disabled';
+      whatsappError?: string;
+    }> = [];
+
+    for (let i = 0; i < targetEmployees.length; i++) {
+      const emp = targetEmployees[i];
+      const username = usernameMap.get(emp.id) || `emp${emp.id}`;
+      const tempPassword = generateSecureTemporaryPassword(10);
+      const passwordHash = await bcrypt.hash(tempPassword, 10);
+      const cleanEmail = emp.email?.trim() || `${username}@gajianich.internal`;
+
+      // Insert new user
+      const [createdUser] = await db
+        .insert(users)
+        .values({
+          username,
+          email: cleanEmail,
+          passwordHash,
+          mustChangePassword: true,
+          roleId: employeeRole.id,
+          role: employeeRole.name,
+          employeeId: emp.id,
+          status: 'active',
+        })
+        .returning({ id: users.id, username: users.username });
+
+      createdCount++;
+
+      // Handle WhatsApp blast
+      const rawPhone = emp.phone || emp.mobilePhone || null;
+      const normalizedPhone = normalizeIndonesianPhoneNumber(rawPhone);
+
+      // Generate pre-formatted ready-to-copy WhatsApp message
+      const whatsappMessage = generateAccountBlastMessage({
+        fullName: emp.fullName,
+        username,
+        tempPassword,
+        loginUrl,
+      });
+
+      const whatsappLink = normalizedPhone
+        ? `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(whatsappMessage)}`
+        : null;
+
+      let whatsappStatus: 'sent' | 'failed' | 'skipped_no_phone' | 'disabled' = 'disabled';
+      let whatsappError: string | undefined;
+
+      if (parsed.sendWhatsApp) {
+        if (normalizedPhone) {
+          const sendResult = await sendWhatsAppMessage({
+            to: normalizedPhone,
+            message: whatsappMessage,
+          });
+
+          if (sendResult.success) {
+            whatsappStatus = 'sent';
+            sentCount++;
+            await db
+              .update(users)
+              .set({ whatsappNotifiedAt: new Date() })
+              .where(eq(users.id, createdUser.id));
+          } else {
+            whatsappStatus = 'failed';
+            whatsappError = sendResult.error;
+            failedCount++;
+          }
+
+          // Polite pacing: 1200ms delay between consecutive WhatsApp requests
+          if (i < targetEmployees.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1200));
+          }
+        } else {
+          whatsappStatus = 'skipped_no_phone';
+          skippedCount++;
+        }
+      }
+
+      results.push({
+        employeeId: emp.id,
+        fullName: emp.fullName,
+        username,
+        phone: rawPhone,
+        normalizedPhone,
+        temporaryPassword: tempPassword,
+        whatsappMessage,
+        whatsappLink,
+        whatsappStatus,
+        whatsappError,
+      });
+    }
+
+    return res.status(201).json({
+      total: targetEmployees.length,
+      created: createdCount,
+      whatsappSent: sentCount,
+      whatsappFailed: failedCount,
+      whatsappSkipped: skippedCount,
+      results,
+    });
+  } catch (err: any) {
+    if (err instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation failed', details: err.issues });
+    }
+    return res.status(err.statusCode || 500).json({ error: err.message || 'Internal server error' });
+  }
+}
+
+export async function blastUserWhatsApp(req: AuthenticatedRequest, res: Response) {
+  try {
+    const userId = Number(req.params.id);
+    if (isNaN(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+    await assertAccountTarget(req, userId);
+
+    const userRow = (
+      await db
+        .select({
+          id: users.id,
+          username: users.username,
+          employeeId: users.employeeId,
+          fullName: employees.fullName,
+          phone: employees.phone,
+          mobilePhone: employees.mobilePhone,
+        })
+        .from(users)
+        .leftJoin(employees, eq(users.employeeId, employees.id))
+        .where(eq(users.id, userId))
+        .limit(1)
+    )[0];
+
+    if (!userRow) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (!userRow.employeeId) {
+      return res.status(400).json({ error: 'User is not linked to any employee record' });
+    }
+
+    const rawPhone = userRow.phone || userRow.mobilePhone || null;
+    const normalizedPhone = normalizeIndonesianPhoneNumber(rawPhone);
+    if (!normalizedPhone) {
+      return res.status(400).json({
+        error: 'Nomor WhatsApp karyawan belum terisi atau tidak valid (harus nomor handphone Indonesia yang valid)',
+      });
+    }
+
+    // Generate fresh temporary password for the resend
+    const tempPassword = generateSecureTemporaryPassword(10);
+    const passwordHash = await bcrypt.hash(tempPassword, 10);
+
+    await db
+      .update(users)
+      .set({
+        passwordHash,
+        mustChangePassword: true,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+
+    const origin = (typeof req.get === 'function' && (req.get('origin') || `${req.protocol}://${req.get('host')}`)) || 'http://localhost:3000';
+    const loginUrl = `${origin}/login`;
+
+    const message = generateAccountBlastMessage({
+      fullName: userRow.fullName || userRow.username,
+      username: userRow.username,
+      tempPassword,
+      loginUrl,
+    });
+
+    const whatsappLink = `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(message)}`;
+
+    const sendResult = await sendWhatsAppMessage({
+      to: normalizedPhone,
+      message,
+    });
+
+    if (sendResult.success) {
+      await db
+        .update(users)
+        .set({ whatsappNotifiedAt: new Date() })
+        .where(eq(users.id, userId));
+    }
+
+    return res.status(200).json({
+      message: sendResult.success
+        ? 'Kredensial berhasil dikirim via WhatsApp Gateway'
+        : 'Kredensial siap disalin & dikirim ke WhatsApp',
+      phone: normalizedPhone,
+      temporaryPassword: tempPassword,
+      whatsappMessage: message,
+      whatsappLink,
+      gatewaySent: sendResult.success,
+      gatewayError: sendResult.error,
+      whatsappNotifiedAt: sendResult.success ? new Date().toISOString() : null,
+    });
+  } catch (err: any) {
     return res.status(err.statusCode || 500).json({ error: err.message || 'Internal server error' });
   }
 }
