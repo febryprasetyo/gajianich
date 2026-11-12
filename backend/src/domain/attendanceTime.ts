@@ -7,6 +7,25 @@ export const zoneLabels: Record<string, string> = {
   'Asia/Jayapura': 'WIT',
 };
 
+export function resolveIndonesianTimeZone(timeZone?: string | null): string {
+  if (!timeZone) return 'Asia/Jakarta';
+  const clean = timeZone.trim();
+  if (clean === 'Asia/Jakarta' || clean === 'Asia/Pontianak') return clean;
+  if (clean === 'Asia/Makassar' || clean === 'Asia/Ujung_Pandang') return 'Asia/Makassar';
+  if (clean === 'Asia/Jayapura') return 'Asia/Jayapura';
+  if (zoneLabels[clean]) return clean;
+
+  try {
+    const d = new Date();
+    const str = d.toLocaleString('en-US', { timeZone: clean, timeZoneName: 'shortOffset' });
+    if (str.includes('+7') || str.includes('GMT+7') || str.includes('UTC+7')) return 'Asia/Jakarta';
+    if (str.includes('+8') || str.includes('GMT+8') || str.includes('UTC+8')) return 'Asia/Makassar';
+    if (str.includes('+9') || str.includes('GMT+9') || str.includes('UTC+9')) return 'Asia/Jayapura';
+  } catch {}
+
+  return 'Asia/Jakarta';
+}
+
 export function zoneAtLocation(latitude?: number | null, longitude?: number | null): string {
   if (
     typeof latitude !== 'number' ||

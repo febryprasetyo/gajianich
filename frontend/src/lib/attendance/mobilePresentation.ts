@@ -1,5 +1,32 @@
-export function mobileGreeting(at: Date, timeZone = 'Asia/Jakarta', completed = false) {
-  const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone, hour: 'numeric', hourCycle: 'h23' }).format(at));
+export function resolveClientTimeZone(serverTimeZone?: string | null, isRecorded = false): string {
+  if (isRecorded && serverTimeZone) {
+    return serverTimeZone;
+  }
+  if (typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat === 'function') {
+    try {
+      const clientZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (clientZone) return clientZone;
+    } catch {}
+  }
+  return serverTimeZone || 'Asia/Jakarta';
+}
+
+export function formatTimeZoneAbbr(timeZone?: string): string {
+  if (!timeZone) return '';
+  if (['Asia/Jakarta', 'Asia/Pontianak'].includes(timeZone)) return 'WIB';
+  if (['Asia/Makassar', 'Asia/Ujung_Pandang'].includes(timeZone)) return 'WITA';
+  if (['Asia/Jayapura'].includes(timeZone)) return 'WIT';
+  try {
+    const parts = new Intl.DateTimeFormat('id-ID', { timeZone, timeZoneName: 'short' }).formatToParts(new Date());
+    const tzPart = parts.find((p) => p.type === 'timeZoneName')?.value;
+    if (tzPart) return tzPart;
+  } catch {}
+  return '';
+}
+
+export function mobileGreeting(at: Date, timeZone?: string, completed = false) {
+  const activeZone = timeZone || resolveClientTimeZone(undefined, false);
+  const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: activeZone, hour: 'numeric', hourCycle: 'h23' }).format(at));
   const salutation = hour < 11 ? 'Selamat pagi' : hour < 15 ? 'Selamat siang' : hour < 18 ? 'Selamat sore' : 'Selamat malam';
   return { salutation, message: completed ? 'Terima kasih untuk kerja hari ini.' : 'Semoga harimu lancar.' };
 }

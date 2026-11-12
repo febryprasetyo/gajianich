@@ -28,7 +28,7 @@ import { systemSettings } from '../db/schema/system';
 import { resolveEmployeeShift, resolveActiveEmployeeShift, getWorkingScheduleForDate } from '../domain/attendanceSchedule';
 import { isWithinGeofence, buildMapLinks } from '../domain/geofence';
 import { determineShiftCategory, evaluateAttendanceApproval } from '../domain/attendanceVerificationPolicy';
-import { localAttendanceTime, zoneAtLocation, zoneLabels, attendanceMetrics, minuteValue } from '../domain/attendanceTime';
+import { localAttendanceTime, zoneAtLocation, zoneLabels, attendanceMetrics, minuteValue, resolveIndonesianTimeZone } from '../domain/attendanceTime';
 import { verifyBiometricMatch } from '../domain/faceMatcher';
 import { extractPhotoFace, FACE_DESCRIPTOR_VERSION } from './faceRecognition';
 import { saveAttendancePhoto } from './attendancePhotoStorage';
@@ -289,11 +289,12 @@ function reviewSummary(logs: SelfLog[]): { status: 'PENDING' | 'APPROVED' | 'REJ
   const note = log.approvalNote || (status === 'PENDING' ? 'Menunggu pemeriksaan HRD.' : status === 'REJECTED' ? 'Ditolak oleh HRD.' : 'Disetujui.');
   return { status, note };
 }
-export async function getMobileTodaySummary(userId: number, targetDb = db) {
+export async function getMobileTodaySummary(userId: number, targetDb = db, fallbackZone = 'Asia/Jakarta') {
   const { employee } = await resolveEmployeeUser(userId, targetDb);
   const logs = await employeeLogs(employee.id, targetDb,employee.groupId);
   const entry = latestPair(logs);
-  const zone = entry?.timeZone || 'Asia/Jakarta';
+  const resolvedFallback = resolveIndonesianTimeZone(fallbackZone);
+  const zone = entry?.timeZone || resolvedFallback;
   const today = localAttendanceTime(new Date(), zone).workDate;
   const open = entry && !logs.some(l => l.workDate === entry.workDate && l.eventType === 'OUT');
   const workDate = open ? entry.workDate : today;
@@ -356,7 +357,7 @@ export async function getMobileTodaySummary(userId: number, targetDb = db) {
       approvalNote: current.length ? approval.note : (existingRecord?.scanIn ? 'Tercatat di sistem.' : approval.note),
       txHash: current[0]?.txHash || (existingRecord ? `REC-${existingRecord.id}` : null),
       timeZone: zone,
-      timeZoneLabel: entry ? zoneLabels[zone] : 'waktu lokal',
+      timeZoneLabel: zoneLabels[zone] || 'waktu lokal',
       events: current.map(publicLog),
       isLateAfternoon,
       strictClock,

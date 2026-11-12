@@ -3,6 +3,7 @@ import {requireHrScope} from '../services/hrOrganizationScope';
 import {db} from '../db';
 import { Response } from "express";
 import { AuthenticatedRequest } from "../middleware/auth";
+import { resolveIndonesianTimeZone, localAttendanceTime } from "../domain/attendanceTime";
 import {
   getMobileTodaySummary,
   getWibDateAndTimeString,
@@ -51,8 +52,10 @@ export async function getTodaySummaryController(req: AuthenticatedRequest, res: 
       return res.status(401).json({ success: false, error: "Unauthorized" });
     }
 
-    const workDate = getWibDateAndTimeString().workDate;
-    const data = await getCachedAttendanceSummary(`user:${userId}`, workDate, () => getMobileTodaySummary(userId));
+    const clientTz = typeof req.query.timeZone === 'string' ? req.query.timeZone : undefined;
+    const resolvedZone = resolveIndonesianTimeZone(clientTz);
+    const workDate = localAttendanceTime(new Date(), resolvedZone).workDate;
+    const data = await getCachedAttendanceSummary(`user:${userId}:${resolvedZone}`, workDate, () => getMobileTodaySummary(userId, undefined, resolvedZone));
     return res.status(200).json({ success: true, data });
   } catch (err: any) {
     const isClientError = err.message?.includes("dikaitkan") || err.message?.includes("tidak ditemukan");

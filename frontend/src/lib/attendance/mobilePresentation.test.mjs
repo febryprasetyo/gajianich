@@ -1,6 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+test('resolveClientTimeZone and formatTimeZoneAbbr dynamically resolve zones', async () => {
+  const { resolveClientTimeZone, formatTimeZoneAbbr } = await import('./mobilePresentation.ts');
+  assert.equal(formatTimeZoneAbbr('Asia/Jakarta'), 'WIB');
+  assert.equal(formatTimeZoneAbbr('Asia/Makassar'), 'WITA');
+  assert.equal(formatTimeZoneAbbr('Asia/Jayapura'), 'WIT');
+  assert.equal(formatTimeZoneAbbr(undefined), '');
+
+  // If recorded, always preserve server recorded timezone
+  assert.equal(resolveClientTimeZone('Asia/Makassar', true), 'Asia/Makassar');
+  // If not recorded and server timezone is null/default, returns client or fallback zone
+  assert.ok(typeof resolveClientTimeZone(null, false) === 'string');
+});
+
 test('greeting follows employee timezone and attendance state', async () => {
   const { mobileGreeting } = await import('./mobilePresentation.ts');
   const at = new Date('2026-11-06T00:30:00Z');

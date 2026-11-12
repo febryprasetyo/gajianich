@@ -1,6 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { localAttendanceTime, zoneAtLocation, attendanceMetrics } from './attendanceTime';
+import { localAttendanceTime, zoneAtLocation, attendanceMetrics, resolveIndonesianTimeZone } from './attendanceTime';
+
+test('resolveIndonesianTimeZone handles exact, mapped, offset, and fallback timezones', () => {
+  assert.equal(resolveIndonesianTimeZone('Asia/Jakarta'), 'Asia/Jakarta');
+  assert.equal(resolveIndonesianTimeZone('Asia/Pontianak'), 'Asia/Pontianak');
+  assert.equal(resolveIndonesianTimeZone('Asia/Makassar'), 'Asia/Makassar');
+  assert.equal(resolveIndonesianTimeZone('Asia/Ujung_Pandang'), 'Asia/Makassar');
+  assert.equal(resolveIndonesianTimeZone('Asia/Jayapura'), 'Asia/Jayapura');
+  assert.equal(resolveIndonesianTimeZone('Asia/Singapore'), 'Asia/Makassar'); // UTC+8 -> WITA
+  assert.equal(resolveIndonesianTimeZone('Asia/Tokyo'), 'Asia/Jayapura'); // UTC+9 -> WIT
+  assert.equal(resolveIndonesianTimeZone(null), 'Asia/Jakarta');
+  assert.equal(resolveIndonesianTimeZone(''), 'Asia/Jakarta');
+  assert.equal(resolveIndonesianTimeZone('Invalid/Zone'), 'Asia/Jakarta');
+});
 test('GPS resolves WIB WITA WIT without browser timezone', () => {
   assert.equal(zoneAtLocation(-6.2, 106.8), 'Asia/Jakarta');
   assert.equal(zoneAtLocation(-8.65, 115.22), 'Asia/Makassar');

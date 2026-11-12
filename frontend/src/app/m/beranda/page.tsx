@@ -14,6 +14,7 @@ import AttendanceMetricsCards from "@/components/mobile/AttendanceMetricsCards";
 import SmartClockSelectionModal, { SmartClockSelectionResult } from "@/components/mobile/SmartClockSelectionModal";
 import FaceAttendanceSheet, { type AttendanceReceipt } from "@/components/mobile/FaceAttendanceSheet";
 import DayDetailSheet, { DayDetailData } from "@/components/mobile/DayDetailSheet";
+import { resolveClientTimeZone } from '@/lib/attendance/mobilePresentation';
 import {
   fetchMobileSummary,
   MobileSummaryData,
@@ -206,6 +207,8 @@ export default function MobileBerandaPage() {
     );
   }
 
+  const activeTimeZone = resolveClientTimeZone(summaryData?.attendance.timeZone, attendanceState.checkedIn);
+
   return (
     <main className="flex-1 space-y-5 bg-slate-50 px-5 pb-6 pt-5">
       {toastMessage && <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{toastMessage}</p>}
@@ -229,7 +232,7 @@ export default function MobileBerandaPage() {
           </Link>
         </div>
       )}
-      <EmployeeGreeting employee={summaryData?.employee} timeZone={summaryData?.attendance.timeZone} completed={attendanceState.checkedOut} />
+      <EmployeeGreeting employee={summaryData?.employee} timeZone={activeTimeZone} completed={attendanceState.checkedOut} />
       {errorBanner && <div role="alert" className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><AlertCircle size={18} className="mt-0.5 shrink-0" /><span>{errorBanner}</span></div>}
       <PresensiRingButton
         status={attendanceState.checkedOut ? 'COMPLETED' : attendanceState.checkedIn ? 'CHECKED_IN' : 'NOT_CHECKED_IN'}
@@ -250,7 +253,7 @@ export default function MobileBerandaPage() {
         </button> : <div className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-sm font-semibold text-slate-700">Belum ada presensi hari ini</p><p className="mt-1 text-xs leading-relaxed text-slate-500">Catatan mesin kantor akan tampil setelah tersinkron. Gunakan presensi mobile saat bertugas di luar kantor.</p></div>}
       </section>
       <FaceAttendanceSheet isOpen={isFaceSheetOpen} onClose={() => { setIsFaceSheetOpen(false); setSmartSelection(null); }} isCheckOut={smartSelection ? smartSelection.eventType === 'OUT' : attendanceState.checkedIn} isDirectOut={smartSelection?.isDirectOut ?? false} notes={smartSelection?.notes} isFaceEnrolled={summaryData?.faceEnrollment.isFaceEnrolled ?? false} employeeName={employeeName} employeeNik={summaryData?.employee.employeeCode || ''} onSuccess={handleFaceSuccess} />
-      <SmartClockSelectionModal isOpen={isSmartModalOpen} onClose={() => setIsSmartModalOpen(false)} currentTimeStr={new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: summaryData?.attendance.timeZone })} scheduleIn={summaryData?.shift.scheduleIn} scheduleOut={summaryData?.shift.scheduleOut} onConfirm={handleSmartConfirm} />
+      <SmartClockSelectionModal isOpen={isSmartModalOpen} onClose={() => setIsSmartModalOpen(false)} currentTimeStr={new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: activeTimeZone })} scheduleIn={summaryData?.shift.scheduleIn} scheduleOut={summaryData?.shift.scheduleOut} onConfirm={handleSmartConfirm} />
       <DayDetailSheet isOpen={Boolean(selectedDayDetail)} onClose={() => setSelectedDayDetail(null)} onUpdated={() => { setSelectedDayDetail(null); void loadSummary(); }} data={selectedDayDetail} />
       <AttendanceReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
     </main>

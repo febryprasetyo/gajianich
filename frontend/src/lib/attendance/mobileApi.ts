@@ -131,7 +131,14 @@ export interface MobileHistoryData {
 }
 
 export async function fetchMobileSummary(): Promise<MobileSummaryData> {
-  const res = await apiFetch<{ success: boolean; data: MobileSummaryData }>("/attendance/mobile/summary");
+  let query = "";
+  if (typeof Intl !== "undefined" && typeof Intl.DateTimeFormat === "function") {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (tz) query = `?timeZone=${encodeURIComponent(tz)}`;
+    } catch {}
+  }
+  const res = await apiFetch<{ success: boolean; data: MobileSummaryData }>(`/attendance/mobile/summary${query}`);
   return res.data;
 }
 
