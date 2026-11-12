@@ -34,6 +34,8 @@ function ActivateContent() {
   const { login: authLogin } = useAuth();
   const token = searchParams.get('token') || '';
 
+  const activatedRef = React.useRef(false);
+
   const [loadingInfo, setLoadingInfo] = useState(true);
   const [activationInfo, setActivationInfo] = useState<ActivationInfo | null>(null);
   const [infoError, setInfoError] = useState<string | null>(null);
@@ -49,6 +51,8 @@ function ActivateContent() {
 
   // Validate activation token on mount
   useEffect(() => {
+    if (activatedRef.current) return;
+
     if (!token) {
       setLoadingInfo(false);
       setInfoError('Tautan aktivasi tidak memiliki token. Silakan periksa kembali tautan di pesan WhatsApp Anda.');
@@ -56,19 +60,25 @@ function ActivateContent() {
     }
 
     const fetchInfo = async () => {
+      if (activatedRef.current) return;
       try {
         setLoadingInfo(true);
         setInfoError(null);
         const res = await api.get<ActivationInfo>(`/auth/activate-info?token=${encodeURIComponent(token)}`);
+        if (activatedRef.current) return;
         if (res && res.valid) {
           setActivationInfo(res);
         } else {
           setInfoError(res?.error || 'Tautan aktivasi tidak valid atau telah kedaluwarsa.');
         }
       } catch (err: any) {
-        setInfoError(err?.message || 'Tautan aktivasi tidak valid atau telah kedaluwarsa.');
+        if (!activatedRef.current) {
+          setInfoError(err?.message || 'Tautan aktivasi tidak valid atau telah kedaluwarsa.');
+        }
       } finally {
-        setLoadingInfo(false);
+        if (!activatedRef.current) {
+          setLoadingInfo(false);
+        }
       }
     };
 
@@ -106,11 +116,15 @@ function ActivateContent() {
       });
 
       if (res && res.token && res.user) {
+        // Mark as activated to lock out any background token re-validation
+        activatedRef.current = true;
+        setInfoError(null);
         setSuccess(true);
+
         // Automatically authenticate user session
         authLogin(res.token, res.user);
 
-        // Immediate redirect to workspace
+        // Determine target route
         const roleName = (res.user.roleName || res.user.role || '').toLowerCase().trim();
         const isEmployee = roleName === 'employee' || roleName === 'karyawan';
         const target = isEmployee
@@ -122,7 +136,7 @@ function ActivateContent() {
           if (typeof window !== 'undefined') {
             window.location.replace(target);
           }
-        }, 1200);
+        }, 1000);
       }
     } catch (err: any) {
       setSubmitError(err?.message || 'Gagal mengaktifkan akun. Silakan coba lagi.');
@@ -148,7 +162,23 @@ function ActivateContent() {
 
       <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-5 sm:px-8 shadow-2xl rounded-3xl border border-slate-100">
-          {loadingInfo ? (
+          {success ? (
+            /* Success State - Immediately prioritize this when activation succeeds */
+            <div className="text-center space-y-4 py-8 animate-in zoom-in-95">
+              <div className="w-16 h-16 rounded-3xl bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center shadow-md shadow-emerald-500/20">
+                <CheckCircle2 className="w-9 h-9" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-xl font-extrabold text-slate-900">Aktivasi Akun Berhasil!</h3>
+                <p className="text-xs text-slate-600">
+                  Password Anda telah disimpan. Mengarahkan Anda ke aplikasi...
+                </p>
+              </div>
+              <div className="flex justify-center pt-2">
+                <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
+              </div>
+            </div>
+          ) : loadingInfo ? (
             <div className="py-12 flex flex-col items-center justify-center gap-3 text-slate-500">
               <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
               <p className="text-xs font-medium">Memvalidasi tautan aktivasi Anda...</p>
@@ -171,35 +201,31 @@ function ActivateContent() {
                 </Link>
               </div>
             </div>
-          ) : success ? (
-            <div className="text-center space-y-3 py-6">
-              <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center animate-in zoom-in">
-                <CheckCircle2 className="w-6 h-6" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900">Akun Berhasil Aktif!</h3>
-              <p className="text-xs text-slate-600">
-                Password Anda telah disimpan. Mengarahkan Anda ke aplikasi...
-              </p>
-              <div className="flex justify-center pt-2">
-                <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
-              </div>
-            </div>
           ) : (
             <div className="space-y-5">
-              {/* Welcome Badge */}
-              <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-2xl flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
-                  <UserCheck className="w-5 h-5" />
+              {/* Prominent Username Focus Card */}
+              <div className="p-4 bg-emerald-50/80 border-2 border-emerald-300 rounded-2xl space-y-2 text-center shadow-xs">
+                <div className="flex items-center justify-center gap-1.5 text-emerald-800 text-[11px] font-bold uppercase tracking-wider">
+                  <KeyRound className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Username Login Anda</span>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] text-emerald-800 font-medium">Selamat Datang,</p>
-                  <p className="text-sm font-extrabold text-slate-900 truncate">
-                    {activationInfo?.fullName}
-                  </p>
-                  <p className="text-[11px] text-slate-500 font-mono mt-0.5">
-                    Username: <span className="font-bold text-emerald-700 font-mono">{activationInfo?.username}</span>
-                  </p>
+
+                {/* Large Monospaced Username Display */}
+                <div className="py-2.5 px-4 bg-white rounded-xl border border-emerald-300/80 shadow-inner flex items-center justify-center">
+                  <span className="font-mono text-2xl sm:text-3xl font-black text-emerald-700 tracking-wider select-all">
+                    {activationInfo?.username}
+                  </span>
                 </div>
+
+                {/* Employee Name (Secondary Subtitle) */}
+                <p className="text-xs text-slate-500 pt-0.5">
+                  Karyawan: <span className="font-semibold text-slate-800">{activationInfo?.fullName}</span>
+                  {activationInfo?.employeeCode && (
+                    <span className="text-[10px] text-slate-400 font-mono ml-1.5">
+                      ({activationInfo.employeeCode})
+                    </span>
+                  )}
+                </p>
               </div>
 
               <div>
@@ -337,3 +363,4 @@ export default function ActivatePage() {
     </Suspense>
   );
 }
+
