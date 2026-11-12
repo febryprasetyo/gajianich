@@ -12,6 +12,7 @@ import {
 import { MasterLeaveBalanceItem, UpdateLeaveBalancePayload } from '@/types/leaves';
 import {
   calculateCleanQuota,
+  calculateTotalEntitlement,
   calculateRemainingQuota,
   getLeaveBalanceStatus,
 } from '@/lib/leaves/masterLeaveUtils';
@@ -30,12 +31,14 @@ export default function LeaveBalanceEditModal({
   onSave,
 }: LeaveBalanceEditModalProps) {
   const [baseQuota, setBaseQuota] = useState<number>(12);
+  const [carriedOverQuota, setCarriedOverQuota] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (balance) {
       setBaseQuota(balance.baseQuota);
+      setCarriedOverQuota(balance.carriedOverQuota ?? 0);
       setErrorMessage(null);
     }
   }, [balance]);
@@ -44,7 +47,8 @@ export default function LeaveBalanceEditModal({
 
   const targetId = balance.balanceId ?? balance.employeeId;
   const previewCleanQuota = calculateCleanQuota(baseQuota, balance.collectiveLeaveDeduction);
-  const previewRemaining = calculateRemainingQuota(previewCleanQuota, balance.usedQuota);
+  const previewTotalEntitlement = calculateTotalEntitlement(previewCleanQuota, carriedOverQuota);
+  const previewRemaining = calculateRemainingQuota(previewTotalEntitlement, balance.usedQuota);
   const previewStatus = getLeaveBalanceStatus(previewRemaining);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -55,6 +59,7 @@ export default function LeaveBalanceEditModal({
     try {
       const res = await onSave(targetId, {
         baseQuota,
+        carriedOverQuota,
       });
 
       if (res.success) {
@@ -123,26 +128,50 @@ export default function LeaveBalanceEditModal({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5 font-mono">
-              Hak Kuota Dasar Cuti
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                min={0}
-                max={60}
-                value={baseQuota}
-                onChange={(e) => setBaseQuota(Number(e.target.value))}
-                disabled={isSubmitting}
-                className="w-full pl-3.5 pr-14 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 font-semibold transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                required
-              />
-              <span className="absolute right-3.5 top-2.5 text-xs font-semibold text-slate-400 pointer-events-none">
-                Hari
-              </span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5 font-mono">
+                Hak Kuota Dasar Cuti
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  min={0}
+                  max={60}
+                  value={baseQuota}
+                  onChange={(e) => setBaseQuota(Number(e.target.value))}
+                  disabled={isSubmitting}
+                  className="w-full pl-3.5 pr-14 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 font-semibold transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  required
+                />
+                <span className="absolute right-3.5 top-2.5 text-xs font-semibold text-slate-400 pointer-events-none">
+                  Hari
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] text-slate-400">Default: 12 hari</p>
             </div>
-            <p className="mt-1 text-[11px] text-slate-400">Standar umum kebijakan: 12 hari</p>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5 font-mono">
+                Sisa Cuti Tahun Lalu (Akumulasi)
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={carriedOverQuota}
+                  onChange={(e) => setCarriedOverQuota(Number(e.target.value))}
+                  disabled={isSubmitting}
+                  className="w-full pl-3.5 pr-14 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 font-semibold transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  required
+                />
+                <span className="absolute right-3.5 top-2.5 text-xs font-semibold text-slate-400 pointer-events-none">
+                  Hari
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] text-slate-400">Saldo bawaan / carry over</p>
+            </div>
           </div>
 
           {/* Pratinjau Kalkulasi Instan */}
@@ -165,14 +194,18 @@ export default function LeaveBalanceEditModal({
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-emerald-200 text-center">
-              <div className="bg-white p-2.5 rounded-xl border border-emerald-100 shadow-sm">
+            <div className="grid grid-cols-3 gap-2.5 pt-2 border-t border-emerald-200 text-center">
+              <div className="bg-white p-2 rounded-xl border border-emerald-100 shadow-sm">
                 <span className="text-[10px] text-slate-500 uppercase block font-semibold font-mono">Hak Bersih</span>
-                <span className="text-sm font-bold text-slate-800">{previewCleanQuota} Hari</span>
+                <span className="text-xs font-bold text-slate-800">{previewCleanQuota} Hari</span>
               </div>
-              <div className="bg-white p-2.5 rounded-xl border border-emerald-100 shadow-sm">
+              <div className="bg-white p-2 rounded-xl border border-emerald-100 shadow-sm">
+                <span className="text-[10px] text-slate-500 uppercase block font-semibold font-mono">Total Hak</span>
+                <span className="text-xs font-bold text-slate-800">{previewTotalEntitlement} Hari</span>
+              </div>
+              <div className="bg-white p-2 rounded-xl border border-emerald-100 shadow-sm">
                 <span className="text-[10px] text-slate-500 uppercase block font-semibold font-mono">Sisa Saldo</span>
-                <span className="text-sm font-bold text-emerald-700">{previewRemaining} Hari</span>
+                <span className="text-xs font-bold text-emerald-700">{previewRemaining} Hari</span>
               </div>
             </div>
           </div>
