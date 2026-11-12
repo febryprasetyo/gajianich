@@ -627,6 +627,7 @@ export async function bulkProvisionAndBlast(req: AuthenticatedRequest, res: Resp
         id: employees.id,
         employeeCode: employees.employeeCode,
         fullName: employees.fullName,
+        departmentId: employees.departmentId,
         phone: employees.phone,
         mobilePhone: employees.mobilePhone,
         email: employees.email,
