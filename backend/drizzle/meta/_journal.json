@@ -378,6 +378,13 @@
       "when": 1794220000000,
       "tag": "0053_scoped_department_uniqueness",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1794230000000,
+      "tag": "0054_leave_accumulated_departments",
+      "breakpoints": true
     }
   ],
   "version": "7"
