@@ -55,7 +55,7 @@ export default function WhatsAppBlastModal({
     try {
       setIsLoadingSummary(true);
       setErrorMessage(null);
-      const res = await api.get<UnprovisionedSummaryResponse>('/api/users/unprovisioned-summary');
+      const res = await api.get<UnprovisionedSummaryResponse>('/users/unprovisioned-summary');
       if (res && Array.isArray(res.employees)) {
         // Only keep employees who don't have an account
         const unprovisioned = res.employees.filter((e) => !e.hasAccount);
@@ -133,7 +133,7 @@ export default function WhatsAppBlastModal({
         sendWhatsApp: false, // Generate credentials & ready-to-copy WhatsApp messages
       };
 
-      const res = await api.post<BulkProvisionBlastResponse>('/api/users/bulk-provision-blast', payload);
+      const res = await api.post<BulkProvisionBlastResponse>('/users/bulk-provision-blast', payload);
 
       if (res && Array.isArray(res.results)) {
         setResults(res.results);
@@ -555,3 +555,4 @@ export default function WhatsAppBlastModal({
     </ModalShell>
   );
 }
+
