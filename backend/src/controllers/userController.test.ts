@@ -13,6 +13,7 @@ import {
 import { db } from '../db';
 import { users, roles } from '../db/schema/users';
 import { employees } from '../db/schema/employees';
+import { userOrganizationGroupAccess } from '../db/schema/organizations';
 import { eq, inArray } from 'drizzle-orm';
 import {bindScopedCaller} from '../testing/scopedCaller';
 const getUsers=bindScopedCaller(rawGetUsers,'read'),createUser=bindScopedCaller(rawCreateUser),updateUser=bindScopedCaller(rawUpdateUser),toggleUserStatus=bindScopedCaller(rawToggleUserStatus),resetPassword=bindScopedCaller(rawResetPassword),deleteUser=bindScopedCaller(rawDeleteUser),getUnprovisionedSummary=bindScopedCaller(rawGetUnprovisionedSummary,'read'),bulkProvisionAndBlast=bindScopedCaller(rawBulkProvisionAndBlast);
@@ -324,7 +325,15 @@ test('bulkProvisionAndBlast creates accounts using smart username collision reso
       assert.equal(u.role, 'Employee');
     }
 
+    // Verify userOrganizationGroupAccess was automatically assigned
+    const userGroups = await db
+      .select()
+      .from(userOrganizationGroupAccess)
+      .where(inArray(userOrganizationGroupAccess.userId, createdUsers.map(u => u.id)));
+    assert.equal(userGroups.length, 2, 'Each created user must have organization group access assigned');
+
     // Clean up created user records
+    await db.delete(userOrganizationGroupAccess).where(inArray(userOrganizationGroupAccess.userId, createdUsers.map(u => u.id)));
     await db.delete(users).where(inArray(users.employeeId, [emp1.id, emp2.id]));
   } finally {
     await db.delete(employees).where(inArray(employees.id, [emp1.id, emp2.id]));

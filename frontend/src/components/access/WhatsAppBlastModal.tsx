@@ -138,6 +138,8 @@ export default function WhatsAppBlastModal({
       if (res && Array.isArray(res.results)) {
         setResults(res.results);
         setStep('result');
+        // Instantly refresh user list in parent background so created accounts appear immediately
+        onSuccess();
       } else {
         setErrorMessage('Format respons dari server tidak sesuai');
       }

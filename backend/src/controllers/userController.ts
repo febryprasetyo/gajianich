@@ -18,7 +18,7 @@ import {
 } from '../services/whatsappService';
 import { accountAccess, accountListPredicate, assertAccountTarget, validateAccountAssignment, withAccountMutation, replaceAccountGroups } from '../services/userOrganizationScope';
 import type { OrganizationScopedRequest } from '../middleware/organizationScope';
-import { userOrganizationGroupAccess } from '../db/schema/organizations';
+import { userOrganizationGroupAccess, departmentOrganizationMappings } from '../db/schema/organizations';
 
 const createUserSchema = z.object({
   username: z.string().min(3).max(100),
@@ -670,6 +670,24 @@ export async function bulkProvisionAndBlast(req: AuthenticatedRequest, res: Resp
     // Generate smart usernames based on employee names and collision rules
     const usernameMap = generateSmartUsernames(targetEmployees, existingUsernames);
 
+    // Prefetch department organization mappings to assign accounts to appropriate groups
+    const deptMappings = await db
+      .select({
+        departmentId: departmentOrganizationMappings.departmentId,
+        groupId: departmentOrganizationMappings.groupId,
+      })
+      .from(departmentOrganizationMappings);
+    const deptGroupMap = new Map<number, number>();
+    for (const m of deptMappings) {
+      if (m.departmentId && m.groupId) {
+        deptGroupMap.set(m.departmentId, m.groupId);
+      }
+    }
+
+    // Determine caller's group scope fallback
+    const callerScope = (req as OrganizationScopedRequest).organizationScope;
+    const fallbackGroupId = callerScope?.selectedGroupId ?? callerScope?.groupIds?.[0] ?? null;
+
     const origin = (typeof req.get === 'function' && (req.get('origin') || `${req.protocol}://${req.get('host')}`)) || 'http://localhost:3000';
     const loginUrl = parsed.loginUrl || `${origin}/login`;
 
@@ -721,6 +739,18 @@ export async function bulkProvisionAndBlast(req: AuthenticatedRequest, res: Resp
           activationTokenExpiresAt,
         })
         .returning({ id: users.id, username: users.username });
+
+      // Assign employee's organization group access so account appears in scoped views
+      const employeeGroupId = (emp.departmentId ? deptGroupMap.get(emp.departmentId) : null) ?? fallbackGroupId;
+      if (employeeGroupId) {
+        await db
+          .insert(userOrganizationGroupAccess)
+          .values({
+            userId: createdUser.id,
+            groupId: employeeGroupId,
+          })
+          .onConflictDoNothing();
+      }
 
       createdCount++;
 
