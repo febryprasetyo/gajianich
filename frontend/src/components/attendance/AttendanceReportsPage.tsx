@@ -33,7 +33,10 @@ import { ExportAttendanceModal } from './ExportAttendanceModal';
 import type { AttendanceRecord } from '@/lib/attendance/types';
 
 export default function AttendanceReportsPage({ employeeId }: { employeeId?: number }) {
-  const { data, canWrite } = useAttendance();
+  const { data, canWrite, refresh } = useAttendance();
+  useEffect(() => {
+    refresh().catch(() => {});
+  }, [refresh]);
   const defaultPeriod = useMemo(() => getDefaultAttendancePeriod(data, employeeId), [data, employeeId]);
 
   // Payroll cycle list (generate surrounding months around defaultPeriod)
