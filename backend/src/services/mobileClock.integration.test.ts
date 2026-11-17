@@ -11,6 +11,7 @@ import { runMigrations } from '../db/migrate';
 import { employees } from '../db/schema/employees';
 import { users } from '../db/schema/users';
 import { attendanceFaceProfiles } from '../db/schema/attendanceFaceProfiles';
+import { attendanceFaceRequests } from '../db/schema/attendanceFaceRequests';
 import { attendanceSelfLogs } from '../db/schema/attendanceSelfLogs';
 import { attendanceRecords, attendanceBatches } from '../db/schema/attendance';
 import { attendanceShifts, attendanceShiftAssignments } from '../db/schema/attendanceWorkspace';
@@ -286,4 +287,59 @@ test('Multi-clocking with autoApproveOut enabled: multiple OUT clocks are auto-a
 
   const [record] = await database.select().from(attendanceRecords).where(eq(attendanceRecords.employeeId, employee.id));
   assert.equal(record.scanOut, out2.data.scanTime);
+});
+
+test('clock succeeds after 2x HRD-approved photo updates including mirrored capture and 0.50 distance', async t => {
+  const photoDir = await mkdtemp(path.join(os.tmpdir(), 'gajianich-clock-face-approved-'));
+  process.env.ATTENDANCE_PHOTO_DIR = photoDir;
+  t.after(() => rm(photoDir, { recursive: true, force: true }));
+  const { updateFaceEnrollment, verifyFaceRequest, recordMobileClock } = await import('./mobileAttendanceService');
+  const fixture = await createHrAuditTestDatabase(); t.after(() => fixture.cleanup());
+  await runMigrations(fixture.ownerUrl, undefined, fixture.runtimeRole);
+  const database = drizzle(fixture.owner);
+  const hr = await createHrScopeFixture(database);
+  const [employee] = await database.insert(employees).values({ departmentId: hr.department.id, employeeCode: 'FACE-2X', fullName: 'Twice Updated Tester' }).returning();
+  const [user] = await database.insert(users).values({ username: 'face-2x-tester', passwordHash: 'test-only', employeeId: employee.id }).returning();
+  const [hrUser] = await database.insert(users).values({ username: 'hr-face-2x', passwordHash: 'test-only' }).returning();
+  await hr.grantUsers([user.id, hrUser.id]);
+  const [shift] = await database.insert(attendanceShifts).values({ code: 'OFFICE-2X', name: 'Office 2x', scheduleIn: '08:00', scheduleOut: '17:00', autoApproveIn: true, autoApproveOut: true }).returning();
+  await database.insert(attendanceShiftAssignments).values({ shiftId: shift.id, employeeId: employee.id });
+
+  const initialDesc = Array(128).fill(0.0);
+  const firstUpdateDesc = Array(128).fill(0.1);
+  const secondUpdateDesc = Array(128).fill(0.2);
+
+  // Initial enrollment
+  await updateFaceEnrollment(user.id, { samplePhotoBase64: photoUrl }, database as any, async () => ({ descriptor: initialDesc, photoUrl }));
+
+  // 1st photo update + HRD approval
+  const req1 = await updateFaceEnrollment(user.id, { samplePhotoBase64: photoUrl }, database as any, async () => ({ descriptor: firstUpdateDesc, photoUrl: `${photoUrl}#v1` }));
+  assert.equal(req1.changeStatus, 'PENDING');
+  const [row1] = await database.select().from(attendanceFaceRequests).where(eq(attendanceFaceRequests.employeeId, employee.id));
+  await verifyFaceRequest(hrUser.id, row1.id, 'APPROVED', '', database as any, hr.scope);
+
+  // 2nd photo update + HRD approval
+  const req2 = await updateFaceEnrollment(user.id, { samplePhotoBase64: photoUrl }, database as any, async () => ({ descriptor: secondUpdateDesc, photoUrl: `${photoUrl}#v2` }));
+  assert.equal(req2.changeStatus, 'PENDING');
+  const pendingRows = await database.select().from(attendanceFaceRequests).where(eq(attendanceFaceRequests.employeeId, employee.id));
+  const row2 = pendingRows.find(r => r.status === 'PENDING')!;
+  await verifyFaceRequest(hrUser.id, row2.id, 'APPROVED', '', database as any, hr.scope);
+
+  // Stranger descriptor fails for both unflipped and flipped
+  const strangerDesc = Array(128).fill(-0.8);
+  await assert.rejects(
+    recordMobileClock(user.id, { eventType: 'IN', latitude: -6.2, longitude: 106.8, photoBase64: photoUrl }, database as any, async () => ({ descriptor: strangerDesc, photoUrl })),
+    /tidak cocok/
+  );
+
+  // Live capture matches on mirrored orientation at ~0.50 Euclidean distance (sqrt(128 * 0.044^2) = 0.498 <= 0.55)
+  const nearDesc = Array(128).fill(0.244);
+  const clockResult = await recordMobileClock(
+    user.id,
+    { eventType: 'IN', latitude: -6.2, longitude: 106.8, photoBase64: photoUrl },
+    database as any,
+    async (_photo, options) => ({ descriptor: options?.flipHorizontal ? nearDesc : strangerDesc, photoUrl })
+  );
+  assert.equal(clockResult.success, true);
+  assert.equal(clockResult.data.approvalStatus, 'APPROVED');
 });

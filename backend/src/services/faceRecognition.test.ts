@@ -9,3 +9,7 @@ test('real detector rejects an image with no face', async () => {
   const buffer = await sharp({ create: { width: 256, height: 256, channels: 3, background: '#dddddd' } }).png().toBuffer();
   await assert.rejects(extractPhotoFace(`data:image/png;base64,${buffer.toString('base64')}`), /Wajah tidak terdeteksi/);
 });
+test('supports flipHorizontal option in face extraction pipeline', async () => {
+  const buffer = await sharp({ create: { width: 256, height: 256, channels: 3, background: '#cccccc' } }).png().toBuffer();
+  await assert.rejects(extractPhotoFace(`data:image/png;base64,${buffer.toString('base64')}`, { flipHorizontal: true }), /Wajah tidak terdeteksi/);
+});

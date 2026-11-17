@@ -3,7 +3,7 @@
  * Pure TypeScript, zero heavy dependencies, < 2ms calculation time.
  */
 
-export const DEFAULT_FACE_MATCH_THRESHOLD = 0.45;
+export const DEFAULT_FACE_MATCH_THRESHOLD = 0.55;
 
 export interface BiometricMatchResult {
   isMatch: boolean;

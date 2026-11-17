@@ -29,7 +29,7 @@ import { resolveEmployeeShift, resolveActiveEmployeeShift, getWorkingScheduleFor
 import { isWithinGeofence, buildMapLinks } from '../domain/geofence';
 import { determineShiftCategory, evaluateAttendanceApproval } from '../domain/attendanceVerificationPolicy';
 import { localAttendanceTime, zoneAtLocation, zoneLabels, attendanceMetrics, minuteValue, resolveIndonesianTimeZone } from '../domain/attendanceTime';
-import { verifyBiometricMatch } from '../domain/faceMatcher';
+import { verifyBiometricMatchAny } from '../domain/faceMatcher';
 import { extractPhotoFace, FACE_DESCRIPTOR_VERSION } from './faceRecognition';
 import { saveAttendancePhoto } from './attendancePhotoStorage';
 import { eq, and, or, desc, gte, lte, sql } from 'drizzle-orm';
@@ -213,7 +213,23 @@ export async function recordMobileClock(userId: number, payload: MobileClockInpu
     const referencePhoto = profile.samplePhotoUrl.startsWith('data:image/') ? profile.samplePhotoUrl : `data:image/webp;base64,${(await fs.readFile(profile.samplePhotoUrl)).toString('base64')}`;
     reference = JSON.stringify((await recognize(referencePhoto)).descriptor);
   }
-  if (!verifyBiometricMatch(live.descriptor, reference).isMatch) throw new Error('Wajah tidak cocok dengan foto terdaftar. Ulangi presensi menggunakan wajah Anda.');
+  const approvedRequests = await targetDb
+    .select({ descriptor: attendanceFaceRequests.descriptor })
+    .from(attendanceFaceRequests)
+    .where(and(eq(attendanceFaceRequests.employeeId, employee.id), eq(attendanceFaceRequests.status, 'APPROVED')))
+    .orderBy(desc(attendanceFaceRequests.id))
+    .limit(5);
+  const referenceCandidates = [reference, ...approvedRequests.map(r => r.descriptor)].filter(Boolean);
+  const liveCandidates: number[][] = [live.descriptor];
+  if (!verifyBiometricMatchAny(liveCandidates, referenceCandidates).isMatch) {
+    const mirroredLive = await recognize(payload.photoBase64, { flipHorizontal: true }).catch(() => null);
+    if (mirroredLive?.descriptor) {
+      liveCandidates.push(mirroredLive.descriptor);
+    }
+    if (!verifyBiometricMatchAny(liveCandidates, referenceCandidates).isMatch) {
+      throw new Error('Wajah tidak cocok dengan foto terdaftar. Ulangi presensi menggunakan wajah Anda.');
+    }
+  }
   const now = new Date();
   const hash = `TX-${randomUUID()}`;
   const photoPath = await saveAttendancePhoto(hash, live.photoUrl);
@@ -221,8 +237,11 @@ export async function recordMobileClock(userId: number, payload: MobileClockInpu
     return await targetDb.transaction(async tx => {
       await employeeLock(tx, employee.id);
       const [currentProfile] = await tx.select().from(attendanceFaceProfiles).where(eq(attendanceFaceProfiles.employeeId, employee.id));
-      const currentReference = currentProfile?.samplePhotoUrl === profile.samplePhotoUrl ? reference : currentProfile?.faceDescriptorHash;
-      if (!currentProfile?.isEnrolled || !verifyBiometricMatch(live.descriptor, currentReference).isMatch) throw new Error('Foto acuan telah berubah. Ulangi presensi.');
+      const currentRefs = [
+        currentProfile?.samplePhotoUrl === profile.samplePhotoUrl ? reference : currentProfile?.faceDescriptorHash,
+        ...approvedRequests.map(r => r.descriptor),
+      ].filter(Boolean);
+      if (!currentProfile?.isEnrolled || !verifyBiometricMatchAny(liveCandidates, currentRefs).isMatch) throw new Error('Foto acuan telah berubah. Ulangi presensi.');
       const logs = await employeeLogs(employee.id, tx,employee.groupId);
       const entry = latestPair(logs, now);
       const zone = payload.eventType === 'OUT' && entry ? entry.timeZone : gpsZone;
@@ -471,8 +490,29 @@ export async function verifyFaceRequest(userId: number, id: number, status: 'APP
     if (request.status !== 'PENDING') throw new Error('Pengajuan foto sudah diproses.');
     if (status === 'REJECTED' && !note.trim()) throw new Error('Alasan penolakan wajib diisi.');
     if (status === 'APPROVED') {
-      await tx.update(attendanceFaceProfiles).set({ isEnrolled: true, faceDescriptorHash: request.descriptor, descriptorVersion: FACE_DESCRIPTOR_VERSION, samplePhotoUrl: request.photoUrl, updatedAt: new Date() }).where(eq(attendanceFaceProfiles.employeeId, request.employeeId));
-      await tx.update(employees).set({ photoUrl: request.photoUrl, updatedAt: new Date() }).where(eq(employees.id, request.employeeId));
+      const now = new Date();
+      await tx
+        .insert(attendanceFaceProfiles)
+        .values({
+          employeeId: request.employeeId,
+          isEnrolled: true,
+          faceDescriptorHash: request.descriptor,
+          descriptorVersion: FACE_DESCRIPTOR_VERSION,
+          samplePhotoUrl: request.photoUrl,
+          enrolledAt: now,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: attendanceFaceProfiles.employeeId,
+          set: {
+            isEnrolled: true,
+            faceDescriptorHash: request.descriptor,
+            descriptorVersion: FACE_DESCRIPTOR_VERSION,
+            samplePhotoUrl: request.photoUrl,
+            updatedAt: now,
+          },
+        });
+      await tx.update(employees).set({ photoUrl: request.photoUrl, updatedAt: now }).where(eq(employees.id, request.employeeId));
     }
     await tx.update(attendanceFaceRequests).set({ status, note: note.trim() || 'Disetujui HRD.', verifiedById: userId, verifiedAt: new Date() }).where(and(eq(attendanceFaceRequests.id, id),historicalScopePredicate({...scope!,includeUnmapped:false},attendanceFaceRequests.groupId)));
     return { success: true, message: 'Keputusan perubahan foto disimpan.' };

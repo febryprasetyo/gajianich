@@ -42,6 +42,18 @@ test("verifyFaceMatch handles unenrolled, match, and mismatch states", () => {
   const mismatchRes = verifyFaceMatch(stranger, master);
   assert.strictEqual(mismatchRes.status, "MISMATCH");
   assert.strictEqual(mismatchRes.isMatch, false);
+
+  // Lighting/camera variance (~0.50 <= 0.55) matches
+  const lightingVar = [0.37, 0.59, 0.81, 1.03]; // dist = 0.50
+  const lightingRes = verifyFaceMatch(lightingVar, master);
+  assert.strictEqual(lightingRes.status, "MATCH");
+  assert.strictEqual(lightingRes.isMatch, true);
+
+  // Over 0.55 threshold fails
+  const farVar = [0.42, 0.64, 0.86, 1.08]; // dist = 0.60
+  const farRes = verifyFaceMatch(farVar, master);
+  assert.strictEqual(farRes.status, "MISMATCH");
+  assert.strictEqual(farRes.isMatch, false);
 });
 
 test("calculateEyeAspectRatio detects open vs closed eye blink", () => {

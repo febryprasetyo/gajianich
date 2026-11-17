@@ -2,8 +2,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Camera, ChevronLeft, History, LogOut, ScanFace, ChevronRight, Monitor } from 'lucide-react';
+import { Camera, ChevronLeft, History, Loader2, LogOut, ScanFace, ChevronRight, Monitor, Upload, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import ModalShell from '@/components/ui/ModalShell';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { useMobileRevalidation } from '@/hooks/useMobileEnvironment';
 import LogoutSheet from '@/components/mobile/LogoutSheet';
@@ -17,7 +18,12 @@ export default function MobileProfilePage() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraError, setCameraError] = useState('');
   const input = useRef<HTMLInputElement>(null);
+  const video = useRef<HTMLVideoElement>(null);
+  const stream = useRef<MediaStream | null>(null);
   const submitting = useRef(false);
   const summaryRequest = useRef(0);
   const load = useCallback(async () => {
@@ -32,10 +38,97 @@ export default function MobileProfilePage() {
     if (!localStorage.getItem('token')) { router.replace('/login'); return; }
     void load();
   }, [router, load]);
+  useEffect(() => {
+    if (!cameraOpen) return;
+    let cancelled = false;
+    setCameraReady(false);
+    setCameraError('');
+    async function start() {
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          throw new Error('Kamera langsung tidak tersedia.');
+        }
+        const media = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 800 }, height: { ideal: 600 } },
+          audio: false,
+        });
+        if (cancelled) {
+          media.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        stream.current = media;
+        if (video.current) {
+          video.current.srcObject = media;
+          await video.current.play();
+        }
+        if (!cancelled) setCameraReady(true);
+      } catch {
+        if (!cancelled) {
+          setCameraOpen(false);
+          input.current?.click();
+        }
+      }
+    }
+    void start();
+    return () => {
+      cancelled = true;
+      stream.current?.getTracks().forEach((t) => t.stop());
+      stream.current = null;
+    };
+  }, [cameraOpen]);
+  function openFaceCapture() {
+    setError('');
+    setMessage('');
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      input.current?.click();
+      return;
+    }
+    setCameraOpen(true);
+  }
+  async function submitFaceDataUrl(samplePhotoBase64: string, fromCameraModal = false) {
+    if (submitting.current) return;
+    submitting.current = true;
+    setBusy(true);
+    setError('');
+    setCameraError('');
+    setMessage('');
+    try {
+      const response = await postEnrollFace({ samplePhotoBase64 });
+      setMessage(response.message);
+      if (fromCameraModal) setCameraOpen(false);
+      await load();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Foto gagal dikirim.';
+      if (fromCameraModal) setCameraError(msg);
+      else setError(msg);
+    } finally {
+      submitting.current = false;
+      setBusy(false);
+    }
+  }
+  async function captureFromVideo() {
+    if (submitting.current) return;
+    setCameraError('');
+    if (!cameraReady || !video.current?.videoWidth) {
+      setCameraError('Kamera belum siap. Tunggu sebentar atau pilih foto dari galeri.');
+      return;
+    }
+    const canvas = document.createElement('canvas');
+    const scale = Math.min(1, 800 / video.current.videoWidth);
+    canvas.width = Math.round(video.current.videoWidth * scale);
+    canvas.height = Math.round(video.current.videoHeight * scale);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      setCameraError('Foto tidak dapat diambil. Ulangi kembali.');
+      return;
+    }
+    ctx.drawImage(video.current, 0, 0, canvas.width, canvas.height);
+    await submitFaceDataUrl(canvas.toDataURL('image/jpeg', 0.85), true);
+  }
   async function captured(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]; event.target.value = '';
     if (!file || submitting.current) return;
-    submitting.current = true; setBusy(true); setError(''); setMessage('');
+    setError(''); setMessage('');
     try {
       if (file.size > 15_000_000) throw new Error('Ukuran foto maksimal 15 MB.');
       const bitmap = await createImageBitmap(file);
@@ -43,10 +136,8 @@ export default function MobileProfilePage() {
       const canvas = document.createElement('canvas'); canvas.width = Math.round(bitmap.width * ratio); canvas.height = Math.round(bitmap.height * ratio);
       const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Foto tidak dapat diproses.');
       ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height); bitmap.close();
-      const response = await postEnrollFace({ samplePhotoBase64: canvas.toDataURL('image/jpeg', 0.85) });
-      setMessage(response.message); await load();
+      await submitFaceDataUrl(canvas.toDataURL('image/jpeg', 0.85), false);
     } catch (err) { setError(err instanceof Error ? err.message : 'Foto gagal dikirim.'); }
-    finally { submitting.current = false; setBusy(false); }
   }
   const face = summary?.faceEnrollment;
   const pending = face?.changeStatus === 'PENDING';
@@ -76,7 +167,7 @@ export default function MobileProfilePage() {
         {face?.changeStatus === 'REJECTED' && <p className="text-xs text-rose-800">Perubahan ditolak: {face.changeNote}</p>}
         <p className="text-xs leading-relaxed text-slate-600">{face?.isFaceEnrolled ? 'Penggantian wajah dan foto profil memerlukan persetujuan HRD.' : 'Daftarkan wajah Anda. Foto pertama langsung menjadi foto profil dan acuan presensi.'}</p>
         <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" capture="user" onChange={captured} className="hidden" aria-label="Ambil foto wajah" />
-        <button type="button" onClick={() => input.current?.click()} disabled={busy || pending || loading} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 text-sm font-bold text-white disabled:opacity-50"><Camera size={18} />{busy ? 'Memproses wajah...' : face?.isFaceEnrolled ? 'Ajukan perubahan wajah' : 'Daftarkan wajah'}</button>
+        <button type="button" onClick={openFaceCapture} disabled={busy || pending || loading} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 text-sm font-bold text-white disabled:opacity-50"><Camera size={18} />{busy ? 'Memproses wajah...' : face?.isFaceEnrolled ? 'Ajukan perubahan wajah' : 'Daftarkan wajah'}</button>
       </section>
     </>}
     <Link href="/m/presensi" className="flex min-h-11 items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-700"><History size={18} />Riwayat presensi<ChevronRight size={18} className="ml-auto text-slate-400" /></Link>
@@ -94,6 +185,83 @@ export default function MobileProfilePage() {
     )}
 
     <button type="button" onClick={() => setLogoutOpen(true)} className="flex min-h-11 w-full items-center gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm font-bold text-rose-800"><LogOut size={18} />Keluar akun</button>
+    <ModalShell
+      isOpen={cameraOpen}
+      onClose={() => { if (!busy) setCameraOpen(false); }}
+      title={face?.isFaceEnrolled ? 'Perbarui foto wajah' : 'Daftarkan foto wajah'}
+      isLoading={busy}
+      fullScreen
+      showCloseButton={false}
+    >
+      <div className="relative isolate flex h-full flex-col overflow-hidden bg-slate-950 text-white">
+        <video
+          ref={video}
+          autoPlay
+          playsInline
+          muted
+          className="absolute inset-0 -z-10 h-full w-full -scale-x-100 object-cover"
+          aria-label="Pratinjau kamera pendaftaran wajah"
+        />
+        <div className="shrink-0 bg-slate-950/80 px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-4">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setCameraOpen(false)}
+              disabled={busy}
+              aria-label="Tutup kamera"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 focus-visible:outline-2 focus-visible:outline-white disabled:opacity-40"
+            >
+              <X size={22} />
+            </button>
+            <div className="min-w-0">
+              <h2 className="text-xl font-extrabold">{face?.isFaceEnrolled ? 'Perbarui foto wajah' : 'Daftarkan foto wajah'}</h2>
+              <p className="mt-0.5 break-words text-xs text-slate-200">{summary?.employee.fullName}</p>
+            </div>
+          </div>
+        </div>
+        <div className="relative flex min-h-24 flex-1 flex-col items-center justify-center px-6 py-4">
+          <div
+            aria-hidden="true"
+            className="aspect-[4/5] max-h-[38dvh] w-[min(62vw,240px)] rounded-[50%] border-2 border-dashed border-emerald-200/90 shadow-[0_0_0_100vmax_rgba(2,6,23,0.25)]"
+          />
+          <p className="z-10 mt-4 rounded-xl bg-slate-950/75 px-4 py-2 text-center text-xs">
+            Posisikan wajah utuh di dalam bingkai dengan pencahayaan cukup.
+          </p>
+        </div>
+        <div className="z-10 shrink-0 space-y-3 bg-slate-950/90 px-5 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+          <div className="flex items-center gap-2 text-xs text-slate-200">
+            <span className={`h-2 w-2 rounded-full ${cameraReady ? 'bg-emerald-300' : 'bg-amber-300'}`} />
+            {cameraReady ? 'Kamera siap' : 'Menyiapkan kamera'}
+          </div>
+          {cameraError && (
+            <p role="alert" className="rounded-xl border border-rose-300/30 bg-rose-950/80 p-3 text-sm text-rose-100">
+              {cameraError}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={captureFromVideo}
+            disabled={!cameraReady || busy}
+            className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-700 disabled:bg-slate-700 disabled:text-slate-300"
+          >
+            {busy ? <Loader2 size={20} className="animate-spin" /> : <Camera size={20} />}
+            {busy ? 'Memproses wajah…' : 'Ambil foto wajah'}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              setCameraOpen(false);
+              input.current?.click();
+            }}
+            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/20 px-3 text-xs font-semibold text-slate-200 disabled:opacity-40"
+          >
+            <Upload size={16} />
+            Pilih dari Galeri / Kamera HP
+          </button>
+        </div>
+      </div>
+    </ModalShell>
     <LogoutSheet isOpen={logoutOpen} onClose={() => setLogoutOpen(false)} onConfirm={() => { setLogoutOpen(false); logout(); }} />
   </main>;
 }

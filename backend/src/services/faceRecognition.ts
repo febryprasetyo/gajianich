@@ -20,15 +20,19 @@ async function initialize() {
   })().catch(error => { initialization = undefined; throw error; });
   return initialization;
 }
-export async function extractPhotoFace(photo: string): Promise<{ descriptor: number[]; photoUrl: string }> {
+export async function extractPhotoFace(
+  photo: string,
+  options?: { flipHorizontal?: boolean }
+): Promise<{ descriptor: number[]; photoUrl: string }> {
   if (!/^data:image\/(jpeg|png|webp);base64,/.test(photo) || photo.length > 8_000_000) throw new Error('Foto wajah tidak valid atau terlalu besar.');
   const buffer = Buffer.from(photo.substring(photo.indexOf(',') + 1), 'base64');
-  const image = sharp(buffer, { limitInputPixels: 20_000_000 }).rotate().resize({ width: 800, height: 800, fit: 'inside', withoutEnlargement: true });
+  const baseImage = sharp(buffer, { limitInputPixels: 20_000_000 }).rotate();
+  const image = (options?.flipHorizontal ? baseImage.flop() : baseImage).resize({ width: 800, height: 800, fit: 'inside', withoutEnlargement: true });
   const { data, info } = await image.clone().removeAlpha().toColourspace('srgb').raw().toBuffer({ resolveWithObject: true });
   await initialize();
   const tensor = faceapi.tf.tensor3d(new Uint8Array(data), [info.height, info.width, 3], 'int32');
   try {
-    const faces = await faceapi.detectAllFaces(tensor, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.7 })).withFaceLandmarks().withFaceDescriptors();
+    const faces = await faceapi.detectAllFaces(tensor, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.6 })).withFaceLandmarks().withFaceDescriptors();
     if (faces.length !== 1) throw new Error(faces.length ? 'Pastikan hanya satu wajah berada dalam foto.' : 'Wajah tidak terdeteksi. Ulangi dengan pencahayaan yang cukup.');
     return { descriptor: Array.from(faces[0].descriptor), photoUrl: `data:image/webp;base64,${(await image.webp({ quality: 80 }).toBuffer()).toString('base64')}` };
   } finally { tensor.dispose(); }

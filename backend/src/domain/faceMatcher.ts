@@ -3,7 +3,7 @@
  * using Euclidean distance and similarity scoring.
  */
 
-export const DEFAULT_FACE_MATCH_THRESHOLD = 0.45; // Standard threshold for 128-D Euclidean distance
+export const DEFAULT_FACE_MATCH_THRESHOLD = 0.55; // Standard ResNet-34 128-D Euclidean distance threshold for real-world lighting/camera variance
 
 export function parseFaceDescriptor(raw: unknown): number[] | null {
   if (!raw) return null;
@@ -87,4 +87,58 @@ export function verifyBiometricMatch(
     similarityPercentage: similarity,
     reason: isMatch ? undefined : "Wajah tidak cocok dengan data biometrik master",
   };
+}
+
+export function verifyBiometricMatchAny(
+  liveDescriptors: unknown[],
+  masterDescriptors: unknown[],
+  threshold: number = DEFAULT_FACE_MATCH_THRESHOLD
+): {
+  isMatch: boolean;
+  distance: number | null;
+  similarityPercentage: number | null;
+  reason?: string;
+} {
+  const validLive = liveDescriptors.filter((d) => parseFaceDescriptor(d) !== null);
+  const validMaster = masterDescriptors.filter((d) => parseFaceDescriptor(d) !== null);
+
+  if (validMaster.length === 0) {
+    return {
+      isMatch: false,
+      distance: null,
+      similarityPercentage: null,
+      reason: "Profil wajah belum terdaftar (belum enrollment)",
+    };
+  }
+
+  if (validLive.length === 0) {
+    return {
+      isMatch: false,
+      distance: null,
+      similarityPercentage: null,
+      reason: "Vektor wajah tidak valid",
+    };
+  }
+
+  let bestResult: {
+    isMatch: boolean;
+    distance: number | null;
+    similarityPercentage: number | null;
+    reason?: string;
+  } | null = null;
+
+  for (const live of validLive) {
+    for (const master of validMaster) {
+      const result = verifyBiometricMatch(live, master, threshold);
+      if (result.isMatch) {
+        if (!bestResult || !bestResult.isMatch || (result.distance !== null && (bestResult.distance === null || result.distance < bestResult.distance))) {
+          bestResult = result;
+        }
+      } else if (!bestResult || (!bestResult.isMatch && result.distance !== null && (bestResult.distance === null || result.distance < bestResult.distance))) {
+        bestResult = result;
+      }
+    }
+  }
+
+  return bestResult ?? verifyBiometricMatch(validLive[0], validMaster[0], threshold);
 }
