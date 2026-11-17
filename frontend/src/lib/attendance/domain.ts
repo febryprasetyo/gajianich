@@ -74,7 +74,9 @@ export function summarizeEmployees(data: AttendanceDataset, filter: RecordFilter
       (Boolean(r.scanIn || r.scanOut) && !['SAKIT', 'IZIN', 'CUTI', 'ALPHA'].includes(r.attendanceStatus))
     );
     if (isAttended) row.recordCount++;
-    if (!r.isDayOff) row.lateMinutes += r.lateMinutes || 0;
+    if (!r.isDayOff && !['DINAS_LUAR', 'CUTI', 'SAKIT', 'IZIN', 'ALPHA'].includes(r.attendanceStatus)) {
+      row.lateMinutes += r.lateMinutes || 0;
+    }
     row.overtimeMinutes += r.overtimeMinutes || 0;
     if (r.attendanceStatus === 'SAKIT') row.sakitCount++;
     else if (r.attendanceStatus === 'IZIN') row.izinCount++;

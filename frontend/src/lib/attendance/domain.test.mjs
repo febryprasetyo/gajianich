@@ -107,6 +107,17 @@ test('CSV quotes names and protects spreadsheet formulas', () => {
   assert.ok(csv.includes('Keterlambatan (menit)'));
 });
 
+test('summarizeEmployees excludes DINAS_LUAR lateMinutes from report totals', () => {
+  const data = fixture();
+  data.records = [
+    { ...data.records[0], attendanceStatus: 'DINAS_LUAR', isDayOff: false, lateMinutes: 226, overtimeMinutes: 0 },
+    { ...data.records[0], id: 999, workDate: '2026-09-22', attendanceStatus: 'LATE', isDayOff: false, lateMinutes: 3, overtimeMinutes: 0 },
+  ];
+  const reports = summarizeEmployees(data, range);
+  const empReport = reports.find(r => r.employee.id === data.records[0].employeeId);
+  assert.equal(empReport?.lateMinutes, 3);
+});
+
 test('review cannot acknowledge away immutable parser errors', () => {
   let data = fixture();
   const identity = data.identities[0];

@@ -258,6 +258,9 @@ export async function loadAttendanceWorkspace(
         } else if (earlyMinutes === 0 && attendanceStatus === 'EARLY_LEAVE') {
           attendanceStatus = 'PRESENT';
         }
+      } else if (r.attendanceStatus === 'DINAS_LUAR' || r.attendanceStatus === 'CUTI' || r.attendanceStatus === 'SAKIT' || r.attendanceStatus === 'IZIN') {
+        lateMinutes = 0;
+        earlyMinutes = 0;
       }
       return {
         id: r.id,

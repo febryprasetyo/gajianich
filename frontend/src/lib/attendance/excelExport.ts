@@ -129,8 +129,8 @@ export function createAttendanceReportWorkbook(
             : r?.attendanceStatus === 'EARLY_LEAVE'
             ? 'PULANG CEPAT'
             : (r?.attendanceStatus || "BELUM ADA CATATAN")),
-          "Terlambat (Menit)": row.isDayOff ? 0 : (r?.lateMinutes || 0),
-          "Pulang Cepat (Menit)": row.isDayOff ? 0 : (r?.earlyMinutes || 0),
+          "Terlambat (Menit)": row.isDayOff || ['DINAS_LUAR', 'CUTI', 'SAKIT', 'IZIN', 'ALPHA'].includes(r?.attendanceStatus || '') ? 0 : (r?.lateMinutes || 0),
+          "Pulang Cepat (Menit)": row.isDayOff || ['DINAS_LUAR', 'CUTI', 'SAKIT', 'IZIN', 'ALPHA'].includes(r?.attendanceStatus || '') ? 0 : (r?.earlyMinutes || 0),
           "Lembur (Menit)": r?.overtimeMinutes || 0,
           "Durasi Lembur": durationLabel(r?.overtimeMinutes || 0),
           "Tidak Hadir": !row.isDayOff && isRecordedAbsence(r, today) ? 1 : 0,
@@ -157,8 +157,8 @@ export function createAttendanceReportWorkbook(
             : r.attendanceStatus === 'EARLY_LEAVE'
             ? 'PULANG CEPAT'
             : r.attendanceStatus,
-          "Terlambat (Menit)": r.isDayOff ? 0 : r.lateMinutes,
-          "Pulang Cepat (Menit)": r.isDayOff ? 0 : r.earlyMinutes,
+          "Terlambat (Menit)": r.isDayOff || ['DINAS_LUAR', 'CUTI', 'SAKIT', 'IZIN', 'ALPHA'].includes(r.attendanceStatus) ? 0 : r.lateMinutes,
+          "Pulang Cepat (Menit)": r.isDayOff || ['DINAS_LUAR', 'CUTI', 'SAKIT', 'IZIN', 'ALPHA'].includes(r.attendanceStatus) ? 0 : r.earlyMinutes,
           "Lembur (Menit)": r.overtimeMinutes,
           "Durasi Lembur": durationLabel(r.overtimeMinutes),
           "Tidak Hadir": isRecordedAbsence(r, today) ? 1 : 0,
