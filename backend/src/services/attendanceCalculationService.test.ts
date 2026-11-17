@@ -384,3 +384,55 @@ test("calculateAttendanceFromPunches handles multiple evening punches cleanly (t
   assert.strictEqual(rec.lateMinutes, 0);
   assert.strictEqual(rec.statusLabel, "Tidak Scan Masuk");
 });
+
+test("calculateAttendanceFromPunches and mergeAttendanceScans respect 15m late and early leave tolerances", () => {
+  const wh15: WorkHoursTemplate = {
+    id: 20,
+    name: "Office 15m",
+    scheduleIn: "08:00",
+    scheduleOut: "17:00",
+    scanInStart: "06:00",
+    scanInEnd: "10:00",
+    scanOutStart: "15:00",
+    scanOutEnd: "21:00",
+    lateToleranceMinutes: 15,
+    earlyLeaveToleranceMinutes: 15,
+    requireCheckIn: true,
+    requireCheckOut: true,
+    isActive: true,
+  };
+  const shift15: WorkShift = {
+    id: 20,
+    code: "OFFICE-15",
+    name: "Office 15m",
+    mondayWorkHoursId: 20,
+    tuesdayWorkHoursId: 20,
+    wednesdayWorkHoursId: 20,
+    thursdayWorkHoursId: 20,
+    fridayWorkHoursId: 20,
+    isDefault: true,
+    isActive: true,
+  };
+  const punches = [
+    { pin: "4001", employeeId: 401, timestamp: "2026-03-05 08:15:00", workDate: "2026-03-05" },
+    { pin: "4001", employeeId: 401, timestamp: "2026-03-05 16:45:00", workDate: "2026-03-05" },
+  ];
+  const employeesMap = new Map([[401, { id: 401, nik: "4001", fullName: "Tol Tester", departmentName: "IT", departmentId: 1 }]]);
+  const res = calculateAttendanceFromPunches(punches, employeesMap, [shift15], [], {
+    assignDefaultShiftIfUnassigned: true,
+    workHoursMap: new Map([[20, wh15]]),
+  });
+  assert.strictEqual(res.processedRecords[0].lateMinutes, 0);
+  assert.strictEqual(res.processedRecords[0].earlyMinutes, 0);
+  assert.strictEqual(res.processedRecords[0].lateToleranceMinutes, 15);
+  assert.strictEqual(res.processedRecords[0].earlyLeaveToleranceMinutes, 15);
+
+  const merged = mergeAttendanceScans(null, {
+    scanIn: "08:16",
+    scanOut: "16:44",
+    scheduleIn: "08:00",
+    scheduleOut: "17:00",
+  }, { lateToleranceMinutes: 15, earlyLeaveToleranceMinutes: 15 });
+  assert.strictEqual(merged.lateMinutes, 1);
+  assert.strictEqual(merged.earlyMinutes, 1);
+});

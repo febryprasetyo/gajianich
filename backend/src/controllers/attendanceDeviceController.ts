@@ -678,9 +678,10 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
       employeesMap.set(emp.id, empData);
     }
 
-    const shifts = await db.select().from(attendanceShifts);
+    const hrScope = requireHrScope(req as any);
+    const shifts = await db.select().from(attendanceShifts).where(historicalScopePredicate(hrScope, attendanceShifts.groupId));
     const assignments = await db.select().from(attendanceShiftAssignments);
-    const workHoursRows = await db.select().from(attendanceWorkHours);
+    const workHoursRows = await db.select().from(attendanceWorkHours).where(historicalScopePredicate(hrScope, attendanceWorkHours.groupId));
     const workHoursMap = new Map<number, any>(workHoursRows.map((wh) => [wh.id, wh]));
 
     const result = calculateAttendanceFromPunches(
@@ -693,7 +694,6 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
 
     // If saveToDatabase requested, upsert into attendance_records
     if (saveToDatabase && result.processedRecords.length > 0) {
-      const hrScope = requireHrScope(req as any);
       for (const rec of result.processedRecords) {
         if (!rec.employeeId) continue;
         let owner;
@@ -721,7 +721,10 @@ export async function calculateAttendanceHandler(req: Request, res: Response) {
           scheduleIn: effectiveScheduleIn,
           scheduleOut: effectiveScheduleOut,
           attendanceStatus: rec.attendanceStatus,
-        }, { lateToleranceMinutes: 5 });
+        }, {
+          lateToleranceMinutes: rec.lateToleranceMinutes ?? 5,
+          earlyLeaveToleranceMinutes: rec.earlyLeaveToleranceMinutes ?? 0,
+        });
 
         await db
           .insert(attendanceRecords)

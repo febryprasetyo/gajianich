@@ -235,20 +235,23 @@ export async function cleanseAndIngestAdmsLogs(
       }
 
       const shiftRes = await client.query(`
-        SELECT id, code, name, schedule_in AS "scheduleIn", schedule_out AS "scheduleOut",
+        SELECT id, group_id AS "groupId", code, name, schedule_in AS "scheduleIn", schedule_out AS "scheduleOut",
                monday_work_hours_id AS "mondayWorkHoursId", tuesday_work_hours_id AS "tuesdayWorkHoursId",
                wednesday_work_hours_id AS "wednesdayWorkHoursId", thursday_work_hours_id AS "thursdayWorkHoursId",
                friday_work_hours_id AS "fridayWorkHoursId", saturday_work_hours_id AS "saturdayWorkHoursId",
                sunday_work_hours_id AS "sundayWorkHoursId", is_default AS "isDefault", is_active AS "isActive"
         FROM public.attendance_shifts
-      `);
+        WHERE group_id = $1 OR group_id IS NULL
+      `, [options.groupId]);
       const assignRes = await client.query(
         `SELECT a.employee_id AS "employeeId", a.department_id AS "departmentId", s.code AS "shiftCode", a.shift_id AS "shiftId"
          FROM public.attendance_shift_assignments a
-         JOIN public.attendance_shifts s ON s.id = a.shift_id`
+         JOIN public.attendance_shifts s ON s.id = a.shift_id
+         WHERE s.group_id = $1 OR s.group_id IS NULL`,
+        [options.groupId]
       );
       const whRes = await client.query(`
-        SELECT id, name, schedule_in AS "scheduleIn", schedule_out AS "scheduleOut",
+        SELECT id, group_id AS "groupId", name, schedule_in AS "scheduleIn", schedule_out AS "scheduleOut",
                scan_in_start AS "scanInStart", scan_in_end AS "scanInEnd",
                scan_out_start AS "scanOutStart", scan_out_end AS "scanOutEnd",
                late_tolerance_minutes AS "lateToleranceMinutes",
@@ -256,7 +259,8 @@ export async function cleanseAndIngestAdmsLogs(
                require_check_in AS "requireCheckIn", require_check_out AS "requireCheckOut",
                is_active AS "isActive"
         FROM public.attendance_work_hours
-      `);
+        WHERE group_id = $1 OR group_id IS NULL
+      `, [options.groupId]);
       const workHoursMap = new Map<number, any>(whRes.rows.map((wh: any) => [Number(wh.id), wh]));
 
       const rawPunchesForCalc: RawPunchInput[] = cleanedPunches.map(p => ({
@@ -298,7 +302,10 @@ export async function cleanseAndIngestAdmsLogs(
           scheduleIn: effectiveScheduleIn,
           scheduleOut: effectiveScheduleOut,
           attendanceStatus: rec.attendanceStatus,
-        }, { lateToleranceMinutes: 5 });
+        }, {
+          lateToleranceMinutes: rec.lateToleranceMinutes ?? 5,
+          earlyLeaveToleranceMinutes: rec.earlyLeaveToleranceMinutes ?? 0,
+        });
 
         await client.query(
           `INSERT INTO public.attendance_records

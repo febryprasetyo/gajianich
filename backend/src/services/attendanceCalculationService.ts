@@ -39,6 +39,8 @@ export interface CalculatedAttendanceRecord {
   scanOut: string | null;
   lateMinutes: number;
   earlyMinutes: number;
+  lateToleranceMinutes?: number;
+  earlyLeaveToleranceMinutes?: number;
   attendanceStatus: "PRESENT" | "ALPHA" | "LATE" | "EARLY_LEAVE";
   statusLabel: AttendanceStatusLabel;
   rawPunchesCount: number;
@@ -316,10 +318,12 @@ export function calculateAttendanceFromPunches(
     }
 
     let earlyMinutes = 0;
+    const earlyTolerance = Math.max(0, schedule.earlyLeaveToleranceMinutes ?? 0);
     if (scanOut) {
       const scanOutMins = parseMinutesFromTime(scanOut);
       const schedOutMins = parseMinutesFromTime(resolvedScheduleOut);
-      earlyMinutes = scanOutMins < schedOutMins ? schedOutMins - scanOutMins : 0;
+      const earlyThreshold = schedOutMins - earlyTolerance;
+      earlyMinutes = scanOutMins < earlyThreshold ? earlyThreshold - scanOutMins : 0;
     }
 
     let statusLabel: AttendanceStatusLabel = "Hadir Tepat Waktu";
@@ -353,6 +357,8 @@ export function calculateAttendanceFromPunches(
       scanOut,
       lateMinutes,
       earlyMinutes,
+      lateToleranceMinutes: lateTolerance,
+      earlyLeaveToleranceMinutes: earlyTolerance,
       attendanceStatus,
       statusLabel,
       rawPunchesCount: punches.length,
@@ -371,7 +377,7 @@ export function calculateAttendanceFromPunches(
 export function mergeAttendanceScans(
   previous: { scanIn?: string | null; scanOut?: string | null; scheduleIn?: string | null; scheduleOut?: string | null; attendanceStatus?: string | null } | null | undefined,
   calculated: { scanIn?: string | null; scanOut?: string | null; scheduleIn?: string | null; scheduleOut?: string | null; attendanceStatus?: string | null },
-  options: { lateToleranceMinutes?: number } = {}
+  options: { lateToleranceMinutes?: number; earlyLeaveToleranceMinutes?: number } = {}
 ): {
   scanIn: string | null;
   scanOut: string | null;
@@ -426,7 +432,9 @@ export function mergeAttendanceScans(
   if (finalScanOut) {
     const scanOutMins = parseMinutesFromTime(finalScanOut);
     const schedOutMins = parseMinutesFromTime(effectiveScheduleOut);
-    earlyMinutes = scanOutMins < schedOutMins ? schedOutMins - scanOutMins : 0;
+    const earlyTolerance = Math.max(0, options.earlyLeaveToleranceMinutes ?? 0);
+    const earlyThreshold = schedOutMins - earlyTolerance;
+    earlyMinutes = scanOutMins < earlyThreshold ? earlyThreshold - scanOutMins : 0;
   }
 
   const attendanceStatus = (previous?.attendanceStatus === 'DINAS_LUAR' ? 'DINAS_LUAR' : calculated.attendanceStatus) || 'PRESENT';

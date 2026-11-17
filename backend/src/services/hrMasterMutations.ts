@@ -1,6 +1,6 @@
 import type {RequestScope} from '../domain/organizationAccess';
 import {requireHrScope,requireScopedEmployee,requireScopedDepartment} from './hrOrganizationScope';
-import { and, eq, ilike, ne, sql } from 'drizzle-orm';
+import { and, eq, ilike, isNull, ne, or, sql } from 'drizzle-orm';
 import { departments, locations } from '../db/schema/master';
 import { organizationGroups, departmentOrganizationMappings } from '../db/schema/organizations';
 import { employees } from '../db/schema/employees';
@@ -67,16 +67,19 @@ export async function mutateDepartment(
 
     // Auto-assign default office shift ke departemen baru
     try {
+      const groupFilter = groupId
+        ? or(eq(attendanceShifts.groupId, groupId), isNull(attendanceShifts.groupId))
+        : undefined;
       const [defaultShift] = await (tx as any)
         .select()
         .from(attendanceShifts)
-        .where(eq(attendanceShifts.isDefault, true))
+        .where(groupFilter ? and(eq(attendanceShifts.isDefault, true), groupFilter) : eq(attendanceShifts.isDefault, true))
         .limit(1);
       const officeShift = defaultShift || (
         await (tx as any)
           .select()
           .from(attendanceShifts)
-          .where(eq(attendanceShifts.code, 'OFFICE'))
+          .where(groupFilter ? and(eq(attendanceShifts.code, 'OFFICE'), groupFilter) : eq(attendanceShifts.code, 'OFFICE'))
           .limit(1)
       )[0];
 

@@ -42,6 +42,9 @@ test('late calculation respects late tolerance minutes and deducts after toleran
   assert.equal(attendanceMetrics('08:00', '17:00', '08:30', '17:00', 0, 5).lateMinutes, 25);
   // Tanpa toleransi (0 menit) -> scan 08:01 -> lateMinutes 1
   assert.equal(attendanceMetrics('08:00', '17:00', '08:01', '17:00', 0, 0).lateMinutes, 1);
+  // Toleransi pulang cepat 15 menit (batas 16:45)
+  assert.equal(attendanceMetrics('08:00', '17:00', '08:00', '16:45', 0, 15, 15).earlyMinutes, 0);
+  assert.equal(attendanceMetrics('08:00', '17:00', '08:00', '16:40', 0, 15, 15).earlyMinutes, 5);
 });
 test('zone boundaries follow Indonesian regions rather than longitude strips', () => {
   for (const [latitude,longitude] of [[-7.2575,112.7521],[-6.9667,110.4167],[-7.7956,110.3695],[-2.21,113.92]]) {

@@ -23,16 +23,17 @@ import { attendanceRecords } from '../db/schema/attendance';
 import { attendanceSelfLogs } from '../db/schema/attendanceSelfLogs';
 import { attendanceFaceProfiles } from '../db/schema/attendanceFaceProfiles';
 import { attendanceFaceRequests } from '../db/schema/attendanceFaceRequests';
-import { attendanceShifts, attendanceShiftAssignments, attendanceLocks } from '../db/schema/attendanceWorkspace';
+import { attendanceShifts, attendanceShiftAssignments, attendanceLocks, attendanceWorkHours } from '../db/schema/attendanceWorkspace';
 import { systemSettings } from '../db/schema/system';
 import { resolveEmployeeShift, resolveActiveEmployeeShift, getWorkingScheduleForDate } from '../domain/attendanceSchedule';
+import type { WorkHoursTemplate } from '../domain/attendanceTypes';
 import { isWithinGeofence, buildMapLinks } from '../domain/geofence';
 import { determineShiftCategory, evaluateAttendanceApproval } from '../domain/attendanceVerificationPolicy';
 import { localAttendanceTime, zoneAtLocation, zoneLabels, attendanceMetrics, minuteValue, resolveIndonesianTimeZone } from '../domain/attendanceTime';
 import { verifyBiometricMatchAny } from '../domain/faceMatcher';
 import { extractPhotoFace, FACE_DESCRIPTOR_VERSION } from './faceRecognition';
 import { saveAttendancePhoto } from './attendancePhotoStorage';
-import { eq, and, or, desc, gte, lte, sql } from 'drizzle-orm';
+import { eq, and, or, desc, gte, lte, sql, isNull } from 'drizzle-orm';
 
 type SelfLog = typeof attendanceSelfLogs.$inferSelect;
 export async function isMobileStrictClockEnabled(targetDb: any): Promise<boolean> {
@@ -112,11 +113,21 @@ export async function resolveEmployeeUser(userId: number, targetDb = db) {
 async function employeeLogs(employeeId: number, targetDb: any, groupId: number): Promise<SelfLog[]> {
   return targetDb.select().from(attendanceSelfLogs).where(and(eq(attendanceSelfLogs.employeeId, employeeId),eq(attendanceSelfLogs.groupId,groupId))).orderBy(desc(attendanceSelfLogs.occurredAt), desc(attendanceSelfLogs.id));
 }
-async function shiftForEmployee(employee: { id: number; departmentId: number | null }, targetDb: any) {
-  const shifts = await targetDb.select().from(attendanceShifts);
-  const assignments = await targetDb.select().from(attendanceShiftAssignments);
+async function shiftForEmployee(employee: { id: number; departmentId: number | null; groupId?: number | null }, targetDb: any) {
+  const shiftWhere = employee.groupId != null
+    ? or(eq(attendanceShifts.groupId, employee.groupId), isNull(attendanceShifts.groupId))
+    : undefined;
+  const whWhere = employee.groupId != null
+    ? or(eq(attendanceWorkHours.groupId, employee.groupId), isNull(attendanceWorkHours.groupId))
+    : undefined;
+  const [shifts, assignments, workHoursRows] = await Promise.all([
+    shiftWhere ? targetDb.select().from(attendanceShifts).where(shiftWhere) : targetDb.select().from(attendanceShifts),
+    targetDb.select().from(attendanceShiftAssignments),
+    whWhere ? targetDb.select().from(attendanceWorkHours).where(whWhere) : targetDb.select().from(attendanceWorkHours),
+  ]);
+  const workHoursMap = new Map<number, WorkHoursTemplate>(workHoursRows.map((wh: WorkHoursTemplate) => [wh.id, wh]));
   const { shift, hasActiveAssignment } = resolveActiveEmployeeShift(employee, shifts, assignments);
-  return { shift, approvalShift: hasActiveAssignment ? shift : null };
+  return { shift, approvalShift: hasActiveAssignment ? shift : null, workHoursMap };
 }
 function latestPair(logs: SelfLog[], now = new Date()) {
   const entry = logs.find(l => l.eventType === 'IN');
@@ -159,6 +170,11 @@ export async function projectApprovedLog(tx: any, log: SelfLog) {
   const scheduleOut = log.scheduleOut || existing?.scheduleOut || storedRecord?.scheduleOut || '17:00';
   const shift = log.shiftCode || existing?.shift || storedRecord?.shift || 'OFFICE';
   const offset = outLog?.scanDate ? Math.round((Date.parse(outLog.scanDate) - Date.parse(log.workDate)) / 86400_000) : 0;
+  const [empRow] = await tx.select({ id: employees.id, departmentId: employees.departmentId }).from(employees).where(eq(employees.id, log.employeeId)).limit(1);
+  const { shift: empShift, workHoursMap } = await shiftForEmployee({ id: log.employeeId, departmentId: empRow?.departmentId ?? null, groupId: log.groupId }, tx);
+  const resolvedDaily = getWorkingScheduleForDate(log.workDate, empShift, workHoursMap, { hasTapRecord: true });
+  const lateTol = (log as any).lateToleranceMinutes ?? resolvedDaily.lateToleranceMinutes ?? 0;
+  const earlyTol = (log as any).earlyLeaveToleranceMinutes ?? resolvedDaily.earlyLeaveToleranceMinutes ?? 0;
   const values = {
     scanIn,
     scanOut,
@@ -167,7 +183,7 @@ export async function projectApprovedLog(tx: any, log: SelfLog) {
     scheduleIn,
     scheduleOut,
     shift,
-    ...attendanceMetrics(scheduleIn, scheduleOut, scanIn, scanOut, offset, (log as any).lateToleranceMinutes ?? 0),
+    ...attendanceMetrics(scheduleIn, scheduleOut, scanIn, scanOut, offset, lateTol, earlyTol),
     attendanceStatus: approved.some(l => !l.isWithinGeofence) ? 'DINAS_LUAR' : (storedRecord?.attendanceStatus || 'PRESENT'),
     updatedAt: new Date()
   };
@@ -264,8 +280,8 @@ export async function recordMobileClock(userId: number, payload: MobileClockInpu
       }
       if (payload.eventType === 'OUT' && !entry && !existingRecord?.scanIn && !payload.isDirectOut) throw new Error('Belum melakukan presensi masuk.');
       if (payload.eventType === 'IN' && entry && !logs.some(l => l.workDate === entry.workDate && l.eventType === 'OUT')) throw new Error('Selesaikan presensi pulang shift sebelumnya terlebih dahulu.');
-      const { shift, approvalShift } = await shiftForEmployee(employee, tx);
-      const daily = getWorkingScheduleForDate(workDate, shift);
+      const { shift, approvalShift, workHoursMap } = await shiftForEmployee(employee, tx);
+      const daily = getWorkingScheduleForDate(workDate, shift, workHoursMap, { hasTapRecord: true });
       const isReclock = todayLogs.some(l => l.eventType === payload.eventType);
       const baseApproval = evaluateAttendanceApproval(approvalShift, payload.eventType);
       const approval = payload.isDirectOut
@@ -323,8 +339,8 @@ export async function getMobileTodaySummary(userId: number, targetDb = db, fallb
     .select()
     .from(attendanceRecords)
     .where(and(eq(attendanceRecords.employeeId, employee.id), eq(attendanceRecords.workDate, workDate)));
-  const { shift } = await shiftForEmployee(employee, targetDb);
-  const daily = getWorkingScheduleForDate(workDate, shift);
+  const { shift, workHoursMap } = await shiftForEmployee(employee, targetDb);
+  const daily = getWorkingScheduleForDate(workDate, shift, workHoursMap);
   const face = await getFaceProfile(userId, targetDb);
   const approval = reviewSummary(current);
   const strictClock = await isMobileStrictClockEnabled(targetDb);

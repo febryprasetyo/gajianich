@@ -19,7 +19,9 @@ import {
   attendanceLocks,
   attendanceGrants,
   attendanceIdentities,
+  attendanceWorkHours,
 } from "../db/schema/attendanceWorkspace";
+import { organizationGroups, departmentOrganizationMappings } from "../db/schema/organizations";
 import { attendanceBatches, attendanceRecords } from "../db/schema/attendance";
 import {
   loadAttendanceWorkspace as rawLoadWorkspace,
@@ -536,4 +538,94 @@ test("Attendance Workspace & Commands Integration Tests", async (t) => {
     assert.equal(ws.shiftAssignments.find(a => a.departmentId === dept.id)?.shiftId, ws.shifts.find(s => s.code === "OFFICE")!.id);
   });
 
+});
+
+test("CMC and MGM have isolated work hours and shifts, and updating CMC tolerance recalculates only CMC unlocked records", async (t) => {
+  const fixture = await createHrAuditTestDatabase();
+  t.after(async () => { await fixture.cleanup(); });
+  await runMigrations(fixture.ownerUrl, migrations, fixture.runtimeRole);
+  const adminDb = drizzle(fixture.owner);
+
+  const [cmcGroup] = await adminDb.insert(organizationGroups).values({ code: "CMC", name: "CMC" }).onConflictDoUpdate({ target: organizationGroups.code, set: { isActive: true } }).returning();
+  const [mgmGroup] = await adminDb.insert(organizationGroups).values({ code: "MGM", name: "MGM" }).onConflictDoUpdate({ target: organizationGroups.code, set: { isActive: true } }).returning();
+
+  const [cmcDept] = await adminDb.insert(departments).values({ code: "CMC-OPS", name: "CMC Ops" }).returning();
+  const [mgmDept] = await adminDb.insert(departments).values({ code: "MGM-OPS", name: "MGM Ops" }).returning();
+  await adminDb.insert(departmentOrganizationMappings).values([
+    { departmentId: cmcDept.id, groupId: cmcGroup.id, approvalReference: "Test" },
+    { departmentId: mgmDept.id, groupId: mgmGroup.id, approvalReference: "Test" },
+  ]);
+
+  const [cmcEmp] = await adminDb.insert(employees).values({ employeeCode: "CMC-01", fullName: "CMC Emp", departmentId: cmcDept.id }).returning();
+  const [mgmEmp] = await adminDb.insert(employees).values({ employeeCode: "MGM-01", fullName: "MGM Emp", departmentId: mgmDept.id }).returning();
+  const [adminUser] = await adminDb.insert(users).values({ username: "admin-scope", passwordHash: "x" }).returning();
+  const context: AuditContext = { operationId: randomUUID(), actor: { id: adminUser.id, username: "admin-scope", role: "SuperAdmin" } };
+
+  const cmcScope: RequestScope = { module: "hr", groupIds: [cmcGroup.id], includeUnmapped: false, selectedGroupId: cmcGroup.id };
+  const mgmScope: RequestScope = { module: "hr", groupIds: [mgmGroup.id], includeUnmapped: false, selectedGroupId: mgmGroup.id };
+
+  const [cmcWh] = await adminDb.insert(attendanceWorkHours).values({
+    groupId: cmcGroup.id, name: "Office Reguler", scheduleIn: "08:00", scheduleOut: "17:00",
+    scanInStart: "06:00", scanInEnd: "10:00", scanOutStart: "15:00", scanOutEnd: "19:00",
+    lateToleranceMinutes: 5, earlyLeaveToleranceMinutes: 5,
+  }).returning();
+  const [mgmWh] = await adminDb.insert(attendanceWorkHours).values({
+    groupId: mgmGroup.id, name: "Office Reguler", scheduleIn: "08:00", scheduleOut: "17:00",
+    scanInStart: "06:00", scanInEnd: "10:00", scanOutStart: "15:00", scanOutEnd: "19:00",
+    lateToleranceMinutes: 5, earlyLeaveToleranceMinutes: 5,
+  }).returning();
+
+  const [cmcShift] = await adminDb.insert(attendanceShifts).values({
+    groupId: cmcGroup.id, code: "OFFICE", name: "CMC Office",
+    mondayWorkHoursId: cmcWh.id, tuesdayWorkHoursId: cmcWh.id, wednesdayWorkHoursId: cmcWh.id, thursdayWorkHoursId: cmcWh.id, fridayWorkHoursId: cmcWh.id,
+    isDefault: true, isActive: true,
+  }).returning();
+  const [mgmShift] = await adminDb.insert(attendanceShifts).values({
+    groupId: mgmGroup.id, code: "OFFICE", name: "MGM Office",
+    mondayWorkHoursId: mgmWh.id, tuesdayWorkHoursId: mgmWh.id, wednesdayWorkHoursId: mgmWh.id, thursdayWorkHoursId: mgmWh.id, fridayWorkHoursId: mgmWh.id,
+    isDefault: true, isActive: true,
+  }).returning();
+
+  await adminDb.insert(attendanceShiftAssignments).values([
+    { departmentId: cmcDept.id, shiftId: cmcShift.id, isDefault: true },
+    { departmentId: mgmDept.id, shiftId: mgmShift.id, isDefault: true },
+  ]);
+
+  const [cmcRec] = await adminDb.insert(attendanceRecords).values({
+    groupId: cmcGroup.id, employeeId: cmcEmp.id, workDate: "2026-11-16",
+    scheduleIn: "08:00", scheduleOut: "17:00", scanIn: "08:15", scanOut: "16:45",
+    lateMinutes: 10, earlyMinutes: 10, attendanceStatus: "LATE",
+  }).returning();
+  const [mgmRec] = await adminDb.insert(attendanceRecords).values({
+    groupId: mgmGroup.id, employeeId: mgmEmp.id, workDate: "2026-11-16",
+    scheduleIn: "08:00", scheduleOut: "17:00", scanIn: "08:15", scanOut: "16:45",
+    lateMinutes: 10, earlyMinutes: 10, attendanceStatus: "LATE",
+  }).returning();
+
+  // Cross-group mutation rejected
+  await assert.rejects(() => adminDb.transaction(tx => rawExecuteCommand(tx, { ...context, operationId: randomUUID() }, {
+    type: "work_hours", action: "update",
+    workHours: { id: mgmWh.id, name: "Hacked", scheduleIn: "08:00", scheduleOut: "17:00", scanInStart: "06:00", scanInEnd: "10:00", scanOutStart: "15:00", scanOutEnd: "19:00", lateToleranceMinutes: 15, earlyLeaveToleranceMinutes: 15, requireCheckIn: true, requireCheckOut: true, isActive: true },
+  }, undefined, cmcScope)), /tidak ditemukan/i);
+
+  // Update CMC work hours to 15m late and 15m early tolerance
+  await adminDb.transaction(tx => rawExecuteCommand(tx, { ...context, operationId: randomUUID() }, {
+    type: "work_hours", action: "update",
+    workHours: { id: cmcWh.id, name: "Office Reguler", scheduleIn: "08:00", scheduleOut: "17:00", scanInStart: "06:00", scanInEnd: "10:00", scanOutStart: "15:00", scanOutEnd: "19:00", lateToleranceMinutes: 15, earlyLeaveToleranceMinutes: 15, requireCheckIn: true, requireCheckOut: true, isActive: true },
+  }, undefined, cmcScope));
+
+  const cmcWs = await adminDb.transaction(tx => rawLoadWorkspace(tx, context, cmcScope));
+  const mgmWs = await adminDb.transaction(tx => rawLoadWorkspace(tx, context, mgmScope));
+  assert.equal(cmcWs.workHours.find(w => w.id === cmcWh.id)?.lateToleranceMinutes, 15);
+  assert.equal(mgmWs.workHours.find(w => w.id === mgmWh.id)?.lateToleranceMinutes, 5);
+  assert.ok(cmcWs.shifts.every(s => s.id !== mgmShift.id));
+  assert.ok(mgmWs.shifts.every(s => s.id !== cmcShift.id));
+
+  const [updatedCmcRec] = await adminDb.select().from(attendanceRecords).where(eq(attendanceRecords.id, cmcRec.id));
+  const [unchangedMgmRec] = await adminDb.select().from(attendanceRecords).where(eq(attendanceRecords.id, mgmRec.id));
+  assert.equal(updatedCmcRec.lateMinutes, 0);
+  assert.equal(updatedCmcRec.earlyMinutes, 0);
+  assert.equal(updatedCmcRec.attendanceStatus, "PRESENT");
+  assert.equal(unchangedMgmRec.lateMinutes, 10);
+  assert.equal(unchangedMgmRec.earlyMinutes, 10);
 });

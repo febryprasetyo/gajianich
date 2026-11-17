@@ -15,6 +15,7 @@ export type ReviewStatus = 'READY' | 'NEEDS_REVIEW' | 'BLOCKED' | 'SKIPPED';
 
 export interface WorkHoursTemplate {
   id: number;
+  groupId?: number | null;
   name: string;
   color?: string | null;
   scheduleIn: string;
@@ -34,6 +35,7 @@ export interface WorkShift {
   autoApproveIn?: boolean;
   autoApproveOut?: boolean;
   id: number;
+  groupId?: number | null;
   code: string;
   name: string;
   description?: string | null;

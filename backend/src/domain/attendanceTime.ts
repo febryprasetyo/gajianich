@@ -68,15 +68,17 @@ export function attendanceMetrics(
   scanIn: string | null,
   scanOut: string | null,
   outDayOffset = 0,
-  lateToleranceMinutes = 0
+  lateToleranceMinutes = 0,
+  earlyLeaveToleranceMinutes = 0
 ) {
   const start = minuteValue(scheduleIn);
   const end = minuteValue(scheduleOut) + (minuteValue(scheduleOut) <= start ? 1440 : 0);
   const actualEnd = scanOut ? minuteValue(scanOut) + outDayOffset * 1440 : null;
-  const toleranceThreshold = start + Math.max(0, lateToleranceMinutes);
+  const lateThreshold = start + Math.max(0, lateToleranceMinutes);
+  const earlyThreshold = end - Math.max(0, earlyLeaveToleranceMinutes);
   return {
-    lateMinutes: scanIn ? Math.max(0, minuteValue(scanIn) - toleranceThreshold) : 0,
-    earlyMinutes: actualEnd === null ? 0 : Math.max(0, end - actualEnd),
+    lateMinutes: scanIn ? Math.max(0, minuteValue(scanIn) - lateThreshold) : 0,
+    earlyMinutes: actualEnd === null ? 0 : Math.max(0, earlyThreshold - actualEnd),
     overtimeMinutes: actualEnd === null ? 0 : Math.max(0, actualEnd - end),
   };
 }

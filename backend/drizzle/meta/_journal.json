@@ -406,6 +406,13 @@
       "when": 1794260000000,
       "tag": "0057_sync_employee_users_organization_group",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1794900000000,
+      "tag": "0058_scoped_attendance_work_hours_and_shifts",
+      "breakpoints": true
     }
   ],
   "version": "7"

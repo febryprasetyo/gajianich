@@ -2,7 +2,7 @@ import type {RequestScope} from '../domain/organizationAccess';
 import {employeeScopePredicate,historicalScopePredicate,requireHrScope,requireScopedEmployee,requireScopedDepartment} from './hrOrganizationScope';
 import {departmentOrganizationMappings,locationOrganizationMappings} from '../db/schema/organizations';
 import {loadCurrentIdentity} from './currentIdentity';
-import { eq, and, or, sql, asc, inArray } from "drizzle-orm";
+import { eq, and, or, sql, asc, inArray, isNull } from "drizzle-orm";
 import { db } from "../db";
 import { approvedAttendanceRecords } from "./approvedAttendanceRecords";
 import { employees } from "../db/schema/employees";
@@ -25,7 +25,7 @@ import {
 } from "../db/schema/attendanceWorkspace";
 import { appendHrAudit, type AuditTx } from "./hrAudit";
 import { sanitizeAuditTarget, type AuditContext } from "../domain/hrAudit";
-import { minuteValue } from "../domain/attendanceTime";
+import { minuteValue, attendanceMetrics } from "../domain/attendanceTime";
 import type {
   AttendanceDataset,
   WorkShift,
@@ -42,16 +42,21 @@ import type {
   AttendanceLock,
 } from "../domain/attendanceTypes";
 import type { ServerAttendanceCommand } from "../domain/attendanceCommands";
-import { getAttendanceSchedule } from "../domain/attendanceSchedule";
+import { getAttendanceSchedule, getWorkingScheduleForDate, resolveEmployeeShift } from "../domain/attendanceSchedule";
 
 import { resolveImportEmployee } from "../domain/attendanceImportMapping";
 
 async function employeeScheduleValues(tx: AuditTx, employeeId: number, workDate: string, shiftId?: number) {
   const [employee] = await tx.select().from(employees).where(eq(employees.id, employeeId));
   if (!employee) throw new ValidationError("Karyawan tidak ditemukan");
-  const shifts = await tx.select().from(attendanceShifts);
+  const [mapping] = employee.departmentId
+    ? await tx.select().from(departmentOrganizationMappings).where(eq(departmentOrganizationMappings.departmentId, employee.departmentId))
+    : [];
+  const shiftFilter = mapping ? or(eq(attendanceShifts.groupId, mapping.groupId), isNull(attendanceShifts.groupId)) : undefined;
+  const whFilter = mapping ? or(eq(attendanceWorkHours.groupId, mapping.groupId), isNull(attendanceWorkHours.groupId)) : undefined;
+  const shifts = shiftFilter ? await tx.select().from(attendanceShifts).where(shiftFilter) : await tx.select().from(attendanceShifts);
   const assignments = await tx.select().from(attendanceShiftAssignments);
-  const workHoursRows = await tx.select().from(attendanceWorkHours);
+  const workHoursRows = whFilter ? await tx.select().from(attendanceWorkHours).where(whFilter) : await tx.select().from(attendanceWorkHours);
   const workHoursMap = new Map<number, WorkHoursTemplate>(workHoursRows.map((wh) => [wh.id, wh]));
   return getAttendanceSchedule(employee, workDate, shifts as WorkShift[], assignments, shiftId, workHoursMap);
 }
@@ -140,9 +145,9 @@ export async function loadAttendanceWorkspace(
     tx.select().from(attendanceRevisions).where(sql`${attendanceRevisions.recordId} in (select ${attendanceRecords.id} from ${attendanceRecords} where ${historicalScopePredicate(scope,attendanceRecords.groupId)})`),
     tx.select().from(attendanceGrants),
     tx.select().from(attendanceLocks),
-    tx.select().from(attendanceShifts),
+    tx.select().from(attendanceShifts).where(historicalScopePredicate(scope, attendanceShifts.groupId)),
     tx.select().from(attendanceShiftAssignments).where(scope.includeUnmapped && !scope.groupIds.length ? sql`true` : sql`(${attendanceShiftAssignments.employeeId} in (select ${employees.id} from ${employees} where ${employeeScopePredicate(scope)})) or (${attendanceShiftAssignments.departmentId} in (select ${departmentOrganizationMappings.departmentId} from ${departmentOrganizationMappings} where ${scope.groupIds.length ? inArray(departmentOrganizationMappings.groupId,scope.groupIds) : sql`false`}))`),
-    tx.select().from(attendanceWorkHours),
+    tx.select().from(attendanceWorkHours).where(historicalScopePredicate(scope, attendanceWorkHours.groupId)),
     tx.select().from(systemSettings).where(eq(systemSettings.key, "attendance_strict_integrity")).limit(1),
   ]);
 
@@ -344,7 +349,7 @@ export async function executeAttendanceCommand(
   scope = requireHrScope({organizationScope:scope});
   if (scope.selectedGroupId === null) throw new ValidationError('Choose a destination group');
   const writableScope = {...scope,includeUnmapped:false};
-  if (['source','shift','grant','delete_grant','lock','set_strict_integrity'].includes(command.type)) {
+  if (['source','grant','delete_grant','lock','set_strict_integrity'].includes(command.type)) {
     if (!(await loadCurrentIdentity(Number(context.actor.id),tx))?.isGlobalAdministrator) throw Object.assign(new Error('Shared attendance definitions require global administrator'),{statusCode:403});
   }
   if ('batchId' in command) {
@@ -646,6 +651,7 @@ export async function executeAttendanceCommand(
           const [autoWh] = await tx
             .insert(attendanceWorkHours)
             .values({
+              groupId: scope.selectedGroupId,
               name: `${command.shift.name} - Reguler`,
               scheduleIn: legacy.scheduleIn,
               scheduleOut: legacy.scheduleOut || '17:00',
@@ -670,6 +676,7 @@ export async function executeAttendanceCommand(
               const [satWh] = await tx
                 .insert(attendanceWorkHours)
                 .values({
+                  groupId: scope.selectedGroupId,
                   name: `${command.shift.name} - Sabtu`,
                   scheduleIn: legacy.saturdayScheduleIn,
                   scheduleOut: legacy.saturdayScheduleOut || '14:00',
@@ -694,6 +701,7 @@ export async function executeAttendanceCommand(
         const [inserted] = await tx
           .insert(attendanceShifts)
           .values({
+            groupId: scope.selectedGroupId,
             code: command.shift.code,
             name: command.shift.name,
             mondayWorkHoursId: monWhId,
@@ -719,9 +727,14 @@ export async function executeAttendanceCommand(
           summary: `Menambah jadwal shift: ${inserted.name}`,
         });
       } else if (command.action === "update") {
+        const [existingShift] = await tx.select().from(attendanceShifts).where(eq(attendanceShifts.id, command.shift.id));
+        if (!existingShift || (existingShift.groupId !== null && existingShift.groupId !== scope.selectedGroupId)) {
+          throw new ValidationError("Shift tidak ditemukan pada grup organisasi ini.");
+        }
         const [updated] = await tx
           .update(attendanceShifts)
           .set({
+            groupId: scope.selectedGroupId,
             code: command.shift.code,
             name: command.shift.name,
             mondayWorkHoursId: command.shift.mondayWorkHoursId ?? null,
@@ -749,6 +762,10 @@ export async function executeAttendanceCommand(
           summary: `Memperbarui jadwal shift: ${updated.name}`,
         });
       } else if (command.action === "delete") {
+        const [existingShift] = await tx.select().from(attendanceShifts).where(eq(attendanceShifts.id, command.shift.id));
+        if (!existingShift || (existingShift.groupId !== null && existingShift.groupId !== scope.selectedGroupId)) {
+          throw new ValidationError("Shift tidak ditemukan pada grup organisasi ini.");
+        }
         await tx.delete(attendanceShifts).where(eq(attendanceShifts.id, command.shift.id));
         eventId = await appendHrAudit(tx, {
           operationId: context.operationId,
@@ -769,6 +786,7 @@ export async function executeAttendanceCommand(
         const [inserted] = await tx
           .insert(attendanceWorkHours)
           .values({
+            groupId: scope.selectedGroupId,
             name: command.workHours.name,
             color: command.workHours.color ?? null,
             scheduleIn: command.workHours.scheduleIn,
@@ -795,9 +813,14 @@ export async function executeAttendanceCommand(
           summary: `Menambah master jam kerja: ${inserted.name}`,
         });
       } else if (command.action === "update") {
+        const [existingWh] = await tx.select().from(attendanceWorkHours).where(eq(attendanceWorkHours.id, command.workHours.id));
+        if (!existingWh || (existingWh.groupId !== null && existingWh.groupId !== scope.selectedGroupId)) {
+          throw new ValidationError("Template jam kerja tidak ditemukan pada grup organisasi ini.");
+        }
         const [updated] = await tx
           .update(attendanceWorkHours)
           .set({
+            groupId: scope.selectedGroupId,
             name: command.workHours.name,
             color: command.workHours.color ?? null,
             scheduleIn: command.workHours.scheduleIn,
@@ -815,6 +838,64 @@ export async function executeAttendanceCommand(
           })
           .where(eq(attendanceWorkHours.id, command.workHours.id))
           .returning();
+
+        // Recalculate unlocked attendance records in this group that use the updated tolerance/schedule
+        const [groupShifts, allAssignments, groupWorkHours, groupEmployees, lockRows, groupRecords] = await Promise.all([
+          tx.select().from(attendanceShifts).where(or(eq(attendanceShifts.groupId, scope.selectedGroupId), isNull(attendanceShifts.groupId))),
+          tx.select().from(attendanceShiftAssignments),
+          tx.select().from(attendanceWorkHours).where(or(eq(attendanceWorkHours.groupId, scope.selectedGroupId), isNull(attendanceWorkHours.groupId))),
+          tx.select().from(employees).where(employeeScopePredicate(writableScope)),
+          tx.select().from(attendanceLocks),
+          tx.select().from(attendanceRecords).where(eq(attendanceRecords.groupId, scope.selectedGroupId)),
+        ]);
+        const lockedDates = new Set(lockRows.map((l) => l.workDate));
+        const empById = new Map(groupEmployees.map((e) => [e.id, e]));
+        const whMap = new Map<number, WorkHoursTemplate>(groupWorkHours.map((wh) => [wh.id, wh]));
+
+        for (const rec of groupRecords) {
+          if (lockedDates.has(rec.workDate) || (!rec.scanIn && !rec.scanOut)) continue;
+          const emp = empById.get(rec.employeeId);
+          if (!emp) continue;
+          const empShift = resolveEmployeeShift(emp, groupShifts as WorkShift[], allAssignments);
+          const sched = getWorkingScheduleForDate(rec.workDate, empShift, whMap, { hasTapRecord: true });
+          const effectiveIn = sched.scheduleIn || rec.scheduleIn || "08:00";
+          const effectiveOut = sched.scheduleOut || rec.scheduleOut || "17:00";
+          const metrics = attendanceMetrics(
+            effectiveIn,
+            effectiveOut,
+            rec.scanIn,
+            rec.scanOut,
+            0,
+            sched.lateToleranceMinutes,
+            sched.earlyLeaveToleranceMinutes
+          );
+          let nextStatus = rec.attendanceStatus;
+          if (["PRESENT", "LATE", "EARLY_LEAVE"].includes(rec.attendanceStatus)) {
+            nextStatus = metrics.lateMinutes > 0 ? "LATE" : metrics.earlyMinutes > 0 ? "EARLY_LEAVE" : "PRESENT";
+          }
+          if (
+            rec.lateMinutes !== metrics.lateMinutes ||
+            rec.earlyMinutes !== metrics.earlyMinutes ||
+            rec.overtimeMinutes !== metrics.overtimeMinutes ||
+            rec.attendanceStatus !== nextStatus ||
+            rec.scheduleIn !== effectiveIn ||
+            rec.scheduleOut !== effectiveOut
+          ) {
+            await tx
+              .update(attendanceRecords)
+              .set({
+                scheduleIn: effectiveIn,
+                scheduleOut: effectiveOut,
+                lateMinutes: metrics.lateMinutes,
+                earlyMinutes: metrics.earlyMinutes,
+                overtimeMinutes: metrics.overtimeMinutes,
+                attendanceStatus: nextStatus,
+                updatedAt: new Date(),
+              })
+              .where(eq(attendanceRecords.id, rec.id));
+          }
+        }
+
         eventId = await appendHrAudit(tx, {
           operationId: context.operationId,
           actor: context.actor,
@@ -826,6 +907,10 @@ export async function executeAttendanceCommand(
           summary: `Memperbarui master jam kerja: ${updated.name}`,
         });
       } else if (command.action === "delete") {
+        const [existingWh] = await tx.select().from(attendanceWorkHours).where(eq(attendanceWorkHours.id, command.workHours.id));
+        if (!existingWh || (existingWh.groupId !== null && existingWh.groupId !== scope.selectedGroupId)) {
+          throw new ValidationError("Template jam kerja tidak ditemukan pada grup organisasi ini.");
+        }
         const used = await tx.select().from(attendanceShifts).where(
           or(
             eq(attendanceShifts.mondayWorkHoursId, command.workHours.id),
@@ -857,8 +942,8 @@ export async function executeAttendanceCommand(
 
     case "assign_shift": {
       const [shift] = await tx.select().from(attendanceShifts).where(eq(attendanceShifts.id, command.assignment.shiftId));
-      if (command.action !== "remove" && !shift?.isActive) {
-        throw new ValidationError("Shift aktif tidak ditemukan. Simpan master shift terlebih dahulu.");
+      if (command.action !== "remove" && (!shift?.isActive || (shift.groupId !== null && shift.groupId !== scope.selectedGroupId))) {
+        throw new ValidationError("Shift aktif tidak ditemukan pada grup organisasi ini. Simpan master shift terlebih dahulu.");
       }
       let targetId: number = 0;
 
@@ -1224,9 +1309,9 @@ export async function executeAttendanceCommand(
         await lockWorkDates(tx, workDates);
 
         const employeeRows = await tx.select().from(employees).where(employeeScopePredicate(scope));
-        const shifts = await tx.select().from(attendanceShifts);
+        const shifts = await tx.select().from(attendanceShifts).where(historicalScopePredicate(writableScope, attendanceShifts.groupId));
         const assignments = await tx.select().from(attendanceShiftAssignments);
-        const workHoursRows = await tx.select().from(attendanceWorkHours);
+        const workHoursRows = await tx.select().from(attendanceWorkHours).where(historicalScopePredicate(writableScope, attendanceWorkHours.groupId));
         const workHoursMap = new Map<number, WorkHoursTemplate>(workHoursRows.map((wh) => [wh.id, wh]));
         // Commit active rows into attendanceRecords
         for (const r of activeRows) {
@@ -1234,6 +1319,8 @@ export async function executeAttendanceCommand(
           const employee = employeeRows.find(e => e.id === r.employeeId);
           if (!employee) throw new ValidationError("Karyawan tidak ditemukan");
           const schedule = getAttendanceSchedule(employee, r.workDate, shifts as WorkShift[], assignments, undefined, workHoursMap, { hasTapRecord: Boolean(r.scanIn || r.scanOut) });
+          const empShift = resolveEmployeeShift(employee, shifts as WorkShift[], assignments);
+          const workingSched = getWorkingScheduleForDate(r.workDate, empShift, workHoursMap, { hasTapRecord: Boolean(r.scanIn || r.scanOut) });
           const [existingRec] = await tx
             .select()
             .from(attendanceRecords)
@@ -1248,7 +1335,7 @@ export async function executeAttendanceCommand(
           if (existingRec && existingRec.groupId !== owner.groupId) throw new ValidationError("Historical attendance ownership mismatch");
           const scanInMins = r.scanIn ? minuteValue(r.scanIn) : null;
           const schedInMins = schedule.scheduleIn ? minuteValue(schedule.scheduleIn) : null;
-          const tol = Math.max(0, (schedule as any).lateToleranceMinutes ?? 5);
+          const tol = Math.max(0, workingSched.lateToleranceMinutes ?? 5);
           const effectiveLate = scanInMins !== null && schedInMins !== null
             ? (scanInMins > schedInMins + tol ? scanInMins - (schedInMins + tol) : 0)
             : (r.lateMinutes || 0);

@@ -8,7 +8,10 @@ import { leaveRequests } from '../db/schema/leaves';
 import { attendanceDailyNotes } from '../db/schema/attendanceDailyNotes';
 import { departmentReportRosters } from '../db/schema/departmentReportRosters';
 import { departmentOrganizationMappings } from '../db/schema/organizations';
-import { employeeScopePredicate, requireScopedEmployee } from './hrOrganizationScope';
+import { employeeScopePredicate, historicalScopePredicate, requireScopedEmployee } from './hrOrganizationScope';
+import { attendanceShifts, attendanceShiftAssignments, attendanceWorkHours } from '../db/schema/attendanceWorkspace';
+import { resolveEmployeeShift, getWorkingScheduleForDate } from '../domain/attendanceSchedule';
+import type { WorkShift, WorkHoursTemplate } from '../domain/attendanceTypes';
 import type { RequestScope } from '../domain/organizationAccess';
 import {
   formatLocationUpdate,
@@ -403,6 +406,14 @@ export async function getDailyAttendanceReport(
     rosterByDeptEmpId.set(`${r.departmentId}:${r.employeeId}`, r);
   }
 
+  // 5c. Query shifts, assignments, and work hours templates within scope for dynamic late tolerance
+  const [shiftRows, shiftAssignmentRows, workHoursRows] = await Promise.all([
+    runner.select().from(attendanceShifts).where(historicalScopePredicate(scope, attendanceShifts.groupId)),
+    runner.select().from(attendanceShiftAssignments),
+    runner.select().from(attendanceWorkHours).where(historicalScopePredicate(scope, attendanceWorkHours.groupId)),
+  ]);
+  const workHoursMap = new Map<number, WorkHoursTemplate>(workHoursRows.map((wh: WorkHoursTemplate) => [wh.id, wh]));
+
   // 6. Aggregate into rows and group by department
   const deptGroupsMap = new Map<number, DailyAttendanceDepartmentGroup>();
   let totalPresent = 0;
@@ -456,13 +467,15 @@ export async function getDailyAttendanceReport(
     const rawScanIn = record?.scanIn || selfLog?.scanTime || null;
     const scanIn = formatTimeOnly(rawScanIn);
 
-    // Late calculation with tolerance
-    const scheduleIn = record?.scheduleIn || selfLog?.scheduleIn || '08:00';
+    // Late calculation with tolerance from employee's active work hours template
+    const empShift = resolveEmployeeShift(emp, shiftRows as WorkShift[], shiftAssignmentRows);
+    const empSched = getWorkingScheduleForDate(workDate, empShift, workHoursMap, { hasTapRecord: Boolean(scanIn) });
+    const scheduleIn = record?.scheduleIn || selfLog?.scheduleIn || empSched.scheduleIn || '08:00';
     const lateCalc = computeIsLate({
       scanIn,
       scheduleIn,
       recordedLateMinutes: record?.lateMinutes,
-      lateToleranceMinutes: 5,
+      lateToleranceMinutes: empSched.lateToleranceMinutes,
     });
     const lateMinutes = lateCalc.lateMinutes;
     const isLate = lateCalc.isLate;

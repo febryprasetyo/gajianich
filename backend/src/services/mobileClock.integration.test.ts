@@ -14,7 +14,7 @@ import { attendanceFaceProfiles } from '../db/schema/attendanceFaceProfiles';
 import { attendanceFaceRequests } from '../db/schema/attendanceFaceRequests';
 import { attendanceSelfLogs } from '../db/schema/attendanceSelfLogs';
 import { attendanceRecords, attendanceBatches } from '../db/schema/attendance';
-import { attendanceShifts, attendanceShiftAssignments } from '../db/schema/attendanceWorkspace';
+import { attendanceShifts, attendanceShiftAssignments, attendanceWorkHours } from '../db/schema/attendanceWorkspace';
 import { systemSettings } from '../db/schema/system';
 import { FACE_DESCRIPTOR_VERSION } from './faceRecognition';
 import { localAttendanceTime } from '../domain/attendanceTime';
@@ -342,4 +342,36 @@ test('clock succeeds after 2x HRD-approved photo updates including mirrored capt
   );
   assert.equal(clockResult.success, true);
   assert.equal(clockResult.data.approvalStatus, 'APPROVED');
+});
+
+test('mobile clock projectApprovedLog uses workHours lateToleranceMinutes from employee group', async t => {
+  const { projectApprovedLog } = await import('./mobileAttendanceService');
+  const fixture = await createHrAuditTestDatabase(); t.after(() => fixture.cleanup());
+  await runMigrations(fixture.ownerUrl, undefined, fixture.runtimeRole);
+  const database = drizzle(fixture.owner);
+  const hr = await createHrScopeFixture(database);
+  const [employee] = await database.insert(employees).values({ departmentId: hr.department.id, employeeCode: 'TOL-15', fullName: 'Tol 15 Tester' }).returning();
+  const [user] = await database.insert(users).values({ username: 'tol-15-tester', passwordHash: 'test-only', employeeId: employee.id }).returning();
+  const [wh] = await database.insert(attendanceWorkHours).values({
+    groupId: hr.group.id, name: 'Office 15m', scheduleIn: '08:00', scheduleOut: '17:00',
+    scanInStart: '06:00', scanInEnd: '10:00', scanOutStart: '15:00', scanOutEnd: '19:00',
+    lateToleranceMinutes: 15, earlyLeaveToleranceMinutes: 15,
+  }).returning();
+  const [shift] = await database.insert(attendanceShifts).values({
+    groupId: hr.group.id, code: 'OFFICE-TOL15', name: 'Office 15m',
+    mondayWorkHoursId: wh.id, tuesdayWorkHoursId: wh.id, wednesdayWorkHoursId: wh.id, thursdayWorkHoursId: wh.id, fridayWorkHoursId: wh.id,
+    autoApproveIn: true, autoApproveOut: true,
+  }).returning();
+  await database.insert(attendanceShiftAssignments).values({ shiftId: shift.id, employeeId: employee.id });
+
+  const [inLog] = await database.insert(attendanceSelfLogs).values({
+    groupId: hr.group.id, employeeId: employee.id, userId: user.id, eventType: 'IN',
+    workDate: '2026-11-16', scanDate: '2026-11-16', scanTime: '08:15',
+    scheduleIn: '08:00', scheduleOut: '17:00', shiftCode: shift.code, shiftCategory: 'OFFICE',
+    txHash: 'tol-15-in', approvalStatus: 'APPROVED',
+  }).returning();
+  await database.transaction(tx => projectApprovedLog(tx, inLog));
+
+  const [rec] = await database.select().from(attendanceRecords).where(eq(attendanceRecords.employeeId, employee.id));
+  assert.equal(rec.lateMinutes, 0);
 });

@@ -24,12 +24,13 @@ router.post('/corrections', handle(async (req, res) => {
   const data = z.object({ logId: z.number().int().positive(), note: z.string().trim().min(1).max(2000) }).parse(req.body);
   res.json(await correctMobileAttendance(req.user!.userId, data.logId, data.note));
 }));
-router.get('/approval-settings', review, requireOrganizationScope('hr','read'), handle(async (_req, res) => { res.json({ data: await db.select().from(attendanceShifts).orderBy(attendanceShifts.id) }); }));
+router.get('/approval-settings', review, requireOrganizationScope('hr','read'), handle(async (req, res) => { res.json({ data: await db.select().from(attendanceShifts).where(historicalScopePredicate(requireHrScope(req as any), attendanceShifts.groupId)).orderBy(attendanceShifts.id) }); }));
 router.put('/approval-settings/:id', review, requireOrganizationScope('hr','write'), handle(async (req, res) => {
   if (!(await loadCurrentIdentity(req.user!.userId))?.isGlobalAdministrator) {res.status(403).json({error:'Shared approval settings require global administrator'});return;}
   const id = z.coerce.number().int().positive().parse(req.params.id);
   const data = z.object({ autoApproveIn: z.boolean(), autoApproveOut: z.boolean() }).parse(req.body);
-  const [shift] = await db.update(attendanceShifts).set({ ...data, updatedAt: new Date() }).where(eq(attendanceShifts.id, id)).returning();
+  const hrScope = requireHrScope(req as any);
+  const [shift] = await db.update(attendanceShifts).set({ ...data, updatedAt: new Date() }).where(and(eq(attendanceShifts.id, id), historicalScopePredicate(hrScope, attendanceShifts.groupId))).returning();
   if (!shift) throw new Error('Shift tidak ditemukan.');
   res.json({ success: true, data: shift });
 }));

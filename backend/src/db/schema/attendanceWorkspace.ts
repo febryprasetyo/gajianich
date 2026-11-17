@@ -8,17 +8,20 @@ import {
   text,
   jsonb,
   uniqueIndex,
+  index,
 } from 'drizzle-orm/pg-core';
 import { employees } from './employees';
 import { departments } from './master';
 import { users } from './users';
 import { attendanceBatches } from './attendance';
+import { organizationGroups } from './organizations';
 
 // ---------------------------------------------------------------------------
 // Master Jam Kerja — template jam kerja reusable (Daytime, Sabtu Pendek, dsb)
 // ---------------------------------------------------------------------------
 export const attendanceWorkHours = pgTable('attendance_work_hours', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  groupId: bigint('group_id', { mode: 'number' }).references(() => organizationGroups.id, { onDelete: 'restrict' }),
   name: varchar('name', { length: 100 }).notNull(),
   color: varchar('color', { length: 20 }),
   // Jam resmi masuk & pulang
@@ -39,7 +42,9 @@ export const attendanceWorkHours = pgTable('attendance_work_hours', {
   isActive: boolean('is_active').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+}, (table) => [
+  index('attendance_work_hours_group_idx').on(table.groupId),
+]);
 
 export const attendanceSources = pgTable(
   'attendance_sources',
@@ -77,7 +82,8 @@ export const attendanceShifts = pgTable(
   'attendance_shifts',
   {
     id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
-    code: varchar('code', { length: 50 }).notNull().unique(),
+    groupId: bigint('group_id', { mode: 'number' }).references(() => organizationGroups.id, { onDelete: 'restrict' }),
+    code: varchar('code', { length: 50 }).notNull(),
     name: varchar('name', { length: 150 }).notNull(),
     description: text('description'),
     // Mapping per-hari → FK ke attendanceWorkHours (null = hari libur)
@@ -95,7 +101,11 @@ export const attendanceShifts = pgTable(
     isActive: boolean('is_active').default(true).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
-  }
+  },
+  (table) => [
+    uniqueIndex('uq_attendance_shifts_group_code').on(table.groupId, table.code),
+    index('attendance_shifts_group_idx').on(table.groupId),
+  ]
 );
 
 // ---------------------------------------------------------------------------
