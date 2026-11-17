@@ -191,6 +191,8 @@ export async function loadAttendanceWorkspace(
   const today = new Date().toISOString().split("T")[0];
   const periodStart = today.slice(0, 7) + "-01";
   const strictIntegrity = strictSetting.length > 0 && String(strictSetting[0].value) === "true";
+  const empById = new Map(empRows.map((e) => [e.id, e]));
+  const whMap = new Map<number, WorkHoursTemplate>(workHoursRows.map((wh) => [wh.id, wh]));
 
   return {
     schemaVersion: 1,
@@ -223,9 +225,10 @@ export async function loadAttendanceWorkspace(
     })),
     records: (await approvedAttendanceRecords(recRows, tx)).map((r) => {
       let lateMinutes = r.lateMinutes;
+      let earlyMinutes = r.earlyMinutes;
       let attendanceStatus = r.attendanceStatus;
       if (
-        r.scanIn &&
+        (r.scanIn || r.scanOut) &&
         r.scheduleIn &&
         !r.isDayOff &&
         r.attendanceStatus !== 'DINAS_LUAR' &&
@@ -233,15 +236,27 @@ export async function loadAttendanceWorkspace(
         r.attendanceStatus !== 'SAKIT' &&
         r.attendanceStatus !== 'IZIN'
       ) {
-        const scanMins = minuteValue(r.scanIn);
-        const schedMins = minuteValue(r.scheduleIn);
-        const tolerance = 5;
-        const threshold = schedMins + tolerance;
-        lateMinutes = scanMins > threshold ? scanMins - threshold : 0;
+        const emp = empById.get(r.employeeId);
+        const empShift = emp ? resolveEmployeeShift(emp, shiftRows as WorkShift[], assignRows) : undefined;
+        const sched = empShift ? getWorkingScheduleForDate(r.workDate, empShift, whMap, { hasTapRecord: true }) : undefined;
+        const lateTolerance = Math.max(0, sched?.lateToleranceMinutes ?? 5);
+        const earlyTolerance = Math.max(0, sched?.earlyLeaveToleranceMinutes ?? 5);
+        if (r.scanIn) {
+          const scanMins = minuteValue(r.scanIn);
+          const schedMins = minuteValue(r.scheduleIn);
+          const threshold = schedMins + lateTolerance;
+          lateMinutes = scanMins > threshold ? scanMins - threshold : 0;
+        }
+        if (r.scanOut && r.scheduleOut) {
+          const outMetrics = attendanceMetrics(r.scheduleIn, r.scheduleOut, r.scanIn, r.scanOut, 0, lateTolerance, earlyTolerance);
+          earlyMinutes = outMetrics.earlyMinutes;
+        }
         if (lateMinutes === 0 && attendanceStatus === 'LATE') {
-          attendanceStatus = 'PRESENT';
+          attendanceStatus = earlyMinutes > 0 ? 'EARLY_LEAVE' : 'PRESENT';
         } else if (lateMinutes > 0 && attendanceStatus === 'PRESENT') {
           attendanceStatus = 'LATE';
+        } else if (earlyMinutes === 0 && attendanceStatus === 'EARLY_LEAVE') {
+          attendanceStatus = 'PRESENT';
         }
       }
       return {
@@ -256,7 +271,7 @@ export async function loadAttendanceWorkspace(
         rawScanIn: r.rawScanIn,
         rawScanOut: r.rawScanOut,
         lateMinutes,
-        earlyMinutes: r.earlyMinutes,
+        earlyMinutes,
         overtimeMinutes: r.overtimeMinutes,
         attendanceStatus: attendanceStatus as any,
         isDayOff: r.isDayOff,
