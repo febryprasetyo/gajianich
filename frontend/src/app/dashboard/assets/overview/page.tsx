@@ -171,7 +171,7 @@ export default function AssetDashboardOverviewPage() {
             value={loading ? "..." : (data?.kpis.assignedAssets ?? 0)}
             subtext={loading ? "" : `${data?.kpis.assignedPercentage ?? 0}% Tingkat Utilisasi`}
             icon={PackageCheck}
-            variant="blue"
+            variant="teal"
             badge="Assigned"
           />
 

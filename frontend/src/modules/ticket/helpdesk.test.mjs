@@ -74,8 +74,8 @@ test("buildCreateTicketPayload strips any injected created_by or ticket_number",
 
 test("getStatusBadgeConfig returns Emerald Enterprise token classes", () => {
   const openBadge = getStatusBadgeConfig("OPEN");
-  assert.ok(openBadge.bgClass.includes("blue"));
-  assert.ok(openBadge.textClass.includes("blue"));
+  assert.ok(openBadge.bgClass.includes("teal"));
+  assert.ok(openBadge.textClass.includes("teal"));
   assert.equal(openBadge.label, "Open");
 
   const resolvedBadge = getStatusBadgeConfig("RESOLVED");
@@ -88,8 +88,8 @@ test("getStatusBadgeConfig returns Emerald Enterprise token classes", () => {
   assert.ok(inProgressBadge.textClass.includes("amber"));
 
   const pendingBadge = getStatusBadgeConfig("PENDING");
-  assert.ok(pendingBadge.bgClass.includes("purple"));
-  assert.ok(pendingBadge.textClass.includes("purple"));
+  assert.ok(pendingBadge.bgClass.includes("slate"));
+  assert.ok(pendingBadge.textClass.includes("slate"));
 });
 
 test("getPriorityBadgeConfig returns proper severity styles", () => {

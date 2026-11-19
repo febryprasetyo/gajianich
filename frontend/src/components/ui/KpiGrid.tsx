@@ -89,7 +89,7 @@ export default function KpiGrid<T extends string = string>({
             <div className="mt-2 flex items-baseline justify-between w-full">
               <div>
                 <div
-                  className={`text-xl font-extrabold tracking-tight ${
+                  className={`text-xl font-extrabold tracking-tight font-mono tabular-nums ${
                     isActive ? "text-emerald-950" : "text-slate-900"
                   }`}
                 >

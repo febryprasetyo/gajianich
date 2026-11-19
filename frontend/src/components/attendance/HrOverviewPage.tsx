@@ -126,7 +126,7 @@ export default function HrOverviewPage() {
                     Impor Log Mesin Terakhir
                   </span>
                   {latestBatch && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-teal-50 text-teal-700 border border-teal-200">
                       {latestBatch.status}
                     </span>
                   )}

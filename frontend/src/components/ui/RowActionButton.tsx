@@ -32,7 +32,7 @@ export default function RowActionButton({
   className = "",
 }: RowActionButtonProps) {
   const tooltip = title || label;
-  const baseClasses = `p-1.5 rounded-lg transition-colors inline-flex items-center justify-center cursor-pointer ${variantStyles[variant]} ${className}`;
+  const baseClasses = `p-1.5 rounded-lg transition-colors inline-flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 ${variantStyles[variant]} ${className}`;
 
   if (href) {
     return (

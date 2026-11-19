@@ -2,7 +2,7 @@
 
 import React, { useId } from 'react';
 
-export type SparklineTone = 'emerald' | 'blue' | 'purple' | 'teal' | 'rose' | 'amber';
+export type SparklineTone = 'emerald' | 'blue' | 'purple' | 'teal' | 'rose' | 'amber' | 'slate';
 
 interface ServerSparklineProps {
   data: number[];
@@ -20,19 +20,24 @@ const TONE_PALETTE: Record<SparklineTone, { stroke: string; fillStart: string; f
     fillEnd: 'rgba(5, 150, 105, 0.01)',
   },
   blue: {
-    stroke: '#2563eb',
-    fillStart: 'rgba(37, 99, 235, 0.18)',
-    fillEnd: 'rgba(37, 99, 235, 0.01)',
+    stroke: '#0d9488',
+    fillStart: 'rgba(13, 148, 136, 0.18)',
+    fillEnd: 'rgba(13, 148, 136, 0.01)',
   },
   purple: {
-    stroke: '#9333ea',
-    fillStart: 'rgba(147, 51, 234, 0.18)',
-    fillEnd: 'rgba(147, 51, 234, 0.01)',
+    stroke: '#64748b',
+    fillStart: 'rgba(100, 116, 139, 0.18)',
+    fillEnd: 'rgba(100, 116, 139, 0.01)',
   },
   teal: {
     stroke: '#0d9488',
     fillStart: 'rgba(13, 148, 136, 0.18)',
     fillEnd: 'rgba(13, 148, 136, 0.01)',
+  },
+  slate: {
+    stroke: '#64748b',
+    fillStart: 'rgba(100, 116, 139, 0.18)',
+    fillEnd: 'rgba(100, 116, 139, 0.01)',
   },
   rose: {
     stroke: '#e11d48',

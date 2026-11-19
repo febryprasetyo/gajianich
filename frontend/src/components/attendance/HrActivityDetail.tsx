@@ -151,7 +151,7 @@ export function HrActivityDetail({ event, onClose }: HrActivityDetailProps) {
           <div>
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                <Layers className="w-3.5 h-3.5 text-teal-600" />
                 Target Objek Terdampak ({targets.length} {nextTargetCursor ? '+' : ''})
               </h4>
             </div>

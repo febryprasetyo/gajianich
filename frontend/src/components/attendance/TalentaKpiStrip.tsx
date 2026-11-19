@@ -44,24 +44,24 @@ export function TalentaKpiStrip({
           ${!isInteractive ? 'cursor-default' : 'cursor-pointer'}
           ${
             isSelected
-              ? 'bg-blue-50/90 ring-1.5 ring-blue-500/90 shadow-2xs'
+              ? 'bg-emerald-50/90 ring-1.5 ring-emerald-500/90 shadow-2xs'
               : 'hover:bg-slate-50/90 border border-transparent hover:border-slate-200/60'
           }
-          focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500
         `}
         title={`Filter: ${item.label} (${item.count} hari) - ${item.description}`}
         aria-pressed={isSelected}
       >
         {isSelected && (
           <span
-            className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-blue-600 ring-2 ring-blue-100"
+            className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-emerald-600 ring-2 ring-emerald-100"
             aria-hidden="true"
           />
         )}
         <span
           className={`text-lg sm:text-xl font-bold tabular-nums block leading-tight ${
             isSelected
-              ? 'text-blue-700'
+              ? 'text-emerald-700'
               : item.count > 0
               ? 'text-slate-900 group-hover:text-slate-950'
               : 'text-slate-700 group-hover:text-slate-900'
@@ -72,7 +72,7 @@ export function TalentaKpiStrip({
         <span
           className={`text-[11px] block mt-1 leading-tight font-medium ${
             isSelected
-              ? 'text-blue-700 font-semibold'
+              ? 'text-emerald-700 font-semibold'
               : 'text-slate-500 group-hover:text-slate-700'
           }`}
         >

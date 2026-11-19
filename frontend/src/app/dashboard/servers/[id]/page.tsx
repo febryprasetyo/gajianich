@@ -56,11 +56,11 @@ function formatBytesToGb(bytes: number, decimals = 1): string {
 
 const PORT_TEXT_COLORS = [
   'text-emerald-700',
-  'text-blue-700',
-  'text-purple-700',
-  'text-rose-700',
+  'text-teal-700',
   'text-amber-700',
-  'text-cyan-700',
+  'text-rose-700',
+  'text-emerald-800',
+  'text-teal-800',
 ];
 
 const PLACEHOLDER_NODE: ServerNodeItem = {
@@ -353,14 +353,14 @@ export default function ServerDetailInspectionPage() {
     }
     if (cat === 'docker') {
       return (
-        <span className="px-2 py-0.5 rounded text-[10px] font-semibold font-mono bg-blue-50 text-blue-700 border border-blue-200">
+        <span className="px-2 py-0.5 rounded text-[10px] font-semibold font-mono bg-teal-50 text-teal-700 border border-teal-200">
           Docker
         </span>
       );
     }
     if (cat === 'database') {
       return (
-        <span className="px-2 py-0.5 rounded text-[10px] font-semibold font-mono bg-purple-50 text-purple-700 border border-purple-200">
+        <span className="px-2 py-0.5 rounded text-[10px] font-semibold font-mono bg-slate-100 text-slate-700 border border-slate-300">
           Database
         </span>
       );
@@ -555,7 +555,7 @@ export default function ServerDetailInspectionPage() {
                 <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider font-mono">
                   RAM Allocation
                 </span>
-                <span className="p-1 rounded-lg bg-blue-50 text-blue-700">
+                <span className="p-1 rounded-lg bg-teal-50 text-teal-700">
                   <MemoryStick className="w-3.5 h-3.5" />
                 </span>
               </div>
@@ -574,7 +574,7 @@ export default function ServerDetailInspectionPage() {
             <div className="mt-2">
               <ServerSparkline
                 data={node.spark?.ram?.length ? node.spark.ram : [node.ramUsagePct]}
-                tone="blue"
+                tone="teal"
                 height={36}
                 min={0}
                 max={100}
@@ -589,7 +589,7 @@ export default function ServerDetailInspectionPage() {
                 <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider font-mono">
                   Disk Block I/O
                 </span>
-                <span className="p-1 rounded-lg bg-purple-50 text-purple-700">
+                <span className="p-1 rounded-lg bg-amber-50 text-amber-700">
                   <HardDrive className="w-3.5 h-3.5" />
                 </span>
               </div>
@@ -610,7 +610,7 @@ export default function ServerDetailInspectionPage() {
             <div className="mt-2">
               <ServerSparkline
                 data={node.spark?.disk?.length ? node.spark.disk : [0]}
-                tone="purple"
+                tone="amber"
                 height={36}
               />
             </div>
@@ -629,7 +629,7 @@ export default function ServerDetailInspectionPage() {
               </div>
               <div className="flex items-baseline justify-between font-mono">
                 <span className="text-xs font-bold text-emerald-700">&darr; {netInMbps} Mbps</span>
-                <span className="text-xs font-bold text-blue-700">&uarr; {netOutMbps} Mbps</span>
+                <span className="text-xs font-bold text-teal-700">&uarr; {netOutMbps} Mbps</span>
               </div>
               <div className="text-[10px] text-slate-400 font-normal mt-0.5 font-mono">
                 Drop: {node.netDropPackets.toLocaleString()} pkts &bull; Retrans: {node.netRetransPct}%
@@ -651,13 +651,13 @@ export default function ServerDetailInspectionPage() {
                 <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider font-mono">
                   TCP & Descriptors
                 </span>
-                <span className="p-1 rounded-lg bg-cyan-50 text-cyan-700">
+                <span className="p-1 rounded-lg bg-teal-50 text-teal-700">
                   <Network className="w-3.5 h-3.5" />
                 </span>
               </div>
               <div className="flex items-baseline justify-between font-mono">
                 <span className="text-2xl font-extrabold text-slate-900">{node.tcpEstablished}</span>
-                <span className="text-[10px] font-semibold bg-cyan-50 text-cyan-700 px-1.5 py-0.5 rounded border border-cyan-200 font-mono">
+                <span className="text-[10px] font-semibold bg-teal-50 text-teal-700 px-1.5 py-0.5 rounded border border-teal-200 font-mono">
                   ESTABLISHED
                 </span>
               </div>
@@ -769,10 +769,10 @@ export default function ServerDetailInspectionPage() {
           <div className="bg-white border border-slate-200 shadow-xs sm:shadow-sm rounded-2xl p-4 flex flex-col justify-between">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                <Database className="w-3.5 h-3.5 text-purple-600" />
+                <Database className="w-3.5 h-3.5 text-teal-600" />
                 Storage Capacity & Inode Saturation
               </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-teal-50 text-teal-700 border border-teal-200">
                 {node.diskMountType || 'ext4 / root'}
               </span>
             </div>
@@ -787,7 +787,7 @@ export default function ServerDetailInspectionPage() {
                 </div>
                 <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                   <div
-                    className="bg-purple-600 h-full rounded-full transition-all duration-500"
+                    className="bg-teal-600 h-full rounded-full transition-all duration-500"
                     style={{ width: `${Math.min(100, node.diskUsagePct)}%` }}
                   />
                 </div>
@@ -828,10 +828,10 @@ export default function ServerDetailInspectionPage() {
           <div className="bg-white border border-slate-200 shadow-xs sm:shadow-sm rounded-2xl p-4 flex flex-col justify-between">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                <Radio className="w-3.5 h-3.5 text-blue-600" />
+                <Radio className="w-3.5 h-3.5 text-emerald-600" />
                 Active Listening Sockets & Ports
               </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
                 {(node.openPorts || []).length} Listening
               </span>
             </div>
@@ -898,7 +898,7 @@ export default function ServerDetailInspectionPage() {
                   : 'text-slate-600 hover:text-slate-900'
                   }`}
               >
-                <Box className={`w-3.5 h-3.5 ${activeCategory === 'docker' ? 'text-white' : 'text-blue-600'}`} />
+                <Box className={`w-3.5 h-3.5 ${activeCategory === 'docker' ? 'text-white' : 'text-teal-600'}`} />
                 <span>Docker ({categoryCounts.docker})</span>
               </button>
 
@@ -911,7 +911,7 @@ export default function ServerDetailInspectionPage() {
                   }`}
               >
                 <Database
-                  className={`w-3.5 h-3.5 ${activeCategory === 'database' ? 'text-white' : 'text-purple-600'}`}
+                  className={`w-3.5 h-3.5 ${activeCategory === 'database' ? 'text-white' : 'text-amber-600'}`}
                 />
                 <span>Databases ({categoryCounts.database})</span>
               </button>

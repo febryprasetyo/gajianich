@@ -55,8 +55,8 @@ export default function TicketStats({
       title: "Tiket Terbuka",
       value: stats.openCount,
       icon: Inbox,
-      iconColor: "text-blue-600",
-      bgColor: "bg-blue-50",
+      iconColor: "text-teal-600",
+      bgColor: "bg-teal-50",
       helper: "Menunggu penanganan",
     },
     {

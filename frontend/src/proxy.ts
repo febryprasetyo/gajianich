@@ -76,6 +76,11 @@ export function proxy(request: NextRequest) {
   const isEmployee = roleName === "employee" || roleName === "karyawan";
   const canAccessMobile = canAccessMobileApp(payload);
 
+  // Older PWA installs still launch the mobile home URL.
+  if (!isEmployee && /^\/m(?:\/beranda)?\/?$/.test(pathname)) {
+    return NextResponse.redirect(new URL(getDefaultRedirectForUser(payload), request.url));
+  }
+
   // If user cannot access mobile and tries to access /m/*, redirect to desktop dashboard
   if (!canAccessMobile && pathname.startsWith("/m")) {
     return NextResponse.redirect(new URL(getDefaultRedirectForUser(payload), request.url));

@@ -239,8 +239,8 @@ export default function AdmsLogsReviewSection({
                   <p className="font-mono font-semibold text-slate-900">{log.pin}</p>
                   {log.isSyncing ? (
                     <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                      <span className="inline-flex items-center gap-1 rounded-md bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800" title="Data sedang dihitung dan disinkronkan ke rekap presensi">
-                        <Loader2 className="h-3 w-3 animate-spin text-sky-600" />
+                      <span className="inline-flex items-center gap-1 rounded-md bg-teal-100 px-1.5 py-0.5 text-[10px] font-semibold text-teal-800" title="Data sedang dihitung dan disinkronkan ke rekap presensi">
+                        <Loader2 className="h-3 w-3 animate-spin text-teal-600" />
                         Sedang sinkronisasi...
                       </span>
                       {log.employeeName && (

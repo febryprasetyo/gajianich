@@ -284,7 +284,7 @@ export function ExportAttendanceModal({
                     <button
                       type="button"
                       onClick={selectAllDepartments}
-                      className="text-blue-600 hover:underline font-medium cursor-pointer"
+                      className="text-emerald-600 hover:underline font-medium cursor-pointer"
                     >
                       Pilih Semua
                     </button>
@@ -307,7 +307,7 @@ export function ExportAttendanceModal({
                       placeholder="Cari divisi..."
                       value={deptSearchQuery}
                       onChange={e => setDeptSearchQuery(e.target.value)}
-                      className="w-full pl-7 pr-2.5 py-1 text-[11px] rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full pl-7 pr-2.5 py-1 text-[11px] rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     />
                   </div>
                 )}
@@ -322,14 +322,14 @@ export function ExportAttendanceModal({
                         type="button"
                         onClick={() => toggleDepartment(d.id)}
                         className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-left transition-colors cursor-pointer ${
-                          isSelected ? 'bg-blue-50/70 text-blue-900 font-medium' : 'hover:bg-slate-50 text-slate-700'
+                          isSelected ? 'bg-emerald-50/70 text-emerald-900 font-medium' : 'hover:bg-slate-50 text-slate-700'
                         }`}
                       >
                         <div className="flex items-center gap-2 truncate">
                           <div
                             className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${
                               isSelected
-                                ? 'bg-blue-600 border-blue-600 text-white'
+                                ? 'bg-emerald-600 border-emerald-600 text-white'
                                 : 'border-slate-300 bg-white'
                             }`}
                           >
@@ -356,7 +356,7 @@ export function ExportAttendanceModal({
               placeholder="Cari nama atau NIP karyawan..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-7 py-1.5 text-xs rounded-lg border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-2xs"
+              className="w-full pl-8 pr-7 py-1.5 text-xs rounded-lg border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 shadow-2xs"
             />
             {searchQuery && (
               <button
@@ -375,7 +375,7 @@ export function ExportAttendanceModal({
             <button
               type="button"
               onClick={selectAllVisibleEmployees}
-              className="px-2 py-1 rounded-md text-blue-600 hover:bg-blue-50 font-medium transition-colors cursor-pointer"
+              className="px-2 py-1 rounded-md text-emerald-600 hover:bg-emerald-50 font-medium transition-colors cursor-pointer"
             >
               Pilih Semua
             </button>
@@ -409,13 +409,13 @@ export function ExportAttendanceModal({
                     key={r.employee.id}
                     onClick={() => toggleEmployee(r.employee.id)}
                     className={`flex items-center justify-between px-3 py-2 hover:bg-slate-50/80 transition-colors cursor-pointer select-none ${
-                      isSelected ? 'bg-blue-50/25' : ''
+                      isSelected ? 'bg-emerald-50/25' : ''
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                      <div className="shrink-0 text-blue-600">
+                      <div className="shrink-0 text-emerald-600">
                         {isSelected ? (
-                          <CheckSquare size={16} className="text-blue-600 fill-blue-50" />
+                          <CheckSquare size={16} className="text-emerald-600 fill-emerald-50" />
                         ) : (
                           <Square size={16} className="text-slate-300 hover:text-slate-400" />
                         )}
@@ -452,7 +452,7 @@ export function ExportAttendanceModal({
                         </span>
                       )}
                       {(r.izinCount || 0) > 0 && (
-                        <span className="px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 font-medium">
+                        <span className="px-1.5 py-0.5 rounded bg-teal-50 text-teal-700 font-medium">
                           Izin {r.izinCount}
                         </span>
                       )}
@@ -462,7 +462,7 @@ export function ExportAttendanceModal({
                         </span>
                       )}
                       {(r.cutiCount || 0) > 0 && (
-                        <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-medium">
+                        <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 font-medium">
                           Cuti {r.cutiCount}
                         </span>
                       )}

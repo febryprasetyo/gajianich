@@ -181,7 +181,7 @@ export default function DailyAttendanceReportPage() {
       });
       setEditingRow(null);
     } catch (err: any) {
-      alert(err.message || 'Gagal menyimpan catatan');
+      setError(err.message || 'Gagal menyimpan catatan');
     } finally {
       setSavingNoteId(null);
     }
@@ -430,7 +430,7 @@ export default function DailyAttendanceReportPage() {
                       }`}
                     >
                       {/* Kolom 1: No */}
-                      <td className="py-2.5 px-3 text-center text-slate-500 font-medium border-r border-slate-100">
+                      <td className="py-2.5 px-3 text-center text-slate-500 font-medium border-r border-slate-100 font-mono tabular-nums">
                         {row.no}
                       </td>
 
@@ -474,7 +474,7 @@ export default function DailyAttendanceReportPage() {
                       <td className="py-2.5 px-3 text-center border-r border-slate-100">
                         {row.scanIn ? (
                           <span
-                            className={`inline-block px-2.5 py-0.5 rounded font-mono font-bold text-xs ${
+                            className={`inline-block px-2.5 py-0.5 rounded font-mono tabular-nums font-bold text-xs ${
                               row.isLate
                                 ? 'bg-rose-100 text-rose-800 border border-rose-200'
                                 : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
@@ -483,7 +483,7 @@ export default function DailyAttendanceReportPage() {
                             {row.scanIn}
                           </span>
                         ) : (
-                          <span className="text-slate-400 font-mono">-</span>
+                          <span className="text-slate-400 font-mono tabular-nums">-</span>
                         )}
                       </td>
 
@@ -512,16 +512,18 @@ export default function DailyAttendanceReportPage() {
                               type="button"
                               disabled={savingNoteId === row.employeeId}
                               onClick={() => handleSaveNote(row.employeeId, editingRow.text)}
-                              className="p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg cursor-pointer"
-                              title="Simpan"
+                              className="p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                              title="Simpan catatan"
+                              aria-label="Simpan catatan"
                             >
                               <Check className="w-3.5 h-3.5" />
                             </button>
                             <button
                               type="button"
                               onClick={() => setEditingRow(null)}
-                              className="p-1.5 bg-slate-200 hover:bg-slate-300 text-slate-600 rounded-lg cursor-pointer"
-                              title="Batal"
+                              className="p-1.5 bg-slate-200 hover:bg-slate-300 text-slate-600 rounded-lg cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                              title="Batal edit catatan"
+                              aria-label="Batal edit catatan"
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
@@ -556,7 +558,8 @@ export default function DailyAttendanceReportPage() {
                           type="button"
                           onClick={() => handleToggleHighlight(row)}
                           title={row.isHighlighted ? 'Hapus stabilo kuning' : 'Beri stabilo kuning'}
-                          className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                          aria-label={row.isHighlighted ? 'Hapus tanda sorotan karyawan' : 'Tandai sorotan karyawan'}
+                          className={`p-1.5 rounded-lg border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
                             row.isHighlighted
                               ? 'bg-amber-100 border-amber-300 text-amber-700 hover:bg-amber-200'
                               : 'bg-white border-slate-200 text-slate-400 hover:text-amber-600 hover:bg-slate-50'

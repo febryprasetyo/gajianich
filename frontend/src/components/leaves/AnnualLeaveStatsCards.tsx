@@ -42,7 +42,7 @@ export default function AnnualLeaveStatsCards({
       label: 'Total Hak Bersih',
       value: isLoading ? '...' : formatIndoDays(totalAllocatedQuota),
       icon: <CheckCircle2 className="w-5 h-5" />,
-      tone: 'bg-blue-50 border-blue-100 text-blue-600',
+      tone: 'bg-teal-50 border-teal-100 text-teal-600',
     },
   ];
 
@@ -58,7 +58,7 @@ export default function AnnualLeaveStatsCards({
           </div>
           <div>
             <p className="text-[11px] text-slate-400 uppercase tracking-wider font-mono">{s.label}</p>
-            <p className="text-xl font-bold text-slate-900 mt-0.5">{s.value}</p>
+            <p className="text-xl font-bold text-slate-900 mt-0.5 font-mono tabular-nums">{s.value}</p>
           </div>
         </div>
       ))}

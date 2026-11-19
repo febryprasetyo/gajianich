@@ -171,8 +171,8 @@ export default function HandoversPage() {
       title: 'BULAN INI',
       value: stats.thisMonth,
       icon: Calendar,
-      iconColor: 'text-sky-700',
-      bgColor: 'bg-sky-50',
+      iconColor: 'text-teal-700',
+      bgColor: 'bg-teal-50',
       helper: 'Diterbitkan bulan berjalan',
     },
     {
@@ -180,8 +180,8 @@ export default function HandoversPage() {
       title: 'BERISI LAPTOP / PC',
       value: stats.withLaptopsOrPc,
       icon: Laptop,
-      iconColor: 'text-indigo-700',
-      bgColor: 'bg-indigo-50',
+      iconColor: 'text-slate-700',
+      bgColor: 'bg-slate-100',
       helper: 'Penyerahan komputer kerja',
     },
     {

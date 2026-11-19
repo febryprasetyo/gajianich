@@ -496,7 +496,7 @@ export default function AttendanceDevicesPage() {
             className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-all shadow-xs cursor-pointer"
             title="Buka monitor log real-time & sinkronisasi ADMS"
           >
-            <Server className="w-4 h-4 text-indigo-600" />
+            <Server className="w-4 h-4 text-teal-600" />
             <span>Review Log ADMS</span>
           </Link>
 
@@ -546,7 +546,7 @@ export default function AttendanceDevicesPage() {
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
         <div className="px-5 py-3.5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
           <div className="flex items-center gap-2.5">
-            <div className="p-1.5 bg-indigo-50 text-indigo-700 rounded-lg">
+            <div className="p-1.5 bg-teal-50 text-teal-700 rounded-lg">
               <Server className="w-4 h-4" />
             </div>
             <div>
@@ -554,7 +554,7 @@ export default function AttendanceDevicesPage() {
                 <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
                   Mesin Cloud ADMS
                 </h2>
-                <span className="px-2 py-0.5 text-[11px] font-semibold bg-indigo-100 text-indigo-800 rounded-full">
+                <span className="px-2 py-0.5 text-[11px] font-semibold bg-teal-100 text-teal-800 rounded-full">
                   {admsDevices.length} Unit
                 </span>
               </div>
@@ -567,7 +567,7 @@ export default function AttendanceDevicesPage() {
 
         {isLoading ? (
           <div className="p-8 text-center flex flex-col items-center justify-center">
-            <Loader2 className="w-6 h-6 animate-spin text-indigo-600 mb-2" />
+            <Loader2 className="w-6 h-6 animate-spin text-teal-600 mb-2" />
             <p className="text-xs text-slate-500">Memuat daftar mesin ADMS...</p>
           </div>
         ) : admsDevices.length === 0 ? (
@@ -597,7 +597,7 @@ export default function AttendanceDevicesPage() {
                   <tr key={device.id} className="hover:bg-slate-50/70 transition-colors">
                     <td className="py-3 px-4 text-slate-900 font-semibold">
                       <div className="flex items-center gap-2">
-                        <Server className="w-4 h-4 text-indigo-600 shrink-0" />
+                        <Server className="w-4 h-4 text-teal-600 shrink-0" />
                         <div>
                           <p>{device.name}</p>
                         </div>

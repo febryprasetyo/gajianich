@@ -37,9 +37,9 @@ export function getStatusBadgeConfig(status: string) {
     case "OPEN":
       return {
         label: "Open",
-        bgClass: "bg-blue-50 border-blue-200",
-        textClass: "text-blue-700",
-        dotClass: "bg-blue-500",
+        bgClass: "bg-teal-50 border-teal-200",
+        textClass: "text-teal-700",
+        dotClass: "bg-teal-500",
       };
     case "IN_PROGRESS":
       return {
@@ -51,9 +51,9 @@ export function getStatusBadgeConfig(status: string) {
     case "PENDING":
       return {
         label: "Pending",
-        bgClass: "bg-purple-50 border-purple-200",
-        textClass: "text-purple-700",
-        dotClass: "bg-purple-500",
+        bgClass: "bg-slate-100 border-slate-200",
+        textClass: "text-slate-700",
+        dotClass: "bg-slate-500",
       };
     case "RESOLVED":
       return {

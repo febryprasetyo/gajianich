@@ -8,7 +8,7 @@ export interface AssetKpiCardProps {
   value: number | string;
   subtext?: string;
   icon: LucideIcon;
-  variant: 'emerald' | 'blue' | 'amber' | 'rose' | 'slate';
+  variant: 'emerald' | 'teal' | 'amber' | 'rose' | 'slate';
   badge?: string;
 }
 
@@ -20,12 +20,12 @@ const VARIANT_STYLES = {
     accentText: 'text-emerald-700',
     badgeBg: 'bg-emerald-100/80 text-emerald-800 border-emerald-200',
   },
-  blue: {
-    bg: 'bg-blue-50/60',
-    border: 'border-blue-200/80',
-    iconBg: 'bg-blue-100 text-blue-700',
-    accentText: 'text-blue-700',
-    badgeBg: 'bg-blue-100/80 text-blue-800 border-blue-200',
+  teal: {
+    bg: 'bg-teal-50/60',
+    border: 'border-teal-200/80',
+    iconBg: 'bg-teal-100 text-teal-700',
+    accentText: 'text-teal-700',
+    badgeBg: 'bg-teal-100/80 text-teal-800 border-teal-200',
   },
   amber: {
     bg: 'bg-amber-50/60',
@@ -69,7 +69,7 @@ export default function AssetKpiCard({
           <p className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">
             {title}
           </p>
-          <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-mono tabular-nums">
             {value}
           </p>
         </div>

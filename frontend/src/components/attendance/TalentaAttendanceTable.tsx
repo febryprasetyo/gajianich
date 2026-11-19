@@ -72,19 +72,19 @@ export function TalentaAttendanceTable({
     <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden">
       {/* Active Filter Indicator Banner */}
       {activeFilter !== 'ALL' && (
-        <div className="bg-blue-50/70 border-b border-blue-100/90 px-4 py-2.5 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2 text-blue-900">
-            <span className="font-normal text-blue-700">Filter aktif:</span>
-            <span className="inline-flex items-center gap-1 font-semibold text-blue-950 bg-white px-2 py-0.5 rounded border border-blue-200 shadow-2xs">
+        <div className="bg-emerald-50/70 border-b border-emerald-100/90 px-4 py-2.5 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2 text-emerald-900">
+            <span className="font-normal text-emerald-700">Filter aktif:</span>
+            <span className="inline-flex items-center gap-1 font-semibold text-emerald-950 bg-white px-2 py-0.5 rounded border border-emerald-200 shadow-2xs">
               {FILTER_LABELS[activeFilter]}
             </span>
-            <span className="text-blue-600 font-medium">({sortedRows.length} baris)</span>
+            <span className="text-emerald-600 font-medium">({sortedRows.length} baris)</span>
           </div>
           {onResetFilter && (
             <button
               type="button"
               onClick={onResetFilter}
-              className="inline-flex items-center gap-1 text-blue-700 hover:text-blue-900 font-medium px-2 py-1 rounded hover:bg-blue-100/70 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-900 font-medium px-2 py-1 rounded hover:bg-emerald-100/70 transition-colors cursor-pointer"
             >
               <X size={13} />
               <span>Tampilkan semua</span>
@@ -202,7 +202,7 @@ export function TalentaAttendanceTable({
                     <button
                       type="button"
                       onClick={onResetFilter}
-                      className="mt-2 text-xs text-blue-600 hover:text-blue-800 hover:underline font-medium cursor-pointer"
+                      className="mt-2 text-xs text-emerald-600 hover:text-emerald-800 hover:underline font-medium cursor-pointer"
                     >
                       Reset filter dan tampilkan semua catatan
                     </button>
@@ -237,17 +237,17 @@ export function TalentaAttendanceTable({
                     </td>
 
                     {/* Schedule in */}
-                    <td className="py-3 px-4 whitespace-nowrap font-mono text-slate-600">
+                    <td className="py-3 px-4 whitespace-nowrap font-mono tabular-nums text-slate-600">
                       {row.scheduleIn}
                     </td>
 
                     {/* Schedule out */}
-                    <td className="py-3 px-4 whitespace-nowrap font-mono text-slate-600">
+                    <td className="py-3 px-4 whitespace-nowrap font-mono tabular-nums text-slate-600">
                       {row.scheduleOut}
                     </td>
 
                     {/* Clock in */}
-                    <td className="py-3 px-4 whitespace-nowrap font-mono">
+                    <td className="py-3 px-4 whitespace-nowrap font-mono tabular-nums">
                       {row.clockIn !== '-' ? (
                         <span className="text-slate-800 font-semibold">{row.clockIn}</span>
                       ) : (
@@ -256,7 +256,7 @@ export function TalentaAttendanceTable({
                     </td>
 
                     {/* Clock out */}
-                    <td className="py-3 px-4 whitespace-nowrap font-mono">
+                    <td className="py-3 px-4 whitespace-nowrap font-mono tabular-nums">
                       {row.clockOut !== '-' ? (
                         <span className="text-slate-800 font-semibold">{row.clockOut}</span>
                       ) : (
@@ -275,12 +275,12 @@ export function TalentaAttendanceTable({
                     </td>
 
                     {/* Keterlambatan */}
-                    <td className="py-3 px-4 whitespace-nowrap font-mono text-amber-700">
+                    <td className="py-3 px-4 whitespace-nowrap font-mono tabular-nums text-amber-700">
                       {row.late}
                     </td>
 
                     {/* Lembur */}
-                    <td className="py-3 px-4 whitespace-nowrap font-mono text-slate-600">
+                    <td className="py-3 px-4 whitespace-nowrap font-mono tabular-nums text-slate-600">
                       {row.overtime}
                     </td>
 
@@ -290,9 +290,9 @@ export function TalentaAttendanceTable({
                         <button
                           type="button"
                           onClick={() => onEdit({ date: row.date, existingRecord: row.record })}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-slate-200 bg-white text-slate-700 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50/30 transition-colors font-medium cursor-pointer shadow-2xs"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-slate-200 bg-white text-slate-700 hover:text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50/30 transition-colors font-medium cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                         >
-                          <Edit3 size={11} className="text-slate-400 group-hover:text-blue-500" />
+                          <Edit3 size={11} className="text-slate-400 group-hover:text-emerald-500" />
                           <span>Koreksi</span>
                         </button>
                       </td>

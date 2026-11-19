@@ -16,11 +16,11 @@ export interface AssetDepartmentBarProps {
 
 const BAR_COLORS = [
   'bg-emerald-500',
-  'bg-blue-500',
-  'bg-indigo-500',
-  'bg-violet-500',
-  'bg-amber-500',
   'bg-teal-500',
+  'bg-amber-500',
+  'bg-emerald-600',
+  'bg-teal-600',
+  'bg-amber-600',
   'bg-slate-400',
 ];
 
@@ -32,7 +32,7 @@ export default function AssetDepartmentBar({ data }: AssetDepartmentBarProps) {
       <div className="flex items-center justify-between mb-5">
         <div>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <Building2 className="w-4 h-4" />
             </div>
             <h2 className="text-sm font-bold text-slate-900 tracking-tight">

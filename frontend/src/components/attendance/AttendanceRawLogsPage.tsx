@@ -418,7 +418,7 @@ export default function AttendanceRawLogsPage() {
                         </span>
                       )}
                       {log.inOutState === "Pulang" && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-teal-100 text-teal-800 border border-teal-200">
                           Pulang
                         </span>
                       )}
@@ -435,8 +435,8 @@ export default function AttendanceRawLogsPage() {
                     </td>
                     <td className="py-2.5 px-3">
                       {log.source === "ADMS" ? (
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-teal-50 text-teal-700 border border-teal-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span>
                           Cloud ADMS
                         </span>
                       ) : (

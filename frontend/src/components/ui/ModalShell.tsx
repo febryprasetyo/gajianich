@@ -137,7 +137,8 @@ export default function ModalShell({
                 type="button"
                 onClick={onClose}
                 aria-label="Tutup modal"
-                className="min-h-10 min-w-10 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                title="Tutup dialog"
+                className="min-h-11 min-w-11 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 <X className="w-5 h-5" />
               </button>

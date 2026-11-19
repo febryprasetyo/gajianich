@@ -33,6 +33,8 @@ export default function ShiftManagementPage() {
 
   const [activeTab, setActiveTab] = useState<'work_hours' | 'shifts' | 'assignments'>('shifts');
   const [notice, setNotice] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [removingEmployeeAssignment, setRemovingEmployeeAssignment] = useState<{ employeeId: number; name: string } | null>(null);
 
   // ---------------------------------------------------------------------------
   // STATE: Master Jam Kerja (Work Hours Template)
@@ -42,7 +44,7 @@ export default function ShiftManagementPage() {
   const [deletingWorkHours, setDeletingWorkHours] = useState<WorkHoursTemplate | null>(null);
 
   const [whName, setWhName] = useState('');
-  const [whColor, setWhColor] = useState('#2563eb');
+  const [whColor, setWhColor] = useState('#059669');
   const [whScheduleIn, setWhScheduleIn] = useState('08:00');
   const [whScheduleOut, setWhScheduleOut] = useState('16:00');
   const [whScanInStart, setWhScanInStart] = useState('06:00');
@@ -57,7 +59,7 @@ export default function ShiftManagementPage() {
 
   const openCreateWorkHours = () => {
     setWhName('');
-    setWhColor('#2563eb');
+    setWhColor('#059669');
     setWhScheduleIn('08:00');
     setWhScheduleOut('16:00');
     setWhScanInStart('06:00');
@@ -75,7 +77,7 @@ export default function ShiftManagementPage() {
   const openEditWorkHours = (wh: WorkHoursTemplate) => {
     setEditingWorkHours(wh);
     setWhName(wh.name);
-    setWhColor(wh.color || '#2563eb');
+    setWhColor(wh.color || '#059669');
     setWhScheduleIn(wh.scheduleIn);
     setWhScheduleOut(wh.scheduleOut);
     setWhScanInStart(wh.scanInStart);
@@ -380,13 +382,13 @@ export default function ShiftManagementPage() {
       setIsAssigningEmployee(false);
       setSelectedEmpId(0);
     } catch (err: any) {
-      alert(err.message || 'Gagal menyimpan penugasan karyawan.');
+      setErrorMessage(err.message || 'Gagal menyimpan penugasan karyawan.');
     }
   };
 
-  const handleRemoveEmployeeAssignment = async (employeeId: number) => {
-    const emp = data.employees.find(e => e.id === employeeId);
-    if (!confirm(`Kembalikan shift ${emp?.fullName || 'karyawan'} ke jadwal departemennya?`)) return;
+  const handleConfirmRemoveEmployeeAssignment = async () => {
+    if (!removingEmployeeAssignment) return;
+    const { employeeId } = removingEmployeeAssignment;
 
     try {
       await execute({
@@ -400,8 +402,10 @@ export default function ShiftManagementPage() {
         },
       });
       setNotice('Override shift karyawan berhasil dihapus.');
+      setRemovingEmployeeAssignment(null);
     } catch (err: any) {
-      alert(err.message || 'Gagal menghapus override shift.');
+      setErrorMessage(err.message || 'Gagal menghapus override shift.');
+      setRemovingEmployeeAssignment(null);
     }
   };
 
@@ -522,6 +526,22 @@ export default function ShiftManagementPage() {
         </div>
       )}
 
+      {errorMessage && (
+        <div className="flex items-center justify-between p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={16} className="text-rose-600" />
+            <span>{errorMessage}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setErrorMessage(null)}
+            className="text-rose-700 hover:text-rose-900 font-bold"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* =================================================================== */}
       {/* TAB 1: DAFTAR SHIFT MINGGUAN */}
       {/* =================================================================== */}
@@ -617,6 +637,7 @@ export default function ShiftManagementPage() {
                                     onClick={() => setDeletingShift(s)}
                                     className="hr-btn text-rose-700 hover:bg-rose-50 border-rose-200"
                                     title="Hapus shift"
+                                    aria-label={`Hapus shift ${s.name}`}
                                   >
                                     <Trash2 size={13} />
                                   </button>
@@ -660,7 +681,7 @@ export default function ShiftManagementPage() {
                       <td>
                         <span
                           className="w-4 h-4 rounded-full inline-block border border-slate-300"
-                          style={{ backgroundColor: wh.color || '#2563eb' }}
+                          style={{ backgroundColor: wh.color || '#059669' }}
                         />
                       </td>
                       <td>
@@ -687,6 +708,7 @@ export default function ShiftManagementPage() {
                                 onClick={() => openEditWorkHours(wh)}
                                 className="hr-btn"
                                 title="Edit jam kerja"
+                                aria-label={`Edit jam kerja ${wh.name}`}
                               >
                                 <Edit2 size={13} />
                                 <span>Edit</span>
@@ -696,6 +718,7 @@ export default function ShiftManagementPage() {
                                 onClick={() => setDeletingWorkHours(wh)}
                                 className="hr-btn text-rose-700 hover:bg-rose-50 border-rose-200"
                                 title="Hapus jam kerja"
+                                aria-label={`Hapus jam kerja ${wh.name}`}
                               >
                                 <Trash2 size={13} />
                               </button>
@@ -829,7 +852,7 @@ export default function ShiftManagementPage() {
           <div className="hr-panel p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-blue-50 text-blue-700">
+                <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700">
                   <UserCheck size={18} />
                 </div>
                 <div>
@@ -884,9 +907,10 @@ export default function ShiftManagementPage() {
                           {canWrite && (
                             <button
                               type="button"
-                              onClick={() => handleRemoveEmployeeAssignment(ea.employeeId)}
+                              onClick={() => setRemovingEmployeeAssignment({ employeeId: ea.employeeId, name: ea.employeeName })}
                               className="hr-btn text-rose-700 hover:bg-rose-50 border-rose-200"
                               title="Kembalikan ke default departemen"
+                              aria-label={`Kembalikan shift ${ea.employeeName} ke jadwal departemen`}
                             >
                               Reset ke Dept
                             </button>
@@ -1024,9 +1048,9 @@ export default function ShiftManagementPage() {
             </div>
 
             {/* Window Scan Masuk */}
-            <div className="grid grid-cols-2 gap-3 p-3 bg-blue-50/50 rounded-xl border border-blue-200/60">
+            <div className="grid grid-cols-2 gap-3 p-3 bg-emerald-50/50 rounded-xl border border-emerald-200/60">
               <label className="space-y-1 block">
-                <span className="font-semibold text-blue-900">Jam Mulai Scan Masuk</span>
+                <span className="font-semibold text-emerald-900">Jam Mulai Scan Masuk</span>
                 <input
                   type="time"
                   required
@@ -1037,7 +1061,7 @@ export default function ShiftManagementPage() {
               </label>
 
               <label className="space-y-1 block">
-                <span className="font-semibold text-blue-900">Jam Akhir Scan Masuk</span>
+                <span className="font-semibold text-emerald-900">Jam Akhir Scan Masuk</span>
                 <input
                   type="time"
                   required
@@ -1049,9 +1073,9 @@ export default function ShiftManagementPage() {
             </div>
 
             {/* Window Scan Pulang */}
-            <div className="grid grid-cols-2 gap-3 p-3 bg-purple-50/50 rounded-xl border border-purple-200/60">
+            <div className="grid grid-cols-2 gap-3 p-3 bg-teal-50/50 rounded-xl border border-teal-200/60">
               <label className="space-y-1 block">
-                <span className="font-semibold text-purple-900">Jam Mulai Scan Pulang</span>
+                <span className="font-semibold text-teal-900">Jam Mulai Scan Pulang</span>
                 <input
                   type="time"
                   required
@@ -1062,7 +1086,7 @@ export default function ShiftManagementPage() {
               </label>
 
               <label className="space-y-1 block">
-                <span className="font-semibold text-purple-900">Jam Akhir Scan Pulang</span>
+                <span className="font-semibold text-teal-900">Jam Akhir Scan Pulang</span>
                 <input
                   type="time"
                   required
@@ -1231,8 +1255,8 @@ export default function ShiftManagementPage() {
               </div>
 
               {/* Catatan Hari Minggu */}
-              <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200 text-blue-900 text-[11px] flex gap-2">
-                <Info size={16} className="shrink-0 text-blue-600 mt-0.5" />
+              <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200 text-emerald-900 text-[11px] flex gap-2">
+                <Info size={16} className="shrink-0 text-emerald-600 mt-0.5" />
                 <span>
                   <strong>Aturan Hari Minggu:</strong> Jika di-assign jam kerja, kehadiran di hari Minggu dihitung sesuai jadwal tersebut (08:00 - 16:00). Jika karyawan tidak hadir/tidak tap di hari Minggu, otomatis dihitung <strong>LIBUR</strong> (bukan ALPHA).
                 </span>
@@ -1391,6 +1415,16 @@ export default function ShiftManagementPage() {
         itemName={deletingWorkHours?.name}
         onClose={() => setDeletingWorkHours(null)}
         onConfirm={handleDeleteWorkHours}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(removingEmployeeAssignment)}
+        title="Reset Shift Karyawan"
+        description="Kembalikan jadwal shift karyawan ini mengikuti penugasan standar departemennya?"
+        itemName={removingEmployeeAssignment?.name}
+        confirmText="Reset ke Dept"
+        onClose={() => setRemovingEmployeeAssignment(null)}
+        onConfirm={handleConfirmRemoveEmployeeAssignment}
       />
     </div>
   );

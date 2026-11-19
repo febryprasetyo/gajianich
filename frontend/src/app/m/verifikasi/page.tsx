@@ -280,7 +280,7 @@ export default function MobileVerifikasiPage() {
                     className={`rounded-lg px-2 py-0.5 text-[10px] font-bold ${
                       log.eventType === 'IN'
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        : 'bg-blue-50 text-blue-700 border border-blue-200'
+                        : 'bg-teal-50 text-teal-700 border border-teal-200'
                     }`}
                   >
                     SCAN {log.eventType}
@@ -306,7 +306,7 @@ export default function MobileVerifikasiPage() {
                       : `Luar Kantor ${log.distanceMeters ? `(${(log.distanceMeters / 1000).toFixed(1)} km)` : ''}`}
                   </span>
                   {isFieldDuty && (
-                    <span className="rounded-md bg-purple-50 px-1.5 py-0.5 font-bold text-purple-700 border border-purple-200 text-[10px]">
+                    <span className="rounded-md bg-amber-50 px-1.5 py-0.5 font-bold text-amber-700 border border-amber-200 text-[10px]">
                       Dinas Luar
                     </span>
                   )}

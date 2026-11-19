@@ -84,7 +84,8 @@ export default function ConfirmDeleteModal({
             type="button"
             onClick={onClose}
             aria-label="Tutup modal"
-            className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+            title="Tutup dialog"
+            className="absolute top-4 right-4 p-2 min-h-10 min-w-10 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           >
             <X className="w-4 h-4" />
           </button>

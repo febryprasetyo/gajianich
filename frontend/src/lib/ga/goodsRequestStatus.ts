@@ -65,10 +65,10 @@ export function getStatusBadgeConfig(status: GoodsRequestStatus): StatusBadgeCon
       };
     case 'processing':
       return {
-        bgClass: 'bg-blue-100',
-        textClass: 'text-blue-800',
-        borderClass: 'border-blue-300',
-        dotClass: 'bg-blue-1000',
+        bgClass: 'bg-teal-100',
+        textClass: 'text-teal-800',
+        borderClass: 'border-teal-300',
+        dotClass: 'bg-teal-500',
       };
     case 'rejected':
       return {

@@ -471,7 +471,7 @@ export default function AttendanceTransactionsPage() {
           <span>Perlu Ditetapkan Shift ({unassignedRecords.length})</span>
           {unassignedRecords.length > 0 && (
             <span className="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">
-              Action Required
+              Perlu Tindakan
             </span>
           )}
         </button>
@@ -687,18 +687,18 @@ export default function AttendanceTransactionsPage() {
                             {rec.employeeCode} • {rec.department}
                           </div>
                         </td>
-                        <td className="py-3 px-3 whitespace-nowrap font-mono text-slate-700">
+                        <td className="py-3 px-3 whitespace-nowrap font-mono tabular-nums text-slate-700">
                           {rec.workDate}
                         </td>
                         <td className="py-3 px-3">
                           <div className="font-medium text-slate-800">{rec.shiftName}</div>
-                          <div className="text-[10px] text-slate-400 font-mono">
+                          <div className="text-[10px] text-slate-400 font-mono tabular-nums">
                             {rec.shiftIn || rec.scheduleIn} - {rec.shiftOut || rec.scheduleOut}
                           </div>
                         </td>
-                        <td className="py-3 px-3 text-center font-mono font-bold text-slate-800 whitespace-nowrap">
+                        <td className="py-3 px-3 text-center font-mono tabular-nums font-bold text-slate-800 whitespace-nowrap">
                           {rec.scanIn ? (
-                            <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                            <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 font-mono tabular-nums">
                               {rec.scanIn}
                             </span>
                           ) : (
@@ -707,9 +707,9 @@ export default function AttendanceTransactionsPage() {
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-center font-mono font-bold text-slate-800 whitespace-nowrap">
+                        <td className="py-3 px-3 text-center font-mono tabular-nums font-bold text-slate-800 whitespace-nowrap">
                           {rec.scanOut ? (
-                            <span className="text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+                            <span className="text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100 font-mono tabular-nums">
                               {rec.scanOut}
                             </span>
                           ) : (
@@ -718,22 +718,22 @@ export default function AttendanceTransactionsPage() {
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-center whitespace-nowrap">
+                        <td className="py-3 px-3 text-center whitespace-nowrap font-mono tabular-nums">
                           {rec.lateMinutes > 0 ? (
-                            <span className="font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full text-[11px] border border-rose-100">
+                            <span className="font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full text-[11px] border border-rose-100 font-mono tabular-nums">
                               +{rec.lateMinutes} m
                             </span>
                           ) : (
-                            <span className="text-slate-400">0 m</span>
+                            <span className="text-slate-400 font-mono tabular-nums">0 m</span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-center whitespace-nowrap">
+                        <td className="py-3 px-3 text-center whitespace-nowrap font-mono tabular-nums">
                           {rec.earlyMinutes > 0 ? (
-                            <span className="font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full text-[11px] border border-amber-100">
+                            <span className="font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full text-[11px] border border-amber-100 font-mono tabular-nums">
                               -{rec.earlyMinutes} m
                             </span>
                           ) : (
-                            <span className="text-slate-400">0 m</span>
+                            <span className="text-slate-400 font-mono tabular-nums">0 m</span>
                           )}
                         </td>
                         <td className="py-3 px-4 text-center whitespace-nowrap">
@@ -762,8 +762,8 @@ export default function AttendanceTransactionsPage() {
                             </span>
                           )}
                           {rec.status === 'Tidak Scan Masuk' && (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-violet-100 text-violet-800 border border-violet-200">
-                              <span className="w-1.5 h-1.5 rounded-full bg-violet-600" />
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-800 border border-slate-300">
+                              <span className="w-1.5 h-1.5 rounded-full bg-slate-600" />
                               Tidak Scan Masuk
                             </span>
                           )}

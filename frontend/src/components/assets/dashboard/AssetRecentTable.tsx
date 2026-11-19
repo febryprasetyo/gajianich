@@ -38,7 +38,7 @@ function getStatusBadge(status: string) {
   if (norm === 'available') {
     return {
       label: 'Tersedia',
-      className: 'bg-blue-50 text-blue-700 border-blue-200',
+      className: 'bg-teal-50 text-teal-700 border-teal-200',
     };
   }
   if (norm === 'maintenance') {
