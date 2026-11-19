@@ -8,6 +8,7 @@ test('canAccessMobileApp allows employee, HR roles, superadmin, or mobile verifi
   assert.equal(canAccessMobileApp({ roleName: 'HRD' }), true);
   assert.equal(canAccessMobileApp({ roleName: 'hr_attendance' }), true);
   assert.equal(canAccessMobileApp({ roleName: 'superadmin' }), true);
+  assert.equal(canAccessMobileApp({ roleName: 'Admin' }), true);
   assert.equal(canAccessMobileApp({ roleName: 'CustomManager', permissions: ['attendance.mobile.verify'] }), true);
   assert.equal(canAccessMobileApp({ roleName: 'Guest', permissions: [] }), false);
   assert.equal(canAccessMobileApp(null), false);

@@ -17,14 +17,26 @@ test('PWA starts at the account-aware entry point', () => {
   assert.equal(manifest().start_url, '/');
 });
 
-test('admin launches from the old mobile start URL reach their desktop workspace', () => {
+test('roles without mobile access are redirected to desktop workspace when accessing mobile routes', () => {
   for (const [roleName, permissions, target] of [
-    ['SuperAdmin', ['*'], '/dashboard/assets/overview'],
-    ['Admin', [], '/dashboard/access'],
-    ['HRD', ['attendance.view'], '/dashboard/attendance/overview'],
+    ['Guest', [], '/dashboard/welcome'],
   ]) {
     for (const path of ['/m', '/m/beranda', '/m/beranda/']) {
       assert.equal(new URL(launch(path, { roleName, permissions }).headers.get('location')).pathname, target);
+    }
+  }
+});
+
+test('authorized roles (superadmin, admin, hrd, employee) retain access to mobile portal', () => {
+  for (const [roleName, permissions] of [
+    ['SuperAdmin', ['*']],
+    ['Admin', []],
+    ['HRD', ['attendance.view']],
+    ['Employee', []],
+    ['Karyawan', []],
+  ]) {
+    for (const path of ['/m', '/m/beranda', '/m/beranda/']) {
+      assert.equal(launch(path, { roleName, permissions }).headers.get('location'), null);
     }
   }
 });

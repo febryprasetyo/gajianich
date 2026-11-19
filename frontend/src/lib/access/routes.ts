@@ -209,8 +209,7 @@ export function canAccessMobileApp(
     normRole === 'karyawan' ||
     normRole.includes('hr') ||
     normRole.includes('attendance') ||
-    normRole === 'superadmin' ||
-    normRole === 'super_admin' ||
+    normRole.includes('admin') ||
     perms.includes('attendance.mobile.verify') ||
     perms.includes('*')
   );
