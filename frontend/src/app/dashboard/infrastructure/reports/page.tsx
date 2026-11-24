@@ -12,13 +12,14 @@ import {
   Eye,
   FileText,
   Play,
+  RotateCcw,
+  Search,
   Server,
   X,
 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import PageHeader from '@/components/ui/PageHeader';
 import KpiGrid, { KpiCardItem } from '@/components/ui/KpiGrid';
-import FilterToolbar from '@/components/ui/FilterToolbar';
 import TableShell from '@/components/ui/TableShell';
 import TablePagination from '@/components/ui/TablePagination';
 import RowActionButton from '@/components/ui/RowActionButton';
@@ -305,69 +306,90 @@ export default function WeeklyReportsPage() {
           className="lg:grid-cols-4"
         />
 
-        {/* Search & Filter Toolbar */}
-        <FilterToolbar
-          search={search}
-          onSearchChange={(val) => {
-            setSearch(val);
-            setCurrentPage(1);
-          }}
-          searchPlaceholder="Cari kode server, nama host, atau periode pekan..."
-          hasActiveFilters={hasActiveFilters}
-          onResetFilters={resetFilters}
-          dropdownFilters={
-            <div className="flex flex-wrap items-center gap-3">
-              <div>
-                <select
-                  value={scopeFilter}
-                  onChange={(e) => {
-                    setScopeFilter(e.target.value as any);
-                    setCurrentPage(1);
-                  }}
-                  className="px-3 py-1.5 text-xs border border-slate-300 rounded-xl bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                >
-                  <option value="all">Semua Cakupan</option>
-                  <option value="NODE">Node Server</option>
-                  <option value="CLUSTER">Cluster Fleet</option>
-                </select>
-              </div>
-
-              <div>
-                <select
-                  value={selectedServer}
-                  onChange={(e) => {
-                    setSelectedServer(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="px-3 py-1.5 text-xs border border-slate-300 rounded-xl bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                >
-                  <option value="all">Semua Server</option>
-                  {servers.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.serverCode})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => {
-                    setStatusFilter(e.target.value as any);
-                    setCurrentPage(1);
-                  }}
-                  className="px-3 py-1.5 text-xs border border-slate-300 rounded-xl bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                >
-                  <option value="all">Semua Status</option>
-                  <option value="NORMAL">Normal</option>
-                  <option value="WARNING">Perlu Perhatian</option>
-                  <option value="CRITICAL">Kritis</option>
-                </select>
-              </div>
+        {/* Search & Filter Toolbar - 1 Single Row */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-xs mb-6">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
+            {/* 1. Search Box */}
+            <div className="relative flex-1 min-w-[240px]">
+              <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Cari kode server, nama host, atau periode pekan..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
+              />
             </div>
-          }
-        />
+
+            {/* 2. Select Cakupan */}
+            <div className="w-full lg:w-44 shrink-0">
+              <select
+                value={scopeFilter}
+                onChange={(e) => {
+                  setScopeFilter(e.target.value as any);
+                  setCurrentPage(1);
+                }}
+                className="w-full px-3 py-2 text-xs font-bold border border-slate-300 rounded-xl bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 cursor-pointer shadow-2xs"
+              >
+                <option value="all">Semua Cakupan</option>
+                <option value="NODE">Node Server</option>
+                <option value="CLUSTER">Cluster Fleet</option>
+              </select>
+            </div>
+
+            {/* 3. Select Server */}
+            <div className="w-full lg:w-56 shrink-0">
+              <select
+                value={selectedServer}
+                onChange={(e) => {
+                  setSelectedServer(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full px-3 py-2 text-xs font-bold border border-slate-300 rounded-xl bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 cursor-pointer shadow-2xs truncate"
+              >
+                <option value="all">Semua Server</option>
+                {servers.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} ({s.serverCode})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 4. Select Status */}
+            <div className="w-full lg:w-44 shrink-0">
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value as any);
+                  setCurrentPage(1);
+                }}
+                className="w-full px-3 py-2 text-xs font-bold border border-slate-300 rounded-xl bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 cursor-pointer shadow-2xs"
+              >
+                <option value="all">Semua Status</option>
+                <option value="NORMAL">Normal</option>
+                <option value="WARNING">Perlu Perhatian</option>
+                <option value="CRITICAL">Kritis</option>
+              </select>
+            </div>
+
+            {/* 5. Reset Filter Button */}
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="px-3.5 py-2 text-xs font-bold text-rose-700 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-300 rounded-xl transition flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-2xs"
+                title="Reset semua filter ke default"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset</span>
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* Table Shell & Report Records */}
         <TableShell
@@ -395,16 +417,16 @@ export default function WeeklyReportsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/75 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
-                  <th className="px-4 py-3">Pekan</th>
-                  <th className="px-4 py-3">Server & Cakupan</th>
-                  <th className="px-4 py-3">Rentang Periode</th>
-                  <th className="px-4 py-3">SLA</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Ringkasan Eksekutif</th>
-                  <th className="px-4 py-3 text-right">Ukuran</th>
-                  <th className="px-4 py-3">Tanggal Terbit</th>
-                  <th className="px-4 py-3 text-center">Aksi</th>
+                <tr className="border-b border-slate-300 bg-slate-100 text-slate-800 font-extrabold uppercase text-xs tracking-wider">
+                  <th className="px-4 py-3.5">Pekan</th>
+                  <th className="px-4 py-3.5">Server & Cakupan</th>
+                  <th className="px-4 py-3.5">Rentang Periode</th>
+                  <th className="px-4 py-3.5">SLA</th>
+                  <th className="px-4 py-3.5">Status</th>
+                  <th className="px-4 py-3.5">Ringkasan Eksekutif</th>
+                  <th className="px-4 py-3.5 text-right">Ukuran</th>
+                  <th className="px-4 py-3.5">Tanggal Terbit</th>
+                  <th className="px-4 py-3.5 text-center">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 bg-white">
@@ -412,61 +434,61 @@ export default function WeeklyReportsPage() {
                   const isCluster = report.scopeType === 'CLUSTER';
                   const statusStyle =
                     report.status === 'NORMAL'
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
                       : report.status === 'WARNING'
-                      ? 'bg-amber-50 text-amber-700 border-amber-200'
-                      : 'bg-rose-50 text-rose-700 border-rose-200';
+                      ? 'bg-amber-100 text-amber-900 border-amber-300'
+                      : 'bg-rose-100 text-rose-900 border-rose-300';
 
                   const dotStyle =
                     report.status === 'NORMAL'
-                      ? 'bg-emerald-500'
+                      ? 'bg-emerald-600'
                       : report.status === 'WARNING'
-                      ? 'bg-amber-500'
-                      : 'bg-rose-500';
+                      ? 'bg-amber-600'
+                      : 'bg-rose-600';
 
                   return (
-                    <tr key={report.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-4 py-3 font-mono font-bold text-slate-800 whitespace-nowrap">
-                        <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">
+                    <tr key={report.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-4 py-3 font-mono font-bold text-slate-900 whitespace-nowrap">
+                        <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-900 font-bold border border-slate-300 text-xs">
                           {report.periodWeek}
                         </span>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-slate-900">{report.serverName}</span>
+                          <span className="font-bold text-slate-900 text-xs">{report.serverName}</span>
                           <span
-                            className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase border ${
+                            className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase border ${
                               isCluster
-                                ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                                : 'bg-slate-100 text-slate-700 border-slate-200'
+                                ? 'bg-indigo-100 text-indigo-900 border-indigo-300'
+                                : 'bg-slate-100 text-slate-800 border-slate-300'
                             }`}
                           >
                             {isCluster ? 'CLUSTER' : 'NODE'}
                           </span>
                         </div>
-                        <div className="text-[11px] font-mono text-slate-400">{report.serverCode}</div>
+                        <div className="text-xs font-mono font-medium text-slate-600">{report.serverCode}</div>
                       </td>
-                      <td className="px-4 py-3 text-slate-600 whitespace-nowrap text-[11px]">
+                      <td className="px-4 py-3 text-slate-800 font-medium whitespace-nowrap text-xs">
                         {report.startDate} &rarr; {report.endDate}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="font-extrabold text-emerald-700 text-xs">
+                        <span className="font-black text-emerald-800 text-xs">
                           {report.slaPercent || (report.status === 'NORMAL' ? '99.98' : '99.65')}%
                         </span>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${statusStyle}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${dotStyle}`}></span>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${statusStyle}`}>
+                          <span className={`w-2 h-2 rounded-full ${dotStyle}`}></span>
                           {report.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3 max-w-xs text-slate-600 truncate" title={report.executiveSummary || ''}>
+                      <td className="px-4 py-3 max-w-sm text-slate-800 truncate text-xs font-normal" title={report.executiveSummary || ''}>
                         {report.executiveSummary || '-'}
                       </td>
-                      <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-500 whitespace-nowrap text-[11px]">
+                      <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums text-slate-700 whitespace-nowrap text-xs">
                         {(report.fileSizeBytes / 1024).toFixed(1)} KB
                       </td>
-                      <td className="px-4 py-3 text-slate-500 whitespace-nowrap text-[11px]">
+                      <td className="px-4 py-3 text-slate-700 font-medium whitespace-nowrap text-xs">
                         {new Date(report.createdAt).toLocaleDateString('id-ID', {
                           day: '2-digit',
                           month: 'short',

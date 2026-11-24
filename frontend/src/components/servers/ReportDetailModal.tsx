@@ -84,17 +84,17 @@ export default function ReportDetailModal({
 
   const statusBg =
     report.status === 'NORMAL'
-      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+      ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
       : report.status === 'WARNING'
-      ? 'bg-amber-50 text-amber-700 border-amber-200'
-      : 'bg-rose-50 text-rose-700 border-rose-200';
+      ? 'bg-amber-100 text-amber-900 border-amber-300'
+      : 'bg-rose-100 text-rose-900 border-rose-300';
 
   const dotColor =
     report.status === 'NORMAL'
-      ? 'bg-emerald-500'
+      ? 'bg-emerald-600'
       : report.status === 'WARNING'
-      ? 'bg-amber-500'
-      : 'bg-rose-500';
+      ? 'bg-amber-600'
+      : 'bg-rose-600';
 
   const slaVal = report.slaPercent || (report.status === 'NORMAL' ? '99.98' : '99.65');
 
@@ -104,15 +104,15 @@ export default function ReportDetailModal({
       onClose={onClose}
       title={
         <div className="flex items-center gap-2">
-          <span>{report.serverName}</span>
-          <span className="text-xs font-mono text-slate-400 font-normal">
+          <span className="font-bold text-slate-900">{report.serverName}</span>
+          <span className="text-xs font-mono text-slate-600 font-medium">
             ({report.serverCode})
           </span>
           <span
-            className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+            className={`text-xs font-extrabold px-2 py-0.5 rounded-full border ${
               isCluster
-                ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                : 'bg-slate-100 text-slate-700 border-slate-200'
+                ? 'bg-indigo-100 text-indigo-900 border-indigo-300'
+                : 'bg-slate-100 text-slate-800 border-slate-300'
             }`}
           >
             {isCluster ? 'CLUSTER FLEET' : 'NODE SERVER'}
@@ -128,14 +128,14 @@ export default function ReportDetailModal({
       maxWidthClass="max-w-3xl"
       footer={
         <div className="flex items-center justify-between w-full">
-          <div className="text-[11px] text-slate-500 font-mono">
+          <div className="text-xs text-slate-700 font-mono font-medium">
             Berkas: {report.pdfFileName} ({(report.fileSizeBytes / 1024).toFixed(1)} KB)
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition cursor-pointer"
+              className="px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition cursor-pointer"
             >
               Tutup
             </button>
@@ -154,7 +154,7 @@ export default function ReportDetailModal({
     >
       <div className="space-y-4">
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-1 border-b border-slate-200 pb-1 overflow-x-auto">
+        <div className="flex items-center gap-1.5 border-b border-slate-200 pb-2 overflow-x-auto">
           {[
             { id: 'ringkasan', label: 'Ringkasan & SLA', icon: FileText },
             { id: 'layanan', label: 'Layanan & Sumber Daya', icon: Server },
@@ -171,8 +171,8 @@ export default function ReportDetailModal({
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg transition whitespace-nowrap cursor-pointer ${
                   isActive
-                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100 font-semibold border border-transparent'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -188,29 +188,29 @@ export default function ReportDetailModal({
             {/* KPI Header Bar */}
             <div className="grid grid-cols-3 gap-3">
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wide block">
                   Status Audit
                 </span>
                 <span
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border mt-1 ${statusBg}`}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border mt-1 ${statusBg}`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`}></span>
+                  <span className={`w-2 h-2 rounded-full ${dotColor}`}></span>
                   {report.status}
                 </span>
               </div>
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wide block">
                   SLA Ketersediaan
                 </span>
-                <span className="text-base font-extrabold text-emerald-700 mt-0.5 block">
+                <span className="text-lg font-black text-emerald-800 mt-0.5 block">
                   {slaVal}%
                 </span>
               </div>
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wide block">
                   Cakupan Audit
                 </span>
-                <span className="text-xs font-bold text-slate-800 mt-1 block">
+                <span className="text-xs font-extrabold text-slate-900 mt-1 block">
                   {isCluster ? 'Cluster Multi-Node' : 'Single Host Server'}
                 </span>
               </div>
@@ -218,23 +218,23 @@ export default function ReportDetailModal({
 
             {/* Executive Summary */}
             <div className="p-4 bg-white border border-slate-200 rounded-xl space-y-1.5 shadow-xs">
-              <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-1.5 text-emerald-700">
+              <h4 className="text-xs font-extrabold text-emerald-800 uppercase tracking-wide flex items-center gap-1.5">
                 <ExternalLink className="w-3.5 h-3.5" />
                 Ringkasan Eksekutif (Executive Summary)
               </h4>
-              <p className="text-xs text-slate-700 leading-relaxed text-justify">
+              <p className="text-xs text-slate-800 leading-relaxed text-justify font-normal">
                 {report.executiveSummary || 'Tidak ada ringkasan yang tersedia.'}
               </p>
             </div>
 
             {/* RCA If Warning/Critical */}
             {report.incidentRca && (
-              <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl space-y-1.5">
-                <h4 className="text-xs font-extrabold text-rose-800 uppercase tracking-wide flex items-center gap-1">
+              <div className="p-4 bg-rose-50 border border-rose-300 rounded-xl space-y-1.5">
+                <h4 className="text-xs font-extrabold text-rose-900 uppercase tracking-wide flex items-center gap-1">
                   <AlertTriangle className="w-3.5 h-3.5" />
                   Analisis Akar Masalah (Root Cause Analysis - RCA)
                 </h4>
-                <p className="text-xs text-rose-900 leading-relaxed">{report.incidentRca}</p>
+                <p className="text-xs text-rose-950 font-medium leading-relaxed">{report.incidentRca}</p>
               </div>
             )}
           </div>
@@ -244,7 +244,7 @@ export default function ReportDetailModal({
         {activeTab === 'layanan' && (
           <div className="space-y-4">
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-              <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wide mb-2">
+              <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wide mb-2">
                 Ketersediaan Layanan & Proses Aktif
               </h4>
               {report.serviceAvailability?.servicesList &&
@@ -253,26 +253,26 @@ export default function ReportDetailModal({
                   {report.serviceAvailability.servicesList.map((svc: any, idx: number) => (
                     <div
                       key={idx}
-                      className="flex items-center justify-between p-2 bg-white border border-slate-200 rounded-lg text-xs"
+                      className="flex items-center justify-between p-2.5 bg-white border border-slate-200 rounded-lg text-xs"
                     >
                       <div className="flex items-center gap-2">
                         <span
                           className={`w-2 h-2 rounded-full ${
                             svc.status === 'active' || svc.status === 'online'
-                              ? 'bg-emerald-500'
-                              : 'bg-rose-500'
+                              ? 'bg-emerald-600'
+                              : 'bg-rose-600'
                           }`}
                         />
-                        <span className="font-bold text-slate-800">{svc.name}</span>
-                        <span className="text-[10px] text-slate-400 font-mono uppercase">
+                        <span className="font-bold text-slate-900">{svc.name}</span>
+                        <span className="text-xs text-slate-600 font-mono font-medium uppercase">
                           ({svc.category})
                         </span>
                       </div>
-                      <div className="flex items-center gap-3 text-slate-500 text-[11px]">
+                      <div className="flex items-center gap-3 text-slate-700 text-xs font-medium">
                         <span>Uptime: {svc.uptime}</span>
                         <span
-                          className={`font-semibold ${
-                            svc.restarts > 0 ? 'text-rose-600' : 'text-slate-400'
+                          className={`font-bold ${
+                            svc.restarts > 0 ? 'text-rose-700' : 'text-slate-600'
                           }`}
                         >
                           Restarts: {svc.restarts}
@@ -282,7 +282,7 @@ export default function ReportDetailModal({
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-700 font-medium">
                   Seluruh layanan kontainer Docker dan service systemd aktif terpantau normal.
                 </p>
               )}
@@ -291,21 +291,21 @@ export default function ReportDetailModal({
             {/* Resource Snapshot Grid */}
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
-                <span className="text-[10px] font-bold text-slate-500 uppercase">Prosesor (CPU)</span>
-                <div className="text-sm font-extrabold text-slate-800">
+                <span className="text-xs font-bold text-slate-700 uppercase">Prosesor (CPU)</span>
+                <div className="text-base font-extrabold text-slate-900">
                   Rata-rata: {report.resourceMetrics?.cpu?.avgPct || 19.2}%
                 </div>
-                <div className="text-[11px] text-slate-500">
+                <div className="text-xs font-medium text-slate-700">
                   Beban Puncak: {report.resourceMetrics?.cpu?.peakPct || 45.1}% (P95:{' '}
                   {report.resourceMetrics?.cpu?.p95Pct || 25.9}%)
                 </div>
               </div>
               <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
-                <span className="text-[10px] font-bold text-slate-500 uppercase">Memori (RAM)</span>
-                <div className="text-sm font-extrabold text-slate-800">
+                <span className="text-xs font-bold text-slate-700 uppercase">Memori (RAM)</span>
+                <div className="text-base font-extrabold text-slate-900">
                   Rata-rata: {report.resourceMetrics?.ram?.avgPct || 45.5}%
                 </div>
-                <div className="text-[11px] text-slate-500">
+                <div className="text-xs font-medium text-slate-700">
                   Puncak RAM: {report.resourceMetrics?.ram?.peakPct || 65.4}% • Terpakai:{' '}
                   {report.resourceMetrics?.ram?.usedGb || 7.2} GB /{' '}
                   {report.resourceMetrics?.ram?.totalGb || 16} GB
@@ -320,53 +320,53 @@ export default function ReportDetailModal({
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-3">
               <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
-                <span className="text-[10px] font-bold text-slate-500 uppercase">PostgreSQL Pool</span>
-                <div className="text-sm font-extrabold text-slate-800">
+                <span className="text-xs font-bold text-slate-700 uppercase">PostgreSQL Pool</span>
+                <div className="text-base font-extrabold text-slate-900">
                   {report.databaseMiddleware?.postgres?.activeConnections || 9} /{' '}
                   {report.databaseMiddleware?.postgres?.maxConnections || 100}
                 </div>
-                <div className="text-[11px] text-emerald-600 font-semibold">
+                <div className="text-xs text-emerald-800 font-bold">
                   Status: {report.databaseMiddleware?.postgres?.status || 'OPTIMAL'}
                 </div>
               </div>
               <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
-                <span className="text-[10px] font-bold text-slate-500 uppercase">Redis In-Memory</span>
-                <div className="text-sm font-extrabold text-slate-800">
+                <span className="text-xs font-bold text-slate-700 uppercase">Redis In-Memory</span>
+                <div className="text-base font-extrabold text-slate-900">
                   {report.databaseMiddleware?.redis?.usedMemoryHuman || '1.13 MB'}
                 </div>
-                <div className="text-[11px] text-slate-500">
+                <div className="text-xs text-slate-700 font-medium">
                   {report.databaseMiddleware?.redis?.connectedClients || 2} Klien Aktif
                 </div>
               </div>
               <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
-                <span className="text-[10px] font-bold text-slate-500 uppercase">Firewall UFW</span>
-                <div className="text-sm font-extrabold text-emerald-700">
+                <span className="text-xs font-bold text-slate-700 uppercase">Firewall UFW</span>
+                <div className="text-base font-extrabold text-emerald-800">
                   ● {report.securityAudit?.ufwStatus || 'UFW Active'}
                 </div>
-                <div className="text-[11px] text-slate-500">Default Drop Policy</div>
+                <div className="text-xs text-slate-700 font-medium">Default Drop Policy</div>
               </div>
             </div>
 
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
-              <h4 className="font-extrabold text-slate-800 uppercase tracking-wide">
+              <h4 className="font-extrabold text-slate-900 uppercase tracking-wide">
                 Audit Log Autentikasi Host (/var/log/auth.log)
               </h4>
-              <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-700">
+              <div className="grid grid-cols-2 gap-2 text-xs text-slate-800">
                 <div>
                   • Login SSH Berhasil:{' '}
-                  <strong>{report.securityAudit?.successfulSshLogins ?? 24} sesi</strong>
+                  <strong className="text-slate-900">{report.securityAudit?.successfulSshLogins ?? 24} sesi</strong>
                 </div>
                 <div>
                   • Percobaan SSH Gagal:{' '}
-                  <strong>{report.securityAudit?.failedSshAttempts ?? 0} kali</strong>
+                  <strong className="text-slate-900">{report.securityAudit?.failedSshAttempts ?? 0} kali</strong>
                 </div>
                 <div>
                   • Eksekusi Hak Root Sudo:{' '}
-                  <strong>{report.securityAudit?.sudoExecutions ?? 59} kali</strong>
+                  <strong className="text-slate-900">{report.securityAudit?.sudoExecutions ?? 59} kali</strong>
                 </div>
                 <div>
                   • Sisa Masa Berlaku TLS/SSL:{' '}
-                  <strong>{report.securityAudit?.sslDaysRemaining ?? 89} hari</strong>
+                  <strong className="text-slate-900">{report.securityAudit?.sslDaysRemaining ?? 89} hari</strong>
                 </div>
               </div>
             </div>
@@ -377,7 +377,7 @@ export default function ReportDetailModal({
         {activeTab === 'backup_insiden' && (
           <div className="space-y-4">
             <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-2">
-              <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wide">
+              <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wide">
                 Integritas Backup Database & Disaster Recovery
               </h4>
               {report.backupDr?.items && report.backupDr.items.length > 0 ? (
@@ -385,26 +385,26 @@ export default function ReportDetailModal({
                   {report.backupDr.items.map((b: any, idx: number) => (
                     <div
                       key={idx}
-                      className="flex items-center justify-between p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                      className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
                     >
-                      <span className="font-bold text-slate-800">{b.dbName}</span>
-                      <span className="text-slate-500">{b.sizeMb} MB</span>
-                      <span className="text-emerald-700 font-semibold">✓ {b.status}</span>
-                      <span className="text-[11px] text-slate-400">
+                      <span className="font-bold text-slate-900">{b.dbName}</span>
+                      <span className="text-slate-700 font-semibold">{b.sizeMb} MB</span>
+                      <span className="text-emerald-800 font-bold">✓ {b.status}</span>
+                      <span className="text-xs text-slate-700 font-medium">
                         {b.completedAt ? new Date(b.completedAt).toLocaleString('id-ID') : '-'}
                       </span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-slate-500 italic">
+                <p className="text-xs text-slate-700 italic">
                   Tidak ada pencatatan insiden kegagalan backup pada periode audit ini.
                 </p>
               )}
             </div>
 
             <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-2">
-              <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wide">
+              <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wide">
                 Rekapitulasi Tiket Insiden (Incident Tickets)
               </h4>
               {report.incidentsMaintenance && report.incidentsMaintenance.length > 0 ? (
@@ -412,27 +412,27 @@ export default function ReportDetailModal({
                   {report.incidentsMaintenance.map((inc, idx) => (
                     <div
                       key={idx}
-                      className="p-2.5 bg-rose-50/50 border border-rose-200 rounded-lg text-xs space-y-1"
+                      className="p-3 bg-rose-50/75 border border-rose-300 rounded-lg text-xs space-y-1"
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-mono font-bold text-slate-900">{inc.code}</span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">
+                        <span className="px-2 py-0.5 rounded text-xs font-bold bg-rose-100 text-rose-900 border border-rose-300">
                           {inc.severity}
                         </span>
                       </div>
-                      <div className="text-[11px] text-slate-700">
+                      <div className="text-xs text-slate-800">
                         <strong>Komponen:</strong> {inc.component}
                       </div>
-                      <div className="text-[11px] text-slate-600">{inc.description}</div>
-                      <div className="text-[11px] text-emerald-700 font-semibold">
+                      <div className="text-xs text-slate-700">{inc.description}</div>
+                      <div className="text-xs text-emerald-800 font-bold">
                         <strong>Resolusi:</strong> {inc.resolution}
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800 font-semibold flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-lg text-xs text-emerald-900 font-semibold flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-700" />
                   <span>
                     Tidak Ada Insiden Tercatat — Ketersediaan layanan terjaga 100% tanpa gangguan.
                   </span>
@@ -446,7 +446,7 @@ export default function ReportDetailModal({
         {activeTab === 'action_items' && (
           <div className="space-y-4">
             <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-2">
-              <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wide">
+              <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wide">
                 Rencana Tindakan PIC (Action Items)
               </h4>
               {report.actionItems && report.actionItems.length > 0 ? (
@@ -454,25 +454,25 @@ export default function ReportDetailModal({
                   {report.actionItems.map((act, idx) => (
                     <div
                       key={idx}
-                      className="flex items-start justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs gap-3"
+                      className="flex items-start justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs gap-3"
                     >
-                      <div className="space-y-0.5">
+                      <div className="space-y-1">
                         <div className="font-bold text-slate-900">
                           {act.no}. {act.issue}
                         </div>
-                        <div className="text-[11px] text-slate-600">{act.action}</div>
+                        <div className="text-xs text-slate-700 font-medium">{act.action}</div>
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-slate-200 text-slate-800">
+                        <span className="px-2.5 py-0.5 rounded text-xs font-extrabold bg-slate-200 text-slate-900 border border-slate-300">
                           PIC: {act.pic}
                         </span>
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
                             act.status === 'SELESAI'
-                              ? 'bg-emerald-100 text-emerald-800'
+                              ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
                               : act.status === 'DALAM_PROGRES'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-slate-200 text-slate-700'
+                              ? 'bg-blue-100 text-blue-900 border-blue-300'
+                              : 'bg-slate-200 text-slate-800 border-slate-300'
                           }`}
                         >
                           {act.status}
@@ -482,7 +482,7 @@ export default function ReportDetailModal({
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-slate-500 italic">Tidak ada action item tertunda.</p>
+                <p className="text-xs text-slate-700 italic">Tidak ada action item tertunda.</p>
               )}
             </div>
 
@@ -496,10 +496,10 @@ export default function ReportDetailModal({
                   {report.recommendations.map((rec, idx) => {
                     const badgeColor =
                       rec.priority === 'TINGGI'
-                        ? 'bg-rose-100 text-rose-800'
+                        ? 'bg-rose-100 text-rose-900 border-rose-300'
                         : rec.priority === 'SEDANG'
-                        ? 'bg-amber-100 text-amber-800'
-                        : 'bg-emerald-100 text-emerald-800';
+                        ? 'bg-amber-100 text-amber-900 border-amber-300'
+                        : 'bg-emerald-100 text-emerald-900 border-emerald-300';
 
                     return (
                       <div
@@ -507,20 +507,20 @@ export default function ReportDetailModal({
                         className="p-3 bg-white border border-slate-200 rounded-xl shadow-xs space-y-1"
                       >
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-slate-800">{rec.title}</span>
+                          <span className="text-xs font-bold text-slate-900">{rec.title}</span>
                           <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeColor}`}
+                            className={`text-xs font-extrabold px-2.5 py-0.5 rounded-full border ${badgeColor}`}
                           >
                             {rec.priority}
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-600 leading-relaxed">{rec.action}</p>
+                        <p className="text-xs text-slate-700 leading-relaxed font-normal">{rec.action}</p>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <p className="text-xs text-slate-400 italic">Tidak ada rekomendasi spesifik.</p>
+                <p className="text-xs text-slate-700 italic">Tidak ada rekomendasi spesifik.</p>
               )}
             </div>
           </div>
