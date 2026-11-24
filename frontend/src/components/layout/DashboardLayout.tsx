@@ -51,6 +51,7 @@ import {
   Globe,
   Database,
   FileSignature,
+  FileText,
 } from 'lucide-react';
 
 export interface NavSubItem {
@@ -165,6 +166,7 @@ export const navGroups: NavGroup[] = [
           { name: 'Helpdesk & Tiket', href: '/dashboard/tickets', icon: Ticket, permission: 'tickets.view' },
           { name: 'Server Accurate', href: '/dashboard/infrastructure', icon: Database, permission: 'infrastructure.view' },
           { name: 'Server & VPS', href: '/dashboard/servers', icon: Server, permission: 'infrastructure.view' },
+          { name: 'Laporan Audit Server', href: '/dashboard/infrastructure/reports', icon: FileText, permission: 'infrastructure.view' },
           { name: 'Domain & Hosting', href: '/dashboard/subscriptions', icon: Globe, permission: 'infrastructure.view' },
         ],
       },
@@ -200,6 +202,7 @@ const ROUTE_PERMISSION_MAP: { prefix: string; permission: string; moduleName: st
   { prefix: '/dashboard/licenses', permission: 'licenses.view', moduleName: 'Lisensi Software' },
   { prefix: '/dashboard/tickets', permission: 'tickets.view', moduleName: 'Helpdesk & Tiket' },
   { prefix: '/dashboard/infrastructure', permission: 'infrastructure.view', moduleName: 'Server Accurate' },
+  { prefix: '/dashboard/infrastructure/reports', permission: 'infrastructure.view', moduleName: 'Laporan Audit Server' },
   { prefix: '/dashboard/servers', permission: 'infrastructure.view', moduleName: 'Server & VPS' },
   { prefix: '/dashboard/subscriptions', permission: 'infrastructure.view', moduleName: 'Domain & Hosting' },
   { prefix: '/dashboard/attendance/adms', permission: 'attendance.adms.view', moduleName: 'Status Server ADMS' },

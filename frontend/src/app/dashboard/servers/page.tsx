@@ -23,6 +23,7 @@ import {
   Cpu,
   Edit3,
   ExternalLink,
+  FileText,
   KeyRound,
   Layers,
   Plus,
@@ -417,6 +418,14 @@ export default function ServerOverviewPage() {
               <span className="text-xs font-mono font-medium text-slate-700">Telemetry Stream: Live</span>
               <span className="text-[11px] text-slate-400 font-mono ml-1">{countdown}s</span>
             </div>
+
+            <Link
+              href="/dashboard/infrastructure/reports"
+              className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs"
+            >
+              <FileText className="w-4 h-4 text-emerald-600" />
+              <span>Laporan Mingguan</span>
+            </Link>
 
             <button
               type="button"
