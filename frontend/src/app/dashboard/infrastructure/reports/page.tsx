@@ -56,6 +56,7 @@ export default function WeeklyReportsPage() {
   const [search, setSearch] = useState('');
   const [selectedServer, setSelectedServer] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'NORMAL' | 'WARNING' | 'CRITICAL'>('all');
+  const [scopeFilter, setScopeFilter] = useState<'all' | 'NODE' | 'CLUSTER'>('all');
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -222,6 +223,10 @@ export default function WeeklyReportsPage() {
       if (statusFilter !== 'all' && r.status !== statusFilter) {
         return false;
       }
+      // Scope filter
+      if (scopeFilter !== 'all' && (r.scopeType || 'NODE') !== scopeFilter) {
+        return false;
+      }
       // Server filter
       if (selectedServer !== 'all' && String(r.serverId) !== selectedServer && r.serverCode !== selectedServer) {
         return false;
@@ -240,7 +245,7 @@ export default function WeeklyReportsPage() {
       }
       return true;
     });
-  }, [reports, statusFilter, selectedServer, search]);
+  }, [reports, statusFilter, scopeFilter, selectedServer, search]);
 
   // Paginated List
   const paginatedReports = useMemo(() => {
@@ -248,12 +253,13 @@ export default function WeeklyReportsPage() {
     return filteredReports.slice(start, start + pageSize);
   }, [filteredReports, currentPage, pageSize]);
 
-  const hasActiveFilters = search !== '' || selectedServer !== 'all' || statusFilter !== 'all';
+  const hasActiveFilters = search !== '' || selectedServer !== 'all' || statusFilter !== 'all' || scopeFilter !== 'all';
 
   const resetFilters = () => {
     setSearch('');
     setSelectedServer('all');
     setStatusFilter('all');
+    setScopeFilter('all');
     setCurrentPage(1);
   };
 
@@ -311,6 +317,21 @@ export default function WeeklyReportsPage() {
           onResetFilters={resetFilters}
           dropdownFilters={
             <div className="flex flex-wrap items-center gap-3">
+              <div>
+                <select
+                  value={scopeFilter}
+                  onChange={(e) => {
+                    setScopeFilter(e.target.value as any);
+                    setCurrentPage(1);
+                  }}
+                  className="px-3 py-1.5 text-xs border border-slate-300 rounded-xl bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                >
+                  <option value="all">Semua Cakupan</option>
+                  <option value="NODE">Node Server</option>
+                  <option value="CLUSTER">Cluster Fleet</option>
+                </select>
+              </div>
+
               <div>
                 <select
                   value={selectedServer}
@@ -376,8 +397,9 @@ export default function WeeklyReportsPage() {
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/75 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
                   <th className="px-4 py-3">Pekan</th>
-                  <th className="px-4 py-3">Server</th>
+                  <th className="px-4 py-3">Server & Cakupan</th>
                   <th className="px-4 py-3">Rentang Periode</th>
+                  <th className="px-4 py-3">SLA</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Ringkasan Eksekutif</th>
                   <th className="px-4 py-3 text-right">Ukuran</th>
@@ -387,6 +409,7 @@ export default function WeeklyReportsPage() {
               </thead>
               <tbody className="divide-y divide-slate-200 bg-white">
                 {paginatedReports.map((report) => {
+                  const isCluster = report.scopeType === 'CLUSTER';
                   const statusStyle =
                     report.status === 'NORMAL'
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
@@ -409,11 +432,27 @@ export default function WeeklyReportsPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="font-bold text-slate-900">{report.serverName}</div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-slate-900">{report.serverName}</span>
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase border ${
+                              isCluster
+                                ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                : 'bg-slate-100 text-slate-700 border-slate-200'
+                            }`}
+                          >
+                            {isCluster ? 'CLUSTER' : 'NODE'}
+                          </span>
+                        </div>
                         <div className="text-[11px] font-mono text-slate-400">{report.serverCode}</div>
                       </td>
                       <td className="px-4 py-3 text-slate-600 whitespace-nowrap text-[11px]">
                         {report.startDate} &rarr; {report.endDate}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="font-extrabold text-emerald-700 text-xs">
+                          {report.slaPercent || (report.status === 'NORMAL' ? '99.98' : '99.65')}%
+                        </span>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${statusStyle}`}>

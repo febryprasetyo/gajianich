@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FileText, Loader2, Play } from 'lucide-react';
+import { FileText, Loader2, Play, Server, Layers } from 'lucide-react';
 import ModalShell from '@/components/ui/ModalShell';
 import { api } from '@/lib/api';
 
@@ -24,7 +24,8 @@ export default function GenerateReportModal({
   servers,
   onSuccess,
 }: GenerateReportModalProps) {
-  const [selectedServerId, setSelectedServerId] = useState<string>('');
+  const [scope, setScope] = useState<'NODE' | 'CLUSTER'>('NODE');
+  const [selectedServerId, setSelectedServerId] = useState<string>(servers[0]?.id ? String(servers[0].id) : '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,7 +35,11 @@ export default function GenerateReportModal({
     setError(null);
 
     try {
-      const payload = selectedServerId ? { serverId: Number(selectedServerId) } : {};
+      const payload =
+        scope === 'CLUSTER'
+          ? { scope: 'CLUSTER' }
+          : { scope: 'NODE', serverId: selectedServerId ? Number(selectedServerId) : undefined };
+
       await api.post('/infrastructure/reports/generate', payload);
       onSuccess();
       onClose();
@@ -49,7 +54,7 @@ export default function GenerateReportModal({
     <ModalShell
       isOpen={isOpen}
       onClose={onClose}
-      title="Audit Server Mingguan (On-Demand)"
+      title="Audit Infrastruktur Mingguan (On-Demand)"
       subtitle="Jalankan agregasi telemetri 7 hari & pembuatan PDF resmi via background worker"
       icon={
         <div className="p-2 bg-emerald-600 rounded-xl text-white">
@@ -96,34 +101,73 @@ export default function GenerateReportModal({
           </div>
         )}
 
+        {/* Scope Selector */}
         <div>
           <label className="block text-xs font-bold text-slate-700 mb-1.5">
-            Pilih Target Server
+            Pilih Cakupan Audit (Scope)
           </label>
-          <select
-            value={selectedServerId}
-            onChange={(e) => setSelectedServerId(e.target.value)}
-            disabled={loading}
-            className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-          >
-            <option value="">Semua Server Aktif (Batch)</option>
-            {servers.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name} ({s.serverCode})
-              </option>
-            ))}
-          </select>
-          <p className="text-[11px] text-slate-500 mt-1">
-            Jika memilih &quot;Semua Server Aktif&quot;, sistem akan membuat laporan audit untuk seluruh node satu per satu di latar belakang.
-          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setScope('NODE')}
+              className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col gap-1 ${
+                scope === 'NODE'
+                  ? 'border-emerald-600 bg-emerald-50/50 text-emerald-900 ring-2 ring-emerald-500/20'
+                  : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+              }`}
+            >
+              <div className="flex items-center gap-1.5 font-bold text-xs">
+                <Server className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Node Tunggal</span>
+              </div>
+              <span className="text-[10px] text-slate-500">Audit mendalam per server host</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setScope('CLUSTER')}
+              className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col gap-1 ${
+                scope === 'CLUSTER'
+                  ? 'border-emerald-600 bg-emerald-50/50 text-emerald-900 ring-2 ring-emerald-500/20'
+                  : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+              }`}
+            >
+              <div className="flex items-center gap-1.5 font-bold text-xs">
+                <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Cluster Fleet</span>
+              </div>
+              <span className="text-[10px] text-slate-500">Konsolidasi seluruh armada server</span>
+            </button>
+          </div>
         </div>
+
+        {/* Server Selector for Node Mode */}
+        {scope === 'NODE' && (
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              Pilih Target Server
+            </label>
+            <select
+              value={selectedServerId}
+              onChange={(e) => setSelectedServerId(e.target.value)}
+              disabled={loading}
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+            >
+              {servers.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} ({s.serverCode})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="p-3 bg-emerald-50/50 border border-emerald-200/60 rounded-xl text-[11px] text-emerald-800 space-y-1">
           <p className="font-bold flex items-center gap-1">
             <span>ℹ</span> Informasi Proses:
           </p>
           <p>
-            Proses eksekusi berjalan <em>ephemeral</em> secara non-blocking di latar belakang. File PDF A4 akan terbit dalam ~3-5 detik dan otomatis muncul di tabel riwayat.
+            Proses berjalan <em>non-blocking</em> di latar belakang. Berkas PDF formal (format Sophos Enterprise) akan otomatis selesai dalam ~3-5 detik dan muncul pada tabel riwayat.
           </p>
         </div>
       </form>
