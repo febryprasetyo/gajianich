@@ -21,6 +21,7 @@ Lingkup: `gajianich-server-agent/scripts/update.sh`, `gajianich-server-agent/src
 - [x] CP-08 — `e382eda` — Migrasi skema database `0060_server_weekly_reports_8sections.sql` (8 seksi audit, scope_type, sla_percent) & perbaikan controller backend untuk multi-path PDF search dan dukungan cluster scope.
 - [x] CP-09 — `f981297` — Modul Reporter 8 Bagian Sophos Enterprise: cover page formal, running header/footer, narasi pengantar kontekstual per seksi, meter horizontal bar visual, fallback zero-outage elegan, dan unit test 4/4 lulus (`npm test`).
 - [x] CP-10 — `4548974` — Antarmuka Web Dashboard GAJIANICH terintegrasi 8 Seksi: ReportDetailModal dengan 5 tab interaktif, GenerateReportModal dengan pilihan cakupan (Node Server vs Cluster Fleet), filter cakupan di toolbar, dan unduh PDF resmi.
+- [x] CP-11 — `9f9c155` / `2491006` — Optimasi Filter Toolbar 1 Baris Tunggal & Peningkatan Kontras Tipografi: Toolbar filter disederhanakan menjadi 1 baris horizontal flex pada desktop/tablet (Search Input + Select Cakupan + Select Server + Select Status + Tombol Reset). Penajaman kontras warna teks dan ukuran font di tabel laporan, modal detail audit, serta template PDF Sophos Enterprise untuk keterbacaan optimal sesuai standar aksesibilitas WCAG.
 
 ## Kriteria Selesai
 - [x] Modul `gajianich-server-reporter` terisolasi penuh dari `gajianich-server-agent` (agen bebas dari dependensi Chromium, Puppeteer, dan `@google/genai`).
