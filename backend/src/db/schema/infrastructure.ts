@@ -221,3 +221,23 @@ export const subscriptions = pgTable('subscriptions', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+export const serverWeeklyReports = pgTable('server_weekly_reports', {
+  id: bigint('id', { mode: 'number' }).generatedAlwaysAsIdentity().primaryKey(),
+  serverId: bigint('server_id', { mode: 'number' }).references(() => servers.id, { onDelete: 'cascade' }).notNull(),
+  periodWeek: varchar('period_week', { length: 20 }).notNull(), // e.g. '2026-W47'
+  startDate: date('start_date').notNull(),
+  endDate: date('end_date').notNull(),
+  status: varchar('status', { length: 30 }).default('NORMAL').notNull(), // 'NORMAL' | 'WARNING' | 'CRITICAL'
+  executiveSummary: text('executive_summary'),
+  incidentRca: text('incident_rca'),
+  recommendations: jsonb('recommendations').$type<Array<{ priority: 'TINGGI' | 'SEDANG' | 'RENDAH'; title: string; action: string }>>().default([]).notNull(),
+  pdfFileName: varchar('pdf_file_name', { length: 255 }).notNull(),
+  pdfFilePath: varchar('pdf_file_path', { length: 500 }).notNull(),
+  fileSizeBytes: bigint('file_size_bytes', { mode: 'number' }).default(0).notNull(),
+  generatedBy: varchar('generated_by', { length: 50 }).default('GEMINI_AI_SCHEDULER').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  index('idx_server_weekly_reports_server_period').on(table.serverId, table.periodWeek),
+  index('idx_server_weekly_reports_created_at').on(table.createdAt),
+]);
+

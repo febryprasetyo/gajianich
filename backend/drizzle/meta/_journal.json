@@ -413,6 +413,13 @@
       "when": 1794900000000,
       "tag": "0058_scoped_attendance_work_hours_and_shifts",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1795000000000,
+      "tag": "0059_server_weekly_reports",
+      "breakpoints": true
     }
   ],
   "version": "7"
