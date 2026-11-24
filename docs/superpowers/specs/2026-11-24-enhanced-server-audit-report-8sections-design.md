@@ -91,42 +91,67 @@ File target: `backend/src/db/schema/infrastructure.ts` & migrasi `0060_server_we
 
 ---
 
-## 5. Rincian 8 Bagian Laporan Audit
+## 5. Rincian 8 Bagian Laporan Audit (Mengadopsi Layout & Redaksi Sophos Enterprise)
 
-### Bagian 1: Ringkasan Eksekutif (Executive Summary)
-- SLA ketersediaan layanan global (misal: 99.95%).
-- Insiden (jumlah kejadian, durasi pemulihan, integritas data).
-- Kapasitas (laju pertumbuhan storage per minggu & sisa kapasitas host).
-- Audit Keamanan (percobaan brute force SSH, Fail2Ban, CVE kritis).
-- Status Verifikasi Backup di off-site storage.
+Mengikuti referensi visual dan redaksional `docs/Security_Audit_Report.pdf`:
 
-### Bagian 2: Ketersediaan & SLA Layanan (Service Availability)
-- Tabel per host / kontainer (Frontend, Backend, PostgreSQL, Redis, Worker).
-- Kolom: Host/Node, Peran/Services, Uptime (%), Downtime (menit), Status (Sehat/Normal).
+### Halaman Sampul (Cover Page):
+- **Header**: Logo `GAJIANICH` tebal di sudut kiri atas.
+- **Judul Dokumen**: Tipografi tegas `Security & Infrastructure Audit Report` (atau `Laporan Audit Status Server & Keamanan Mingguan`).
+- **Subjudul & Periode**: Tanggal periode audit (misal: `17 November – 23 November 2026`).
+- **Blok Metadata Appliance / Node**:
+  - `Disusun untuk:` / `Prepared for:` `GAJIANICH Production Cluster`
+  - `Node Server:` `srv-prod-node-01 (Host Worker)` / `Cluster Fleet`
+  - `Alamat Host / IP:` `192.168.10.x / Linux x86_64`
+  - `Sistem Operasi:` `Ubuntu 22.04 LTS / Docker Engine 27`
+- **Footer**: Timestamp server di sudut kanan bawah (`Server Time : [Timestamp]`).
 
-### Bagian 3: Utilisasi Resource & Kapasitas (Resource Metrics)
-- Tabel Metrik: CPU Usage, RAM Usage, Root Disk (`/`), Network I/O.
-- Kolom: Nilai Rata-rata, Nilai Puncak (Peak), Ambang Batas, Status.
-- Catatan Kapasitas: Perkiraan sisa runway storage (misal: aman untuk 18 bulan ke depan).
+---
 
-### Bagian 4: Kesehatan Database & Middleware
-- **PostgreSQL**: Ukuran database & pertumbuhan, koneksi aktif vs max pool, Cache Hit Ratio (>99%), Deadlock / slow queries (>2s).
-- **Redis**: Memory used / max memory, Hit Ratio, Eviction count (harus 0).
+### Format Tiap Bagian (Struktur Narasi Redaksional + Tabel Data):
+Setiap bagian diawali **Paragraf Pengantar Kontekstual Teknis** (editorial narrative) yang menjelaskan fungsi pengawasan tersebut bagi stabilitas sistem, diikuti tabel metrik yang dilengkapi *horizontal data bars* dan baris *fallback* yang rapi jika tidak ada insiden.
 
-### Bagian 5: Laporan Audit Keamanan & Kepatuhan Akses (Security Audit)
-- **Autentikasi & Akses**: Login SSH sukses (PIC terverifikasi), percobaan login gagal (IP di-blacklist fail2ban), eksekusi root/sudo, perubahan akun pengguna (`useradd`/`userdel`).
-- **Pembaruan Patch & CVE**: Status OS & kernel, paket pending (kritis vs umum), validitas SSL (domain, tanggal kedaluwarsa, sisa hari, auto-renewal).
+#### Bagian 1: Ringkasan Eksekutif (Executive Summary & Report Findings)
+- Paragraf pembuka ringkas yang menerangkan kondisi umum armada server pada periode audit.
+- Poin observasi utama (*Key Observations*):
+  - Ketersediaan Layanan & SLA (99.95%)
+  - Insiden & waktu pemulihan (auto-recovered)
+  - Kapasitas storage host & laju pertumbuhan
+  - Audit Keamanan (brute force SSH, Fail2Ban)
+  - Status Verifikasi Backup di off-site storage.
 
-### Bagian 6: Verifikasi Backup & Disaster Recovery (DR)
-- Tabel Cadangan: Tipe (Full, WAL/PITR, Uploads, Config), Frekuensi, Retensi, Ukuran Rata-rata, Lokasi Simpan (NAS/S3/Git), Uji Restore Terakhir, Status.
-- Catatan Hasil Uji Coba Restore: Durasi restore dan integritas relasi tabel.
+#### Bagian 2: Ketersediaan & SLA Layanan (Service Availability)
+- Narasi pengantar pemantauan kontainer & port kritis.
+- Tabel Ketersediaan: Host/Node, Peran Layanan, Uptime (%), Downtime (menit), dan Status Pill semantik (● SEHAT / ● KRITIS).
 
-### Bagian 7: Catatan Insiden & Pemeliharaan (Incidents & Maintenance)
-- Insiden Minggu Ini: Format `INC-YYYYMMDD-XX` (waktu, deskripsi, dampak, resolusi, tindakan pencegahan).
-- Checklist Pemeliharaan yang Diselesaikan: Rotasi log, vacuum DB, update konfigurasi.
+#### Bagian 3: Utilisasi Resource & Kapasitas (Resource Metrics & Storage Runway)
+- Narasi utilisasi kapasitas komputasi dan memori.
+- Tabel Metrik: CPU, RAM, Root Disk (`/`), Network I/O dengan kolom Rata-rata, Puncak (Peak), Ambang Batas, serta horizontal metric bar visual.
+- Catatan Runway: Estimasi kapasitas storage aman (misal: aman untuk 18 bulan ke depan).
 
-### Bagian 8: Rekomendasi & Tindakan Minggu Depan (Action Items)
-- Tabel Berbobot: No, Tindakan / Rekomendasi Teknis, PIC (Sysadmin, Backend Lead, DevOps, DBA), Target Selesai, Prioritas (Tinggi, Sedang, Rutin).
+#### Bagian 4: Kesehatan Database & Middleware (Database & Middleware Health)
+- Narasi kesehatan transaksional PostgreSQL & in-memory cache Redis.
+- Rincian metrik: Ukuran database, pertumbuhan, pool koneksi, cache hit ratio, slow query, serta hit ratio & memori Redis.
+
+#### Bagian 5: Laporan Audit Keamanan & Kepatuhan Akses (Security Audit)
+- Narasi pengawasan autentikasi host dan kepatuhan patch.
+- Tabel Akses: Login SSH sukses, percobaan gagal (IP diblokir fail2ban), eksekusi sudo, dan perubahan akun sistem.
+- Status CVE, paket pembaruan pending, dan validitas sertifikat SSL (sisa hari & auto-renewal).
+
+#### Bagian 6: Verifikasi Backup & Disaster Recovery (DR)
+- Narasi integritas pemulihan bencana.
+- Tabel Cadangan: Tipe (Full, WAL/PITR, Uploads, Config), Frekuensi, Retensi, Ukuran, Lokasi Simpan (NAS/S3/Git), dan Status.
+- Catatan Hasil Uji Coba Restore: Durasi dan integritas data.
+
+#### Bagian 7: Catatan Insiden & Pemeliharaan (Incidents & Maintenance)
+- Narasi penanganan anomali operasional.
+- Jika ada insiden: Format `INC-YYYYMMDD-XX` (waktu, deskripsi, dampak, resolusi, pencegahan).
+- Jika tidak ada insiden: Tampil baris tabel elegan `"Tidak Ada Insiden Tercatat"` (*No Record Found* ala Sophos).
+- Checklist pemeliharaan rutin mingguan yang diselesaikan.
+
+#### Bagian 8: Rekomendasi & Tindakan Minggu Depan (Action Items)
+- Narasi langkah mitigasi risiko proaktif.
+- Tabel Tindakan: No, Tindakan / Rekomendasi Teknis, PIC (Sysadmin, Backend Lead, DevOps, DBA), Target Selesai, Prioritas (Tinggi, Sedang, Rutin).
 
 ---
 
