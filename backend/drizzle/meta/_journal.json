@@ -420,6 +420,13 @@
       "when": 1795000000000,
       "tag": "0059_server_weekly_reports",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1795010000000,
+      "tag": "0060_server_weekly_reports_8sections",
+      "breakpoints": true
     }
   ],
   "version": "7"

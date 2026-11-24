@@ -1351,6 +1351,7 @@ export async function getWeeklyReports(req: Request, res: Response) {
   try {
     const serverIdParam = req.query.serverId ? Number(req.query.serverId) : null;
     const statusParam = req.query.status ? String(req.query.status).trim() : null;
+    const scopeParam = req.query.scope ? String(req.query.scope).trim().toUpperCase() : null;
     const searchParam = req.query.search ? String(req.query.search).trim() : null;
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
     const offset = Math.max(0, Number(req.query.offset) || 0);
@@ -1363,6 +1364,9 @@ export async function getWeeklyReports(req: Request, res: Response) {
     if (statusParam && ['NORMAL', 'WARNING', 'CRITICAL'].includes(statusParam.toUpperCase())) {
       conditions.push(eq(serverWeeklyReports.status, statusParam.toUpperCase()));
     }
+    if (scopeParam && ['NODE', 'CLUSTER'].includes(scopeParam)) {
+      conditions.push(eq(serverWeeklyReports.scopeType, scopeParam));
+    }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -1370,14 +1374,23 @@ export async function getWeeklyReports(req: Request, res: Response) {
       .select({
         id: serverWeeklyReports.id,
         serverId: serverWeeklyReports.serverId,
+        scopeType: serverWeeklyReports.scopeType,
         serverCode: servers.serverCode,
         serverName: servers.name,
         periodWeek: serverWeeklyReports.periodWeek,
         startDate: serverWeeklyReports.startDate,
         endDate: serverWeeklyReports.endDate,
         status: serverWeeklyReports.status,
+        slaPercent: serverWeeklyReports.slaPercent,
         executiveSummary: serverWeeklyReports.executiveSummary,
         incidentRca: serverWeeklyReports.incidentRca,
+        serviceAvailability: serverWeeklyReports.serviceAvailability,
+        resourceMetrics: serverWeeklyReports.resourceMetrics,
+        databaseMiddleware: serverWeeklyReports.databaseMiddleware,
+        securityAudit: serverWeeklyReports.securityAudit,
+        backupDr: serverWeeklyReports.backupDr,
+        incidentsMaintenance: serverWeeklyReports.incidentsMaintenance,
+        actionItems: serverWeeklyReports.actionItems,
         recommendations: serverWeeklyReports.recommendations,
         pdfFileName: serverWeeklyReports.pdfFileName,
         pdfFilePath: serverWeeklyReports.pdfFilePath,
@@ -1392,9 +1405,15 @@ export async function getWeeklyReports(req: Request, res: Response) {
       .limit(limit)
       .offset(offset);
 
+    const formattedRows = rows.map((r) => ({
+      ...r,
+      serverCode: r.scopeType === 'CLUSTER' ? 'CLUSTER' : (r.serverCode || '-'),
+      serverName: r.scopeType === 'CLUSTER' ? 'Semua Node Server (Cluster Fleet)' : (r.serverName || r.serverCode || '-'),
+    }));
+
     // Filter in memory for search if searchParam provided
     const filteredRows = searchParam
-      ? rows.filter((r) => {
+      ? formattedRows.filter((r) => {
           const q = searchParam.toLowerCase();
           return (
             r.serverCode?.toLowerCase().includes(q) ||
@@ -1402,7 +1421,7 @@ export async function getWeeklyReports(req: Request, res: Response) {
             r.periodWeek?.toLowerCase().includes(q)
           );
         })
-      : rows;
+      : formattedRows;
 
     return res.status(200).json({
       success: true,
@@ -1464,7 +1483,9 @@ export async function generateWeeklyReportOnDemand(req: Request, res: Response) 
     const cliTsPath = '/home/fastpec/code/gajianich-server-reporter/src/cli.ts';
 
     const args: string[] = [];
-    if (req.body?.serverId) {
+    if (req.body?.scope === 'CLUSTER' || req.body?.cluster === true) {
+      args.push('--cluster');
+    } else if (req.body?.serverId) {
       args.push(`--server=${req.body.serverId}`);
     }
 

@@ -223,13 +223,22 @@ export const subscriptions = pgTable('subscriptions', {
 
 export const serverWeeklyReports = pgTable('server_weekly_reports', {
   id: bigint('id', { mode: 'number' }).generatedAlwaysAsIdentity().primaryKey(),
-  serverId: bigint('server_id', { mode: 'number' }).references(() => servers.id, { onDelete: 'cascade' }).notNull(),
+  serverId: bigint('server_id', { mode: 'number' }).references(() => servers.id, { onDelete: 'cascade' }),
+  scopeType: varchar('scope_type', { length: 20 }).default('NODE').notNull(), // 'NODE' | 'CLUSTER'
   periodWeek: varchar('period_week', { length: 20 }).notNull(), // e.g. '2026-W47'
   startDate: date('start_date').notNull(),
   endDate: date('end_date').notNull(),
   status: varchar('status', { length: 30 }).default('NORMAL').notNull(), // 'NORMAL' | 'WARNING' | 'CRITICAL'
+  slaPercent: numeric('sla_percent').default('99.90').notNull(),
   executiveSummary: text('executive_summary'),
   incidentRca: text('incident_rca'),
+  serviceAvailability: jsonb('service_availability').$type<Record<string, any>>().default({}).notNull(),
+  resourceMetrics: jsonb('resource_metrics').$type<Record<string, any>>().default({}).notNull(),
+  databaseMiddleware: jsonb('database_middleware').$type<Record<string, any>>().default({}).notNull(),
+  securityAudit: jsonb('security_audit').$type<Record<string, any>>().default({}).notNull(),
+  backupDr: jsonb('backup_dr').$type<Record<string, any>>().default({}).notNull(),
+  incidentsMaintenance: jsonb('incidents_maintenance').$type<Array<any>>().default([]).notNull(),
+  actionItems: jsonb('action_items').$type<Array<{ no: number; issue: string; action: string; pic: string; target: string; status: 'SELESAI' | 'DALAM_PROGRES' | 'TERJADWAL' }>>().default([]).notNull(),
   recommendations: jsonb('recommendations').$type<Array<{ priority: 'TINGGI' | 'SEDANG' | 'RENDAH'; title: string; action: string }>>().default([]).notNull(),
   pdfFileName: varchar('pdf_file_name', { length: 255 }).notNull(),
   pdfFilePath: varchar('pdf_file_path', { length: 500 }).notNull(),
@@ -239,5 +248,6 @@ export const serverWeeklyReports = pgTable('server_weekly_reports', {
 }, (table) => [
   index('idx_server_weekly_reports_server_period').on(table.serverId, table.periodWeek),
   index('idx_server_weekly_reports_created_at').on(table.createdAt),
+  index('idx_server_weekly_reports_scope').on(table.scopeType),
 ]);
 
