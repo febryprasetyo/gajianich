@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import fs from 'fs';
+import path from 'path';
 import { spawn } from 'child_process';
 import { and, asc, desc, eq, isNotNull, lt, or } from 'drizzle-orm';
 import { db } from '../db';
@@ -1434,11 +1435,23 @@ export async function downloadWeeklyReport(req: Request, res: Response) {
       return res.status(404).json({ success: false, message: 'Laporan tidak ditemukan' });
     }
 
-    if (!fs.existsSync(report.pdfFilePath)) {
+    const fileName = report.pdfFileName || path.basename(report.pdfFilePath);
+    const candidatePaths = [
+      report.pdfFilePath,
+      path.resolve(process.cwd(), 'data/reports', fileName),
+      path.resolve('/app/data/reports', fileName),
+      path.resolve('/home/fastpec/code/ams-app/backend/data/reports', fileName),
+      path.resolve('/home/fastpec/code/storage/reports', fileName),
+      path.resolve('/mnt/Data/code/storage/reports', fileName),
+    ];
+
+    const foundPath = candidatePaths.find((p) => Boolean(p) && fs.existsSync(p));
+
+    if (!foundPath) {
       return res.status(404).json({ success: false, message: 'Berkas PDF fisik tidak ditemukan pada storage' });
     }
 
-    return res.download(report.pdfFilePath, report.pdfFileName);
+    return res.download(foundPath, report.pdfFileName);
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error?.message || 'Gagal mengunduh berkas laporan' });
   }

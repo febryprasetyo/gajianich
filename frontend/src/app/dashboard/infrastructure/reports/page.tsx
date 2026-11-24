@@ -3,14 +3,17 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
+  AlertCircle,
   AlertOctagon,
   AlertTriangle,
   CheckCircle,
+  CheckCircle2,
   Download,
   Eye,
   FileText,
   Play,
   Server,
+  X,
 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import PageHeader from '@/components/ui/PageHeader';
@@ -19,6 +22,7 @@ import FilterToolbar from '@/components/ui/FilterToolbar';
 import TableShell from '@/components/ui/TableShell';
 import TablePagination from '@/components/ui/TablePagination';
 import RowActionButton from '@/components/ui/RowActionButton';
+import ModalShell from '@/components/ui/ModalShell';
 import GenerateReportModal, { ServerOption } from '@/components/servers/GenerateReportModal';
 import ReportDetailModal, { WeeklyReportDetail } from '@/components/servers/ReportDetailModal';
 import { api } from '@/lib/api';
@@ -61,6 +65,39 @@ export default function WeeklyReportsPage() {
   const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
   const [selectedReportDetail, setSelectedReportDetail] = useState<WeeklyReportDetail | null>(null);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
+
+  // Feedback Modal (Error / Alert)
+  const [feedbackModal, setFeedbackModal] = useState<{
+    isOpen: boolean;
+    type: 'error' | 'warning' | 'success' | 'info';
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
+
+  // Floating Toast
+  const [toast, setToast] = useState<{
+    type: 'success' | 'error' | 'warning' | 'info';
+    title: string;
+    message: string;
+  } | null>(null);
+
+  const showToast = useCallback(
+    (type: 'success' | 'error' | 'warning' | 'info', title: string, message: string) => {
+      setToast({ type, title, message });
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   const fetchReports = useCallback(async () => {
     try {
@@ -106,6 +143,7 @@ export default function WeeklyReportsPage() {
   // Handle Download PDF
   const handleDownload = async (report: WeeklyReportDetail) => {
     setDownloadingId(report.id);
+    showToast('info', 'Mengunduh Dokumen', `Menyiapkan berkas ${report.pdfFileName || 'PDF'}...`);
     try {
       const blob = await api.download(`/infrastructure/reports/${report.id}/download`);
       const url = window.URL.createObjectURL(blob);
@@ -116,8 +154,15 @@ export default function WeeklyReportsPage() {
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
+      showToast('success', 'Unduhan Selesai', `Berkas ${a.download} berhasil diunduh.`);
     } catch (err: any) {
-      alert(`Gagal mengunduh berkas PDF: ${err?.message || 'Terjadi kesalahan'}`);
+      setFeedbackModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Gagal Mengunduh Berkas PDF',
+        message: err?.message || 'Berkas PDF fisik tidak ditemukan pada storage server.',
+      });
+      showToast('error', 'Gagal Mengunduh', err?.message || 'Berkas PDF fisik tidak ditemukan pada storage.');
     } finally {
       setDownloadingId(null);
     }
@@ -432,6 +477,7 @@ export default function WeeklyReportsPage() {
           onClose={() => setIsGenerateModalOpen(false)}
           servers={servers}
           onSuccess={() => {
+            showToast('success', 'Audit Dimulai', 'Pekerjaan pembuatan audit mingguan berjalan di latar belakang.');
             void fetchReports();
           }}
         />
@@ -444,6 +490,82 @@ export default function WeeklyReportsPage() {
           onDownload={handleDownload}
           isDownloading={downloadingId === selectedReportDetail?.id}
         />
+
+        {/* Modal Box Feedback / Alert (Pengganti alert() browser) */}
+        <ModalShell
+          isOpen={feedbackModal.isOpen}
+          onClose={() => setFeedbackModal((prev) => ({ ...prev, isOpen: false }))}
+          title={feedbackModal.title}
+          subtitle={feedbackModal.type === 'error' ? 'Pemberitahuan Kendala Sistem' : 'Pemberitahuan Sistem'}
+          icon={
+            feedbackModal.type === 'error' ? (
+              <div className="p-2 bg-rose-600 rounded-xl text-white">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+            ) : feedbackModal.type === 'warning' ? (
+              <div className="p-2 bg-amber-600 rounded-xl text-white">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+            ) : (
+              <div className="p-2 bg-emerald-600 rounded-xl text-white">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+            )
+          }
+          maxWidthClass="max-w-md"
+          footer={
+            <div className="flex justify-end w-full">
+              <button
+                type="button"
+                onClick={() => setFeedbackModal((prev) => ({ ...prev, isOpen: false }))}
+                className="px-4 py-2 text-xs font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 transition cursor-pointer"
+              >
+                Mengerti
+              </button>
+            </div>
+          }
+        >
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+            <p className="text-xs text-slate-700 leading-relaxed font-medium">
+              {feedbackModal.message}
+            </p>
+          </div>
+        </ModalShell>
+
+        {/* Floating Toast Notification */}
+        {toast && (
+          <div className="fixed bottom-5 right-5 z-50 max-w-sm w-full bg-white border border-slate-200 rounded-2xl p-4 shadow-xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <div
+              className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
+                toast.type === 'error'
+                  ? 'bg-rose-50 text-rose-700 border-rose-200'
+                  : toast.type === 'warning'
+                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              }`}
+            >
+              {toast.type === 'error' ? (
+                <AlertTriangle className="w-4 h-4" />
+              ) : toast.type === 'warning' ? (
+                <AlertCircle className="w-4 h-4" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h5 className="text-xs font-bold text-slate-900 truncate">{toast.title}</h5>
+              <p className="text-[11px] text-slate-500 mt-0.5 break-words">{toast.message}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition cursor-pointer"
+              aria-label="Tutup notifikasi"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );
