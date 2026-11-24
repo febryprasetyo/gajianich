@@ -4,13 +4,16 @@ import {
   createOrUpdateServerNode,
   createServerTelemetryAuthenticator,
   deleteServerNode,
+  downloadWeeklyReport,
   executeServerRemoteAction,
+  generateWeeklyReportOnDemand,
   getAccurateDatabase,
   getAccurateLicenses,
   getDbBackups,
   getServerById,
   getServers,
   getServerServiceLogs,
+  getWeeklyReports,
   receiveAccurateAgentSignal,
   receiveServerTelemetry,
   rotateServerAgentKey,
@@ -55,6 +58,11 @@ router.post('/servers/:id/actions', manageInfra, executeServerRemoteAction);
 router.post('/servers/:id/rotate-key', manageInfra, rotateServerAgentKey);
 
 router.get('/backups', viewInfra, getDbBackups);
+
+// Weekly Health & Security Audit Reports
+router.get('/reports', viewInfra, getWeeklyReports);
+router.get('/reports/:id/download', viewInfra, downloadWeeklyReport);
+router.post('/reports/generate', manageInfra, generateWeeklyReportOnDemand);
 
 // Subscriptions & Recurring IT Services (Domain, Hosting, Email, SSL, SaaS)
 const manageSubs = requirePermission(['infrastructure.manage', 'infrastructure.view']);

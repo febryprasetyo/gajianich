@@ -1,4 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
+import fs from 'fs';
+import { spawn } from 'child_process';
 import { and, asc, desc, eq, isNotNull, lt, or } from 'drizzle-orm';
 import { db } from '../db';
 import {
@@ -7,6 +9,7 @@ import {
   dbBackups,
   serverMetricSamples,
   serverRemoteCommands,
+  serverWeeklyReports,
   servers,
 } from '../db/schema/infrastructure';
 import { auditLogs } from '../db/schema/system';
@@ -1342,3 +1345,134 @@ export async function getDbBackups(_req: Request, res: Response) {
     return res.status(500).json({ success: false, error: error?.message || 'Unable to read backups' });
   }
 }
+
+export async function getWeeklyReports(req: Request, res: Response) {
+  try {
+    const serverIdParam = req.query.serverId ? Number(req.query.serverId) : null;
+    const statusParam = req.query.status ? String(req.query.status).trim() : null;
+    const searchParam = req.query.search ? String(req.query.search).trim() : null;
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+    const offset = Math.max(0, Number(req.query.offset) || 0);
+
+    const conditions = [];
+
+    if (serverIdParam && !isNaN(serverIdParam)) {
+      conditions.push(eq(serverWeeklyReports.serverId, serverIdParam));
+    }
+    if (statusParam && ['NORMAL', 'WARNING', 'CRITICAL'].includes(statusParam.toUpperCase())) {
+      conditions.push(eq(serverWeeklyReports.status, statusParam.toUpperCase()));
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const rows = await db
+      .select({
+        id: serverWeeklyReports.id,
+        serverId: serverWeeklyReports.serverId,
+        serverCode: servers.serverCode,
+        serverName: servers.name,
+        periodWeek: serverWeeklyReports.periodWeek,
+        startDate: serverWeeklyReports.startDate,
+        endDate: serverWeeklyReports.endDate,
+        status: serverWeeklyReports.status,
+        executiveSummary: serverWeeklyReports.executiveSummary,
+        incidentRca: serverWeeklyReports.incidentRca,
+        recommendations: serverWeeklyReports.recommendations,
+        pdfFileName: serverWeeklyReports.pdfFileName,
+        pdfFilePath: serverWeeklyReports.pdfFilePath,
+        fileSizeBytes: serverWeeklyReports.fileSizeBytes,
+        generatedBy: serverWeeklyReports.generatedBy,
+        createdAt: serverWeeklyReports.createdAt,
+      })
+      .from(serverWeeklyReports)
+      .leftJoin(servers, eq(serverWeeklyReports.serverId, servers.id))
+      .where(whereClause)
+      .orderBy(desc(serverWeeklyReports.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    // Filter in memory for search if searchParam provided
+    const filteredRows = searchParam
+      ? rows.filter((r) => {
+          const q = searchParam.toLowerCase();
+          return (
+            r.serverCode?.toLowerCase().includes(q) ||
+            r.serverName?.toLowerCase().includes(q) ||
+            r.periodWeek?.toLowerCase().includes(q)
+          );
+        })
+      : rows;
+
+    return res.status(200).json({
+      success: true,
+      data: filteredRows,
+      pagination: {
+        total: filteredRows.length,
+        limit,
+        offset,
+      },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error?.message || 'Gagal mengambil data laporan mingguan' });
+  }
+}
+
+export async function downloadWeeklyReport(req: Request, res: Response) {
+  try {
+    const reportId = Number(req.params.id);
+    if (!reportId || isNaN(reportId)) {
+      return res.status(400).json({ success: false, message: 'ID laporan tidak valid' });
+    }
+
+    const [report] = await db
+      .select()
+      .from(serverWeeklyReports)
+      .where(eq(serverWeeklyReports.id, reportId))
+      .limit(1);
+
+    if (!report) {
+      return res.status(404).json({ success: false, message: 'Laporan tidak ditemukan' });
+    }
+
+    if (!fs.existsSync(report.pdfFilePath)) {
+      return res.status(404).json({ success: false, message: 'Berkas PDF fisik tidak ditemukan pada storage' });
+    }
+
+    return res.download(report.pdfFilePath, report.pdfFileName);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error?.message || 'Gagal mengunduh berkas laporan' });
+  }
+}
+
+export async function generateWeeklyReportOnDemand(req: Request, res: Response) {
+  try {
+    const reporterCliPath = '/home/fastpec/code/gajianich-server-reporter/dist/cli.js';
+    const tsxPath = '/home/fastpec/code/gajianich-server-reporter/node_modules/.bin/tsx';
+    const cliTsPath = '/home/fastpec/code/gajianich-server-reporter/src/cli.ts';
+
+    const args: string[] = [];
+    if (req.body?.serverId) {
+      args.push(`--server=${req.body.serverId}`);
+    }
+
+    const runner = fs.existsSync(reporterCliPath) ? 'node' : tsxPath;
+    const targetScript = fs.existsSync(reporterCliPath) ? reporterCliPath : cliTsPath;
+
+    if (fs.existsSync(targetScript)) {
+      const child = spawn(runner, [targetScript, ...args], {
+        cwd: '/home/fastpec/code/gajianich-server-reporter',
+        detached: true,
+        stdio: 'ignore',
+      });
+      child.unref();
+    }
+
+    return res.status(202).json({
+      success: true,
+      message: 'Proses generate laporan mingguan telah dimulai di latar belakang.',
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error?.message || 'Gagal memicu proses generate' });
+  }
+}
+
