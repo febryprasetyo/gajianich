@@ -1478,9 +1478,32 @@ export async function downloadWeeklyReport(req: Request, res: Response) {
 
 export async function generateWeeklyReportOnDemand(req: Request, res: Response) {
   try {
-    const reporterCliPath = '/home/fastpec/code/gajianich-server-reporter/dist/cli.js';
-    const tsxPath = '/home/fastpec/code/gajianich-server-reporter/node_modules/.bin/tsx';
-    const cliTsPath = '/home/fastpec/code/gajianich-server-reporter/src/cli.ts';
+    const reporterServiceUrl = process.env.REPORTER_SERVICE_URL?.trim();
+    if (reporterServiceUrl) {
+      const targetUrl = `${reporterServiceUrl.replace(/\/$/, '')}/generate`;
+      const response = await fetch(targetUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(req.body || {}),
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        return res.status(502).json({
+          success: false,
+          message: `Layanan reporter mengembalikan status ${response.status}${text ? `: ${text}` : ''}`,
+        });
+      }
+      return res.status(202).json({
+        success: true,
+        message: 'Proses generate laporan mingguan telah dimulai di latar belakang.',
+      });
+    }
+
+    const reporterDir = process.env.REPORTER_DIR || '/home/fastpec/code/gajianich-server-reporter';
+    const reporterCliPath = path.join(reporterDir, 'dist', 'cli.js');
+    const tsxPath = path.join(reporterDir, 'node_modules', '.bin', 'tsx');
+    const cliTsPath = path.join(reporterDir, 'src', 'cli.ts');
 
     const args: string[] = [];
     if (req.body?.scope === 'CLUSTER' || req.body?.cluster === true) {
@@ -1492,14 +1515,19 @@ export async function generateWeeklyReportOnDemand(req: Request, res: Response) 
     const runner = fs.existsSync(reporterCliPath) ? 'node' : tsxPath;
     const targetScript = fs.existsSync(reporterCliPath) ? reporterCliPath : cliTsPath;
 
-    if (fs.existsSync(targetScript)) {
-      const child = spawn(runner, [targetScript, ...args], {
-        cwd: '/home/fastpec/code/gajianich-server-reporter',
-        detached: true,
-        stdio: 'ignore',
+    if (!fs.existsSync(targetScript)) {
+      return res.status(503).json({
+        success: false,
+        message: 'Layanan generator laporan mingguan belum terkonfigurasi pada server.',
       });
-      child.unref();
     }
+
+    const child = spawn(runner, [targetScript, ...args], {
+      cwd: reporterDir,
+      detached: true,
+      stdio: 'ignore',
+    });
+    child.unref();
 
     return res.status(202).json({
       success: true,

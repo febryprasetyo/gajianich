@@ -16,6 +16,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Production database password required}
     volumes:
       - prod_pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5435:5432"
     healthcheck:
       test: [CMD-SHELL, "pg_isready -U ${POSTGRES_USER:-gajianich_app} -d ${POSTGRES_DB:-gajianich_prod_db}"]
       interval: 5s
@@ -42,11 +44,14 @@ services:
     image: gajianich-lan-backend:${APP_VERSION:?Release version required}
     pull_policy: never
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       PORT: 5000
       NODE_ENV: production
       REDIS_URL: redis://redis:6379
       GA_STORAGE_DIR: /app/data/ga-evidence
+      REPORTER_SERVICE_URL: ${REPORTER_SERVICE_URL:-http://host.docker.internal:5055}
       DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-gajianich_app}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-gajianich_prod_db}}
       JWT_SECRET: ${JWT_SECRET:?JWT secret required}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Refresh secret required}
@@ -59,6 +64,7 @@ services:
         condition: service_started
     volumes:
       - ga_evidence:/app/data/ga-evidence
+      - ${REPORTS_STORAGE_DIR:-/home/cmc/app/svc/gajianich-production/reports}:/app/data/reports
     healthcheck:
       test: [CMD-SHELL, "wget -q --spider http://127.0.0.1:5000/health/ready || exit 1"]
       interval: 5s
