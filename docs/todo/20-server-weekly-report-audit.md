@@ -22,6 +22,11 @@ Lingkup: `gajianich-server-agent/scripts/update.sh`, `gajianich-server-agent/src
 - [x] CP-09 — `f981297` — Modul Reporter 8 Bagian Sophos Enterprise: cover page formal, running header/footer, narasi pengantar kontekstual per seksi, meter horizontal bar visual, fallback zero-outage elegan, dan unit test 4/4 lulus (`npm test`).
 - [x] CP-10 — `4548974` — Antarmuka Web Dashboard GAJIANICH terintegrasi 8 Seksi: ReportDetailModal dengan 5 tab interaktif, GenerateReportModal dengan pilihan cakupan (Node Server vs Cluster Fleet), filter cakupan di toolbar, dan unduh PDF resmi.
 - [x] CP-11 — `9f9c155` / `2491006` — Optimasi Filter Toolbar 1 Baris Tunggal & Peningkatan Kontras Tipografi: Toolbar filter disederhanakan menjadi 1 baris horizontal flex pada desktop/tablet (Search Input + Select Cakupan + Select Server + Select Status + Tombol Reset). Penajaman kontras warna teks dan ukuran font di tabel laporan, modal detail audit, serta template PDF Sophos Enterprise untuk keterbacaan optimal sesuai standar aksesibilitas WCAG.
+- [x] CP-12 — `f00cf4f` — Revisi Layout PDF Enterprise Tanpa Break Point 2 & 3, Model Tabel Sophos Berbasis Metrik/Risk Pill, dan Detail Distribusi Node Cluster:
+  - Mengeliminasi page-break antara Seksi 02 (Ketersediaan Layanan) dan Seksi 03 (Utilisasi Sumber Daya) sehingga mengalir berdampingan secara mulus pada Halaman 2.
+  - Menggantikan card visual AI-slop dengan tabel komputasi densitas tinggi ala Sophos Enterprise (zebra striping, pill badge tingkat risiko 1-5, dan horizontal proportional meter bar untuk CPU/RAM/Disk/Throughput/Restarts).
+  - Menambahkan sub-tabel seksi 3.2 pada laporan Cluster Fleet (`3.2 Inventaris & Distribusi Beban Komputasi Per Mesin Node`) yang merinci CPU %, RAM %, Disk %, dan Uptime untuk seluruh 5 node server fisik/virtual.
+  - Memperbaiki kalkulasi tinggi container Cover Page dan margin halaman sehingga seluruh laporan memiliki struktur baku 4 halaman penuh (Hal 1: Cover, Hal 2: Seksi 01-03, Hal 3: Seksi 04-06, Hal 4: Seksi 07-08 & Sign-off).
 
 ## Kriteria Selesai
 - [x] Modul `gajianich-server-reporter` terisolasi penuh dari `gajianich-server-agent` (agen bebas dari dependensi Chromium, Puppeteer, dan `@google/genai`).
